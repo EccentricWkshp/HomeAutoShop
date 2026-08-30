@@ -1,0 +1,58 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "From a scan report" %} — {{ asset.nickname }}{% endblock %}
+{% block content %}
+
+<h1>{% translate "Read from a scan report" %}</h1>
+<p class="muted">
+  <a href="{% url 'asset_specs' asset.pk %}">{{ asset.nickname }}</a>
+  · {% translate "nothing has been written yet" %}
+</p>
+
+<section class="card">
+  <h2>{% translate "The report" %}</h2>
+  <table class="small"><tbody>
+    <tr><th>{% translate "Tool" %}</th>
+        <td>{{ report.tool.vendor }} {{ report.tool.model }}
+            <span class="muted mono">{{ report.tool.serial }}</span></td></tr>
+    <tr><th>{% translate "Taken" %}</th><td>{{ report.generated_at|default:"—" }}</td></tr>
+    <tr><th>{% translate "Vehicle" %}</th>
+        <td>{{ report.vehicle.year|default:"" }} {{ report.vehicle.name }}</td></tr>
+    <tr><th>{% translate "VIN on the report" %}</th>
+        <td class="mono">{% if report.vehicle.vin %}{{ report.vehicle.vin|slice:":3" }}••••••••{{ report.vehicle.vin|slice:"-6:" }}
+            {% else %}<span class="muted">{% translate "none" %}</span>{% endif %}</td></tr>
+  </tbody></table>
+
+  {% if vin_unverified %}
+    <p class="msg warning">
+      {% translate "The VIN could not be compared — either this vehicle has none on file or the report does not carry one. Check the tool and date above name the right vehicle before recording anything." %}
+    </p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>{% translate "What would be recorded" %}</h2>
+  <p class="small muted">
+    {% translate "Module identifiers, read off the vehicle rather than inferred from the VIN. These are the numbers you go looking for when matching a reflash or a replacement module. They land under Electrical, with the scan tool recorded as the source." %}
+  </p>
+  <table class="small"><tbody>
+    {% for name, value in rows %}
+      <tr><th>{{ name }}</th><td class="mono">{{ value }}</td></tr>
+    {% endfor %}
+  </tbody></table>
+
+  <form method="post" action="{% url 'spec_from_scan' asset.pk %}" style="margin-top:1rem">
+    {% csrf_token %}
+    <input type="hidden" name="payload" value="{{ payload }}">
+    <div class="row">
+      <button class="primary" name="confirm" value="1" type="submit">
+        {% blocktranslate count counter=rows|length %}Record {{ counter }} identifier{% plural %}Record {{ counter }} identifiers{% endblocktranslate %}
+      </button>
+      <a class="btn" href="{% url 'asset_specs' asset.pk %}">{% translate "Cancel" %}</a>
+    </div>
+  </form>
+  <p class="small muted">
+    {% translate "An identifier already on file is corrected rather than duplicated." %}
+  </p>
+</section>
+
+{% endblock %}

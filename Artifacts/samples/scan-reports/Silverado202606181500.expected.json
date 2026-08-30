@@ -1,0 +1,51 @@
+{
+  "tool": {
+    "vendor": "XTOOL",
+    "model": "D8",
+    "serial": "D8-000000"
+  },
+  "vehicle": {
+    "name": "Silverado",
+    "year": 2012,
+    "vin": "1GCPKSE77CF409107",
+    "odometer": null,
+    "odometer_unit": "mi",
+    "diagnosis_route": "CHEVROLET->V15.40->Automatic Detection->2012->LD trk, MPV, incomplete->Chevrolet truck->Silverado"
+  },
+  "generated_at": "2026-06-18T15:00:00",
+  "modules": [
+    "Transmission control module"
+  ],
+  "ecu": {
+    "Vehicle VIN": "1GCPKSE77CF409107",
+    "Engine: -Calibration ID1": "12653249",
+    "Engine: -Calibration ID2": "12640885",
+    "Engine: -Calibration ID3": "12640857",
+    "Engine: -Calibration ID4": "12625892",
+    "Engine: -Calibration ID5": "12620683",
+    "Engine: -Calibration ID6": "12640909",
+    "Engine: -Calibration ID7": "12640939",
+    "Engine: -Calibration ID8": "12640916",
+    "Engine: -CVN1": "0000A8C7",
+    "Engine: -CVN2": "0000D546",
+    "Engine: -CVN3": "000087AC",
+    "Engine: -CVN4": "000036F2",
+    "Engine: -CVN5": "00009D00",
+    "Engine: -CVN6": "000068FB",
+    "Engine: -CVN7": "000077A0",
+    "Engine: -CVN8": "000051E4",
+    "Trans.: -Calibration ID1": "24261871",
+    "Trans.: -Calibration ID2": "24263533",
+    "Trans.: -Calibration ID3": "24257957",
+    "Trans.: -Calibration ID4": "24257970",
+    "Trans.: -CVN1": "00005546",
+    "Trans.: -CVN2": "00008013",
+    "Trans.: -CVN3": "00000FDD",
+    "Trans.: -CVN4": "00008B65"
+  },
+  "dtcs": [],
+  "live_data": [],
+  "remark": "",
+  "pages": 1,
+  "warnings": []
+}

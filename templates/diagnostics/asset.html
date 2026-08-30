@@ -1,0 +1,120 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ asset.nickname }} — {% translate "Diagnostics" %}{% endblock %}
+{% block content %}
+<div class="spread">
+  <div><h1>{{ asset.nickname }}</h1><p class="muted">{% translate "Scans and trouble codes" %}</p></div>
+  <a class="btn" href="{% url 'asset_detail' asset.pk %}">{% translate "Back to vehicle" %}</a>
+</div>
+
+{% if open_codes %}
+<section class="card">
+  <h2>{% translate "Codes still open" %}</h2>
+  {% if manuals %}
+  <p class="small muted">
+    {% translate "Look these up:" %}
+    {% for manual in manuals %}
+      <a href="{{ manual.url }}" target="_blank" rel="noopener noreferrer">{{ manual.provider.name }} ↗</a>{% if not forloop.last %} · {% endif %}
+    {% endfor %}
+    <br>
+    {% translate "Opens that manual's list of trouble codes for this vehicle, worked out from the address you pinned. Nothing checks it first, so a library with no such section will 404." %}
+  </p>
+{% endif %}
+  <div class="tablewrap"><table>
+    <thead><tr>
+      <th>{% translate "Code" %}</th><th>{% translate "What it means" %}</th>
+      <th>{% translate "Read" %}</th><th>{% translate "Do" %}</th>
+    </tr></thead>
+    <tbody>
+    {% for code in open_codes %}
+      <tr>
+        <th class="mono">{{ code.code }}
+          {% if code.status == 'recurring' %}
+            <span class="pill warn">{% translate "came back" %}</span>
+          {% endif %}
+        </th>
+        <td>{{ code.description|default:"—" }}
+          {% if code.module %}<span class="small muted">· {{ code.module }}</span>{% endif %}
+        </td>
+        <td class="small muted">{{ code.session.performed_on|date:"SHORT_DATE_FORMAT" }}</td>
+        <td>
+          <div class="row">
+            <form method="post" action="{% url 'code_promote' code.pk %}">{% csrf_token %}
+              <button class="linkish small" type="submit">{% translate "Make a job" %}</button>
+            </form>
+            <form method="post" action="{% url 'code_status' code.pk %}">{% csrf_token %}
+              <input type="hidden" name="status" value="ignored">
+              <button class="linkish small" type="submit">{% translate "Live with it" %}</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endif %}
+
+<div class="cols two">
+  <div class="stack">
+    <section class="card">
+      <h2>{% translate "Scan history" %}</h2>
+      {% for session in sessions %}
+        <article class="row spread" style="align-items:baseline">
+          <div>
+            <a href="{% url 'session_detail' session.pk %}">
+              {{ session.performed_on|date:"SHORT_DATE_FORMAT" }} — {{ session.tool|default:_("scan") }}
+            </a>
+            <p class="small muted">
+              {% blocktranslate count counter=session.codes.count %}{{ counter }} code{% plural %}{{ counter }} codes{% endblocktranslate %}
+              · {{ session.get_source_display }}
+              {% if session.parser_profile %}· {{ session.parser_profile.label }}{% endif %}
+            </p>
+          </div>
+          {% if session.odometer %}<span class="mono small">{{ session.odometer|floatformat:0 }} {{ session.odometer_unit }}</span>{% endif %}
+        </article>
+      {% empty %}
+        <p class="muted">{% translate "No scans on file yet." %}</p>
+      {% endfor %}
+    </section>
+
+    {% if drafts %}
+      <section class="card">
+        <h2>{% translate "Waiting for you to check" %}</h2>
+        <p class="small muted">
+          {% translate "A scan stays out of the history until somebody has checked it over." %}
+        </p>
+        {% for draft in drafts %}
+          <p><a href="{% url 'session_detail' draft.pk %}">
+            {{ draft.created_at|date:"SHORT_DATE_FORMAT" }} — {{ draft.get_parse_status_display }}
+          </a></p>
+        {% endfor %}
+      </section>
+    {% endif %}
+  </div>
+
+  <div class="stack">
+    <section class="card">
+      <h2>{% translate "Read a report" %}</h2>
+      <p class="small muted">
+        {% translate "A PDF from a scan tool, or a CSV or text export if yours makes one. Use the export where you have one — it reads more reliably." %}
+      </p>
+      <form method="post" action="{% url 'session_import' asset.pk %}"
+            enctype="multipart/form-data" class="stack">{% csrf_token %}
+        <div class="field">
+          <label for="report">{% translate "Report file" %}</label>
+          <input id="report" type="file" name="report" accept=".pdf,.csv,.txt,.json">
+        </div>
+        <button class="primary" type="submit">{% translate "Read it" %}</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Read the car directly" %}</h2>
+      <p class="small muted">
+        {% translate "Read codes straight off the car with an ELM327 adapter. Needs Chrome or Edge." %}
+      </p>
+      <a class="btn" href="{% url 'elm327' asset.pk %}">{% translate "Connect an adapter" %}</a>
+    </section>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Reports" %} — {{ shop_name }}{% endblock %}
+{% block content %}
+<h1>{% translate "Reports" %}</h1>
+
+<div class="cols two">
+  <div class="stack">
+    <section class="card">
+      <div class="spread"><h2>{% translate "Spend by month" %}</h2>
+        <a class="btn small" href="{% url 'export_csv' 'spend' %}">{% translate "CSV" %}</a></div>
+      <div class="tablewrap"><table>
+        <tr><th>{% translate "Month" %}</th><th>{% translate "Parts and expenses" %}</th></tr>
+        {% for row in spend %}<tr><td>{{ row.month }}</td><td class="mono">{{ row.money }}</td></tr>
+        {% empty %}<tr><td colspan="2" class="muted">{% translate "Nothing recorded yet." %}</td></tr>{% endfor %}
+      </table></div>
+    </section>
+
+    <section class="card">
+      <div class="spread"><h2>{% translate "Cost by vehicle" %}</h2>
+        <a class="btn small" href="{% url 'export_csv' 'assets' %}">{% translate "CSV" %}</a></div>
+      <ul class="list small">
+        {% for asset in assets %}
+          <li class="spread"><a href="{% url 'asset_costs' asset.pk %}">{{ asset.nickname }}</a>
+            <span class="muted">{{ asset.descriptor }}</span></li>
+        {% empty %}<li class="muted">{% translate "No vehicles yet." %}</li>{% endfor %}
+      </ul>
+    </section>
+  </div>
+
+  <aside class="stack">
+    <section class="card">
+      <h2>{% translate "Inventory value" %}</h2>
+      <p class="mono" style="font-size:1.75rem;margin:0">{{ inventory_value }}</p>
+      <p class="small muted">{% translate "At what each lot actually cost." %}</p>
+    </section>
+
+    <section class="card">
+      <div class="spread"><h2>{% translate "Under warranty" %}</h2>
+        <a class="btn small" href="{% url 'export_csv' 'warranties' %}">{% translate "CSV" %}</a></div>
+      <ul class="list small">
+        {% for usage in warranties %}
+          <li class="spread">
+            <div>{{ usage.part }}<div class="muted">{{ usage.work_order.asset.nickname }}</div></div>
+            <span class="pill ok">{{ usage.warranty_expires_on }}</span>
+          </li>
+        {% empty %}<li class="muted">{% translate "Nothing under warranty." %}</li>{% endfor %}
+      </ul>
+    </section>
+  </aside>
+</div>
+{% endblock %}

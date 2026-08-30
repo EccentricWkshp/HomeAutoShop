@@ -1,0 +1,110 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Shelf" %} — {{ shop_name }}{% endblock %}
+{% block content %}
+<div class="spread">
+  {% if focus %}
+    <div>
+      <h1>{{ focus.path }}</h1>
+      <p class="muted">{% translate "What is in this one." %}</p>
+    </div>
+    <a class="btn" href="{% url 'inventory' %}">{% translate "The whole shelf" %}</a>
+  {% else %}
+    <h1>{% translate "What's on the shelf" %}</h1>
+    <span class="pill">{% translate "Value" %}: {{ value }}</span>
+  {% endif %}
+</div>
+
+<div class="cols two">
+  <div class="stack">
+    {% for location in locations %}
+      <section class="card">
+        <div class="spread"><h2>{{ location.path }}</h2><span class="pill">{{ location.units|default:0 }}</span></div>
+        <ul class="list small">
+          {% for lot in location.stock_lots.all %}
+            <li class="spread">
+              <a href="{% url 'part_detail' lot.part.pk %}">{{ lot.part }}</a>
+              <span>{{ lot.qty_on_hand }} {{ lot.part.unit }}</span>
+            </li>
+          {% empty %}<li class="muted">{% translate "Empty." %}</li>{% endfor %}
+        </ul>
+      </section>
+    {% empty %}
+      <p class="empty card">{% translate "No locations yet. Add one to mirror your shop." %}</p>
+    {% endfor %}
+
+    {% if unfiled %}
+    <section class="card">
+      <h2>{% translate "Not filed anywhere" %}</h2>
+      <ul class="list small">
+        {% for lot in unfiled %}<li class="spread"><a href="{% url 'part_detail' lot.part.pk %}">{{ lot.part }}</a>
+          <span>{{ lot.qty_on_hand }}</span></li>{% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
+    <section class="card">
+      <div class="spread">
+        <h2>{% translate "Labels" %}</h2>
+        <a class="btn" href="{% url 'labels' %}">{% translate "Print bin labels" %}</a>
+      </div>
+      <p class="small muted">
+        {% translate "Every location gets a QR label. Scanning one opens what is stored in it." %}
+      </p>
+      <button type="button" class="primary" data-scan="qr_code">
+        {% translate "Scan a label" %}
+      </button>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Add a location" %}</h2>
+      <form method="post" action="{% url 'location_create' %}" class="row">{% csrf_token %}
+        <input name="name" required style="flex:1" aria-label="{% translate 'Location name' %}"
+               placeholder="{% translate 'Shelf B3' %}">
+        <select name="parent" class="select" aria-label="{% translate 'Inside which location' %}">
+          <option value="">{% translate "Top level" %}</option>
+          {% for location in locations %}<option value="{{ location.pk }}">{{ location.path }}</option>{% endfor %}
+        </select>
+        <button type="submit">{% translate "Add" %}</button>
+      </form>
+    </section>
+  </div>
+
+  <aside class="stack">
+    {% if cores %}
+    <section class="card">
+      <h2>{% translate "Cores owed back" %}</h2>
+      <p class="small muted">{% translate "An uncollected core charge is money already spent." %}</p>
+      <ul class="list small">
+        {% for usage in cores %}
+          <li class="spread">
+            <div><a href="{% url 'work_order_detail' usage.work_order.pk %}">{{ usage.part }}</a>
+              <div class="muted">{{ usage.work_order.asset.nickname }} · {{ usage.installed_at }}</div></div>
+            <form method="post" action="{% url 'core_returned' usage.pk %}">{% csrf_token %}
+              <button class="linkish small" type="submit">{% translate "Returned" %}</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
+    {% if low %}
+    <section class="card">
+      <h2>{% translate "Restock" %}</h2>
+      <ul class="list small">{% for part in low %}<li><a href="{% url 'part_detail' part.pk %}">{{ part }}</a>
+        <span class="pill warn">{{ part.on_hand }}</span></li>{% endfor %}</ul>
+    </section>
+    {% endif %}
+
+    {% if expiring %}
+    <section class="card">
+      <h2>{% translate "Expiring" %}</h2>
+      <p class="small muted">{% translate "Brake fluid, sealants and epoxy do expire." %}</p>
+      <ul class="list small">{% for lot in expiring %}<li class="spread">
+        <a href="{% url 'part_detail' lot.part.pk %}">{{ lot.part }}</a>
+        <span class="pill warn">{{ lot.expires_on }}</span></li>{% endfor %}</ul>
+    </section>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

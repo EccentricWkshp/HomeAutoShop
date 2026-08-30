@@ -1,0 +1,72 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ asset.nickname }} — {% translate "Recalls" %}{% endblock %}
+{% block content %}
+<div class="spread">
+  <div><h1>{{ asset.nickname }}</h1><p class="muted">{% translate "Recall campaigns" %}</p></div>
+  <div class="row">
+    <a class="btn" href="{% url 'asset_detail' asset.pk %}">{% translate "Back to vehicle" %}</a>
+    {% if region_supported %}
+      <form method="post" action="{% url 'recall_check' asset.pk %}">{% csrf_token %}
+        <button class="primary" type="submit" {% if offline_mode %}disabled{% endif %}>
+          {% translate "Check NHTSA" %}
+        </button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <h2>{% translate "What this can and cannot tell you" %}</h2>
+  <ul class="small">
+    <li>{% translate "Campaigns are matched by year, make and model — not by your VIN. Some may not apply to your vehicle." %}</li>
+    <li>{% translate "Whether a recall was already performed on this VIN is not available from the free data, so you record that yourself." %}</li>
+    <li>{% translate "Coverage is US-market vehicles. An empty list is not proof that a vehicle is clear." %}</li>
+  </ul>
+  <p class="small">
+    <a href="{{ vin_lookup_url }}" target="_blank" rel="noopener noreferrer">
+      {% translate "Check this VIN with NHTSA" %} ↗</a>
+    {% translate "then record what it said below." %}
+  </p>
+  {% if not region_supported %}
+    <p class="msg warning">
+      {% translate "This vehicle is registered outside the US. Recall data here comes from NHTSA only — Transport Canada and PROFECO are not wired up, so nothing shown here should be taken as complete." %}
+    </p>
+  {% endif %}
+</div>
+
+<section class="card">
+  <h2>{% translate "Campaigns" %}</h2>
+  <ul class="list">
+    {% for recall in recalls %}
+      <li>
+        <div class="spread">
+          <div>
+            <strong class="mono">{{ recall.campaign_number }}</strong> — {{ recall.component }}
+            <div class="small muted">{{ recall.reported_on|default:"" }}</div>
+          </div>
+          <span class="pill {% if recall.needs_attention %}warn{% else %}ok{% endif %}">
+            {{ recall.get_owner_status_display }}
+          </span>
+        </div>
+        {% if recall.summary %}<p class="small">{{ recall.summary|truncatewords:60 }}</p>{% endif %}
+        {% if recall.remedy %}<p class="small muted"><strong>{% translate "Remedy" %}:</strong>
+          {{ recall.remedy|truncatewords:40 }}</p>{% endif %}
+        <form method="post" action="{% url 'recall_status' asset.pk recall.pk %}" class="row">
+          {% csrf_token %}
+          <select name="owner_status" class="select" aria-label="{% translate 'What you did about it' %}">
+            {% for value, label in statuses %}
+              <option value="{{ value }}" {% if recall.owner_status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <input name="notes" value="{{ recall.notes }}" style="flex:1"
+                 aria-label="{% translate 'Note' %}"
+                 placeholder="{% translate 'what the dealer said' %}">
+          <button type="submit">{% translate "Record" %}</button>
+        </form>
+      </li>
+    {% empty %}
+      <li class="empty">{% translate "Nothing checked yet." %}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

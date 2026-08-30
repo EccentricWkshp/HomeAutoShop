@@ -1,0 +1,31 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Due" %} — {{ shop_name }}{% endblock %}
+{% block content %}
+<div class="spread">
+  <h1>{% translate "What needs attention" %}</h1>
+  <div class="row">
+    {% if overdue %}<span class="pill danger">⚠ {{ overdue }} {% translate "overdue" %}</span>{% endif %}
+    {% if due_soon %}<span class="pill warn">{{ due_soon }} {% translate "due soon" %}</span>{% endif %}
+  </div>
+</div>
+
+<section class="card">
+  <ul class="list">
+    {% for item, projection in items %}
+      <li class="spread">
+        <div>
+          <a href="{% url 'asset_schedule' item.asset.pk %}"><strong>{{ item.definition.name }}</strong></a>
+          {% if item.is_safety %}<span class="pill danger">{% translate "Safety" %}</span>{% endif %}
+          <div class="small muted">{{ item.asset.nickname }} · {{ projection.summary }}</div>
+          <div class="small muted">{{ projection.rate.basis }}</div>
+        </div>
+        <span class="pill {% if item.status == 'overdue' %}danger{% else %}warn{% endif %}">
+          {{ item.get_status_display }}
+        </span>
+      </li>
+    {% empty %}
+      <li class="empty">{% translate "Nothing due. Go enjoy the car." %}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

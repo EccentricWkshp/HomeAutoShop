@@ -1,0 +1,152 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Integrations" %}{% endblock %}
+{% block content %}
+
+<h1>{% translate "Integrations" %}</h1>
+<p class="muted">
+  {% translate "Every one of these is optional. With all of them switched off, everything else still works." %}
+</p>
+
+{% if offline %}
+  <p class="msg warning">
+    {% translate "Offline Mode is on, so none of these make an outbound call." %}
+  </p>
+{% endif %}
+
+<section class="card">
+  <h2>{% translate "VIN decode — NHTSA" %}</h2>
+  <p class="small muted">
+    {% translate "Free, no account, no key. On by default; it sends nothing but the VIN you typed." %}
+  </p>
+  <p class="mono small">{{ vin_decode.url }}</p>
+  <p>{% if vin_decode.enabled %}<span class="pill">{% translate "on" %}</span>{% else %}<span class="pill warn">{% translate "off" %}</span>{% endif %}</p>
+</section>
+
+<section class="card">
+  <h2>{% translate "LubeLogger" %}</h2>
+  {% if lubelogger.url %}
+    <p class="mono small">{{ lubelogger.url }}</p>
+    <table class="small"><tbody>
+      <tr><th>{% translate "Mode" %}</th><td>{{ lubelogger.mode }}</td></tr>
+      {% if lubelogger.syncs %}
+        <tr><th>{% translate "Pulls every" %}</th>
+            <td>{% blocktranslate count counter=lubelogger.every_hours %}{{ counter }} hour{% plural %}{{ counter }} hours{% endblocktranslate %}</td></tr>
+        <tr><th>{% translate "Last pull" %}</th><td>{{ lubelogger.last|default:_("never") }}</td></tr>
+        {% if lubelogger.result.since %}
+          <tr><th>{% translate "Covered from" %}</th><td>{{ lubelogger.result.since }}</td></tr>
+          <tr><th>{% translate "Records" %}</th><td>{{ lubelogger.result.created }}</td></tr>
+        {% endif %}
+      {% endif %}
+    </tbody></table>
+    <div class="row">
+      <form method="post" action="{% url 'integration_test' 'lubelogger' %}">{% csrf_token %}
+        <button type="submit">{% translate "Test the connection" %}</button>
+      </form>
+      {% if lubelogger.syncs %}
+        <form method="post" action="{% url 'integration_sync' 'lubelogger' %}">{% csrf_token %}
+          <button type="submit">{% translate "Pull now" %}</button>
+        </form>
+      {% endif %}
+      <a class="btn" href="{% url 'lubelogger_import' %}">{% translate "One-time import" %}</a>
+    </div>
+    {% if not lubelogger.syncs %}
+      <p class="small muted">
+        {% translate "Set LUBELOGGER_MODE to pull in your .env to have it fetch on a schedule. For most people the one-time import is enough." %}
+      </p>
+    {% endif %}
+  {% else %}
+    <p class="muted">{% translate "Not configured." %}</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>{% translate "WrenchLedger — tool availability" %}</h2>
+  {% if wrenchledger.configured %}
+    <p class="small muted">
+      {% translate "Shows on a work order whether the tools it needs are actually here — on hand, on loan, or due for calibration. A warning, never a block." %}
+    </p>
+    <p><strong>{% translate "Last checked:" %}</strong> {{ wrenchledger.last|default:_("never") }}</p>
+    <div class="row">
+      <form method="post" action="{% url 'integration_test' 'wrenchledger' %}">{% csrf_token %}
+        <button type="submit">{% translate "Test the connection" %}</button>
+      </form>
+      <form method="post" action="{% url 'integration_sync' 'wrenchledger' %}">{% csrf_token %}
+        <button type="submit">{% translate "Check tools now" %}</button>
+      </form>
+    </div>
+    <p class="small muted">
+      {% blocktranslate with owner=wrenchledger.consumables_owner %}Consumables are tracked by <span class="mono">{{ owner }}</span>, so the same quart of oil is not counted in both systems.{% endblocktranslate %}
+    </p>
+  {% else %}
+    <p class="muted">{% translate "Not connected." %}</p>
+    <p class="small muted">
+      {% translate "A key needs exactly these scopes, and no more:" %}
+      <span class="mono">{{ wrenchledger.required_scopes|join:", " }}</span>.
+      {% translate "Do not add loans:sensitive; nothing here uses borrower contact details." %}
+    </p>
+
+    {% if show_wl_placement %}
+      {% comment %}House placement, per INTEGRATION-WRENCHLEDGER.md §10: static markup,
+         zero network calls, disclosed, dismissible, and gone once connected.{% endcomment %}
+      <aside class="card muted-card">
+        <h3>{% translate "Not tracking your tools anywhere?" %}</h3>
+        <p class="small">
+          {% blocktranslate %}HomeAutoShop deliberately does not track what tools you own, where they live, or who borrowed them — <a href="https://wrench-ledger.app?ref=homeautoshop" rel="noopener">WrenchLedger</a> already does that well, and this connects to it rather than competing with it.{% endblocktranslate %}
+        </p>
+        <p class="small muted">
+          {% translate "From the same developer as HomeAutoShop. It is a paid cloud service, not self-hosted — worth knowing before you look." %}
+        </p>
+        <form method="post" action="{% url 'dismiss_product_link' %}">{% csrf_token %}
+          <button class="linkish small" type="submit">{% translate "Don't show this again" %}</button>
+        </form>
+      </aside>
+    {% endif %}
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>{% translate "Plate lookup" %}</h2>
+  <p class="small muted">
+    {% translate "There is no free, legal plate-to-VIN service anywhere, so this needs a commercial provider and an account of your own. Nothing is bundled or recommended." %}
+  </p>
+  {% if plate.enabled %}
+    <p><span class="pill">{% translate "on" %}</span> <span class="mono small">{{ plate.provider }}</span></p>
+    <p class="small muted">
+      {% if plate.cap %}{% blocktranslate with cap=plate.cap %}Capped at {{ cap }} lookups a month.{% endblocktranslate %}
+      {% else %}{% translate "No monthly cap set — every press spends money." %}{% endif %}
+    </p>
+    <a class="btn" href="{% url 'plate_lookup' %}">{% translate "Look up a plate" %}</a>
+  {% else %}
+    <p class="muted">{% translate "Off. Every lookup costs money and sends the plate off your network." %}</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>{% translate "What has gone out" %}</h2>
+  <p class="small muted">
+    {% translate "Every outbound call this instance has made, with what it was for and what came back. Nothing is sent that is not on this list." %}
+  </p>
+  <div class="tablewrap"><table>
+    <thead><tr>
+      <th>{% translate "When" %}</th><th>{% translate "Where" %}</th>
+      <th>{% translate "Why" %}</th><th>{% translate "Result" %}</th><th>{% translate "Who" %}</th>
+    </tr></thead>
+    <tbody>
+    {% for entry in activity %}
+      <tr>
+        <td class="small muted">{{ entry.at|date:"SHORT_DATETIME_FORMAT" }}</td>
+        <td class="small mono">{{ entry.summary|truncatechars:48 }}</td>
+        <td class="small">{{ entry.diff.purpose|default:"—" }}</td>
+        <td class="small">
+          {{ entry.diff.status|default:"—" }}
+          {% if entry.diff.error %}<span class="pill warn">{{ entry.diff.error }}</span>{% endif %}
+        </td>
+        <td class="small muted">{{ entry.user.display_name|default:"—" }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5" class="muted">{% translate "Nothing has left this machine." %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endblock %}

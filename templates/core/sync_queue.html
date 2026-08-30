@@ -1,0 +1,32 @@
+{% extends "base.html" %}{% load i18n static %}
+{% block title %}{% translate "Waiting to sync" %}{% endblock %}
+{% block content %}
+
+<h1>{% translate "Waiting to sync" %}</h1>
+<p class="muted">
+  {% translate "Everything captured on this device that has not reached the server yet. Each device keeps its own queue — a reading taken on the phone shows on the phone." %}
+</p>
+
+<section class="card">
+  <h2>{% translate "Queued" %}</h2>
+  <div id="queue-list" class="stack">
+    <p class="muted">{% translate "Reading the queue…" %}</p>
+  </div>
+  <div class="row">
+    <button id="queue-drain" class="primary" type="button">{% translate "Try now" %}</button>
+  </div>
+</section>
+
+<section class="card">
+  <h2>{% translate "Needs a decision" %}</h2>
+  <p class="small muted">
+    {% translate "Somebody else changed the same record while this device was offline. Nothing is merged automatically and nothing is thrown away — pick which version is right." %}
+  </p>
+  <div id="conflict-list" class="stack">
+    <p class="muted">{% translate "None." %}</p>
+  </div>
+</section>
+
+{{ strings|json_script:"queue-strings" }}
+<script src="{% static 'queue.js' %}" defer></script>
+{% endblock %}

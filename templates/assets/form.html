@@ -1,0 +1,70 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% if asset %}{{ asset.nickname }}{% else %}{% translate "Add a vehicle" %}{% endif %}{% endblock %}
+{% block content %}
+<h1>{% if asset %}{% translate "Edit" %} {{ asset.nickname }}{% else %}{% translate "Add a vehicle or equipment" %}{% endif %}</h1>
+<p class="muted small">{% translate "Only a nickname is required. A half-known project car is still worth recording." %}</p>
+
+<form method="post" class="card">{% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="formgrid">
+    {% for field in form %}
+      <div class="field {% if field.name in 'nickname,notes' %}full{% endif %}">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {% if field.name == 'vin' and not asset %}
+          <div class="row">
+            {{ field }}
+            {# Code 39 is what a door-jamb label carries; some are QR instead. #}
+            <button type="button" class="nowrap"
+                    data-scan="code_39,qr_code,data_matrix,pdf417"
+                    data-scan-target="vin" data-scan-kind="vin">
+              {% translate "Scan" %}
+            </button>
+            <button type="submit" name="action" value="lookup" class="nowrap"
+                    {% if offline_mode %}disabled{% endif %}>{% translate "Look up" %}</button>
+          </div>
+          <div id="vin-feedback"></div>
+          <p class="helptext">
+            {% if offline_mode %}
+              {% translate "Offline mode is on, so no lookup is attempted." %}
+            {% else %}
+              {% translate "Fills in only the boxes you have left empty. Nothing you typed is overwritten." %}
+            {% endif %}
+          </p>
+        {% else %}
+          {{ field }}
+          {% if field.name == 'vin' %}<div id="vin-feedback"></div>{% endif %}
+        {% endif %}
+        {% if field.help_text %}<p class="helptext">{{ field.help_text }}</p>{% endif %}
+        {{ field.errors }}
+      </div>
+    {% endfor %}
+  </div>
+  <div class="row">
+    <button class="primary" type="submit">{% translate "Save" %}</button>
+    {% if asset %}<a class="btn" href="{% url 'asset_detail' asset.pk %}">{% translate "Cancel" %}</a>{% endif %}
+  </div>
+</form>
+
+<script>
+// Local VIN validation as you type (FR-VEH-2). No network involved: the check
+// digit and character rules are computable offline, and catching a typo here
+// beats a mysterious empty decode later.
+(function () {
+  const vin = document.getElementById('id_vin');
+  const out = document.getElementById('vin-feedback');
+  if (!vin || !out) return;
+  let timer;
+  vin.addEventListener('input', function () {
+    clearTimeout(timer);
+    timer = setTimeout(async function () {
+      const value = vin.value.trim();
+      if (!value) { out.innerHTML = ''; return; }
+      try {
+        const resp = await fetch('{% url "vin_validate" %}?vin=' + encodeURIComponent(value));
+        out.innerHTML = await resp.text();
+      } catch (e) { out.innerHTML = ''; }
+    }, 250);
+  });
+})();
+</script>
+{% endblock %}

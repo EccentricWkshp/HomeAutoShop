@@ -1,0 +1,57 @@
+# What must never reach the image.
+#
+# `COPY . .` takes the working tree as it stands, so anything sitting beside the
+# source ships inside the image and stays in its layers. Without this file the
+# image contained the live .env — Cloudflare token, database password and
+# SECRET_KEY — the development database, and the unredacted scan reports. None
+# of that is recoverable by deleting the files in a later layer: the earlier
+# layer still holds them, and anyone who pulls the image can read it.
+#
+# It is also why builds were flaky and slow. The context was 206 MB, 193 MB of
+# it a Windows virtualenv, checksummed over a 9p mount on every build.
+
+# Secrets. The container gets its configuration from the environment at run
+# time; the file itself has no business being inside.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+config/caddy/certs/
+config/caddy/dns/
+
+# A host virtualenv is the wrong platform and the wrong Python.
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+
+# Local state. The container mounts volumes for these.
+data/
+staticfiles/
+*.sqlite3
+*.sqlite3-*
+
+# The originals behind the scan-report corpus: real VINs, real vehicles. The
+# redacted .words.json captures beside them are safe and stay, so a test run
+# inside the container still has a corpus to work with.
+Artifacts/samples/**/*.pdf
+Artifacts/samples/*.jpg
+Artifacts/samples/**/*.jpeg
+Artifacts/samples/**/*.png
+
+# History, tooling and editor noise.
+.git/
+.gitignore
+.github/
+.idea/
+.vscode/
+*.md
+!README.md
+docs/
+locale/*/LC_MESSAGES/*.po
+
+# Compose builds the image; the image does not need to describe itself.
+docker-compose.yml
+Dockerfile*
+.dockerignore

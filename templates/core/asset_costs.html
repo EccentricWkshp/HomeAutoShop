@@ -1,0 +1,45 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ asset.nickname }} — {% translate "Costs" %}{% endblock %}
+{% block content %}
+<div class="spread">
+  <div><h1>{{ asset.nickname }}</h1>
+    <p class="muted">{% translate "What this vehicle has cost" %}</p></div>
+  <a class="btn" href="{% url 'asset_detail' asset.pk %}">{% translate "Back to vehicle" %}</a>
+</div>
+
+<div class="cols two">
+  <section class="card">
+    <h2>{% translate "Breakdown" %}</h2>
+    <div class="tablewrap"><table>
+      {% for line in rollup.lines %}
+        <tr><th>{{ line.label }}</th>
+            <td class="small muted">{{ line.detail }}</td>
+            <td class="mono">{{ line.money }}</td></tr>
+      {% empty %}<tr><td class="muted">{% translate "Nothing recorded yet." %}</td></tr>{% endfor %}
+      <tr><th>{% translate "Total" %}</th><td></td><td class="mono"><strong>{{ rollup.total }}</strong></td></tr>
+    </table></div>
+    {% if rollup.labour_minutes %}
+      <p class="small muted">
+        {% blocktranslate with hours=rollup.labour_hours %}{{ hours }} hours of your own time.{% endblocktranslate %}
+        {% translate "Valued only if a rate is configured, and always an estimate — never a bill." %}
+      </p>
+    {% endif %}
+  </section>
+
+  <aside class="card">
+    <h2>{% translate "Cost per distance" %}</h2>
+    {% if per_distance.is_computable %}
+      <p class="mono" style="font-size:1.5rem;margin:0">
+        {{ per_distance.minor_per_unit|floatformat:2 }}
+        <span class="small muted">{% translate "minor units per" %} {{ per_distance.unit }}</span>
+      </p>
+    {% else %}
+      <p class="muted">{% translate "Not yet." %}</p>
+    {% endif %}
+    <p class="small muted">{{ per_distance.basis }}</p>
+    <p class="small muted">
+      {% translate "Fuel is not included — this is repair and ownership cost only." %}
+    </p>
+  </aside>
+</div>
+{% endblock %}

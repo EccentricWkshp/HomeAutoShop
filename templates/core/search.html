@@ -1,0 +1,39 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Search" %} — {{ shop_name }}{% endblock %}
+{% block content %}
+<h1>{% translate "Search" %}</h1>
+<form method="get" class="row" style="margin-bottom:1rem">
+  <input type="search" name="q" value="{{ q }}" autofocus style="flex:1"
+         aria-label="{% translate 'Search' %}"
+         placeholder="{% translate 'Part number, nickname, VIN, a phrase from a note…' %}">
+  <button class="primary" type="submit">{% translate "Search" %}</button>
+</form>
+
+{% if results.query and results.is_empty %}
+  <p class="empty">{% blocktranslate %}Nothing matched “{{ q }}”.{% endblocktranslate %}</p>
+{% endif %}
+
+{% for group in results.groups %}
+<section class="card">
+  <h2>{{ group.label }}</h2>
+  <ul class="list">
+    {% for item in group.results %}
+      <li>
+        {% if group.kind == 'asset' %}<a href="{% url 'asset_detail' item.pk %}">{{ item.nickname }}</a>
+          <div class="small muted">{{ item.descriptor }}</div>
+        {% elif group.kind == 'work_order' %}<a href="{% url 'work_order_detail' item.pk %}">{{ item.number }} — {{ item.title }}</a>
+          <div class="small muted">{{ item.asset.nickname }}</div>
+        {% elif group.kind == 'part' %}<a href="{% url 'part_detail' item.pk %}">{{ item.name }}</a>
+          <div class="small muted">{{ item.manufacturer }} {{ item.part_number }}</div>
+        {% elif group.kind == 'person' %}<a href="{% url 'person_detail' item.pk %}">{{ item.display_name }}</a>
+        {% elif group.kind == 'note' %}<a href="{% url 'work_order_detail' item.work_order.pk %}">{{ item.body|truncatewords:24 }}</a>
+          <div class="small muted">{{ item.work_order.number }} · {{ item.noted_at|date }}</div>
+        {% elif group.kind == 'media' %}{{ item.original_filename|default:item }}
+          <div class="small muted">{{ item.ocr_text|truncatewords:20 }}</div>
+        {% else %}{{ item }}{% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endfor %}
+{% endblock %}

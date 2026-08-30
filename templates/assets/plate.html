@@ -1,0 +1,110 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Look up a plate" %}{% endblock %}
+{% block content %}
+
+<h1>{% translate "Look up a plate" %}</h1>
+<p class="muted">
+  {% translate "This costs money per lookup and sends the plate off your network. Both are shown before anything happens." %}
+</p>
+
+{% if not preflight.enabled %}
+  <p class="msg warning">
+    {% translate "Plate lookup is switched off. There is no free, legal plate-to-VIN service, so this needs a commercial provider and an account of your own — see the integrations page." %}
+  </p>
+{% endif %}
+
+<section class="card">
+  <h2>{% translate "This month" %}</h2>
+  <table class="small"><tbody>
+    <tr><th>{% translate "Provider" %}</th><td class="mono">{{ preflight.provider }}</td></tr>
+    <tr><th>{% translate "Lookups so far" %}</th><td class="mono">{{ preflight.used }}</td></tr>
+    <tr><th>{% translate "Limit" %}</th>
+        <td class="mono">{% if preflight.cap %}{{ preflight.cap }}{% else %}{% translate "none set" %}{% endif %}</td></tr>
+    {% if preflight.remaining is not None %}
+      <tr><th>{% translate "Left" %}</th><td class="mono">{{ preflight.remaining }}</td></tr>
+    {% endif %}
+  </tbody></table>
+  {% if not preflight.cap %}
+    <p class="small muted">
+      {% translate "With no cap there is nothing to stop a mistake running up a bill. Set PLATE_LOOKUP_MONTHLY_CAP in your .env to put a ceiling on it." %}
+    </p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>{% translate "Look one up" %}</h2>
+  <form method="post" action="{% url 'plate_lookup' %}" class="stack">{% csrf_token %}
+    <div class="formgrid">
+      <div class="field">
+        <label for="plate">{% translate "Plate" %}</label>
+        <input id="plate" type="text" name="plate" value="{{ plate }}" maxlength="16" required>
+      </div>
+      <div class="field">
+        <label for="region">{% translate "State or province" %}</label>
+        <input id="region" type="text" name="region" value="{{ region }}" maxlength="8" required>
+        <p class="small muted">{% translate "Coverage differs by state and province." %}</p>
+      </div>
+    </div>
+
+    {% if confirming %}
+      <div class="msg warning">
+        <p>
+          {% blocktranslate with plate=plate region=region %}Send {{ plate }} ({{ region }}) to the provider?{% endblocktranslate %}
+        </p>
+        <p class="small">
+          {% translate "The plate leaves your network. This will be lookup number" %}
+          <strong>{{ preflight.used|add:1 }}</strong>
+          {% if preflight.cost_estimate %}
+            {% blocktranslate with cost=preflight.cost_estimate currency=preflight.currency %}at roughly {{ cost }} minor units of {{ currency }} each, by your own estimate.{% endblocktranslate %}
+          {% else %}
+            {% translate "this month." %}
+          {% endif %}
+        </p>
+      </div>
+      <div class="row">
+        <button class="primary" type="submit" name="confirm" value="1">{% translate "Yes, look it up" %}</button>
+        <a class="btn" href="{% url 'plate_lookup' %}">{% translate "Cancel" %}</a>
+      </div>
+    {% else %}
+      <button class="primary" type="submit" {% if not preflight.enabled %}disabled{% endif %}>
+        {% translate "Look up by plate" %}
+      </button>
+    {% endif %}
+  </form>
+</section>
+
+{% if result %}
+<section class="card">
+  <h2>{% translate "What came back" %}</h2>
+  {% if result.usable %}
+    <table class="small"><tbody>
+      <tr><th>{% translate "VIN" %}</th><td class="mono">{{ result.vin }}</td></tr>
+      <tr><th>{% translate "Their year, make, model" %}</th>
+          <td>{{ result.year|default:"" }} {{ result.make }} {{ result.model }}</td></tr>
+      {% if result.confidence %}
+        <tr><th>{% translate "Their confidence" %}</th><td class="mono">{{ result.confidence }}</td></tr>
+      {% endif %}
+    </tbody></table>
+
+    {% if vin_check %}
+      {% if vin_check.check_digit_valid %}
+        <p class="msg success">{% translate "That VIN passes its own check digit." %}</p>
+      {% else %}
+        <p class="msg warning">
+          {% translate "That VIN fails its check digit. Imports legitimately do, but so does a transcription error." %}
+        </p>
+      {% endif %}
+    {% endif %}
+
+    <p class="small muted">
+      {% translate "The year, make and model above are the provider's and may be wrong. Add the vehicle by its VIN and decode it." %}
+    </p>
+    <a class="btn primary" href="{% url 'asset_create' %}?vin={{ result.vin }}">
+      {% translate "Add a vehicle with this VIN" %}
+    </a>
+  {% else %}
+    <p class="muted">{% translate "No VIN came back for that plate." %}</p>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

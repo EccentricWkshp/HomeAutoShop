@@ -1,0 +1,121 @@
+# HomeAutoShop — five services, per SPEC §5.1.
+# Profiles: default (all five) · slim (jobs in-process) · dev (bind mounts).
+
+name: homeautoshop
+
+x-app: &app
+  build: .
+  image: homeautoshop:local
+  restart: unless-stopped
+  env_file: [.env]
+  environment:
+    DATABASE_URL: postgresql://${POSTGRES_USER:-shop}:${POSTGRES_PASSWORD:-shop}@db:5432/${POSTGRES_DB:-homeautoshop}
+    STORAGE_DRIVER: ${STORAGE_DRIVER:-s3}
+    STORAGE_ENDPOINT: http://storage:9000
+    STATIC_HASHED: "true"
+    MEDIA_ROOT: /data/media
+    BACKUP_DIR: /data/backups
+  volumes:
+    - media-data:/data/media
+    - backup-data:/data/backups
+  depends_on:
+    db: {condition: service_healthy}
+    storage: {condition: service_started}
+
+services:
+  proxy:
+    # Built rather than pulled: DNS-01 providers are compiled into Caddy, and
+    # a LAN instance has no other way to pass an ACME challenge.
+    build:
+      context: .
+      dockerfile: Dockerfile.caddy
+    image: homeautoshop-caddy:local
+    restart: unless-stopped
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # All strategies are mounted; the entrypoint picks one from TLS_MODE and
+      # refuses an unknown value by name. Interpolating TLS_MODE into the mount
+      # path instead does not work: the engine creates a missing bind source as
+      # a directory, so a typo becomes a stray folder and an obscure crash.
+      - ./config/caddy:/etc/caddy/modes:ro
+      - ./config/caddy/certs:/etc/caddy/certs:ro
+      # For providers configured by file rather than by token — acmedns is one.
+      - ./config/caddy/dns:/etc/caddy/dns:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-shop.home.arpa}
+      TLS_MODE: ${TLS_MODE:-internal}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+      ACME_DNS_PROVIDER: ${ACME_DNS_PROVIDER:-}
+      ACME_DNS_TOKEN: ${ACME_DNS_TOKEN:-}
+      ACME_CA: ${ACME_CA:-https://acme-v02.api.letsencrypt.org/directory}
+    depends_on: [app]
+
+  app:
+    <<: *app
+    # Migrations run under an advisory lock, so only one instance migrates.
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py seed &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8080 --workers 3 --timeout 120 --access-logfile -"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8080/healthz')"]
+      # Checked often enough to notice the app is up. At a 30s interval the
+      # container reported "starting" for half a minute after it was already
+      # serving, which reads as a slow boot and is really a slow question.
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  worker:
+    <<: *app
+    command: python manage.py run_worker
+    profiles: ["", "default"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "print('ok')"]
+      interval: 30s
+      start_period: 5s
+
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-homeautoshop}
+      POSTGRES_USER: ${POSTGRES_USER:-shop}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-shop}
+    # Postgres 18 moved PGDATA to /var/lib/postgresql/<major>/docker and wants
+    # the mount one level up, at /var/lib/postgresql. Mounting the old
+    # .../data path leaves the real data directory inside an anonymous volume
+    # that disappears with the container, and the entrypoint refuses to start
+    # rather than let that happen quietly. The parent mount is also what makes
+    # a future `pg_upgrade --link` possible: both major versions then live in
+    # the same volume instead of either side of a mount boundary.
+    volumes: [db-data:/var/lib/postgresql]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-shop} -d ${POSTGRES_DB:-homeautoshop}"]
+      # Postgres is ready in about a second; a 10s interval meant everything
+      # downstream waited ten for the first question to be asked.
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 2s
+
+  storage:
+    image: minio/minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${STORAGE_ACCESS_KEY:-homeautoshop}
+      MINIO_ROOT_PASSWORD: ${STORAGE_SECRET_KEY:-homeautoshop-dev-secret}
+    volumes: [minio-data:/data]
+
+volumes:
+  db-data:
+  media-data:
+  backup-data:
+  minio-data:
+  caddy-data:
+  caddy-config:

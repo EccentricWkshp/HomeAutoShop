@@ -1,0 +1,90 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Map a report by hand" %}{% endblock %}
+{% block content %}
+
+<h1>{% translate "Map a report by hand" %}</h1>
+<p class="muted">
+  <a href="{% url 'asset_diagnostics' session.asset.pk %}">{{ session.asset.nickname }}</a>
+  · {% translate "no profile recognized this file" %}
+</p>
+
+<p class="msg info">
+  {% translate "Tell it which column is which and the scan counts the same as any other. Save the mapping and the next report from that tool reads itself." %}
+</p>
+
+<form method="post" action="{% url 'session_map' session.pk %}" class="stack">{% csrf_token %}
+
+  {% if header %}
+    <section class="card">
+      <h2>{% translate "Which column is which" %}</h2>
+      <div class="formgrid">
+        {% for entry in roles %}
+          <div class="field">
+            <label for="map_{{ entry.role }}">{{ entry.label }}</label>
+            <select id="map_{{ entry.role }}" name="map_{{ entry.role }}">
+              <option value="">{% translate "— not in this file —" %}</option>
+              {% for column in entry.columns %}
+                <option value="{{ column.name }}"{% if column.selected %} selected{% endif %}>{{ column.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        {% endfor %}
+      </div>
+
+      <h3>{% translate "The first few rows" %}</h3>
+      <div class="tablewrap"><table>
+        <thead><tr>{% for column in header %}<th>{{ column }}</th>{% endfor %}</tr></thead>
+        <tbody>
+          {% for row in sample %}
+            <tr>{% for cell in row %}<td class="small">{{ cell }}</td>{% endfor %}</tr>
+          {% endfor %}
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Remember this mapping" %}</h2>
+      <div class="formgrid">
+        <div class="field">
+          <label for="profile_name">{% translate "Call it" %}</label>
+          <input id="profile_name" type="text" name="profile_name" maxlength="120"
+                 placeholder="{% translate 'e.g. Autel MK808 — code export' %}">
+        </div>
+        <div class="field">
+          <label><input type="checkbox" name="save_profile" value="1">
+            {% translate "Save as a profile for next time" %}</label>
+        </div>
+      </div>
+    </section>
+  {% else %}
+    <section class="card">
+      <h2>{% translate "Type the codes in" %}</h2>
+      <p class="small muted">
+        {% translate "One per line, code first. Anything that is not a recognizable code is skipped." %}
+      </p>
+      <div class="field">
+        <label for="codes">{% translate "Codes" %}</label>
+        <textarea id="codes" name="codes" rows="6"
+                  placeholder="P0420 Catalyst efficiency below threshold"></textarea>
+      </div>
+      <div class="field">
+        <label for="tool">{% translate "Read with" %}</label>
+        <input id="tool" type="text" name="tool" maxlength="60" value="{{ session.tool }}">
+      </div>
+    </section>
+  {% endif %}
+
+  <div class="row">
+    <button class="primary" type="submit">{% translate "Use this" %}</button>
+    <a class="btn" href="{% url 'session_detail' session.pk %}">{% translate "Cancel" %}</a>
+  </div>
+</form>
+
+<section class="card">
+  <h2>{% translate "What the file actually says" %}</h2>
+  <p class="small muted">
+    {% translate "The text as extracted — which is not always the order it reads on screen." %}
+  </p>
+  <pre class="small scroll">{{ excerpt }}</pre>
+</section>
+{% endblock %}

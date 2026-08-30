@@ -1,0 +1,121 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ purchase.vendor }} — {{ shop_name }}{% endblock %}
+{% block content %}
+
+<div class="spread">
+  <div>
+    <h1>{{ purchase.vendor }} <span class="mono muted">{{ purchase.order_number }}</span></h1>
+    <p class="muted">{{ purchase.ordered_on }}
+      <span class="pill">{{ purchase.get_status_display }}</span>
+      {% if purchase.work_order %}
+        · <a href="{% url 'work_order_detail' purchase.work_order.pk %}">{{ purchase.work_order.number }}</a>
+      {% endif %}
+    </p>
+  </div>
+  <div>
+    <div class="small muted">{% translate "Total" %}</div>
+    <div class="mono" style="font-size:1.4rem">{{ purchase.total_minor }} <span class="small">{{ purchase.currency }}</span></div>
+  </div>
+</div>
+
+{% if purchase.return_by %}
+  <p class="msg {% if purchase.return_window_closing %}warning{% endif %}">
+    {% blocktranslate with date=purchase.return_by %}Returnable until {{ date }}.{% endblocktranslate %}
+  </p>
+{% endif %}
+
+<div class="cols two">
+  <div class="stack">
+    <section class="card">
+      <h2>{% translate "Lines" %}</h2>
+      <p class="small muted">
+        {% translate "Receiving creates stock at landed cost — tax and shipping are spread across lines in proportion to value." %}
+      </p>
+      <div class="tablewrap"><table>
+        <tr>
+          <th>{% translate "Item" %}</th><th>{% translate "Ordered" %}</th>
+          <th>{% translate "Received" %}</th><th>{% translate "Unit" %}</th>
+          <th>{% translate "Receive" %}</th>
+        </tr>
+        {% for line in lines %}
+        <tr>
+          <td>{% if line.part %}<a href="{% url 'part_detail' line.part.pk %}">{{ line.part }}</a>
+              {% else %}{{ line.description_as_ordered }}
+              <div class="small muted">{% translate "Link a part before receiving." %}</div>{% endif %}</td>
+          <td class="mono">{{ line.qty_ordered }}</td>
+          <td class="mono">{{ line.qty_received }}</td>
+          <td class="mono">{{ line.unit_price }}</td>
+          <td>
+            {% if line.outstanding > 0 and line.part %}
+              <form method="post" action="{% url 'purchase_line_receive' purchase.pk line.pk %}" class="row">
+                {% csrf_token %}
+                <input type="number" step="0.001" name="qty" value="{{ line.outstanding }}" style="width:5.5rem"
+                       aria-label="{% translate 'How many received' %}">
+                <select name="location" class="select" style="width:9rem" aria-label="{% translate 'Put it where' %}">
+                  <option value="">{% translate "Unfiled" %}</option>
+                  {% for location in locations %}<option value="{{ location.pk }}">{{ location.path }}</option>{% endfor %}
+                </select>
+                <button type="submit" class="small primary">{% translate "Receive" %}</button>
+              </form>
+            {% else %}<span class="pill ok">✓</span>{% endif %}
+          </td>
+        </tr>
+        {% empty %}<tr><td colspan="5" class="muted">{% translate "No lines yet." %}</td></tr>{% endfor %}
+      </table></div>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Add a line" %}</h2>
+      <form method="post" action="{% url 'purchase_line_add' purchase.pk %}" class="formgrid">{% csrf_token %}
+        <div class="field">
+          <label for="id_part">{% translate "Part" %}</label>
+          <select name="part" id="id_part" class="select">
+            <option value="">{% translate "Not cataloged" %}</option>
+            {% for part in parts %}<option value="{{ part.pk }}">{{ part }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="field"><label for="id_description">{% translate "Description" %}</label>
+          <input name="description" id="id_description" class="input"></div>
+        <div class="field"><label for="id_qty">{% translate "Quantity" %}</label>
+          <input type="number" step="0.001" name="qty_ordered" id="id_qty" value="1" class="input"></div>
+        <div class="field"><label for="id_price">{% translate "Unit price (minor units)" %}</label>
+          <input type="number" name="unit_price_minor" id="id_price" value="0" class="input"></div>
+        <div class="field"><label for="id_core">{% translate "Core charge (minor units)" %}</label>
+          <input type="number" name="core_charge_minor" id="id_core" value="0" class="input"></div>
+        <div class="field full"><button class="primary" type="submit">{% translate "Add line" %}</button></div>
+      </form>
+    </section>
+  </div>
+
+  <aside class="stack">
+    <section class="card">
+      <h2>{% translate "Totals" %}</h2>
+      <table class="small">
+        <tr><th>{% translate "Subtotal" %}</th><td class="mono">{{ purchase.subtotal_minor }}</td></tr>
+        <tr><th>{% translate "Tax" %}</th><td class="mono">{{ purchase.tax_minor }}</td></tr>
+        <tr><th>{% translate "Shipping" %}</th><td class="mono">{{ purchase.shipping_minor }}</td></tr>
+        <tr><th>{% translate "Discount" %}</th><td class="mono">−{{ purchase.discount_minor }}</td></tr>
+        <tr><th>{% translate "Total" %}</th><td class="mono"><strong>{{ purchase.total_minor }}</strong></td></tr>
+      </table>
+      <p class="small muted">{% translate "Amounts are in minor units of" %} {{ purchase.currency }}.</p>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Receipt" %}</h2>
+      <div class="thumbs">
+        {% for link in receipts %}
+          <a href="{{ link.media.file.url }}"><img src="{{ link.media.display_url }}" alt="{% translate 'Receipt' %}"></a>
+        {% empty %}<p class="muted small">{% translate "No receipt attached." %}</p>{% endfor %}
+      </div>
+      <form method="post" action="{% url 'purchase_receipt_upload' purchase.pk %}"
+            enctype="multipart/form-data" class="row" style="margin-top:.5rem">
+        {% csrf_token %}
+        <input type="file" name="files" accept="image/*,application/pdf" capture="environment" multiple
+               aria-label="{% translate 'Receipts' %}">
+        <button type="submit">{% translate "Attach" %}</button>
+      </form>
+      <p class="small muted">{% translate "Receipts are OCR'd in the background so they become searchable." %}</p>
+    </section>
+  </aside>
+</div>
+{% endblock %}

@@ -1,0 +1,2343 @@
+{
+  "tool": {
+    "vendor": "XTOOL",
+    "model": "D8",
+    "serial": "D8-000000"
+  },
+  "vehicle": {
+    "name": "Silverado",
+    "year": 2012,
+    "vin": "1GCPKSE77CF409107",
+    "odometer": null,
+    "odometer_unit": "mi",
+    "diagnosis_route": "(RPO JL4)->Without (RPO Z95)"
+  },
+  "generated_at": "2023-10-20T18:34:00",
+  "modules": [
+    "Supplemental inflatable restraint",
+    "Body Control Module",
+    "Memory Seat Module",
+    "Radio",
+    "Driver door switch",
+    "Amplifier (bose)",
+    "Instrument panel cluster",
+    "Passenger door switch",
+    "Digital radio receiver",
+    "Electronic Suspension Control",
+    "Rear HVAC/RSA",
+    "Passenger presence system",
+    "Vehicle comm. interface module",
+    "Electronic Brake Control Module",
+    "Theft deterrent module",
+    "HVAC control module",
+    "Remote control door lock receiver",
+    "Transmission control module",
+    "Engine control module",
+    "Transfer case control module",
+    "Rear heated Seat Module",
+    "Park assist module",
+    "Auxiliary Body Control Module",
+    "Fuel pump control module",
+    "Personal audio link module"
+  ],
+  "ecu": {
+    "Vehicle VIN": "1GCPKSE77CF409107",
+    "Engine: -Calibration ID1": "12653249",
+    "Engine: -Calibration ID2": "12640885",
+    "Engine: -Calibration ID3": "12640857",
+    "Engine: -Calibration ID4": "12625892",
+    "Engine: -Calibration ID5": "12620683",
+    "Engine: -Calibration ID6": "12640909",
+    "Engine: -Calibration ID7": "12640939",
+    "Engine: -Calibration ID8": "12640916",
+    "Engine: -CVN1": "0000A8C7",
+    "Engine: -CVN2": "0000D546",
+    "Engine: -CVN3": "000087AC",
+    "Engine: -CVN4": "000036F2",
+    "Engine: -CVN5": "00009D00",
+    "Engine: -CVN6": "000068FB",
+    "Engine: -CVN7": "000077A0",
+    "Engine: -CVN8": "000051E4",
+    "Trans.: -Calibration ID1": "24261871",
+    "Trans.: -Calibration ID2": "24263533",
+    "Trans.: -Calibration ID3": "24257957",
+    "Trans.: -Calibration ID4": "24257970",
+    "Trans.: -CVN1": "00005546",
+    "Trans.: -CVN2": "00008013",
+    "Trans.: -CVN3": "00000FDD",
+    "Trans.: -CVN4": "00008B65"
+  },
+  "dtcs": [
+    {
+      "code": "B2725-08",
+      "description": "Transfer case range selection switch circuit performance - signal invalid",
+      "module": "Transfer case control module",
+      "status_raw": "Last test:Passed This ignition:Passed Since Clear:Passed & failed",
+      "status": "history",
+      "last_test": "Passed",
+      "this_ignition": "Passed",
+      "since_clear": "Passed & failed"
+    }
+  ],
+  "live_data": [
+    {
+      "name": "Engine speed 5|600|610|592",
+      "value": "628|624|622|623|613|620|61",
+      "maximum": "714",
+      "minimum": "562",
+      "unit": "rpm",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Misfire current cyl. 1",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Misfire current cyl. 2",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Misfire current cyl. 3",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Misfire current cyl. 4",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Misfire current cyl. 5",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Misfire current cyl. 6",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Misfire current cyl. 7",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Misfire current cyl. 8",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Misfire history cyl. 1",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Misfire history cyl. 2",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Misfire history cyl. 3",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Misfire history cyl. 4",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Misfire history cyl. 5",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Misfire history cyl. 6",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Misfire history cyl. 7",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Misfire history cyl. 8",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cycles of misfire data",
+      "value": "13|84|0",
+      "maximum": "92",
+      "minimum": "76",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Total misfire",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "count",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Inj. 1 disabled due to misfire",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Inj. 2 disabled due to misfire",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Inj. 3 disabled due to misfire",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Inj. 4 disabled due to misfire",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Inj. 5 disabled due to misfire",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Inj. 6 disabled due to misfire",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Inj. 7 disabled due to misfire",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Inj. 8 disabled due to misfire",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "ECT sensor 2.2",
+      "value": "8|154.4|159.8|161.6|168.8|19",
+      "maximum": "211.4",
+      "minimum": "173.0",
+      "unit": "deg F",
+      "module": "Engine control module"
+    },
+    {
+      "name": "IAT sensor",
+      "value": "73.4|75.2",
+      "maximum": "82.7",
+      "minimum": "67.7",
+      "unit": "deg F",
+      "module": "Engine control module"
+    },
+    {
+      "name": "MAF sensor |8.80|5.74",
+      "value": "6.84|6.83|6.79|6.30|6.21|6.25",
+      "maximum": "16.13",
+      "minimum": "6.16",
+      "unit": "g/s",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Air flow calculated",
+      "value": "5.91|5.84|5.73|5.65|5.20",
+      "maximum": "6.50",
+      "minimum": "5.32",
+      "unit": "g/s",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Engine load",
+      "value": "21|20|27|18",
+      "maximum": "30",
+      "minimum": "19",
+      "unit": "%",
+      "module": "Engine control module"
+    },
+    {
+      "name": "APP indicated angle",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "%",
+      "module": "Engine control module"
+    },
+    {
+      "name": "TP indicated angle",
+      "value": "5|4|3",
+      "maximum": "6",
+      "minimum": "4",
+      "unit": "%",
+      "module": "Engine control module"
+    },
+    {
+      "name": "MAP sensor",
+      "value": "4.6|4.8|5.4",
+      "maximum": "5.9",
+      "minimum": "4.3",
+      "unit": "psi",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Spark",
+      "value": "18|17|20|14",
+      "maximum": "28",
+      "minimum": "18",
+      "unit": "deg",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Injector PWM bank 1",
+      "value": "2.1|2.0|1.8",
+      "maximum": "2.3",
+      "minimum": "1.9",
+      "unit": "ms",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Injector PWM bank 2",
+      "value": "2.1|2.2|2.0|1.8",
+      "maximum": "2.4",
+      "minimum": "2.0",
+      "unit": "ms",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Fuel tank level remaining",
+      "value": "35|34|33",
+      "maximum": "38",
+      "minimum": "32",
+      "unit": "%",
+      "module": "Engine control module"
+    },
+    {
+      "name": "CMP sensor",
+      "value": "621|611|617|607",
+      "maximum": "683",
+      "minimum": "559",
+      "unit": "rpm",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Engine oil pressure sensor",
+      "value": "41.76|41.18|39.44|37.12",
+      "maximum": "45.94",
+      "minimum": "37.58",
+      "unit": "psi",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Power enrichment",
+      "value": "Inactive",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Calc. TWC temp. bank 1",
+      "value": "941.00|933.80|923.00",
+      "maximum": "1035.10",
+      "minimum": "846.90",
+      "unit": "deg F",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Calc. TWC temp. bank 2",
+      "value": "941.00|933.80|923.00",
+      "maximum": "1035.10",
+      "minimum": "846.90",
+      "unit": "deg F",
+      "module": "Engine control module"
+    },
+    {
+      "name": "A/C relay command",
+      "value": "Off",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Ignition 1 signal 9|14.77|14.72",
+      "value": "14.67|14.57|14.79|14.54|14.5",
+      "maximum": "16.32",
+      "minimum": "13.31",
+      "unit": "V",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. deact. performance test",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Vehicle speed sensor",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "mph",
+      "module": "Engine control module"
+    },
+    {
+      "name": "MIL requested by DTC",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 1 IC ckt. short gnd test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 1 IC ckt. open test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 1 IC ckt. short volts test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 1 inj. ckt. short gnd test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 1 inj. ckt. open test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 1 inj. ckt. short volts test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 2 IC ckt. short gnd test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 2 IC ckt. open test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 2 IC ckt. short volts test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 2 inj. ckt. short gnd test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 2 inj. ckt. open test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 2 inj. ckt. short volts test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 3 IC ckt. short gnd test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 3 IC ckt. open test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 3 IC ckt. short volts test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 3 inj. ckt. short gnd test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 3 inj. ckt. open test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 3 inj. ckt. short volts test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 4 IC ckt. short gnd test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 4 IC ckt. open test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 4 IC ckt. short volts test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 4 inj. ckt. short gnd test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 4 inj. ckt. open test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 4 inj. ckt. short volts test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 5 IC ckt. short gnd test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 5 IC ckt. open test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 5 IC ckt. short volts test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 5 inj. ckt. short gnd test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 5 inj. ckt. open test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 5 inj. ckt. short volts test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 6 IC ckt. short gnd test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 6 IC ckt. open test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 6 IC ckt. short volts test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 6 inj. ckt. short gnd test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 6 inj. ckt. open test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 6 inj. ckt. short volts test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 7 IC ckt. short gnd test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 7 IC ckt. open test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 7 IC ckt. short volts test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 7 inj. ckt. short gnd test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 7 inj. ckt. open test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 7 inj. ckt. short volts test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 8 IC ckt. short gnd test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 8 IC ckt. open test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 8 IC ckt. short volts test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 8 inj. ckt. short gnd test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 8 inj. ckt. open test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 8 inj. ckt. short volts test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. deact. system command",
+      "value": "Inactive",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 1 deact. sol. command",
+      "value": "Off",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 4 deact. sol. command",
+      "value": "Off",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 6 deact. sol. command",
+      "value": "Off",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 7 deact. sol. command",
+      "value": "Off",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 1 deact. sol. ckt short gnd test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 1 deact. sol. ckt open test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 1 deact. sol. ckt short volts test status",
+      "value": "Not run",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 4 deact. sol. ckt short gnd test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 4 deact. sol. ckt open test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 4 deact. sol. ckt short volts test status",
+      "value": "Not run",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 6 deact. sol. ckt short gnd test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 6 deact. sol. ckt open test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 6 deact. sol. ckt short volts test status",
+      "value": "Not run",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 7 deact. sol. ckt short gnd test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 7 deact. sol. ckt open test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. 7 deact. sol. ckt short volts test status",
+      "value": "Not run",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. deactivation cycles",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "count",
+      "module": "Engine control module"
+    },
+    {
+      "name": "BARO",
+      "value": "14.50",
+      "maximum": "15.95",
+      "minimum": "13.05",
+      "unit": "psi",
+      "module": "Engine control module"
+    },
+    {
+      "name": "BPP signal",
+      "value": "Released",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "* Engine oil level switch (if equipped)",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Engine oil life remaining",
+      "value": "67",
+      "maximum": "74",
+      "minimum": "60",
+      "unit": "%",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Engine oil temperature calculated",
+      "value": "109.4|116.6",
+      "maximum": "128.3",
+      "minimum": "104.9",
+      "unit": "deg F",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Decel. fuel cutoff",
+      "value": "Inactive",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Reduced Engine power",
+      "value": "Inactive",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Hot open loop",
+      "value": "Inactive",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Catalytic converter protection active",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "* PNP switch (if equipped)",
+      "value": "Park/neutral",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "TCS torque request signal",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "%",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Distance with cyl. deactivated",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "mile",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Distance with cyl. activated",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "mile",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. deact. disable 1 history",
+      "value": "Engine speed",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. deact. disable 2 history APP",
+      "value": "rate high",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. deact. disable 3 history",
+      "value": "MAP low",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. deact. disable 4 history APP",
+      "value": "rate high",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. deact. disable 5 history",
+      "value": "MAP low",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. deact. disable 6 history APP",
+      "value": "rate high",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. deact. disable 7 history",
+      "value": "MAP low",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cyl. deact. disable 8 history",
+      "value": "Veh. spd low",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit 4WD low engaged",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit 4WD low state invalid",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit A/C clutch on",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit acceleration tip in",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit APP high",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit APP rate high",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit axle torque limiting",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit brake booster pressure sensor DTC",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit calc. torque",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit CKP sensor DTC",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit CMP sensor DTC",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit cyl. deactivation solenoid DTC",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit cyl. deactivation system DTC",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit DFCO active",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit DLC override",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit EC ign. relay DTC",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit ECT",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit ECT sensor DTC",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit eng. oil temperature",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit eng. overtemperature protection",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit eng. RPM",
+      "value": "Yes",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit EOP",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit EOP sensor DTC",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit ethanol concentration too high",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit ethanol learn in progress",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit heater performance",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit HO2S 2 test",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit hot coolant mode",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit IAT sensor DTC",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit ignition voltage",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit inj. stable time",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit low brake booster vacuum",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit low speed",
+      "value": "Yes",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit manifold vacuum low",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit map sensor DTC",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit max. throttle exceeded",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit maximum deactivation time exceeded",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit min. time after TAC DTC",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit minimum time on all Cylinders",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit misfire DTC",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit oil aeration",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit piston protection",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit RPM limit",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit TAC system DTC",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit torque reduction",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit trans. gear",
+      "value": "Yes",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit trans. range",
+      "value": "Yes",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit trans. shifting",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit TWC overtemperature protection",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit TWC temperature low",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Deact. inhibit VSS DTC",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "TWC mon. off idle test conditions met",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "TWC monitor test state",
+      "value": "Inactive",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "TWC mon. bank 1 test count",
+      "value": "1",
+      "maximum": "1",
+      "minimum": "1",
+      "unit": "count",
+      "module": "Engine control module"
+    },
+    {
+      "name": "TWC mon. bank 2 test count",
+      "value": "1",
+      "maximum": "1",
+      "minimum": "1",
+      "unit": "count",
+      "module": "Engine control module"
+    },
+    {
+      "name": "TWC mon. bank 1 test result",
+      "value": "No result",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "TWC mon. bank 2 test result",
+      "value": "No result",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "HO2S bank 1 sensor 1",
+      "value": "795|810",
+      "maximum": "891",
+      "minimum": "729",
+      "unit": "mv",
+      "module": "Engine control module"
+    },
+    {
+      "name": "HO2S bank 1 sensor 2",
+      "value": "685",
+      "maximum": "754",
+      "minimum": "616",
+      "unit": "mv",
+      "module": "Engine control module"
+    },
+    {
+      "name": "HO2S bank 2 sensor 1",
+      "value": "750|350",
+      "maximum": "825",
+      "minimum": "675",
+      "unit": "mv",
+      "module": "Engine control module"
+    },
+    {
+      "name": "HO2S bank 2 sensor 2",
+      "value": "655",
+      "maximum": "720",
+      "minimum": "590",
+      "unit": "mv",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Short term FT bank 1",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "%",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Short term FT bank 2",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "%",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Long term FT bank 1",
+      "value": "-5",
+      "maximum": "-4",
+      "minimum": "-6",
+      "unit": "%",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Long term FT bank 2",
+      "value": "-4",
+      "maximum": "-4",
+      "minimum": "-4",
+      "unit": "%",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Fuel trim learn",
+      "value": "Enabled",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Loop status",
+      "value": "Closed",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Desired idle speed",
+      "value": "632|616|608|600",
+      "maximum": "704",
+      "minimum": "569",
+      "unit": "rpm",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cmmd. A/F equivalence ratio",
+      "value": "1.0",
+      "maximum": "1.1",
+      "minimum": "0.9",
+      "unit": ": 1",
+      "module": "Engine control module"
+    },
+    {
+      "name": "5 volt reference 1",
+      "value": "5.1",
+      "maximum": "5.6",
+      "minimum": "4.6",
+      "unit": "V",
+      "module": "Engine control module"
+    },
+    {
+      "name": "5 volt reference 2",
+      "value": "5.0",
+      "maximum": "5.5",
+      "minimum": "4.5",
+      "unit": "V",
+      "module": "Engine control module"
+    },
+    {
+      "name": "5 volt reference 1 circuit status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "5 volt reference 2 circuit status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "APP sensors",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "%",
+      "module": "Engine control module"
+    },
+    {
+      "name": "TP desired angle",
+      "value": "4",
+      "maximum": "4",
+      "minimum": "4",
+      "unit": "%",
+      "module": "Engine control module"
+    },
+    {
+      "name": "APP sensor 1 and 2",
+      "value": "Agree",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "TP sensors 1 and 2",
+      "value": "Agree",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "APP sensor 1",
+      "value": "0.94",
+      "maximum": "1.03",
+      "minimum": "0.85",
+      "unit": "V",
+      "module": "Engine control module"
+    },
+    {
+      "name": "APP sensor 2",
+      "value": "0.45",
+      "maximum": "0.50",
+      "minimum": "0.40",
+      "unit": "V",
+      "module": "Engine control module"
+    },
+    {
+      "name": "APP sensor 1 indicated position",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "%",
+      "module": "Engine control module"
+    },
+    {
+      "name": "APP sensor 2 indicated position",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "%",
+      "module": "Engine control module"
+    },
+    {
+      "name": "TP sensor 1",
+      "value": "4.14",
+      "maximum": "4.55",
+      "minimum": "3.73",
+      "unit": "V",
+      "module": "Engine control module"
+    },
+    {
+      "name": "TP sensor 2",
+      "value": "0.82",
+      "maximum": "0.90",
+      "minimum": "0.74",
+      "unit": "V",
+      "module": "Engine control module"
+    },
+    {
+      "name": "TP sensor 1 indicated position",
+      "value": "4",
+      "maximum": "4",
+      "minimum": "4",
+      "unit": "%",
+      "module": "Engine control module"
+    },
+    {
+      "name": "TP sensor 2 indicated position",
+      "value": "3",
+      "maximum": "3",
+      "minimum": "3",
+      "unit": "%",
+      "module": "Engine control module"
+    },
+    {
+      "name": "TP sensor 1 learned minimum",
+      "value": "0.71",
+      "maximum": "0.78",
+      "minimum": "0.64",
+      "unit": "V",
+      "module": "Engine control module"
+    },
+    {
+      "name": "TP sensor 2 learned minimum",
+      "value": "0.69",
+      "maximum": "0.76",
+      "minimum": "0.62",
+      "unit": "V",
+      "module": "Engine control module"
+    },
+    {
+      "name": "TB idle air flow compensation",
+      "value": "88.2",
+      "maximum": "97.0",
+      "minimum": "79.4",
+      "unit": "%",
+      "module": "Engine control module"
+    },
+    {
+      "name": "TP performance test",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "MAP performance test 1",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "MAP performance test 2",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "MAF performance test",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Wide open throttle",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "TAC motor",
+      "value": "Enabled",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "TAC forced Engine shutdown",
+      "value": "no",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "TAC motor command",
+      "value": "17",
+      "maximum": "19",
+      "minimum": "15",
+      "unit": "%",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Cruise control active",
+      "value": "Inactive",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "BPP circuit signal",
+      "value": "Released",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Tcc/cruise brake pedal switch",
+      "value": "Released",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Ignition accessory signal",
+      "value": "On",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "EC ignition relay command",
+      "value": "On",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "EC ignition relay feedback signal",
+      "value": "14.40",
+      "maximum": "15.84",
+      "minimum": "12.96",
+      "unit": "V",
+      "module": "Engine control module"
+    },
+    {
+      "name": "EC ign. relay ckt short gnd test status",
+      "value": "Not run",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "EC ign. relay ckt open test status",
+      "value": "Not run",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "EC ign. relay ckt short volts test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Traction control status",
+      "value": "Inactive",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Drag control status",
+      "value": "Inactive",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Drop throttle status",
+      "value": "Inactive",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "TCS and drop throttle status",
+      "value": "Inactive",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "TCS torque delivered signal",
+      "value": "4",
+      "maximum": "6",
+      "minimum": "4",
+      "unit": "%",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Reduced Engine power history",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Fuel level sensor",
+      "value": "1.90",
+      "maximum": "2.09",
+      "minimum": "1.71",
+      "unit": "V",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Engine oil pressure sensor",
+      "value": "1.82",
+      "maximum": "2.00",
+      "minimum": "1.64",
+      "unit": "V",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Low EOP indicator command",
+      "value": "Off",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Low Engine oil level indicator command",
+      "value": "Off",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Change Engine oil indicator command",
+      "value": "Off",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "MIL command",
+      "value": "Off",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "MIL ckt short gnd test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "MIL ckt open test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "MIL ckt short volts test status",
+      "value": "Not run",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "* 4WD low signal (if equipped)",
+      "value": "Disabled",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Intake manifold pressure",
+      "value": "9.7",
+      "maximum": "10.7",
+      "minimum": "8.7",
+      "unit": "psi",
+      "module": "Engine control module"
+    },
+    {
+      "name": "MAP sensor",
+      "value": "1.31",
+      "maximum": "1.44",
+      "minimum": "1.18",
+      "unit": "V",
+      "module": "Engine control module"
+    },
+    {
+      "name": "MAF sensor",
+      "value": "3044|3029",
+      "maximum": "3348",
+      "minimum": "2740",
+      "unit": "Hz",
+      "module": "Engine control module"
+    },
+    {
+      "name": "CKP sensor",
+      "value": "615",
+      "maximum": "676",
+      "minimum": "554",
+      "unit": "rpm",
+      "module": "Engine control module"
+    },
+    {
+      "name": "CKP resync counter",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "count",
+      "module": "Engine control module"
+    },
+    {
+      "name": "CKP active counter",
+      "value": "103",
+      "maximum": "113",
+      "minimum": "93",
+      "unit": "count",
+      "module": "Engine control module"
+    },
+    {
+      "name": "CMP active counter",
+      "value": "98",
+      "maximum": "108",
+      "minimum": "88",
+      "unit": "count",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Knock retard",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "deg",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Total knock retard",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "deg",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Torque management spark retard",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "deg",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Knock detected cyl. 1",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Knock detected cyl. 2",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Knock detected cyl. 3",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Knock detected cyl. 4",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Knock detected cyl. 5",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Knock detected cyl. 6",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Knock detected cyl. 7",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Knock detected cyl. 8",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Fuel pump relay command",
+      "value": "On",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Fuel pump relay ckt short gnd test status",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Fuel pump relay ckt open test status",
+      "value": "Not run",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Fuel pump relay ckt short volts test status",
+      "value": "Not run",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Fuel alcohol content",
+      "value": "3",
+      "maximum": "3",
+      "minimum": "3",
+      "unit": "%",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Fuel volatility",
+      "value": "Low",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Engine control module"
+    },
+    {
+      "name": "Fuel tank pressure sensor",
+      "value": "-0.16",
+      "maximum": "-0.14",
+      "minimum": "-0.18",
+      "unit": "mmHg",
+      "module": "Engine control module"
+    }
+  ],
+  "remark": "",
+  "pages": 10,
+  "warnings": []
+}

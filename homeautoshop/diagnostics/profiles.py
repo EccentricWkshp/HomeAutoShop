@@ -1,0 +1,222 @@
+"""
+Parser profiles as YAML, and the ones that ship (FR-INT-7, OQ-12).
+
+A profile is portable on purpose: it is the unit of work that adds a scan tool,
+and the one thing in this application worth handing to another operator. Per
+OQ-12 profiles are exportable and belong in a portable bundle — unlike pinned
+service-manual links, which reveal which vehicles you own and travel only in an
+encrypted backup.
+
+Import is deliberately narrow. A profile is executable-ish data — regexes run
+against somebody's report — so `safe_load` is used, unknown top-level keys are
+refused rather than ignored, and every pattern is compiled before the row is
+written. A profile that would have raised `re.error` on the operator's first
+upload is rejected at import, where the error can still say which field.
+"""
+
+from __future__ import annotations
+
+import re
+
+import yaml
+from django.utils.translation import gettext_lazy as _
+
+from .models import MediaType, ParserProfile, ProfileSource
+
+FIELDS = (
+    "name",
+    "tool_vendor",
+    "tool_model",
+    "version",
+    "media_type",
+    "engine",
+    "fingerprint",
+    "field_extractors",
+    "table_extractor",
+    "notes",
+)
+
+
+class ProfileInvalid(ValueError):
+    """The YAML parsed, and is not a usable profile."""
+
+
+def to_yaml(profile: ParserProfile) -> str:
+    data = {name: getattr(profile, name) for name in FIELDS}
+    data = {k: v for k, v in data.items() if v not in ("", {}, None)}
+    return yaml.safe_dump(data, sort_keys=False, allow_unicode=True)
+
+
+def from_yaml(text: str, *, source: str = ProfileSource.IMPORTED) -> ParserProfile:
+    """Parse and validate a profile document, returning an unsaved row."""
+    try:
+        data = yaml.safe_load(text)
+    except yaml.YAMLError as exc:
+        raise ProfileInvalid(_("That is not valid YAML: %(detail)s") % {"detail": exc}) from exc
+
+    if not isinstance(data, dict):
+        raise ProfileInvalid(_("A profile is a mapping of keys to values."))
+
+    unknown = sorted(set(data) - set(FIELDS))
+    if unknown:
+        # Refused rather than ignored. A typo in a key name would otherwise
+        # produce a profile that imports cleanly and extracts nothing.
+        raise ProfileInvalid(
+            _("Unrecognized key(s): %(keys)s") % {"keys": ", ".join(unknown)}
+        )
+
+    if not str(data.get("name", "")).strip():
+        raise ProfileInvalid(_("A profile needs a name."))
+
+    media_type = str(data.get("media_type", MediaType.PDF))
+    if media_type not in MediaType.values:
+        raise ProfileInvalid(
+            _("%(value)s is not a media type this build reads.") % {"value": media_type}
+        )
+
+    profile = ParserProfile(
+        name=str(data["name"])[:120],
+        tool_vendor=str(data.get("tool_vendor", ""))[:60],
+        tool_model=str(data.get("tool_model", ""))[:60],
+        version=int(data.get("version", 1) or 1),
+        media_type=media_type,
+        engine=str(data.get("engine", ""))[:40],
+        fingerprint=data.get("fingerprint") or {},
+        field_extractors=data.get("field_extractors") or {},
+        table_extractor=data.get("table_extractor") or {},
+        notes=str(data.get("notes", "")),
+        source=source,
+    )
+    for where, pattern in _patterns(profile):
+        try:
+            re.compile(pattern)
+        except re.error as exc:
+            raise ProfileInvalid(
+                _("%(where)s has an invalid pattern: %(detail)s")
+                % {"where": where, "detail": exc}
+            ) from exc
+    return profile
+
+
+def _patterns(profile: ParserProfile):
+    for index, signal in enumerate((profile.fingerprint or {}).get("signals") or []):
+        if pattern := signal.get("pattern"):
+            yield f"fingerprint.signals[{index}]", pattern
+    for name, rule in (profile.field_extractors or {}).items():
+        if isinstance(rule, dict) and (pattern := rule.get("pattern")):
+            yield f"field_extractors.{name}", pattern
+    table = profile.table_extractor or {}
+    if pattern := table.get("row_pattern"):
+        yield "table_extractor.row_pattern", pattern
+    for pattern in (table.get("row_filters") or {}).get("drop_if_matches") or []:
+        yield "table_extractor.row_filters", pattern
+
+
+# --------------------------------------------------------------------------
+# Seed data
+# --------------------------------------------------------------------------
+
+#: The signals below are measured, not guessed. `pdf_metadata` is deliberately
+#: absent: the D8 writes none at all, so a fingerprint resting on `/Producer`
+#: could never fire — one of six assumptions the sample corpus overturned (see
+#: SCHEMA-PARSER-PROFILES.md §1).
+XTOOL_D8 = """
+name: XTOOL D8 - DTC report
+tool_vendor: XTOOL
+tool_model: D8
+version: 1
+media_type: pdf
+engine: xtool_d8
+fingerprint:
+  threshold: 0.5
+  signals:
+    - kind: doc_text
+      pattern: '(?i)this report is only responsible'
+      weight: 0.3
+    - kind: doc_text
+      pattern: '\\bD8-\\d{6}\\b'
+      weight: 0.3
+    - kind: doc_text
+      pattern: '(?i)vehicle\\s+information'
+      weight: 0.2
+    - kind: doc_text
+      pattern: '(?i)mileage'
+      weight: 0.2
+notes: >
+  Positional rather than declarative. This format separates a module banner
+  from a section heading by color and prints a cell's first line above its own
+  row, neither of which survives text extraction - so the rules live in
+  homeautoshop/scantools/xtool_d8.py and this row names them.
+"""
+
+#: A worked declarative profile, and the answer to "can this thing actually
+#: parse anything without code?". Generic enough to read the DTC table out of
+#: most tools' plain-text or CSV-ish exports, which is exactly the case §8.3b
+#: says to prefer when a tool offers it.
+GENERIC_TEXT = r"""
+name: Generic code list - plain text
+tool_vendor: ''
+tool_model: ''
+version: 1
+media_type: text
+fingerprint:
+  threshold: 0.5
+  signals:
+    - kind: doc_text
+      pattern: '[PBCU][0-9A-F]{4}'
+      weight: 0.6
+    - kind: doc_text
+      pattern: '(?i)(trouble|fault|dtc)\s*code'
+      weight: 0.4
+field_extractors:
+  vin:
+    strategy: label_anchored
+    labels: ['VIN', 'VIN Code', 'Vehicle Identification Number']
+    pattern: '([A-HJ-NPR-Z0-9]{17})'
+    validate: vin_check_digit
+    confidence: 0.6
+  odometer:
+    strategy: label_anchored
+    labels: ['Odometer', 'Mileage', 'ODO']
+    pattern: '([\d,.]+)'
+    coerce: { type: number }
+    confidence: 0.6
+  performed_on:
+    strategy: label_anchored
+    labels: ['Date', 'Report Date', 'Test Date']
+    coerce: { type: datetime, formats: ['%Y-%m-%d %H:%M', '%Y-%m-%d', '%m/%d/%Y'] }
+    confidence: 0.6
+table_extractor:
+  locate:
+    headings: ['Trouble Code', 'Fault Code', 'DTC', 'Code']
+    stop_at: ['Live Data', 'Readiness', 'End of Report']
+  row_pattern: '([PBCU][0-9A-F]{4}(?:-[0-9A-F]{2})?)[\s:.-]+(.*)'
+  columns:
+    - { role: code, group: 1, validate: dtc_format }
+    - { role: description, group: 2 }
+  row_filters:
+    drop_if_matches:
+      - '(?i)no (fault|trouble) codes? (found|detected)'
+"""
+
+SEED = (XTOOL_D8, GENERIC_TEXT)
+
+
+def seed() -> int:
+    """Install the bundled profiles. Idempotent, and never clobbers an edit.
+
+    A profile the operator has changed is theirs. Re-seeding bumps nothing and
+    overwrites nothing — a new bundled version arrives as a new `version` row,
+    which is what versioning is for.
+    """
+    installed = 0
+    for document in SEED:
+        candidate = from_yaml(document, source=ProfileSource.BUILTIN)
+        exists = ParserProfile.all_objects.filter(
+            name=candidate.name, version=candidate.version
+        ).exists()
+        if exists:
+            continue
+        candidate.save()
+        installed += 1
+    return installed

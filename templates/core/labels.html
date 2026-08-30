@@ -1,0 +1,46 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ heading }}{% endblock %}
+{% block content %}
+
+<div class="spread noprint">
+  <div>
+    <h1>{{ heading }}</h1>
+    <p class="muted">{{ note }}</p>
+  </div>
+  <button class="btn primary" type="button" onclick="window.print()">
+    {% translate "Print" %}
+  </button>
+</div>
+
+<nav class="row noprint" aria-label="{% translate 'What to label' %}">
+  <a class="btn {% if kind == 'locations' %}primary{% endif %}" href="?kind=locations">
+    {% blocktranslate count counter=location_count %}{{ counter }} location{% plural %}{{ counter }} locations{% endblocktranslate %}
+  </a>
+  <a class="btn {% if kind == 'vehicles' %}primary{% endif %}" href="?kind=vehicles">
+    {% blocktranslate count counter=vehicle_count %}{{ counter }} vehicle{% plural %}{{ counter }} vehicles{% endblocktranslate %}
+  </a>
+</nav>
+
+<p class="small muted noprint">
+  {% translate "Print on plain paper and cut, or on label stock. Each code is 24 mm square, which reads from about a foot away on a phone." %}
+</p>
+
+{% if labels %}
+  <div class="labelsheet">
+    {% for label in labels %}
+      <figure class="labelcard">
+        {{ label.svg|safe }}
+        <figcaption>{{ label.caption }}</figcaption>
+      </figure>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="empty noprint">
+    {% if kind == 'locations' %}
+      {% translate "No storage locations yet. Add one on the inventory screen and it gets a label." %}
+    {% else %}
+      {% translate "No vehicles yet." %}
+    {% endif %}
+  </p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Inspections" %} — {{ shop_name }}{% endblock %}
+{% block content %}
+<h1>{% translate "Inspections" %}</h1>
+
+<div class="cols two">
+  <section class="card">
+    <ul class="list">
+      {% for inspection in inspections %}
+        <li class="spread">
+          <div>
+            <a href="{% url 'inspection_detail' inspection.pk %}">
+              <strong>{{ inspection.template_name }}</strong></a>
+            <div class="small muted">{{ inspection.asset.nickname }} · {{ inspection.performed_on }}
+              {% if inspection.performed_by %}· {{ inspection.performed_by.display_name }}{% endif %}</div>
+          </div>
+          <span class="pill {% if inspection.status == 'abandoned' %}{% elif inspection.overall == 'fail' %}danger{% elif inspection.overall == 'attention' %}warn{% elif inspection.overall == 'pass' %}ok{% endif %}">
+            {% if inspection.is_draft %}{% translate "In progress" %}
+            {% elif inspection.status == 'abandoned' %}{% translate "Abandoned" %}
+            {% else %}{{ inspection.get_overall_display }}{% endif %}
+          </span>
+        </li>
+      {% empty %}<li class="empty">{% translate "No inspections yet." %}</li>{% endfor %}
+    </ul>
+  </section>
+
+  <aside class="card">
+    <h2>{% translate "Start one" %}</h2>
+    <p class="small muted">
+      {% translate "A pre-purchase inspection works on a vehicle you do not own yet — add it as a prospect first." %}
+    </p>
+    <form method="post" action="{% url 'inspection_start' %}" class="stack">{% csrf_token %}
+      <select name="asset" class="select" required aria-label="{% translate 'Vehicle' %}">
+        <option value="">{% translate "Which vehicle?" %}</option>
+        {% for asset in assets %}
+          <option value="{{ asset.pk }}">{{ asset.nickname }}{% if asset.status == 'prospect' %} — {% translate "prospect" %}{% endif %}</option>
+        {% endfor %}
+      </select>
+      <select name="template" class="select" required aria-label="{% translate 'Inspection template' %}">
+        {% for template in templates %}<option value="{{ template.pk }}">{{ template.name }}</option>{% endfor %}
+      </select>
+      <button class="primary" type="submit">{% translate "Start inspection" %}</button>
+    </form>
+  </aside>
+</div>
+{% endblock %}

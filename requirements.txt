@@ -1,0 +1,50 @@
+# HomeAutoShop — Phase 1
+# Python 3.14+ required: primary keys call uuid.uuid7(), which landed in the
+# 3.14 stdlib. There is deliberately no backport shim to drift out of sync.
+
+Django>=6.1,<6.2
+django-ninja>=1.6            # Pydantic-typed API + OpenAPI 3.1 (SPEC §10)
+Pillow>=12.0                 # thumbnails, EXIF handling (SPEC FR-DOC-3/9)
+argon2-cffi>=25.1            # Argon2id password hashing (SPEC §12.2)
+Babel>=2.18                  # CLDR currency formatting (SPEC §5.6)
+python-dotenv>=1.2
+
+# Production database. Installed in the container; local development may use
+# SQLite instead (see docs/DEVELOPMENT.md).
+psycopg[binary]>=3.2; sys_platform == "linux"
+
+# OCR (FR-DOC-5). Needs the tesseract binary, which the image installs; without
+# it media is marked failed and nothing else breaks.
+pytesseract>=0.3.13
+pypdf>=5.1                   # pull an existing PDF text layer before rasterising
+
+# Scan-tool report parsing (SPEC 8.3a). Word coordinates, not just text:
+# the reports place a field's label and its value on separate extraction
+# lines, so reading order alone mis-associates them.
+pdfplumber>=0.11
+
+# Parser profiles are authored, exported and shared as YAML (FR-INT-7). JSON
+# would need no dependency and was rejected: a profile is full of regexes, and
+# YAML block scalars let one be written without escaping every backslash.
+PyYAML>=6.0
+
+# The per-vehicle PDF report (FR-REP-2) — the document you hand a buyer.
+# Pure Python, no system libraries, so it works the same on every host.
+reportlab>=4.2
+
+# Serves /static/ from the app process. Gunicorn serves no static files and
+# Caddy only reverse-proxies, so without this the deployed stack is unstyled.
+whitenoise>=6.8
+
+# QR labels for storage bins and vehicle tags (FR-INV-2, C-4). SVG output, so
+# no raster dependency and labels print at the printer's resolution.
+qrcode>=8.0
+
+# Web push for reminders (SPEC 9.4). Note what this pulls in politically as
+# well as technically: push is delivered by the browser vendor's own service,
+# so this is the one outbound dependency on a large cloud provider in a
+# local-first application. It is off unless somebody subscribes a device.
+pywebpush>=2.0
+
+# Object storage driver, used when STORAGE_DRIVER=s3.
+boto3>=1.35

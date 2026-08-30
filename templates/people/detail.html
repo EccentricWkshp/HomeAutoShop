@@ -1,0 +1,27 @@
+{% extends "base.html" %}{% load i18n %}
+{% block content %}
+<div class="spread"><h1>{{ person.display_name }}</h1>
+  <a class="btn" href="{% url 'person_edit' person.pk %}">{% translate "Edit" %}</a></div>
+<div class="cols two">
+  <section class="card">
+    <h2>{% translate "Vehicles" %}</h2>
+    <ul class="list">
+      {% for a in current_assets %}<li><a href="{% url 'asset_detail' a.pk %}">{{ a.nickname }}</a>
+        <div class="small muted">{{ a.descriptor }}</div></li>
+      {% empty %}<li class="muted">{% translate "None currently." %}</li>{% endfor %}
+    </ul>
+    {% if former_assets %}
+      <h2 style="margin-top:1rem">{% translate "Formerly" %}</h2>
+      <ul class="list small">{% for a in former_assets %}<li><a href="{% url 'asset_detail' a.pk %}">{{ a.nickname }}</a></li>{% endfor %}</ul>
+    {% endif %}
+  </section>
+  <aside class="card">
+    <h2>{% translate "Contact" %}</h2>
+    <table class="small">
+      {% if person.email %}<tr><th>{% translate "Email" %}</th><td>{{ person.email }}</td></tr>{% endif %}
+      {% if person.phone %}<tr><th>{% translate "Phone" %}</th><td>{{ person.phone }}</td></tr>{% endif %}
+    </table>
+    {% if person.notes %}<p class="small">{{ person.notes|linebreaksbr }}</p>{% endif %}
+  </aside>
+</div>
+{% endblock %}

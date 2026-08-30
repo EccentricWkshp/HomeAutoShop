@@ -1,0 +1,44 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Parts" %} — {{ shop_name }}{% endblock %}
+{% block content %}
+<div class="spread"><h1>{% translate "Parts" %}</h1>
+  <a class="btn primary" href="{% url 'part_create' %}">{% translate "Add part" %}</a></div>
+
+<form method="get" class="row" style="margin-bottom:1rem">
+  <label class="visually-hidden" for="part-q">{% translate "Find a part" %}</label>
+  <input id="part-q" type="search" name="q" value="{{ q }}" style="flex:1"
+         placeholder="{% translate 'Name, brand, part number, interchange, UPC…' %}">
+  <button class="primary" type="submit">{% translate "Find" %}</button>
+  <button type="button" class="nowrap"
+          data-scan="upc_a,upc_e,ean_13,ean_8,code_128,qr_code"
+          data-scan-post="{% url 'part_by_code' %}">
+    {% translate "Scan a barcode" %}
+  </button>
+</form>
+
+{% if low %}
+<section class="card">
+  <h2>{% translate "Below minimum" %}</h2>
+  <ul class="list small">
+    {% for part in low %}<li><a href="{% url 'part_detail' part.pk %}">{{ part }}</a>
+      <span class="pill warn">{{ part.on_hand }} / {{ part.min_quantity }}</span></li>{% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section class="card">
+  <ul class="list">
+    {% for part in parts %}
+      <li class="spread">
+        <div>
+          <a href="{% url 'part_detail' part.pk %}"><strong>{{ part.name }}</strong></a>
+          <div class="small muted">{{ part.manufacturer }} {{ part.part_number }} · {{ part.get_part_type_display }}</div>
+        </div>
+        <span class="pill {% if part.is_low %}warn{% endif %}">{{ part.on_hand }} {{ part.unit }}</span>
+      </li>
+    {% empty %}
+      <li class="empty">{% if q %}{% translate "Nothing matched." %}{% else %}{% translate "No parts yet." %}{% endif %}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

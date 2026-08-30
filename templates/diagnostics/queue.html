@@ -1,0 +1,40 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Scans to check" %}{% endblock %}
+{% block content %}
+
+<div class="spread">
+  <div>
+    <h1>{% translate "Scans to check" %}</h1>
+    <p class="muted">{% translate "Read by a machine, not yet by a person." %}</p>
+  </div>
+  <a class="btn" href="{% url 'profile_list' %}">{% translate "Parser profiles" %}</a>
+</div>
+
+<section class="card">
+  {% if drafts %}
+    <div class="tablewrap"><table>
+      <thead><tr>
+        <th>{% translate "Vehicle" %}</th><th>{% translate "Read" %}</th>
+        <th>{% translate "How" %}</th><th>{% translate "Codes" %}</th><th></th>
+      </tr></thead>
+      <tbody>
+      {% for draft in drafts %}
+        <tr>
+          <th><a href="{% url 'asset_detail' draft.asset.pk %}">{{ draft.asset.nickname }}</a></th>
+          <td class="small muted">{{ draft.created_at|date:"SHORT_DATETIME_FORMAT" }}</td>
+          <td class="small">
+            {{ draft.get_source_display }}
+            {% if draft.parser_profile %}<span class="muted">· {{ draft.parser_profile.label }}</span>
+            {% else %}<span class="pill warn">{% translate "unmatched" %}</span>{% endif %}
+          </td>
+          <td class="mono">{{ draft.codes.count }}</td>
+          <td><a class="linkish small" href="{% url 'session_detail' draft.pk %}">{% translate "Check it" %}</a></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  {% else %}
+    <p class="muted">{% translate "Nothing waiting. Scans appear here after they are read and before they join a vehicle's history." %}</p>
+  {% endif %}
+</section>
+{% endblock %}

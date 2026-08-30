@@ -1,0 +1,37 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ asset.nickname }} — {% translate "Wear trends" %}{% endblock %}
+{% block content %}
+<div class="spread">
+  <div><h1>{{ asset.nickname }}</h1>
+    <p class="muted">{% translate "Measurement trends" %}</p></div>
+  <a class="btn" href="{% url 'asset_detail' asset.pk %}">{% translate "Back to vehicle" %}</a>
+</div>
+
+<p class="muted small">
+  {% translate "A measurement taken once is a number. Taken twice against the odometer, it is a wear rate — and a wear rate is a due date." %}
+</p>
+
+<section class="card">
+  <div class="tablewrap"><table>
+    <tr>
+      <th>{% translate "Point" %}</th><th>{% translate "Readings" %}</th>
+      <th>{% translate "Latest" %}</th><th>{% translate "Trend" %}</th>
+    </tr>
+    {% for wear in trends %}
+      <tr>
+        <td><strong>{{ wear.point_name }}</strong>
+          {% if wear.position %}<span class="mono small muted">{{ wear.position }}</span>{% endif %}</td>
+        <td class="mono">{{ wear.readings|length }}</td>
+        <td class="mono">
+          {% with last=wear.readings|last %}{{ last.value|floatformat:2 }} {{ wear.unit }}{% endwith %}
+        </td>
+        <td class="small">{{ wear.summary }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="4" class="muted">
+        {% translate "No measurements recorded yet. Complete an inspection with measurement points." %}
+      </td></tr>
+    {% endfor %}
+  </table></div>
+</section>
+{% endblock %}

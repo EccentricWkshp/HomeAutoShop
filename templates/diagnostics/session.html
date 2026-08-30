@@ -1,0 +1,198 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Review a scan" %} — {{ session.asset.nickname }}{% endblock %}
+{% block content %}
+
+<div class="spread">
+  <div>
+    <h1>{% translate "Review a scan" %}</h1>
+    <p class="muted">
+      <a href="{% url 'asset_diagnostics' session.asset.pk %}">{{ session.asset.nickname }}</a>
+      · {{ session.get_source_display }}
+      {% if session.parser_profile %}· {{ session.parser_profile.label }}{% endif %}
+      {% if session.is_draft %}· <span class="pill warn">{% translate "not in the history yet" %}</span>{% endif %}
+    </p>
+  </div>
+  {% if session.raw_media %}
+    <a class="btn" href="{{ session.raw_media.file.url }}">{% translate "The original report" %}</a>
+  {% endif %}
+</div>
+
+{% if session.is_draft %}
+  <p class="msg info">
+    {% translate "Nothing here is in the vehicle's history yet. Correct anything the tool got wrong, then confirm." %}
+  </p>
+{% endif %}
+
+<div class="cols two">
+  <div class="stack">
+    <section class="card">
+      <h2>{% translate "What was read" %}</h2>
+      {% if match.confidence %}
+        <p class="small muted">
+          {% blocktranslate with score=match.value %}Profile matched this report at {{ score }}.{% endblocktranslate %}
+        </p>
+      {% endif %}
+      <div class="tablewrap"><table>
+        <thead><tr>
+          <th>{% translate "Field" %}</th><th>{% translate "Value" %}</th>
+          <th>{% translate "Confidence" %}</th>
+        </tr></thead>
+        <tbody>
+        {% for row in rows %}
+          <tr>
+            <th>{{ row.label }}</th>
+            <td>
+              {% if row.pairs %}
+                <dl class="pairs small">
+                  {% for name, value in row.pairs %}
+                    <dt>{{ name }}</dt><dd class="mono">{{ value }}</dd>
+                  {% endfor %}
+                </dl>
+              {% else %}
+                <span class="mono">{{ row.value|truncatechars:80 }}</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if row.band == 'high' %}<span class="pill">{% translate "high" %}</span>
+              {% elif row.band == 'medium' %}<span class="pill">{% translate "medium" %}</span>
+              {% else %}<span class="pill warn">{% translate "low — check it" %}</span>{% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3" class="muted">{% translate "Nothing was extracted." %}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+      <p class="small muted">
+        {% translate "Confidence is the parser's own estimate, not a verdict. Anything marked low is worth a second look." %}
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Trouble codes" %}</h2>
+      {% if manuals %}
+  <p class="small muted">
+    {% translate "Look these up:" %}
+    {% for manual in manuals %}
+      <a href="{{ manual.url }}" target="_blank" rel="noopener noreferrer">{{ manual.provider.name }} ↗</a>{% if not forloop.last %} · {% endif %}
+    {% endfor %}
+    <br>
+    {% translate "Opens that manual's list of trouble codes for this vehicle, worked out from the address you pinned. Nothing checks it first, so a library with no such section will 404." %}
+  </p>
+{% endif %}
+      <div class="tablewrap"><table>
+        <thead><tr>
+          <th>{% translate "Code" %}</th><th>{% translate "Meaning" %}</th>
+          <th>{% translate "State" %}</th>{% if not session.is_draft %}<th></th>{% endif %}
+        </tr></thead>
+        <tbody>
+        {% for code in codes %}
+          <tr>
+            <th class="mono">{{ code.code }}
+              {% if not code.is_generic %}<span class="pill">{% translate "maker-specific" %}</span>{% endif %}
+            </th>
+            <td>
+              {{ code.description|default:code.lookup|default:"—" }}
+              {% if not code.lookup_is_authoritative and code.description %}
+                <span class="small muted">{% translate "(not a standard definition)" %}</span>
+              {% endif %}
+              {% if code.module %}<div class="small muted">{{ code.module }}</div>{% endif %}
+              {% if not code.is_generic and not code.description %}
+                <form method="post" action="{% url 'code_describe' code.pk %}" class="row">{% csrf_token %}
+                  <input type="text" name="description" maxlength="255"
+                         aria-label="{% translate 'What this code means on this make' %}"
+                         placeholder="{% translate 'What does it mean on this make?' %}">
+                  <button class="linkish small" type="submit">{% translate "Record it" %}</button>
+                </form>
+              {% endif %}
+            </td>
+            <td class="small">{{ code.state_raw|default:code.get_state_display }}</td>
+            {% if not session.is_draft %}
+              <td>
+                <form method="post" action="{% url 'code_promote' code.pk %}">{% csrf_token %}
+                  <button class="linkish small" type="submit">{% translate "Make a job" %}</button>
+                </form>
+              </td>
+            {% endif %}
+          </tr>
+        {% empty %}
+          <tr><td colspan="4" class="muted">
+            {% translate "No codes in this scan." %}
+          </td></tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    </section>
+
+    {% if session.live_data %}
+      <section class="card">
+        <h2>{% translate "Live data" %}</h2>
+        <div class="tablewrap"><table>
+          <thead><tr>
+            <th>{% translate "Reading" %}</th><th>{% translate "Value" %}</th>
+            <th>{% translate "Min" %}</th><th>{% translate "Max" %}</th>
+          </tr></thead>
+          <tbody>
+          {% for row in session.live_data %}
+            <tr>
+              <th>{{ row.name }}{% if row.module %}<span class="small muted"> · {{ row.module }}</span>{% endif %}</th>
+              <td class="mono">{{ row.value }} {{ row.unit }}</td>
+              <td class="mono small muted">{{ row.minimum|default:"—" }}</td>
+              <td class="mono small muted">{{ row.maximum|default:"—" }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table></div>
+      </section>
+    {% endif %}
+  </div>
+
+  <div class="stack">
+    {% if session.is_draft %}
+      <section class="card">
+        <h2>{% translate "Confirm it" %}</h2>
+        <form method="post" action="{% url 'session_confirm' session.pk %}"
+              class="formgrid">{% csrf_token %}
+          {% for field in form %}
+            <div class="field">
+              <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}{{ field.errors }}
+            </div>
+          {% endfor %}
+          <div class="field full">
+            <button class="primary" type="submit">{% translate "Add to the history" %}</button>
+          </div>
+        </form>
+        <form method="post" action="{% url 'session_discard' session.pk %}">{% csrf_token %}
+          <button class="linkish small" type="submit">{% translate "Discard this draft" %}</button>
+        </form>
+      </section>
+    {% endif %}
+
+    <section class="card">
+      <h2>{% translate "Read it again" %}</h2>
+      <p class="small muted">
+        {% translate "The report is kept as it arrived, so a better profile can re-read it later without you finding the file again. Re-reading a scan that is already in the history creates a new draft and leaves the original alone." %}
+      </p>
+      <form method="post" action="{% url 'session_reparse' session.pk %}" class="stack">{% csrf_token %}
+        <div class="field">
+          <label for="profile">{% translate "With which profile" %}</label>
+          <select id="profile" name="profile">
+            <option value="">{% translate "Whichever matches best" %}</option>
+            {% for profile in profiles %}
+              <option value="{{ profile.pk }}"
+                {% if session.parser_profile_id == profile.pk %}selected{% endif %}>
+                {{ profile.label }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <button type="submit">{% translate "Re-read" %}</button>
+      </form>
+      {% if session.parse_status == 'unmatched' %}
+        <p><a href="{% url 'session_map' session.pk %}">{% translate "Map the values by hand" %}</a></p>
+      {% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}

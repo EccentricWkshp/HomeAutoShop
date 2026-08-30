@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Sign in" %} — {{ shop_name }}{% endblock %}
+{% block content %}
+<div class="card" style="max-width:26rem;margin:3rem auto">
+  <h1>{{ shop_name }}</h1>
+  <p class="muted small">{% translate "Your shop, your data." %}</p>
+  <form method="post" class="stack">{% csrf_token %}
+    {% if form.errors %}<p class="msg error">{% translate "That username or password did not match." %}</p>{% endif %}
+    <div class="field">
+      <label for="{{ form.username.id_for_label }}">{% translate "Username" %}</label>
+      {{ form.username }}
+    </div>
+    <div class="field">
+      <label for="{{ form.password.id_for_label }}">{% translate "Password" %}</label>
+      {{ form.password }}
+    </div>
+    <button class="primary" type="submit">{% translate "Sign in" %}</button>
+  </form>
+</div>
+{% endblock %}

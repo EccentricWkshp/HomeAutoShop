@@ -1,0 +1,147 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ asset.nickname }} — {% translate "Schedule" %}{% endblock %}
+{% block content %}
+<div class="spread">
+  <div><h1>{{ asset.nickname }}</h1><p class="muted">{% translate "Maintenance schedule" %}</p></div>
+  <a class="btn" href="{% url 'asset_detail' asset.pk %}">{% translate "Back to vehicle" %}</a>
+</div>
+
+<div class="cols two">
+  <div class="stack">
+    <section class="card">
+      <h2>{% translate "Scheduled items" %}</h2>
+      <p class="small muted">
+        {% translate "Whichever comes first — distance, time, or hours — makes it due. Every interval here is yours to edit." %}
+      </p>
+      <div class="tablewrap"><table>
+        <tr>
+          <th>{% translate "Item" %}</th><th>{% translate "Every" %}</th>
+          <th>{% translate "Next" %}</th><th>{% translate "Status" %}</th><th></th>
+        </tr>
+        {% for item, projection in rows %}
+        <tr>
+          <td>
+            <strong>{{ item.definition.name }}</strong>
+            {% if item.is_safety %}<span class="pill danger">{% translate "Safety" %}</span>{% endif %}
+            {% if item.snooze_reason %}<div class="small muted">{{ item.snooze_reason }}</div>{% endif %}
+          </td>
+          <td>
+            <form method="post" action="{% url 'service_item_update' asset.pk item.pk %}" class="row">
+              {% csrf_token %}
+              <span class="unitbox">
+                <input type="number" name="interval_distance" id="dist-{{ item.pk }}"
+                       value="{{ item.interval_distance|default:'' }}"
+                       aria-label="{% blocktranslate with unit=item.interval_unit %}Every, in {{ unit }}{% endblocktranslate %}">
+                <label for="dist-{{ item.pk }}">{{ item.interval_unit }}</label>
+              </span>
+              <span class="unitbox">
+                <input type="number" name="interval_months" id="mo-{{ item.pk }}"
+                       value="{{ item.interval_months|default:'' }}"
+                       aria-label="{% translate 'Every, in months' %}">
+                <label for="mo-{{ item.pk }}">{% translate "months" %}</label>
+              </span>
+              <span class="unitbox">
+                <input type="number" name="interval_hours" id="hr-{{ item.pk }}"
+                       value="{{ item.interval_hours|default:'' }}"
+                       aria-label="{% translate 'Every, in engine hours' %}">
+                <label for="hr-{{ item.pk }}">{% translate "hours" %}</label>
+              </span>
+              <button type="submit" class="small">{% translate "Set" %}</button>
+            </form>
+          </td>
+          <td class="small">{{ projection.summary }}</td>
+          <td>
+            <span class="pill {% if item.status == 'overdue' %}danger{% elif item.status == 'due_soon' %}warn{% endif %}">
+              {{ item.get_status_display }}
+            </span>
+          </td>
+          <td>
+            {# Back-fill: record a past service without inventing a work order. #}
+            <form method="post" action="{% url 'service_item_complete' asset.pk item.pk %}" class="row">
+              {% csrf_token %}
+              <input type="date" name="completed_on" style="width:9rem"
+                     aria-label="{% translate 'Date it was done' %}">
+              <button type="submit" class="small primary">{% translate "Done" %}</button>
+            </form>
+            <form method="post" action="{% url 'service_item_snooze' asset.pk item.pk %}" class="row">
+              {% csrf_token %}
+              {% if item.status == 'disabled' %}
+                <button type="submit" name="action" value="enable" class="linkish small">{% translate "Track" %}</button>
+              {% else %}
+                <button type="submit" name="action" value="snooze" class="linkish small">{% translate "Snooze" %}</button>
+                <button type="submit" name="action" value="disable" class="linkish small">{% translate "Ignore" %}</button>
+              {% endif %}
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="muted">{% translate "Nothing scheduled yet. Apply a template to start." %}</td></tr>
+        {% endfor %}
+      </table></div>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Add an item" %}</h2>
+      <form method="post" action="{% url 'service_item_add' asset.pk %}" class="formgrid">{% csrf_token %}
+        {% for field in form %}
+          <div class="field {% if field.name == 'notes' %}full{% endif %}">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}
+          </div>
+        {% endfor %}
+        <div class="field full"><button type="submit">{% translate "Add" %}</button></div>
+      </form>
+    </section>
+  </div>
+
+  <aside class="stack">
+    <section class="card">
+      <h2>{% translate "Start from a template" %}</h2>
+      <p class="small muted">
+        {% translate "Generic intervals, not manufacturer data — a starting point you edit from." %}
+      </p>
+      <form method="post" action="{% url 'apply_schedule_template' asset.pk %}" class="stack">
+        {% csrf_token %}
+        <select name="template" class="select" required aria-label="{% translate 'Schedule template' %}">
+          {% for template in templates %}<option value="{{ template.pk }}">{{ template.name }}</option>{% endfor %}
+        </select>
+        <button class="primary" type="submit">{% translate "Apply" %}</button>
+      </form>
+      <p class="small muted">{% translate "Applying twice never overwrites an interval you changed." %}</p>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Installed components" %}</h2>
+      <p class="small muted">
+        {% translate "How old is this battery? How many miles on these tires? A component is what turns a repeated measurement into a wear rate." %}
+      </p>
+      <ul class="list small">
+        {% for component in components %}
+          <li class="spread">
+            <div>{{ component }}
+              <div class="muted">
+                {{ component.installed_on }}
+                {% if component.dot_verdict == 'fail' %}
+                  {# Full tread and a ten-year-old date code is still a failed tire. #}
+                  <span class="pill danger">{% translate "DOT age" %} {{ component.dot_age_years }}y</span>
+                {% elif component.dot_verdict == 'attention' %}
+                  <span class="pill warn">{% translate "DOT age" %} {{ component.dot_age_years }}y</span>
+                {% endif %}
+              </div>
+            </div>
+            <form method="post" action="{% url 'component_remove' asset.pk component.pk %}">{% csrf_token %}
+              <button class="linkish small" type="submit">{% translate "Remove" %}</button>
+            </form>
+          </li>
+        {% empty %}<li class="muted">{% translate "None recorded." %}</li>{% endfor %}
+      </ul>
+      <form method="post" action="{% url 'component_add' asset.pk %}" class="stack" style="margin-top:.5rem">
+        {% csrf_token %}
+        {{ component_form.component_type }}
+        {{ component_form.position }}
+        {{ component_form.serial_or_dot_code }}
+        <button type="submit" class="small">{% translate "Add component" %}</button>
+      </form>
+    </section>
+  </aside>
+</div>
+{% endblock %}

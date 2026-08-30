@@ -1,0 +1,109 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ asset.nickname }} — {% translate "Specs" %}{% endblock %}
+{% block content %}
+<div class="spread">
+  <div><h1>{{ asset.nickname }}</h1><p class="muted">{% translate "Reference specifications" %}</p></div>
+  <a class="btn" href="{% url 'asset_detail' asset.pk %}">{% translate "Back to vehicle" %}</a>
+</div>
+
+<p class="muted small">
+  {% translate "Fill capacities, torque values, tire pressures, bulb sizes. These get looked up far more often than any report gets run — usually mid-job, with the manual three minutes away." %}
+</p>
+
+<div class="cols two">
+  <div class="stack">
+    {% for group, specs in grouped.items %}
+      <section class="card">
+        <h2>{{ group }}</h2>
+        <div class="tablewrap"><table>
+          {% for spec in specs %}
+            {% if editing and editing.pk == spec.pk %}
+              <tr><td colspan="4">
+                <form method="post" action="{% url 'spec_edit' asset.pk spec.pk %}"
+                      class="formgrid">{% csrf_token %}
+                  {{ edit_form.non_field_errors }}
+                  {% for field in edit_form %}
+                    <div class="field">
+                      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                      {{ field }}
+                      {{ field.errors }}
+                    </div>
+                  {% endfor %}
+                  <div class="field full row">
+                    <button class="primary" type="submit">{% translate "Save" %}</button>
+                    <a class="btn" href="{% url 'asset_specs' asset.pk %}">{% translate "Cancel" %}</a>
+                  </div>
+                </form>
+              </td></tr>
+            {% else %}
+              <tr>
+                <th style="width:40%">{{ spec.name }}
+                  {% if spec.is_pinned %}<span class="pill">{% translate "pinned" %}</span>{% endif %}
+                  {% if spec.is_sensitive %}<span class="pill warn">{% translate "sensitive" %}</span>{% endif %}
+                </th>
+                <td class="mono">{{ spec.display_value }}</td>
+                <td class="small muted">{{ spec.get_source_display }}</td>
+                <td style="width:6rem">
+                  <div class="row">
+                    <a class="linkish small nowrap"
+                       href="{% url 'asset_specs' asset.pk %}?edit={{ spec.pk }}">{% translate "Edit" %}</a>
+                    <form method="post" action="{% url 'spec_delete' asset.pk spec.pk %}">{% csrf_token %}
+                      <button class="linkish small" type="submit">{% translate "Remove" %}</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endif %}
+          {% endfor %}
+        </table></div>
+      </section>
+    {% empty %}
+      <p class="empty card">{% translate "Nothing recorded yet." %}</p>
+    {% endfor %}
+  </div>
+
+  <aside class="stack">
+    <section class="card">
+      <h2>{% translate "Add a spec" %}</h2>
+      <form method="post" action="{% url 'spec_add' asset.pk %}" class="stack">{% csrf_token %}
+        {% for field in form %}
+          <div class="field">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}
+            {% if field.help_text %}<p class="helptext">{{ field.help_text }}</p>{% endif %}
+          </div>
+        {% endfor %}
+        <button class="primary" type="submit">{% translate "Save" %}</button>
+      </form>
+      <p class="small muted">
+        {# Key codes and radio codes are exactly what must not reach a buyer. #}
+        {% translate "Keys and access codes are marked sensitive automatically, and are left out of the vehicle report and shared exports." %}
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Copy from another vehicle" %}</h2>
+      <p class="small muted">{% translate "Useful when you own two of the same model." %}</p>
+      <form method="post" action="{% url 'spec_copy' asset.pk %}" class="stack">{% csrf_token %}
+        <select name="source" class="select" required aria-label="{% translate 'Vehicle to copy from' %}">
+          <option value="">{% translate "Copy from…" %}</option>
+          {% for other in others %}<option value="{{ other.pk }}">{{ other.nickname }}</option>{% endfor %}
+        </select>
+        <button type="submit">{% translate "Copy" %}</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "From a scan report" %}</h2>
+      <p class="small muted">
+        {% translate "A scan-tool PDF carries module part and calibration numbers, read off the vehicle rather than inferred. You will be shown what was found before anything is written." %}
+      </p>
+      <form method="post" action="{% url 'spec_from_scan' asset.pk %}"
+            enctype="multipart/form-data" class="stack">{% csrf_token %}
+        <input type="file" name="report" accept="application/pdf,.pdf" required
+               aria-label="{% translate 'Scan-tool report' %}">
+        <button type="submit">{% translate "Read the report" %}</button>
+      </form>
+    </section>
+  </aside>
+</div>
+{% endblock %}

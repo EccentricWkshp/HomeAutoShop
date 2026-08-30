@@ -1,0 +1,127 @@
+{% extends "base.html" %}{% load i18n static %}
+{% block title %}{% translate "Reminders" %} — {{ shop_name }}{% endblock %}
+{% block content %}
+<h1>{% translate "Reminders" %}</h1>
+
+<p class="muted small">
+  {% translate "One digest, not one message per item — and nothing at all when there is nothing to say." %}
+</p>
+
+{% if not enabled %}
+  <p class="msg warning">
+    {% translate "Reminders are turned off for this instance. Set REMINDERS_ENABLED=true to start sending; channels below can still be set up and tested." %}
+  </p>
+{% endif %}
+{% if offline_mode %}
+  <p class="msg warning">{% translate "Offline mode is on, so nothing is delivered anywhere." %}</p>
+{% endif %}
+
+<div class="cols two">
+  <div class="stack">
+    <section class="card">
+      <h2>{% translate "Channels" %}</h2>
+      <ul class="list">
+        {% for channel in channels %}
+          <li class="spread">
+            <div>
+              <strong>{{ channel.name }}</strong>
+              <span class="pill">{{ channel.get_kind_display }}</span>
+              {% if channel.is_enabled %}<span class="pill ok">{% translate "on" %}</span>
+              {% else %}<span class="pill">{% translate "off" %}</span>{% endif %}
+              {# The target is masked: a webhook path routinely carries a token. #}
+              <div class="small muted mono">{{ channel.masked_target }}</div>
+              {% if channel.last_sent_at %}
+                <div class="small muted">{% translate "Last sent" %} {{ channel.last_sent_at|date:"Y-m-d H:i" }}</div>
+              {% endif %}
+              {% if channel.last_error %}
+                <div class="small" style="color:var(--danger)">{{ channel.last_error }}</div>
+              {% endif %}
+            </div>
+            <form method="post" action="{% url 'reminder_channel_action' channel.pk %}" class="row">
+              {% csrf_token %}
+              <button name="action" value="test" type="submit" class="small">{% translate "Send test" %}</button>
+              <button name="action" value="toggle" type="submit" class="small">
+                {% if channel.is_enabled %}{% translate "Disable" %}{% else %}{% translate "Enable" %}{% endif %}
+              </button>
+              <button name="action" value="delete" type="submit" class="linkish small">{% translate "Remove" %}</button>
+            </form>
+          </li>
+        {% empty %}
+          <li class="empty">{% translate "No channels. Nothing is delivered anywhere." %}</li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Add a channel" %}</h2>
+      {% if not smtp_configured %}
+        <p class="small muted">
+          {% translate "SMTP is not configured, so email will fail until SMTP_HOST is set. A webhook needs no mail server — it POSTs JSON to whatever you point it at." %}
+        </p>
+      {% endif %}
+      <form method="post" action="{% url 'reminder_channel_add' %}" class="formgrid">{% csrf_token %}
+        <div class="field">
+          <label for="id_kind">{% translate "Kind" %}</label>
+          <select name="kind" id="id_kind" class="select">
+            {% for value, label in kinds %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="id_name">{% translate "Name" %}</label>
+          <input name="name" id="id_name" class="input" placeholder="{% translate 'Andy, Home Assistant…' %}">
+        </div>
+        <div class="field full">
+          <label for="id_target">{% translate "Where to send it" %}</label>
+          <input name="target" id="id_target" class="input" required
+                 placeholder="{% translate 'you@example.com — or https://…/webhook' %}">
+        </div>
+        <div class="field">
+          <label><input type="checkbox" name="is_enabled" checked> {% translate "Enabled" %}</label>
+        </div>
+        <div class="field">
+          <label><input type="checkbox" name="include_routine" checked>
+            {% translate "Include routine items, not just safety and overdue" %}</label>
+        </div>
+        <div class="field full"><button class="primary" type="submit">{% translate "Add" %}</button></div>
+      </form>
+      <p class="small muted">
+        {% translate "A channel of kind “Phone notification” is not added here — a browser has to subscribe itself, below." %}
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Notify this phone" %}</h2>
+      <p class="small muted">
+        {% translate "Web push does not reach your browser directly — it goes through Google, Mozilla or Apple, depending on which browser this is. That is the one place a local-first instance has to talk to a large cloud service, so it is off until you turn it on here, and the message it sends says only that something is due. What is due stays behind the tap." %}
+      </p>
+      <p id="push-status" role="status" aria-live="polite" class="muted">{% translate "Checking…" %}</p>
+      <button id="push-subscribe" type="button" class="primary" hidden>
+        {% translate "Notify this device" %}
+      </button>
+    </section>
+  </div>
+
+  <aside class="stack">
+    <section class="card">
+      <h2>{% translate "What would be sent right now" %}</h2>
+      {% if digest.is_empty %}
+        <p class="muted">{% translate "Nothing. No message would go out." %}</p>
+      {% else %}
+        <p class="small muted">{{ digest.subject }}</p>
+        <ul class="list small">
+          {% for alert in digest.alerts %}
+            <li><strong>{{ alert.title }}</strong>
+              <div class="muted">{{ alert.detail }}</div></li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+      <p class="small muted">
+        {% blocktranslate %}An item already mentioned is not raised again for {{ cooldown_days }} days.{% endblocktranslate %}
+      </p>
+    </section>
+  </aside>
+</div>
+
+{{ push_strings|json_script:"push-strings" }}
+<script src="{% static 'push.js' %}" defer></script>
+{% endblock %}

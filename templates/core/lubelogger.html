@@ -1,0 +1,188 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Import from LubeLogger" %} — {{ shop_name }}{% endblock %}
+{% block content %}
+<h1>{% translate "Import from LubeLogger" %}</h1>
+
+<p class="muted small">
+  {% translate "A one-time copy of the history you already have. It is optional and it is not a link — once the records are here, this instance owns them, and nothing stops working if the LubeLogger instance goes away." %}
+</p>
+
+{% if offline_mode %}
+  <p class="msg warning">{% translate "Offline mode is on, so nothing can be fetched." %}</p>
+{% endif %}
+
+{% if not configured %}
+  <section class="card">
+    <h2>{% translate "No instance set" %}</h2>
+    <p class="small">
+      {% translate "Set these in the instance environment and restart. A read-only key is enough — this only ever reads." %}
+    </p>
+    <table class="small"><tbody>
+      <tr><th>LUBELOGGER_URL</th>
+          <td class="mono">{% if instance_url %}{{ instance_url }}{% else %}<span class="muted">{% translate "not set" %}</span>{% endif %}</td></tr>
+      <tr><th>LUBELOGGER_API_KEY</th>
+          <td>{% if has_key %}<span class="pill ok">{% translate "set" %}</span>
+              {% else %}<span class="muted">{% translate "not set — try anyway" %}</span>{% endif %}</td></tr>
+    </tbody></table>
+    <p class="small muted">
+      {% translate "These live in your .env file. Changing them takes a restart." %}
+    </p>
+  </section>
+{% else %}
+
+{% if links %}
+<section class="card">
+  <h2>{% translate "Paired vehicles" %}</h2>
+  <p class="small muted">
+    {% translate "Every future run uses these, so nothing has to be matched again. Unlink one if it was paired wrongly — no imported records are removed, but nothing further is attached." %}
+  </p>
+  <div class="tablewrap"><table>
+    <tbody>
+    {% for external_id, asset in links.items %}
+      <tr>
+        <th class="mono small">{{ external_id }}</th>
+        <td><a href="{% url 'asset_detail' asset.pk %}">{{ asset.nickname }}</a>
+          <span class="small muted">{{ asset.descriptor }}</span></td>
+        <td>
+          <form method="post" action="{% url 'lubelogger_link' %}">{% csrf_token %}
+            <input type="hidden" name="external_id" value="{{ external_id }}">
+            <button class="linkish small" type="submit">{% translate "Unlink" %}</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endif %}
+
+<section class="card">
+  <h2>{% translate "Source" %}</h2>
+  <table class="small"><tbody>
+    <tr><th>{% translate "Instance" %}</th><td class="mono">{{ instance_url }}</td></tr>
+    <tr><th>{% translate "Mode" %}</th><td>{{ mode }}</td></tr>
+  </tbody></table>
+
+  {% if diagnosis %}
+    <table class="small" style="margin-top:.75rem"><tbody>
+      <tr><th>{% translate "Reachable" %}</th>
+          <td>{% if diagnosis.reachable %}<span class="pill ok">{% translate "yes" %}</span>{% else %}<span class="pill danger">{% translate "no" %}</span>{% endif %}</td></tr>
+      <tr><th>{% translate "Key accepted" %}</th>
+          <td>{% if diagnosis.authenticated %}<span class="pill ok">{% translate "yes" %}</span>{% else %}<span class="pill danger">{% translate "no" %}</span>{% endif %}</td></tr>
+      <tr><th>{% translate "Numbers unambiguous" %}</th>
+          <td>{% if diagnosis.invariant %}<span class="pill ok">{% translate "yes" %}</span>{% else %}<span class="pill danger">{% translate "no" %}</span>{% endif %}</td></tr>
+      <tr><th>{% translate "Vehicles found" %}</th><td>{{ diagnosis.vehicle_count }}</td></tr>
+    </tbody></table>
+    {% if diagnosis.message %}<p class="small muted">{{ diagnosis.message }}</p>{% endif %}
+    {% if not diagnosis.invariant %}
+      <p class="msg warning">
+        {% translate "LubeLogger is returning locale-formatted numbers. Importing those turns 1.234,56 into 1.23 — wrong money that looks entirely plausible and is found months later, if ever. Set LUBELOGGER_INVARIANT_API=true on the LubeLogger side first." %}
+      </p>
+    {% endif %}
+  {% endif %}
+
+  <form method="post" class="row" style="margin-top:.75rem">{% csrf_token %}
+    <button name="action" value="check" type="submit" {% if offline_mode %}disabled{% endif %}>
+      {% translate "Check the connection" %}</button>
+    <button name="action" value="preview" type="submit" {% if offline_mode %}disabled{% endif %}>
+      {% translate "Preview the import" %}</button>
+  </form>
+  <p class="small muted">{% translate "A preview writes nothing. Always look at one before importing." %}</p>
+</section>
+
+{% if report %}
+<section class="card">
+  <h2>{% if report.dry_run %}{% translate "Preview — nothing was written" %}{% else %}{% translate "Imported" %}{% endif %}</h2>
+
+  <div class="cols two">
+    <div>
+      <h3 class="small">{% translate "Would be created" %}</h3>
+      <table class="small"><tbody>
+        {% for kind, count in report.created.items %}<tr><th>{{ kind }}</th><td>{{ count }}</td></tr>
+        {% empty %}<tr><td class="muted">{% translate "Nothing new." %}</td></tr>{% endfor %}
+      </tbody></table>
+    </div>
+    <div>
+      <h3 class="small">{% translate "Already here, skipped" %}</h3>
+      <table class="small"><tbody>
+        {% for kind, count in report.skipped.items %}<tr><th>{{ kind }}</th><td>{{ count }}</td></tr>
+        {% empty %}<tr><td class="muted">{% translate "None." %}</td></tr>{% endfor %}
+      </tbody></table>
+    </div>
+  </div>
+
+  {% if report.unmatched %}
+    <h3 class="small">{% translate "Vehicles with no match here" %}</h3>
+    <p class="small muted">
+      {% translate "Matched automatically by VIN, by plate, or by a previous link. A year/make/model resemblance is reported and never merged on its own — a wrong link writes one vehicle's history into another, and there is no clean way back. Say which is which and it stays said." %}
+    </p>
+    <div class="tablewrap"><table>
+      <thead><tr>
+        <th>{% translate "In LubeLogger" %}</th><th>{% translate "Is this vehicle" %}</th><th></th>
+      </tr></thead>
+      <tbody>
+      {% for match in report.unmatched %}
+        <tr>
+          <th>{{ match.label }}
+            <div class="small muted">{{ match.how }}</div>
+          </th>
+          <td colspan="2">
+            <form method="post" action="{% url 'lubelogger_link' %}" class="row">{% csrf_token %}
+              <input type="hidden" name="external_id" value="{{ match.external_id }}">
+              <label class="visually-hidden" for="link-{{ match.external_id }}">
+                {% translate "Vehicle here" %}</label>
+              <select id="link-{{ match.external_id }}" name="asset" class="select">
+                <option value="">{% translate "— not this shop's —" %}</option>
+                {% for asset in assets %}
+                  <option value="{{ asset.pk }}">{{ asset.nickname }} · {{ asset.descriptor }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit">{% translate "Link" %}</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    <p class="small muted">
+      {% translate "Two ways out of this list: pair a vehicle that is already here, or tick “Also create the vehicles that have no match here” below to bring it across as a new one. Pairing writes nothing but the pairing — run the preview again to see what it would then bring in." %}
+    </p>
+  {% endif %}
+
+  {% if report.conflicts %}
+    <h3 class="small">{% translate "Changed on both sides" %}</h3>
+    <ul class="list small">{% for line in report.conflicts %}<li>{{ line }}</li>{% endfor %}</ul>
+  {% endif %}
+
+  {% if report.errors %}
+    <h3 class="small">{% translate "Errors" %}</h3>
+    <ul class="list small">{% for line in report.errors %}<li style="color:var(--danger)">{{ line }}</li>{% endfor %}</ul>
+  {% endif %}
+
+  {% if report.samples %}
+    <h3 class="small">{% translate "A sample of what would come across" %}</h3>
+    <ul class="list small">{% for line in report.samples %}<li class="mono">{{ line }}</li>{% endfor %}</ul>
+  {% endif %}
+
+  {% if report.dry_run %}
+    {% translate "Import this into your records? Re-running later skips anything already here." as confirm_import %}
+    <form method="post" style="margin-top:1rem"
+          onsubmit="return confirm('{{ confirm_import|escapejs }}')">{% csrf_token %}
+      <label class="small">
+        <input type="checkbox" name="create_missing">
+        {% translate "Also create the vehicles that have no match here" %}
+      </label>
+      <div class="row" style="margin-top:.5rem">
+        <button class="primary" name="action" value="commit" type="submit">
+          {% translate "Import for real" %}</button>
+      </div>
+    </form>
+    <p class="small muted">
+      {% translate "Safe to re-run: every imported record remembers where it came from, so a second run adds nothing twice." %}
+    </p>
+  {% endif %}
+</section>
+{% endif %}
+
+{% endif %}
+{% endblock %}

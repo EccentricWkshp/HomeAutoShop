@@ -1,0 +1,126 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ part.name }} — {{ shop_name }}{% endblock %}
+{% block content %}
+<div class="spread">
+  <div><h1>{{ part.name }}</h1>
+    <p class="muted">{{ part.manufacturer }} {{ part.part_number }}
+      <span class="pill">{{ part.get_part_type_display }}</span>
+      {% if part.has_core %}<span class="pill warn">{% translate "Has core" %}</span>{% endif %}</p></div>
+  <div class="row">
+    <span class="pill {% if part.is_low %}warn{% endif %}">{{ part.on_hand }} {{ part.unit }}</span>
+    <a class="btn" href="{% url 'part_edit' part.pk %}">{% translate "Edit" %}</a>
+  </div>
+</div>
+
+<div class="cols two">
+  <div class="stack">
+    <section class="card">
+      <h2>{% translate "Stock lots" %}</h2>
+      <p class="small muted">
+        {% translate "Consumption draws the oldest lot first, at what that lot actually cost — not a blended average." %}
+      </p>
+      <div class="tablewrap"><table>
+        <tr>
+          <th>{% translate "Acquired" %}</th><th>{% translate "Location" %}</th>
+          <th>{% translate "Qty" %}</th><th>{% translate "Unit cost" %}</th>
+          <th>{% translate "Count" %}</th>
+        </tr>
+        {% for lot in lots %}
+        <tr>
+          <td>{{ lot.acquired_on }}
+            {% if lot.expires_on %}<div class="small muted">{% translate "expires" %} {{ lot.expires_on }}</div>{% endif %}</td>
+          <td>{{ lot.location.path|default:"—" }}</td>
+          <td class="mono">{{ lot.qty_on_hand }}</td>
+          <td class="mono">{{ lot.unit_cost|default:"—" }}</td>
+          <td>
+            {# A count writes an adjustment with a reason; it never overwrites. #}
+            <form method="post" action="{% url 'lot_count' part.pk lot.pk %}" class="row">{% csrf_token %}
+              <input type="number" step="0.001" name="counted" value="{{ lot.qty_on_hand }}" style="width:6rem"
+                     aria-label="{% translate 'Counted quantity' %}">
+              <input name="note" style="width:8rem" aria-label="{% translate 'Why the count differs' %}"
+                     placeholder="{% translate 'reason' %}">
+              <button type="submit" class="small">{% translate "Adjust" %}</button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="muted">{% translate "Nothing on the shelf." %}</td></tr>
+        {% endfor %}
+      </table></div>
+
+      <h2 style="margin-top:1rem">{% translate "Add stock" %}</h2>
+      <form method="post" action="{% url 'lot_add' part.pk %}" class="formgrid">{% csrf_token %}
+        {% for field in lot_form %}
+          <div class="field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}</div>
+        {% endfor %}
+        <div class="field full"><button class="primary" type="submit">{% translate "Add" %}</button></div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Used on" %}</h2>
+      <ul class="list small">
+        {% for usage in usages %}
+          <li class="spread">
+            <div>
+              <a href="{% url 'work_order_detail' usage.work_order.pk %}">{{ usage.work_order.number }}</a>
+              — {{ usage.work_order.asset.nickname }}
+              <div class="muted">{{ usage.installed_at }} · {{ usage.get_source_display }}</div>
+            </div>
+            <div>{{ usage.qty }}
+              {% if usage.owes_core %}<span class="pill warn">{% translate "core owed" %}</span>{% endif %}
+              {% if usage.under_warranty %}<span class="pill ok">{% translate "under warranty" %}</span>{% endif %}
+            </div>
+          </li>
+        {% empty %}<li class="muted">{% translate "Not used yet." %}</li>{% endfor %}
+      </ul>
+    </section>
+  </div>
+
+  <aside class="stack">
+    <section class="card">
+      <h2>{% translate "Other numbers" %}</h2>
+      <p class="small muted">{% translate "The same part has several numbers. All of them should find it." %}</p>
+      <ul class="list small">
+        {% for ref in part.cross_refs.all %}
+          <li>{{ ref.get_system_display }}: <span class="mono">{{ ref.value }}</span></li>
+        {% empty %}<li class="muted">{% translate "None recorded." %}</li>{% endfor %}
+      </ul>
+      <form method="post" action="{% url 'crossref_add' part.pk %}" class="row" style="margin-top:.5rem">{% csrf_token %}
+        <select name="system" class="select" aria-label="{% translate 'Numbering system' %}">
+          <option value="oem">OEM</option>
+          <option value="interchange">{% translate "Interchange" %}</option>
+          <option value="vendor_sku">{% translate "Vendor SKU" %}</option>
+          <option value="upc">UPC</option>
+        </select>
+        <input name="value" required style="flex:1" aria-label="{% translate 'Cross-reference number' %}"
+               placeholder="{% translate 'number' %}">
+        <button type="submit">{% translate "Add" %}</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Fits" %}</h2>
+      <ul class="list small">
+        {% for fitment in part.fitments.all %}
+          <li>{{ fitment }}<div class="muted">{{ fitment.get_confidence_display }}</div></li>
+        {% empty %}
+          <li class="muted">{% translate "Nothing recorded. Installing this on a vehicle records it as confirmed." %}</li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Bought" %}</h2>
+      <ul class="list small">
+        {% for line in purchase_lines %}
+          <li class="spread">
+            <a href="{% url 'purchase_detail' line.purchase.pk %}">{{ line.purchase.vendor }}</a>
+            <span class="mono">{{ line.unit_price }}</span>
+          </li>
+        {% empty %}<li class="muted">{% translate "No purchase history." %}</li>{% endfor %}
+      </ul>
+    </section>
+  </aside>
+</div>
+{% endblock %}

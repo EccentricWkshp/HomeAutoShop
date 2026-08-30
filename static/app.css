@@ -1,0 +1,335 @@
+/* HomeAutoShop — garage-first styling (SPEC §9.2, §9.5).
+   Dark by default: garages are dim and a white screen at night is blinding.
+   Touch targets >= 48px, because the user is wearing nitrile gloves with
+   brake dust on them. Contrast targets WCAG 2.1 AA. */
+
+:root {
+  color-scheme: dark light;
+  --bg: #12151a;
+  --surface: #1a1f27;
+  --surface-2: #222834;
+  --line: #303845;
+  --text: #e8ecf2;
+  --muted: #a3adbb;
+  --accent: #4da3ff;
+  --accent-ink: #06121f;
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --danger: #f87171;
+  --radius: 10px;
+  --tap: 48px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f5f6f8; --surface: #ffffff; --surface-2: #eef1f5; --line: #d3d9e0;
+    --text: #161a20; --muted: #5a6472; --accent: #0b62c4; --accent-ink: #ffffff;
+    --ok: #15803d; --warn: #92620b; --danger: #b91c1c;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+a { color: var(--accent); }
+h1, h2, h3 { line-height: 1.25; margin: 0 0 .5rem; }
+h1 { font-size: 1.5rem; }
+h2 { font-size: 1.15rem; }
+
+.skip { position: absolute; left: -9999px; }
+.skip:focus { left: 1rem; top: 1rem; background: var(--accent); color: var(--accent-ink); padding: .75rem; z-index: 100; }
+
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- layout ---------- */
+
+.wrap { max-width: 1100px; margin: 0 auto; padding: 1rem 1rem 6rem; }
+
+.topbar {
+  display: flex; gap: .75rem; align-items: center; flex-wrap: wrap;
+  padding: .6rem 1rem; background: var(--surface); border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; z-index: 20;
+}
+.brand { font-weight: 700; color: var(--text); text-decoration: none; }
+.searchbox { flex: 1 1 240px; }
+.searchbox input { width: 100%; }
+.mainnav { display: none; gap: .5rem; }
+.mainnav a { padding: .5rem .7rem; border-radius: var(--radius); text-decoration: none; }
+.usermenu { position: relative; }
+.usermenu summary { cursor: pointer; list-style: none; padding: .6rem; min-height: var(--tap); display: flex; align-items: center; }
+.usermenu summary::-webkit-details-marker { display: none; }
+.usermenu .menu {
+  position: absolute; inset-inline-end: 0; top: 100%; background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: var(--radius); padding: .5rem;
+  min-width: 200px; z-index: 30;
+  /* Never taller than the screen it drops into. Ten entries at a 48px tap
+     target is 480px, which is most of a phone before the address bar. */
+  max-block-size: min(70vh, 70dvh); overflow-y: auto; overscroll-behavior: contain;
+}
+.usermenu .menu a, .usermenu .menu button { display: block; width: 100%; text-align: left; padding: .6rem; min-height: var(--tap); }
+
+/* On a phone the account menu is anchored to a summary only a few characters
+   wide, sitting well left of the edge. Anchored to *that*, a 200px dropdown
+   opens off the side of the screen and the labels are unreadable. Making the
+   details element static hands the anchoring to `.topbar` — which is sticky,
+   so it is already a containing block — and the menu spans the width instead.
+   Belt and braces on top: it can never be wider than the viewport. */
+@media (max-width: 799px) {
+  .topbar { gap: .5rem .5rem; padding-inline: .75rem; }
+  /* Account menu top-right where it is expected, search on its own row. */
+  .brand { order: 1; }
+  .sync { order: 2; }
+  .usermenu { order: 3; margin-inline-start: auto; position: static; }
+  .searchbox { order: 4; flex: 1 0 100%; }
+
+  .usermenu .menu {
+    inset-inline: .75rem .75rem;
+    min-width: 0;
+    max-inline-size: none;
+  }
+}
+
+/* Nothing may push the page sideways: a horizontal scrollbar on a phone makes
+   every tap land a few pixels out. Wide content scrolls inside `.tablewrap`
+   or `.scroll` instead.
+
+   `clip` rather than `hidden` on purpose — `overflow-x: hidden` turns the body
+   into a scroll container, and the sticky header then sticks to that instead of
+   to the viewport, which is a worse bug than the one being fixed. */
+body { max-inline-size: 100%; overflow-x: clip; }
+
+/* Grid and flex children default to `min-width: auto`, which lets one wide
+   table stretch its track and take the whole page with it. This is the fix for
+   that, and it is why `.tablewrap` can be trusted to scroll on its own. */
+.cols > *, .row > *, .grid > * { min-width: 0; }
+.tablewrap { max-inline-size: 100%; }
+
+/* A pasted URL has nowhere to break by itself. */
+body { overflow-wrap: break-word; }
+
+@media (min-width: 800px) { .mainnav { display: flex; } .tabbar { display: none; } }
+
+/* Bottom bar: primary actions live in the lower third, one-thumb reach. */
+.tabbar {
+  position: fixed; inset: auto 0 0 0; display: flex; justify-content: space-around;
+  background: var(--surface); border-top: 1px solid var(--line);
+  padding: .25rem .25rem calc(.25rem + env(safe-area-inset-bottom)); z-index: 25;
+}
+.tabbar a {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: .1rem; min-height: var(--tap); font-size: .72rem; text-decoration: none; color: var(--muted);
+}
+.tabbar a span { font-size: 1.25rem; }
+.tabbar a.primary { color: var(--accent); font-weight: 600; }
+
+/* ---------- surfaces ---------- */
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 1rem; margin-bottom: 1rem; }
+.grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.cols { display: grid; gap: 1rem; }
+@media (min-width: 900px) { .cols.two { grid-template-columns: 2fr 1fr; } }
+
+.muted { color: var(--muted); }
+.small { font-size: .85rem; }
+.mono { font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  /* A VIN or a part number is one unbreakable token wider than a phone. */
+  overflow-wrap: anywhere; }
+.stack > * + * { margin-top: .75rem; }
+.row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+.spread { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
+
+/* ---------- controls ---------- */
+
+input, select, textarea, button, .btn {
+  font: inherit; min-height: var(--tap); border-radius: var(--radius);
+  border: 1px solid var(--line); background: var(--surface-2); color: var(--text); padding: .6rem .75rem;
+}
+
+/* Form controls carry an intrinsic width from HTML's defaults — `size=20` on an
+   input, `cols=40` on a textarea, the widest option on a select — and none of
+   them know how narrow the column they landed in is. In a two-column card that
+   is how a Notes box ends up hanging over the edge of the card. */
+input, select, textarea { max-inline-size: 100%; min-inline-size: 0; }
+.field > input, .field > select, .field > textarea { inline-size: 100%; }
+/* Sideways is the one direction a resize handle must not go: it drags the
+   control out of its container and there is no way to put it back. */
+textarea { min-height: 5rem; resize: vertical; }
+input[type="checkbox"] { min-height: 1.5rem; width: 1.5rem; height: 1.5rem; }
+button, .btn {
+  cursor: pointer; text-decoration: none; display: inline-flex; align-items: center;
+  justify-content: center; gap: .4rem; padding: .6rem 1rem; font-weight: 600;
+}
+.btn.primary, button.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.btn.danger, button.danger { color: var(--danger); }
+.linkish { background: none; border: none; color: var(--accent); padding: .6rem 0; }
+
+label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: .2rem; }
+.field { margin-bottom: .9rem; }
+.field .helptext { font-size: .8rem; color: var(--muted); margin-top: .25rem; }
+.errorlist { color: var(--danger); list-style: none; padding: 0; margin: .25rem 0 0; font-size: .85rem; }
+.formgrid { display: grid; gap: 0 1rem; grid-template-columns: 1fr; }
+@media (min-width: 700px) { .formgrid { grid-template-columns: 1fr 1fr; } .formgrid .full { grid-column: 1 / -1; } }
+
+/* ---------- status ---------- */
+
+.pill {
+  display: inline-block; padding: .2rem .55rem; border-radius: 999px;
+  font-size: .75rem; font-weight: 600; border: 1px solid var(--line); background: var(--surface-2);
+}
+/* Status is never encoded in color alone — each pill carries a glyph and a
+   word, per SPEC §9.5. */
+.pill.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+.pill.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
+.pill.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, transparent); }
+
+.messages { list-style: none; padding: 0; margin: 0 0 1rem; }
+.msg { padding: .75rem 1rem; border-radius: var(--radius); margin-bottom: .5rem; background: var(--surface-2); border-left: 4px solid var(--accent); }
+.msg.success { border-left-color: var(--ok); }
+.msg.warning { border-left-color: var(--warn); }
+.msg.error { border-left-color: var(--danger); }
+
+/* ---------- lists ---------- */
+
+.list { list-style: none; padding: 0; margin: 0; }
+.list > li { padding: .75rem 0; border-bottom: 1px solid var(--line); }
+.list > li:last-child { border-bottom: 0; }
+.list a { text-decoration: none; }
+
+.timeline { list-style: none; padding: 0; margin: 0; }
+.timeline li { display: grid; grid-template-columns: 5.5rem 1fr; gap: .75rem; padding: .6rem 0; border-bottom: 1px solid var(--line); }
+.timeline time { color: var(--muted); font-size: .8rem; }
+
+.thumbs { display: flex; gap: .5rem; flex-wrap: wrap; }
+.thumbs img { width: 104px; height: 104px; object-fit: cover; border-radius: var(--radius); border: 1px solid var(--line); }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: .5rem; border-bottom: 1px solid var(--line); }
+.tablewrap { overflow-x: auto; }
+
+.empty { text-align: center; color: var(--muted); padding: 2rem 1rem; }
+
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* A button sitting beside an input must not wrap its label onto two lines,
+   and must not be squeezed to nothing when the field takes the space. */
+.nowrap { white-space: nowrap; flex: 0 0 auto; }
+
+/* ---------- Phase 4 additions (SPEC §5.4, §8.3, §8.7, §9.5) ---------- */
+
+/* Screen-reader-only text. Used for labels on inputs whose purpose is obvious
+   to a sighted user from a placeholder or an icon — which is exactly the case
+   a screen reader is left with nothing (WCAG 2.1 AA, §9.5). Deliberately not
+   `display:none`: that removes it from the accessibility tree too. */
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px;
+  margin: -1px; padding: 0; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+
+/* The sync indicator. Always present, hidden only when there is nothing to say
+   and the connection is up (§5.4). */
+.sync { text-decoration: none; }
+.sync.warn { border-color: var(--warn); color: var(--warn); }
+
+/* A card that carries a warning without shouting. Status is never color
+   alone here — every one of these carries words as well (§9.5). */
+.warn-card { border-inline-start: 4px solid var(--warn); }
+.muted-card { border-inline-start: 4px solid var(--line); background: var(--surface-2); }
+
+/* Wide content scrolls inside its own box rather than the page. A table of
+   395 DTC rows on a phone must not make the whole layout slide sideways. */
+.scroll {
+  overflow: auto; max-block-size: 24rem;
+  background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: .75rem;
+}
+pre.scroll { white-space: pre-wrap; word-break: break-word; }
+
+.nowrap { white-space: nowrap; }
+.warn { color: var(--warn); }
+
+/* Confidence bands on the extraction review screen. The word carries the
+   meaning; the color only reinforces it. */
+.band-low { color: var(--warn); }
+.band-high { color: var(--ok); }
+
+/* Respect a reduced-motion preference (§9.5). Nothing here animates much, but
+   the rule belongs with the stylesheet rather than in a future changelog. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* A forced-colors user gets the system's palette; borders have to survive it,
+   because half this UI distinguishes state with a border. */
+@media (forced-colors: active) {
+  .card, .pill, .btn, button, input, select, textarea { border: 1px solid currentColor; }
+  :focus-visible { outline: 3px solid Highlight; }
+}
+
+/* ---------- printable QR labels (SPEC FR-INV-2, C-4) ---------- */
+
+.labelsheet {
+  display: grid; gap: 6mm;
+  grid-template-columns: repeat(auto-fill, minmax(34mm, 1fr));
+}
+.labelcard {
+  margin: 0; padding: 2mm; text-align: center;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  break-inside: avoid;
+}
+.labelcard svg { display: block; margin: 0 auto; }
+.labelcard figcaption {
+  font-size: .72rem; line-height: 1.2; margin-top: 1mm;
+  overflow-wrap: anywhere;
+}
+
+/* A printed sheet is a sheet of labels and nothing else — no navigation, no
+   buttons, and black on white whatever theme the screen was using. A QR code
+   rendered in the dark palette is a QR code that will not scan. */
+@media print {
+  .noprint, .topbar, .tabbar, .messages, .skip { display: none !important; }
+  body { background: #fff; color: #000; }
+  .wrap { max-width: none; padding: 0; }
+  .labelcard { border-color: #999; }
+  .labelcard svg path { fill: #000; }
+}
+
+/* The scanner viewfinder. A dialog rather than a page so the form underneath
+   keeps whatever was already typed into it. */
+.scanner {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface); color: var(--text);
+  padding: .75rem; max-inline-size: min(92vw, 30rem);
+}
+.scanner::backdrop { background: rgba(0, 0, 0, .7); }
+.scanner video {
+  inline-size: 100%; max-block-size: 60vh; background: #000;
+  border-radius: var(--radius); display: block;
+}
+.scanner button { inline-size: 100%; min-height: var(--tap); margin-top: .5rem; }
+
+/* Key/value pairs inside a table cell — module identifiers on the scan review
+   screen, which were previously a wall of raw JSON. */
+.pairs { display: grid; grid-template-columns: auto 1fr; gap: .1rem .6rem; margin: 0; }
+.pairs dt { color: var(--muted); }
+.pairs dd { margin: 0; overflow-wrap: anywhere; }
+
+/* A number and the unit it is in, side by side. The unit used to be a
+   placeholder, which is exactly the wrong place for it: it disappears the
+   moment somebody types, so the only way to find out what the box wanted was
+   to empty it. */
+.unitbox { display: inline-flex; align-items: center; gap: .3rem; }
+.unitbox input { inline-size: 5rem; }
+.unitbox label { margin: 0; white-space: nowrap; font-size: .8rem; }

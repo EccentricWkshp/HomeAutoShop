@@ -1,0 +1,78 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Today" %} — {{ shop_name }}{% endblock %}
+{% block content %}
+<div class="spread"><h1>{% translate "Today" %}</h1>
+  <a class="btn primary" href="{% url 'work_order_create' %}">{% translate "New work order" %}</a></div>
+
+{% for alert in alerts %}
+  <p class="msg warning">⚠ {{ alert.text }}</p>
+{% endfor %}
+
+{% if due %}
+<section class="card">
+  <div class="spread">
+    <h2>{% translate "Due and overdue" %}</h2>
+    <a class="btn small" href="{% url 'due_list' %}">{% translate "All" %}</a>
+  </div>
+  <ul class="list">
+    {% for item, projection in due %}
+      <li class="spread">
+        <div>
+          <a href="{% url 'asset_schedule' item.asset.pk %}">{{ item.definition.name }}</a>
+          {% if item.is_safety %}<span class="pill danger">{% translate "Safety" %}</span>{% endif %}
+          <div class="small muted">{{ item.asset.nickname }} · {{ projection.summary }}</div>
+        </div>
+        <span class="pill {% if item.status == 'overdue' %}danger{% else %}warn{% endif %}">
+          {{ item.get_status_display }}</span>
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+{% if blocked %}
+<section class="card">
+  <h2>{% translate "Waiting on parts" %}</h2>
+  <ul class="list">
+    {% for wo in blocked %}
+      <li><a href="{% url 'work_order_detail' wo.pk %}"><strong>{{ wo.number }}</strong> — {{ wo.title }}</a>
+        <div class="small muted">{{ wo.asset.nickname }}{% if wo.blocked_reason %} · {{ wo.blocked_reason }}{% endif %}</div></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<div class="cols two">
+  <section class="card">
+    <div class="spread"><h2>{% translate "Open work" %}</h2><span class="pill">{{ open_count }}</span></div>
+    <ul class="list">
+      {% for wo in open_orders %}
+        <li><a href="{% url 'work_order_detail' wo.pk %}"><strong>{{ wo.number }}</strong> — {{ wo.title }}</a>
+          <div class="small muted">{{ wo.asset.nickname }} · {{ wo.get_status_display }}</div></li>
+      {% empty %}
+        <li class="empty">{% translate "Nothing open. Enjoy it." %}</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <aside class="stack">
+    <section class="card">
+      <h2>{% translate "Fleet" %}</h2>
+      <p style="font-size:2rem;margin:0">{{ fleet_count }}</p>
+      <ul class="list small">
+        {% for a in recent_assets %}<li><a href="{% url 'asset_detail' a.pk %}">{{ a.nickname }}</a></li>{% endfor %}
+      </ul>
+      <a class="btn" href="{% url 'asset_list' %}">{% translate "All vehicles" %}</a>
+    </section>
+    {% if expiring %}
+    <section class="card">
+      <h2>{% translate "Registration due" %}</h2>
+      <ul class="list small">
+        {% for a in expiring %}<li><a href="{% url 'asset_detail' a.pk %}">{{ a.nickname }}</a>
+          <span class="pill warn">{{ a.plate_expires_on }}</span></li>{% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

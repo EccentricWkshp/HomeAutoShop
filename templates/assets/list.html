@@ -1,0 +1,34 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Vehicles" %} — {{ shop_name }}{% endblock %}
+{% block content %}
+<div class="spread">
+  <h1>{% translate "Vehicles & equipment" %}</h1>
+  <a class="btn primary" href="{% url 'asset_create' %}">{% translate "Add" %}</a>
+</div>
+<p class="row small">
+  <a class="btn" href="?">{% translate "All" %}</a>
+  {% for value, label in kinds %}<a class="btn" href="?kind={{ value }}">{{ label }}</a>{% endfor %}
+  <a class="btn" href="?all=1">{% translate "Include sold" %}</a>
+</p>
+<div class="grid">
+  {% for asset in assets %}
+  <a class="card" href="{% url 'asset_detail' asset.pk %}" style="text-decoration:none;color:inherit">
+    <div class="spread">
+      <strong>{{ asset.nickname }}</strong>
+      <span class="pill">{{ asset.get_status_display }}</span>
+    </div>
+    <p class="muted small" style="margin:.25rem 0">{{ asset.descriptor|default:"—" }}</p>
+    {% if asset.current_usage %}
+      <p class="small mono">{{ asset.current_usage|floatformat:0 }} {{ asset.meter_unit }}</p>
+    {% else %}
+      <p class="small muted">{% translate "No meter reading yet" %}</p>
+    {% endif %}
+  </a>
+  {% empty %}
+  <div class="empty card">
+    <p>{% translate "No vehicles yet." %}</p>
+    <a class="btn primary" href="{% url 'asset_create' %}">{% translate "Add the first one" %}</a>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

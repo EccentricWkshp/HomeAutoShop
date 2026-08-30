@@ -1,0 +1,264 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ asset.nickname }} — {{ shop_name }}{% endblock %}
+{% block content %}
+
+<div class="spread">
+  <div>
+    <h1>{{ asset.nickname }}</h1>
+    <p class="muted">{{ asset.descriptor|default:"—" }}
+      <span class="pill">{{ asset.get_status_display }}</span></p>
+  </div>
+  <div class="row">
+    <a class="btn" href="{% url 'asset_schedule' asset.pk %}">{% translate "Schedule" %}</a>
+    <a class="btn" href="{% url 'asset_specs' asset.pk %}">{% translate "Specs" %}</a>
+    <a class="btn" href="{% url 'asset_recalls' asset.pk %}">{% translate "Recalls" %}</a>
+    <a class="btn" href="{% url 'asset_diagnostics' asset.pk %}">{% translate "Diagnostics" %}</a>
+    <a class="btn" href="{% url 'asset_report' asset.pk %}">{% translate "Report" %}</a>
+    <a class="btn" href="{% url 'asset_costs' asset.pk %}">{% translate "Costs" %}</a>
+    <a class="btn" href="{% url 'asset_edit' asset.pk %}">{% translate "Edit" %}</a>
+    <a class="btn primary" href="{% url 'work_order_create' %}?asset={{ asset.pk }}">{% translate "New work order" %}</a>
+  </div>
+</div>
+
+<div class="cols two">
+  <div class="stack">
+
+    <section class="card">
+      <h2>{% translate "Timeline" %}</h2>
+      <ul class="timeline">
+        {% for event in timeline %}
+          <li>
+            <time datetime="{{ event.when|date:'c' }}">{{ event.when|date:"Y-m-d" }}</time>
+            <div>
+              {% if event.url %}<a href="{{ event.url }}">{{ event.title }}</a>{% else %}{{ event.title }}{% endif %}
+              {% if event.number %}<span class="mono small muted">{{ event.number }}</span>{% endif %}
+              <div class="small muted">{{ event.detail }}{% if event.flag %} <span class="pill warn">⚠ {% translate "lower than previous" %}</span>{% endif %}</div>
+            </div>
+          </li>
+        {% empty %}
+          <li class="empty">{% translate "Nothing recorded yet." %}</li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Work orders" %}</h2>
+      <ul class="list">
+        {% for wo in work_orders %}
+          <li><a href="{% url 'work_order_detail' wo.pk %}"><strong>{{ wo.number }}</strong> — {{ wo.title }}</a>
+            <div class="small muted">{{ wo.get_status_display }} · {{ wo.opened_at|date }}</div></li>
+        {% empty %}<li class="empty">{% translate "No work recorded yet." %}</li>{% endfor %}
+      </ul>
+    </section>
+
+    <section class="card">
+      <div class="spread">
+        <h2>{% translate "Inspections" %}</h2>
+        <a class="btn small" href="{% url 'inspection_list' %}">{% translate "New" %}</a>
+      </div>
+      <ul class="list small">
+        {% for inspection in asset.inspections.all|slice:":6" %}
+          <li class="spread">
+            <div><a href="{% url 'inspection_detail' inspection.pk %}">{{ inspection.template_name }}</a>
+              <div class="muted">{{ inspection.performed_on }}</div></div>
+            <span class="pill {% if inspection.overall == 'fail' %}danger{% elif inspection.overall == 'attention' %}warn{% elif inspection.overall == 'pass' %}ok{% endif %}">
+              {% if inspection.is_draft %}{% translate "In progress" %}{% else %}{{ inspection.get_overall_display }}{% endif %}
+            </span>
+          </li>
+        {% empty %}<li class="muted">{% translate "None yet." %}</li>{% endfor %}
+      </ul>
+      <p class="small"><a href="{% url 'wear_chart' asset.pk %}">{% translate "Measurement trends" %}</a></p>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Photos" %}</h2>
+      <div class="thumbs">
+        {% for link in photos %}
+          <a href="{{ link.media.file.url }}"><img src="{{ link.media.display_url }}" alt="{{ link.caption|default:asset.nickname }}"></a>
+        {% empty %}<p class="muted small">{% translate "No photos yet." %}</p>{% endfor %}
+      </div>
+      <form method="post" action="{% url 'asset_photo_upload' asset.pk %}" enctype="multipart/form-data" class="row" style="margin-top:.75rem">
+        {% csrf_token %}
+        {# capture= opens the camera straight from the garage (FR-DOC-2). #}
+        <input type="file" name="files" accept="image/*" capture="environment" multiple
+               aria-label="{% translate 'Photos of this vehicle' %}">
+        <button type="submit">{% translate "Add photos" %}</button>
+      </form>
+    </section>
+  </div>
+
+  <aside class="stack">
+
+    <section class="card">
+      <h2>{% translate "Meter" %}</h2>
+      {% if asset.has_meter %}
+        <p style="font-size:1.75rem;margin:0" class="mono">
+          {% if asset.current_usage %}{{ asset.current_usage|floatformat:0 }}{% else %}—{% endif %}
+          <span class="small muted">{{ asset.meter_unit }}</span>
+        </p>
+        <form method="post" action="{% url 'reading_create' asset.pk %}" class="stack" style="margin-top:.5rem">
+          {% csrf_token %}
+          <div class="field">
+            <label for="id_value">{% translate "New reading" %}</label>
+            <input type="number" step="0.01" min="0" name="value" id="id_value" inputmode="decimal" required>
+          </div>
+          <div class="field">
+            <label for="id_note">{% translate "Note (required if lower than last)" %}</label>
+            <input type="text" name="note" id="id_note">
+          </div>
+          <button type="submit">{% translate "Record" %}</button>
+        </form>
+      {% else %}
+        <p class="muted small">{% translate "This asset has no meter; service intervals are time-based." %}</p>
+      {% endif %}
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Identity" %}</h2>
+      <table class="small">
+        {% if asset.vin %}
+        <tr><th>{% translate "VIN" %}</th>
+            <td class="mono">
+              {% if reveal_vin %}
+                {{ asset.vin }}
+                <a class="small" href="{% url 'asset_detail' asset.pk %}">{% translate "Hide" %}</a>
+              {% else %}
+                {{ asset.masked_vin }}
+                <a class="small" href="{% url 'asset_detail' asset.pk %}?vin=show">{% translate "Show" %}</a>
+              {% endif %}
+              {% if vin_check.check_digit_valid %}<span class="pill ok">✓</span>
+              {% elif vin_check.is_well_formed %}<span class="pill warn">⚠</span>{% endif %}
+            </td></tr>
+        {% endif %}
+        {% if asset.plate %}<tr><th>{% translate "Plate" %}</th><td>{{ asset.plate }} {{ asset.plate_region }}</td></tr>{% endif %}
+        {% if asset.plate_expires_on %}<tr><th>{% translate "Registration" %}</th><td>{{ asset.plate_expires_on }}</td></tr>{% endif %}
+        {% if asset.engine %}<tr><th>{% translate "Engine" %}</th><td>{{ asset.engine }}</td></tr>{% endif %}
+        {% if asset.serial_number %}<tr><th>{% translate "Serial" %}</th><td class="mono">{{ asset.serial_number }}</td></tr>{% endif %}
+      </table>
+
+      {% if asset.is_vehicle and asset.vin %}
+        <form method="post" action="{% url 'vin_decode' asset.pk %}" style="margin-top:.5rem">{% csrf_token %}
+          <button type="submit" {% if offline_mode %}disabled{% endif %}>{% translate "Look up VIN" %}</button>
+        </form>
+        {% if offline_mode %}
+          <p class="small muted">{% translate "Offline mode is on, so no lookup is attempted." %}</p>
+        {% elif asset.decoded_at %}
+          <p class="small muted">{% translate "Decoded" %} {{ asset.decoded_at|date }} · {{ asset.decode_source }}</p>
+        {% endif %}
+        {% if asset.field_overrides %}
+          <p class="small muted">✎ {% translate "Your edits are kept on re-decode:" %} {{ asset.field_overrides.keys|join:", " }}</p>
+        {% endif %}
+      {% endif %}
+    </section>
+
+    {% with decoded=asset.decoded_details %}
+      {% if decoded %}
+      <section class="card">
+        <h2>{% translate "What the VIN says" %}</h2>
+        <p class="small muted">
+          {% translate "Returned by the lookup and kept on file. Nothing here is editable — it is what the manufacturer registered, which is worth knowing even where it disagrees with the vehicle in front of you." %}
+        </p>
+        {% for group, rows in decoded %}
+          <h3 class="small">{{ group }}</h3>
+          <table class="small"><tbody>
+            {% for key, label, value in rows %}
+              <tr><th>{{ label }}</th><td>{{ value }}</td>
+                <td style="width:1%">
+                  <form method="post" action="{% url 'spec_from_decode' asset.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="key" value="{{ key }}">
+                    <button class="linkish small nowrap" type="submit"
+                            title="{% translate 'Add to the spec sheet' %}">
+                      {% translate "＋ spec" %}</button>
+                  </form>
+                </td></tr>
+            {% endfor %}
+          </tbody></table>
+        {% endfor %}
+      </section>
+      {% endif %}
+    {% endwith %}
+
+    <section class="card">
+      <h2>{% translate "Owners" %}</h2>
+      <ul class="list small">
+        {% for o in asset.ownerships.all %}
+          <li class="spread">
+            <div>
+              <a href="{% url 'person_detail' o.person.pk %}">{{ o.person.display_name }}</a>
+              <div class="muted">{{ o.get_role_display }} · {{ o.from_date }}{% if o.to_date %} – {{ o.to_date }}{% else %} –{% endif %}</div>
+            </div>
+            {% if o.is_current %}
+              <form method="post" action="{% url 'ownership_end' asset.pk o.pk %}">{% csrf_token %}
+                <button class="linkish small" type="submit">{% translate "End" %}</button>
+              </form>
+            {% endif %}
+          </li>
+        {% empty %}<li class="muted">{% translate "No owner recorded." %}</li>{% endfor %}
+      </ul>
+      <form method="post" action="{% url 'ownership_add' asset.pk %}" class="stack" style="margin-top:.5rem">
+        {% csrf_token %}
+        {{ ownership_form.person }}
+        {{ ownership_form.role }}
+        <button type="submit" class="small">{% translate "Add owner" %}</button>
+      </form>
+      <p class="small"><a href="{% url 'person_create' %}">{% translate "Add a new person first" %}</a></p>
+    </section>
+
+    {% if service_info_enabled|default:True %}
+    <section class="card">
+      <h2>{% translate "Service manuals" %}</h2>
+      <p class="small muted">
+        {% translate "These libraries index by a catalog string that cannot be derived from a VIN, so open the browse link, find the exact variant, then pin that address here once." %}
+      </p>
+      {% for provider, pinned in providers %}
+        <div style="border-top:1px solid var(--line);padding-top:.6rem;margin-top:.6rem">
+          <div class="spread">
+            <strong>{{ provider.name }}</strong>
+            {% if provider.access == 'paid' %}<span class="pill warn">{% translate "Paid" %}</span>{% endif %}
+          </div>
+          {% if pinned %}
+            <p><a href="{{ pinned.url }}" target="_blank" rel="noopener noreferrer">
+              {{ pinned.label|default:_("Open manual") }} ↗</a></p>
+            <form method="post" action="{% url 'service_info_unpin' asset.pk provider.pk %}">{% csrf_token %}
+              <button class="linkish small" type="submit">{% translate "Unpin" %}</button>
+            </form>
+          {% else %}
+            {% if provider.browse_url and not offline_mode %}
+              <p class="small"><a href="{{ provider.browse_url }}" target="_blank" rel="noopener noreferrer">
+                {% translate "Browse" %} {{ provider.name }} ↗</a></p>
+            {% endif %}
+            <form method="post" action="{% url 'service_info_pin' asset.pk provider.pk %}" class="stack">{% csrf_token %}
+              <input type="url" name="url" required
+                     aria-label="{% translate 'Page address to pin' %}"
+                     placeholder="{% translate 'Paste the exact page address' %}">
+              <div class="row">
+                <button type="submit" class="small">{% translate "Pin it" %}</button>
+              </div>
+            </form>
+            <form method="post" action="{% url 'service_info_visibility' asset.pk provider.pk %}">
+              {% csrf_token %}<input type="hidden" name="hide" value="1">
+              <button class="linkish small" type="submit">
+                {% translate "Not for this vehicle" %}
+              </button>
+            </form>
+          {% endif %}
+        </div>
+      {% endfor %}
+
+      {% if hidden_providers %}
+        <p class="small muted" style="border-top:1px solid var(--line);padding-top:.6rem;margin-top:.6rem">
+          {% translate "Hidden here:" %}
+          {% for provider in hidden_providers %}
+            <form method="post" action="{% url 'service_info_visibility' asset.pk provider.pk %}"
+                  style="display:inline">{% csrf_token %}
+              <button class="linkish small" type="submit">{{ provider.name }} ⟲</button>
+            </form>{% if not forloop.last %} · {% endif %}
+          {% endfor %}
+        </p>
+      {% endif %}
+    </section>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

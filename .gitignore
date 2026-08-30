@@ -1,0 +1,21 @@
+venv/
+__pycache__/
+*.py[cod]
+.env
+data/
+staticfiles/
+*.sqlite3
+*.sqlite3-*
+.DS_Store
+.idea/
+.vscode/
+
+# Sample corpus (SPEC 8.3a). The raw reports and photographs are somebody's real
+# vehicles, photographed in somebody's garage, so they stay on the machine that made
+# them. What ships is redacted word geometry plus its fixtures - see
+# homeautoshop/scantools/capture.py. Note the directory itself is NOT ignored:
+# a negation cannot re-include anything inside an excluded directory.
+Artifacts/samples/**/*.pdf
+Artifacts/samples/*.jpg
+Artifacts/samples/**/*.jpeg
+Artifacts/samples/**/*.png

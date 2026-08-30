@@ -1,0 +1,36 @@
+{
+  "tool": {
+    "vendor": "XTOOL",
+    "model": "D8",
+    "serial": "D8-000000"
+  },
+  "vehicle": {
+    "name": "Aerio(RH420/423)",
+    "year": 2004,
+    "vin": "JS2RC61H345422235",
+    "odometer": 152320,
+    "odometer_unit": "mi",
+    "diagnosis_route": "US->Aerio(RH420/423)->-"
+  },
+  "generated_at": "2026-08-22T13:02:00",
+  "modules": [
+    "AIRBAG"
+  ],
+  "ecu": {},
+  "dtcs": [
+    {
+      "code": "B1032",
+      "description": "Power source voltage too low",
+      "module": "AIRBAG",
+      "status_raw": "History",
+      "status": "history",
+      "last_test": "",
+      "this_ignition": "",
+      "since_clear": ""
+    }
+  ],
+  "live_data": [],
+  "remark": "",
+  "pages": 1,
+  "warnings": []
+}

@@ -1,0 +1,32 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Purchases" %} — {{ shop_name }}{% endblock %}
+{% block content %}
+<div class="spread"><h1>{% translate "Purchases" %}</h1>
+  <div class="row">
+    <a class="btn" href="{% url 'vendor_list' %}">{% translate "Vendors" %}</a>
+    <a class="btn primary" href="{% url 'purchase_create' %}">{% translate "New order" %}</a>
+  </div></div>
+
+{% if closing %}
+<section class="card">
+  <h2>{% translate "Return window closing" %}</h2>
+  <ul class="list small">
+    {% for p in closing %}<li class="spread"><a href="{% url 'purchase_detail' p.pk %}">{{ p }}</a>
+      <span class="pill warn">{% translate "by" %} {{ p.return_by }}</span></li>{% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section class="card">
+  <ul class="list">
+    {% for purchase in purchases %}
+      <li class="spread">
+        <div><a href="{% url 'purchase_detail' purchase.pk %}"><strong>{{ purchase.vendor }}</strong>
+          {{ purchase.order_number }}</a>
+          <div class="small muted">{{ purchase.ordered_on }} · {{ purchase.lines.count }} {% translate "line(s)" %}</div></div>
+        <span class="pill">{{ purchase.get_status_display }}</span>
+      </li>
+    {% empty %}<li class="empty">{% translate "No purchases yet." %}</li>{% endfor %}
+  </ul>
+</section>
+{% endblock %}

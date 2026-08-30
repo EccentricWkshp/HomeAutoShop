@@ -1,0 +1,66 @@
+{
+  "tool": {
+    "vendor": "XTOOL",
+    "model": "D8",
+    "serial": "D8-000000"
+  },
+  "vehicle": {
+    "name": "Corolla",
+    "year": 2012,
+    "vin": "5YFBU4EE4CP343364",
+    "odometer": null,
+    "odometer_unit": "mi",
+    "diagnosis_route": "TOYOTA -> w/o Smart Key"
+  },
+  "generated_at": "2023-08-28T17:41:00",
+  "modules": [
+    "Engine and ECT",
+    "Cruise Control",
+    "ABS/VSC/TRAC",
+    "Tire Pressure Monitor",
+    "EMPS",
+    "Air Conditioner",
+    "Immobiliser",
+    "Supplement Restraint System (SRS) Airbag",
+    "Main Body",
+    "Combination Meter",
+    "Detection Of Occupant"
+  ],
+  "ecu": {},
+  "dtcs": [
+    {
+      "code": "P219A",
+      "description": "Imbalance Of Air-Fuel Ratio - Bank 1",
+      "module": "Engine and ECT",
+      "status_raw": "Current",
+      "status": "current",
+      "last_test": "",
+      "this_ignition": "",
+      "since_clear": ""
+    },
+    {
+      "code": "P219A",
+      "description": "Imbalance Of Air-Fuel Ratio - Bank 1",
+      "module": "Engine and ECT",
+      "status_raw": "History",
+      "status": "history",
+      "last_test": "",
+      "this_ignition": "",
+      "since_clear": ""
+    },
+    {
+      "code": "P219A",
+      "description": "Imbalance Of Air-Fuel Ratio - Bank 1",
+      "module": "Cruise Control",
+      "status_raw": "Current",
+      "status": "current",
+      "last_test": "",
+      "this_ignition": "",
+      "since_clear": ""
+    }
+  ],
+  "live_data": [],
+  "remark": "",
+  "pages": 1,
+  "warnings": []
+}

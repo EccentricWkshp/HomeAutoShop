@@ -1,0 +1,323 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ wo.number }} — {{ shop_name }}{% endblock %}
+{% block content %}
+
+<div class="spread">
+  <div>
+    <h1><span class="mono muted">{{ wo.number }}</span> {{ wo.title }}</h1>
+    <p class="muted">
+      <a href="{% url 'asset_detail' asset.pk %}">{{ asset.nickname }}</a>
+      · {{ wo.get_type_display }}
+      <span class="pill">{{ wo.get_status_display }}</span>
+      {% if wo.is_safety_critical %}<span class="pill danger">⚠ {% translate "Safety" %}</span>{% endif %}
+    </p>
+  </div>
+  <div class="row">
+    <div style="text-align:right">
+      <div class="small muted">{% translate "Cost so far" %}</div>
+      <div class="mono" style="font-size:1.3rem">{{ rollup.total }}</div>
+    </div>
+    <a class="btn" href="{% url 'work_order_edit' wo.pk %}">{% translate "Edit" %}</a>
+  </div>
+</div>
+
+{% if wo.status == 'waiting_on_parts' and wo.blocked_reason %}
+  <p class="msg warning">⏸ {% translate "Waiting on" %}: {{ wo.blocked_reason }}</p>
+{% endif %}
+
+<div class="cols two">
+  <div class="stack">
+
+    {# The three C's. Six months from now, "brakes noisy" alone is useless. #}
+    <section class="card">
+      <h2>{% translate "Complaint" %}</h2>
+      <p>{{ wo.complaint|linebreaksbr|default:"—" }}</p>
+      <h2>{% translate "Cause" %}</h2>
+      <p>{{ wo.cause|linebreaksbr|default:"—" }}</p>
+      <h2>{% translate "Correction" %}</h2>
+      <p>{{ wo.correction|linebreaksbr|default:"—" }}</p>
+    </section>
+
+    {% if tool_warnings %}
+      {% comment %}The readiness gate (SPEC §8.7, FR-WL-4). A warning, never a block:
+         the operator may know the wrench is fine, or may be borrowing one.{% endcomment %}
+      <section class="card warn-card">
+        <h2>{% blocktranslate count counter=tool_warnings|length %}{{ counter }} tool needs attention{% plural %}{{ counter }} tools need attention{% endblocktranslate %}</h2>
+        <ul class="list small">
+          {% for warning in tool_warnings %}
+            <li>
+              <a href="{{ warning.tool_url }}" target="_blank" rel="noopener noreferrer">{{ warning.tool_name }} ↗</a>
+              — {{ warning.issues|join:"; " }}
+              <span class="muted">· {{ warning.job_item }}</span>
+              {% if warning.stale %}
+                <span class="pill warn">{% translate "last checked over a day ago" %}</span>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+        <p class="small muted">
+          {% translate "Nothing here stops you starting." %}
+        </p>
+      </section>
+    {% endif %}
+
+    <section class="card">
+      <div class="spread">
+        <h2>{% translate "Job items" %}</h2>
+        <span class="pill">{{ progress.done }}/{{ progress.total }}</span>
+      </div>
+      <ul class="list">
+        {% for item in job_items %}
+          <li class="row">
+            <form method="post" action="{% url 'job_item_toggle' wo.pk item.pk %}">{% csrf_token %}
+              <button type="submit" aria-label="{% translate 'Toggle' %}" style="min-width:var(--tap)">
+                {% if item.is_done %}☑{% else %}☐{% endif %}
+              </button>
+            </form>
+            <div style="flex:1">
+              <strong {% if item.is_done %}style="text-decoration:line-through;opacity:.65"{% endif %}>{{ item.title }}</strong>
+              {% if item.description %}<div class="small muted">{{ item.description }}</div>{% endif %}
+              {% for reference in item.tools.all %}
+                <div class="small">
+                  <span aria-hidden="true">🔧</span>
+                  <a href="{{ reference.tool.url }}" target="_blank" rel="noopener noreferrer">{{ reference.tool.name|default:reference.tool.tool_id }} ↗</a>
+                  {% if reference.tool.issues %}
+                    <span class="pill warn">{{ reference.tool.issues|join:"; " }}</span>
+                  {% else %}
+                    <span class="muted">{% translate "on hand" %}</span>
+                  {% endif %}
+                  <form method="post" action="{% url 'job_item_tool_remove' wo.pk reference.pk %}"
+                        style="display:inline">{% csrf_token %}
+                    <button class="linkish small" type="submit">{% translate "remove" %}</button>
+                  </form>
+                </div>
+              {% endfor %}
+              {% if tools_enabled %}
+                <form method="post" action="{% url 'job_item_tool_add' wo.pk item.pk %}"
+                      class="row small">{% csrf_token %}
+                  <label class="visually-hidden" for="tool-{{ item.pk }}">{% translate "Tool" %}</label>
+                  <input id="tool-{{ item.pk }}" name="tool_id" list="tool-options"
+                         placeholder="{% translate 'Tool id' %}">
+                  <input name="tool_name" aria-label="{% translate 'Tool name' %}"
+                         placeholder="{% translate 'Name' %}">
+                  <button class="linkish small" type="submit">{% translate "Add tool" %}</button>
+                </form>
+              {% endif %}
+            </div>
+          </li>
+        {% empty %}<li class="muted small">{% translate "No items yet." %}</li>{% endfor %}
+      </ul>
+      <form method="post" action="{% url 'job_item_create' wo.pk %}" class="row" style="margin-top:.5rem">
+        {% csrf_token %}
+        <input name="title" placeholder="{% translate 'Add a job item' %}" required style="flex:1">
+        <button type="submit">{% translate "Add" %}</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Log" %}</h2>
+      <form method="post" action="{% url 'note_create' wo.pk %}" class="stack">{% csrf_token %}
+        <textarea name="body" rows="2" required aria-label="{% translate 'What just happened' %}"
+                  placeholder="{% translate 'What just happened?' %}"></textarea>
+        <div class="row">
+          <button class="primary" type="submit">{% translate "Add note" %}</button>
+          <span class="small muted">{% translate "Notes are append-only — they are the record of the job." %}</span>
+        </div>
+      </form>
+      <ul class="timeline" style="margin-top:.75rem">
+        {% for note in notes %}
+          <li>
+            <time datetime="{{ note.noted_at|date:'c' }}">{{ note.noted_at|date:"m-d H:i" }}</time>
+            <div>{{ note.body|linebreaksbr }}
+              {% if note.author %}<div class="small muted">{{ note.author.display_name }}</div>{% endif %}</div>
+          </li>
+        {% empty %}<li class="muted small">{% translate "Nothing logged yet." %}</li>{% endfor %}
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Photos" %}</h2>
+      <div class="thumbs">
+        {% for link in photos %}
+          <a href="{{ link.media.file.url }}">
+            <img src="{{ link.media.display_url }}" alt="{{ link.caption|default:link.get_role_display }}">
+          </a>
+        {% empty %}<p class="muted small">{% translate "No photos yet." %}</p>{% endfor %}
+      </div>
+      <form method="post" action="{% url 'work_order_photo' wo.pk %}" enctype="multipart/form-data" class="row" style="margin-top:.75rem">
+        {% csrf_token %}
+        <input type="file" name="files" accept="image/*" capture="environment" multiple
+               aria-label="{% translate 'Photos of this job' %}">
+        <select name="role" class="select" aria-label="{% translate 'What these photos show' %}">
+          <option value="other">{% translate "General" %}</option>
+          <option value="before">{% translate "Before" %}</option>
+          <option value="after">{% translate "After" %}</option>
+          <option value="receipt">{% translate "Receipt" %}</option>
+        </select>
+        <button type="submit">{% translate "Add" %}</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Parts used" %}</h2>
+      <ul class="list small">
+        {% for usage in part_usages %}
+          <li class="spread">
+            <div><a href="{% url 'part_detail' usage.part.pk %}">{{ usage.part }}</a>
+              <div class="muted">{{ usage.qty }} · {{ usage.get_source_display }}
+                {% if usage.owes_core %}· <span class="pill warn">{% translate "core owed" %}</span>{% endif %}</div></div>
+            <span class="mono">{{ usage.unit_cost|default:"—" }}</span>
+          </li>
+        {% empty %}<li class="muted">{% translate "No parts recorded." %}</li>{% endfor %}
+      </ul>
+      {# One flow whether it comes off the shelf or was bought for the job. #}
+      <form method="post" action="{% url 'work_order_part_use' wo.pk %}" class="row" style="margin-top:.5rem">
+        {% csrf_token %}
+        <select name="part" class="select" required style="flex:1" aria-label="{% translate 'Part used' %}">
+          <option value="">{% translate "Choose a part…" %}</option>
+          {% for part in parts %}<option value="{{ part.pk }}">{{ part }} ({{ part.on_hand }})</option>{% endfor %}
+        </select>
+        <input type="number" step="0.001" name="qty" value="1" style="width:5rem" inputmode="decimal"
+               aria-label="{% translate 'How many' %}">
+        <button type="submit">{% translate "Use" %}</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Other costs" %}</h2>
+      <ul class="list small">
+        {% for expense in expenses %}
+          <li class="spread"><div>{{ expense.get_category_display }}
+            <div class="muted">{{ expense.description }}</div></div>
+            <span class="mono">{{ expense.amount }}</span></li>
+        {% empty %}<li class="muted">{% translate "None recorded." %}</li>{% endfor %}
+      </ul>
+      <form method="post" action="{% url 'work_order_expense_add' wo.pk %}" class="formgrid" style="margin-top:.5rem">
+        {% csrf_token %}
+        {% for field in expense_form %}
+          <div class="field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}</div>
+        {% endfor %}
+        <div class="field full"><button type="submit">{% translate "Add cost" %}</button></div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Time" %}</h2>
+      <ul class="list small">
+        {% for entry in time_entries %}
+          <li class="spread"><div>{{ entry.get_category_display }}
+            <div class="muted">{{ entry.note }}{% if entry.user %} · {{ entry.user.display_name }}{% endif %}</div></div>
+            <span class="mono">{{ entry.hours }} h</span></li>
+        {% empty %}<li class="muted">{% translate "No time logged." %}</li>{% endfor %}
+      </ul>
+      <form method="post" action="{% url 'work_order_time_add' wo.pk %}" class="row" style="margin-top:.5rem">
+        {% csrf_token %}
+        <input type="number" step="0.25" name="hours" inputmode="decimal" required style="width:6rem"
+               aria-label="{% translate 'Hours' %}" placeholder="{% translate 'hours' %}">
+        <select name="category" class="select" aria-label="{% translate 'Kind of time' %}">
+          <option value="wrenching">{% translate "Wrenching" %}</option>
+          <option value="diagnosis">{% translate "Diagnosis" %}</option>
+          <option value="parts_run">{% translate "Parts run" %}</option>
+          <option value="research">{% translate "Research" %}</option>
+          <option value="cleanup">{% translate "Cleanup" %}</option>
+        </select>
+        <input name="note" style="flex:1" aria-label="{% translate 'Note' %}"
+               placeholder="{% translate 'note' %}">
+        <button type="submit">{% translate "Log" %}</button>
+      </form>
+    </section>
+  </div>
+
+  <aside class="stack">
+    <section class="card">
+      <div class="spread"><h2>{% translate "Cost" %}</h2><span class="mono">{{ rollup.total }}</span></div>
+      <ul class="list small">
+        {% for line in rollup.lines %}
+          <li class="spread"><span>{{ line.label }}</span><span class="mono">{{ line.money }}</span></li>
+        {% empty %}<li class="muted">{% translate "Nothing yet." %}</li>{% endfor %}
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Status" %}</h2>
+      {% if next_statuses %}
+        <form method="post" action="{% url 'work_order_transition' wo.pk %}" class="stack">{% csrf_token %}
+          <select name="status" class="select" id="status-select" aria-label="{% translate 'Move it to' %}">
+            {% for value, label in next_statuses %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+          </select>
+          {% comment %}Completing without the meter reading loses the one number that
+             makes the record useful later (FR-WO-9).{% endcomment %}
+          {% if asset.has_meter %}
+            <div class="field">
+              <label for="id_odometer_out">{% translate "Meter at completion" %} ({{ asset.meter_unit }})</label>
+              <input type="number" step="0.01" name="odometer_out" id="id_odometer_out" inputmode="decimal"
+                     value="{{ wo.odometer_out|default_if_none:'' }}">
+            </div>
+          {% endif %}
+          <div class="field">
+            <label for="id_blocked_reason">{% translate "Blocked on (if waiting)" %}</label>
+            <input name="blocked_reason" id="id_blocked_reason" value="{{ wo.blocked_reason }}">
+          </div>
+          <button class="primary" type="submit">{% translate "Update status" %}</button>
+        </form>
+      {% else %}
+        <p class="muted small">{% translate "No transitions available." %}</p>
+      {% endif %}
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Vehicle" %}</h2>
+      <p><a href="{% url 'asset_detail' asset.pk %}">{{ asset.nickname }}</a></p>
+      <p class="small muted">{{ asset.descriptor }}</p>
+      <table class="small">
+        {% if wo.odometer_in %}<tr><th>{% translate "In" %}</th><td class="mono">{{ wo.odometer_in|floatformat:0 }} {{ asset.meter_unit }}</td></tr>{% endif %}
+        {% if wo.odometer_out %}<tr><th>{% translate "Out" %}</th><td class="mono">{{ wo.odometer_out|floatformat:0 }} {{ asset.meter_unit }}</td></tr>{% endif %}
+        {% if wo.requested_by %}<tr><th>{% translate "Requested by" %}</th><td>{{ wo.requested_by }}</td></tr>{% endif %}
+      </table>
+    </section>
+
+    {# The lookup that interrupts a job most often, one tap away (FR-SPEC-4). #}
+    <section class="card">
+      <div class="spread">
+        <h2>{% translate "Specs" %}</h2>
+        <a class="btn small" href="{% url 'asset_specs' asset.pk %}">{% translate "All" %}</a>
+      </div>
+      <table class="small">
+        {% for spec in pinned_specs %}
+          <tr><th>{{ spec.name }}</th><td class="mono">{{ spec.display_value }}</td></tr>
+        {% empty %}
+          <tr><td class="muted">{% translate "Pin a spec to see it here while you work." %}</td></tr>
+        {% endfor %}
+      </table>
+    </section>
+
+    {% if not tools_enabled and show_product_links and not job_item_tools %}
+      {% comment %}House placement (INTEGRATION-WRENCHLEDGER.md §10): contextual — this is
+         the empty state of tool references, which is exactly where somebody is
+         thinking about tool tracking. Static markup, no network call, no
+         beacon; attribution happens on the other side from ?ref.{% endcomment %}
+      <section class="card muted-card">
+        <h2>{% translate "Tools" %}</h2>
+        <p class="small">
+          {% blocktranslate %}HomeAutoShop does not track what tools you own or who borrowed them — that is <a href="https://wrench-ledger.app?ref=homeautoshop" rel="noopener">WrenchLedger</a>'s job. Connecting the two puts "the breaker bar is at Dave's" on this page before you start.{% endblocktranslate %}
+        </p>
+        <p class="small muted">
+          {% translate "Same developer as this. Paid cloud service, not self-hosted." %}
+        </p>
+      </section>
+    {% endif %}
+
+    {% if service_links %}
+    {# The lookup that interrupts a job most often, one tap away (FR-SPEC-4). #}
+    <section class="card">
+      <h2>{% translate "Manuals" %}</h2>
+      <ul class="list small">
+        {% for link in service_links %}
+          <li><a href="{{ link.url }}" target="_blank" rel="noopener noreferrer">{{ link.provider.name }} ↗</a></li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

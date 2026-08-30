@@ -1,0 +1,25 @@
+{% extends "base.html" %}{% load i18n %}
+{% block content %}
+<h1>{% translate "Vendors" %}</h1>
+<div class="cols two">
+  <section class="card">
+    <ul class="list">
+      {% for vendor in vendors %}
+        <li><strong>{{ vendor.name }}</strong>
+          <div class="small muted">{{ vendor.get_type_display }}
+            {% if vendor.return_window_days %}· {{ vendor.return_window_days }} {% translate "day returns" %}{% endif %}
+          </div></li>
+      {% empty %}<li class="empty">{% translate "No vendors yet." %}</li>{% endfor %}
+    </ul>
+  </section>
+  <aside class="card">
+    <h2>{% translate "Add a vendor" %}</h2>
+    <form method="post" action="{% url 'vendor_create' %}" class="stack">{% csrf_token %}
+      {% for field in form %}
+        <div class="field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}</div>
+      {% endfor %}
+      <button class="primary" type="submit">{% translate "Add" %}</button>
+    </form>
+  </aside>
+</div>
+{% endblock %}

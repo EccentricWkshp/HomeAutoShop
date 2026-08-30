@@ -1,0 +1,323 @@
+{
+  "tool": {
+    "vendor": "XTOOL",
+    "model": "D8",
+    "serial": "D8-000000"
+  },
+  "vehicle": {
+    "name": "Silverado",
+    "year": 2012,
+    "vin": "1GCPKSE77CF409107",
+    "odometer": null,
+    "odometer_unit": "mi",
+    "diagnosis_route": "CHEVROLET->V14.50->Automatic Detection->2012->LD trk, MPV, incomplete->Chevrolet truck->Silverado"
+  },
+  "generated_at": "2025-04-12T08:59:00",
+  "modules": [
+    "Transfer case control module"
+  ],
+  "ecu": {
+    "VIN": "1GCPKSE77CF409107",
+    "Software part number": "24261370",
+    "Calibration part number": "24261373",
+    "Base model part number": "24261368",
+    "End model part number": "24261367"
+  },
+  "dtcs": [
+    {
+      "code": "B2725-08",
+      "description": "Transfer case range selection switch circuit performance - signal invalid",
+      "module": "Transfer case control module",
+      "status_raw": "Last test:Passed This ignition:Passed Since Clear:Passed & failed",
+      "status": "history",
+      "last_test": "Passed",
+      "this_ignition": "Passed",
+      "since_clear": "Passed & failed"
+    }
+  ],
+  "live_data": [
+    {
+      "name": "ATC(automatic transfer case) range 4WD",
+      "value": "hi/locked",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "ATC(automatic transfer case) range select sw. state",
+      "value": "Invalid",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "ATC(automatic transfer case) range select switch",
+      "value": "3.00",
+      "maximum": "3.30",
+      "minimum": "2.70",
+      "unit": "V",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "ATC(automatic transfer case) range select sw. reference",
+      "value": "5.00",
+      "maximum": "5.50",
+      "minimum": "4.50",
+      "unit": "V",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "ATC(automatic transfer case) clutch learn status",
+      "value": "Inactive",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "Range actuator learn status",
+      "value": "Passed",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "Range actuator lock command",
+      "value": "Locked",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "Range actuator direction signal",
+      "value": "Counterclockwise",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "Range actuator command",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "%",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "Range actuator current",
+      "value": "0.00",
+      "maximum": "0.00",
+      "minimum": "0.00",
+      "unit": "A",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "Range actuator pos. sensor",
+      "value": "139",
+      "maximum": "153",
+      "minimum": "125",
+      "unit": "deg",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "Range actr. pos. sen. volts",
+      "value": "7.60",
+      "maximum": "8.36",
+      "minimum": "6.84",
+      "unit": "V",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "Range actuator direction signal",
+      "value": "0.74",
+      "maximum": "0.81",
+      "minimum": "0.67",
+      "unit": "V",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "Range actuator diag. signal",
+      "value": "0.74",
+      "maximum": "0.81",
+      "minimum": "0.67",
+      "unit": "V",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "ATC(automatic transfer case) range pos. sen. volts",
+      "value": "On",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "ATC(automatic transfer case) range position sensor",
+      "value": "139",
+      "maximum": "153",
+      "minimum": "125",
+      "unit": "deg",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "ATC(automatic transfer case) range position sensor",
+      "value": "2.97",
+      "maximum": "4.53",
+      "minimum": "2.51",
+      "unit": "V",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "ATC(automatic transfer case) clutch engagement",
+      "value": "0",
+      "maximum": "110",
+      "minimum": "0",
+      "unit": "%",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "ATC(automatic transfer case) clutch auto. learn status",
+      "value": "Passed",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "Front axle actuator command",
+      "value": "Disengaged",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "Front axle feedback switch",
+      "value": "Disengaged",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "2WD HI ind. command",
+      "value": "On",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "4WD auto. ind. command",
+      "value": "Off",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "4WD HI ind. command",
+      "value": "Off",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "4WD LO ind. command",
+      "value": "Off",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "ATC(automatic transfer case) neutral ind. command",
+      "value": "Off",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "Service 4WD ind. command",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "Control module voltage signal",
+      "value": "14.40",
+      "maximum": "15.84",
+      "minimum": "12.96",
+      "unit": "V",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "Ignition 1 signal",
+      "value": "On",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "Ignition accessory signal",
+      "value": "On",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "Trans. range",
+      "value": "1",
+      "maximum": "1",
+      "minimum": "1",
+      "unit": "",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "Trans. fluid temp",
+      "value": "82.4",
+      "maximum": "90.6",
+      "minimum": "74.2",
+      "unit": "deg F",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "Vehicle speed",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "mph",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "ABS active",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transfer case control module"
+    },
+    {
+      "name": "4WD auto. status Not",
+      "value": "in 4WD auto",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transfer case control module"
+    }
+  ],
+  "remark": "",
+  "pages": 2,
+  "warnings": []
+}

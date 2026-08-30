@@ -1,0 +1,65 @@
+{% extends "base.html" %}{% load i18n static %}
+{% block title %}{% translate "Read the car directly" %} — {{ asset.nickname }}{% endblock %}
+{% block content %}
+
+<div class="spread">
+  <div>
+    <h1>{% translate "Read the car directly" %}</h1>
+    <p class="muted">
+      <a href="{% url 'asset_diagnostics' asset.pk %}">{{ asset.nickname }}</a>
+      · {% translate "ELM327 over USB" %}
+    </p>
+  </div>
+  <a class="btn" href="{% url 'asset_diagnostics' asset.pk %}">{% translate "Back" %}</a>
+</div>
+
+<p class="msg info">
+  {% translate "Needs a Chromium-based browser — Chrome or Edge — over HTTPS. Anything read here lands as a draft for you to check, the same as a PDF report." %}
+</p>
+
+<div class="cols two">
+  <div class="stack">
+    <section class="card">
+      <h2>{% translate "Adapter" %}</h2>
+      <p id="elm-status" role="status" aria-live="polite" class="muted">{% translate "Checking…" %}</p>
+      <div class="row">
+        <button id="elm-read" class="primary" type="button">{% translate "Read codes" %}</button>
+        <button id="elm-save" type="button" disabled>{% translate "Keep what was read" %}</button>
+      </div>
+      <h3>{% translate "What the adapter said" %}</h3>
+      <div id="elm-log" class="scroll" style="max-block-size:12rem"></div>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Clearing codes" %}</h2>
+      <p class="small muted">
+        {% translate "Clearing resets the readiness monitors, and a car with unset monitors fails an emissions test on the spot — sometimes for a hundred miles of driving afterwards. Do it after the repair, not before the test." %}
+      </p>
+      <button id="elm-clear" type="button">{% translate "Clear codes on this vehicle" %}</button>
+    </section>
+  </div>
+
+  <div class="stack">
+    <section class="card">
+      <h2>{% translate "Codes read" %}</h2>
+      <div id="elm-results" class="stack muted">{% translate "Nothing read yet." %}</div>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "What this reads" %}</h2>
+      <ul class="small muted">
+        <li>{% translate "Stored codes — the ones that turned the light on." %}</li>
+        <li>{% translate "Pending codes — seen once, not yet confirmed." %}</li>
+        <li>{% translate "Permanent codes — cleared by the car, not by a tool." %}</li>
+      </ul>
+      <p class="small muted">
+        {% translate "Generic codes come with a standard description. Manufacturer-specific codes show whatever you have written down for that make." %}
+      </p>
+    </section>
+  </div>
+</div>
+
+{{ strings|json_script:"elm-strings" }}
+{{ config|json_script:"elm-config" }}
+<script src="{% static 'elm327.js' %}" defer></script>
+{% endblock %}

@@ -1,0 +1,109 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Import a spreadsheet" %}{% endblock %}
+{% block content %}
+
+<h1>{% translate "Import a spreadsheet" %}</h1>
+<p class="muted">
+  {% translate "Bring in the file you already keep, and say which column is which." %}
+</p>
+
+<section class="card">
+  <h2>{% translate "What is in the file" %}</h2>
+  <form method="get" action="{% url 'data_import' %}" class="row">
+    <label class="visually-hidden" for="kind">{% translate "Type" %}</label>
+    <select id="kind" name="kind">
+      {% for value, label in kinds %}
+        <option value="{{ value }}"{% if value == kind %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit">{% translate "Change" %}</button>
+  </form>
+
+  <form method="post" action="{% url 'data_import' %}" enctype="multipart/form-data"
+        class="stack">{% csrf_token %}
+    <input type="hidden" name="kind" value="{{ kind }}">
+    <div class="field">
+      <label for="file">{% translate "CSV file" %}</label>
+      <input id="file" type="file" name="file" accept=".csv,.txt,text/csv" required>
+    </div>
+    <button class="primary" type="submit">{% translate "Read the columns" %}</button>
+  </form>
+  <p class="small muted">
+    {% translate "Commas, semicolons or tabs all work." %}
+  </p>
+</section>
+
+{% if header %}
+<form method="post" action="{% url 'data_import' %}" class="stack">{% csrf_token %}
+  <input type="hidden" name="kind" value="{{ kind }}">
+
+  <section class="card">
+    <h2>{% translate "Which column is which" %}</h2>
+    <p class="small muted">
+      {% blocktranslate count counter=row_count %}{{ counter }} row read.{% plural %}{{ counter }} rows read.{% endblocktranslate %}
+      {% translate "Leave anything you do not have blank." %}
+    </p>
+    <div class="formgrid">
+      {% for entry in fields %}
+        <div class="field">
+          <label for="map_{{ entry.name }}">
+            {{ entry.name }}{% if entry.required %} <span class="pill warn">{% translate "needed" %}</span>{% endif %}
+          </label>
+          <select id="map_{{ entry.name }}" name="map_{{ entry.name }}">
+            <option value="">{% translate "— not in this file —" %}</option>
+            {% for column in entry.columns %}
+              <option value="{{ column.name }}"{% if column.selected %} selected{% endif %}>{{ column.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      {% endfor %}
+    </div>
+
+    <h3>{% translate "The first few rows" %}</h3>
+    <div class="tablewrap"><table>
+      <thead><tr>{% for column in header %}<th>{{ column }}</th>{% endfor %}</tr></thead>
+      <tbody>
+        {% for row in sample %}
+          <tr>{% for cell in row %}<td class="small">{{ cell }}</td>{% endfor %}</tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+  </section>
+
+  <div class="row">
+    <button class="primary" type="submit">{% translate "Show me what would happen" %}</button>
+    {% if outcome and outcome.dry_run and outcome.created %}
+      <button type="submit" name="write" value="1">{% translate "Do it for real" %}</button>
+    {% endif %}
+  </div>
+</form>
+{% endif %}
+
+{% if outcome %}
+<section class="card">
+  <h2>
+    {% if outcome.dry_run %}{% translate "What would happen" %}
+    {% else %}{% translate "What happened" %}{% endif %}
+  </h2>
+  {% if outcome.dry_run %}
+    <p class="msg info">{% translate "Nothing has been written. This is a rehearsal." %}</p>
+  {% endif %}
+  <table class="small"><tbody>
+    <tr><th>{% translate "New records" %}</th><td class="mono">{{ outcome.created }}</td></tr>
+    <tr><th>{% translate "Already here" %}</th><td class="mono">{{ outcome.already }}</td></tr>
+    <tr><th>{% translate "Skipped" %}</th><td class="mono">{{ outcome.skipped }}</td></tr>
+  </tbody></table>
+
+  {% if outcome.samples %}
+    <h3>{% translate "For example" %}</h3>
+    <ul class="small">{% for line in outcome.samples %}<li>{{ line }}</li>{% endfor %}</ul>
+  {% endif %}
+
+  {% if outcome.problems %}
+    <h3>{% translate "Rows that could not be read" %}</h3>
+    <ul class="small warn">{% for line in outcome.problems %}<li>{{ line }}</li>{% endfor %}</ul>
+    <p class="small muted">{% translate "Only the first 25 are listed; a wrong column choice produces one of these per row." %}</p>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

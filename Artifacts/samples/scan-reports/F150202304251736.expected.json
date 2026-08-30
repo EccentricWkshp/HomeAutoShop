@@ -1,0 +1,502 @@
+{
+  "tool": {
+    "vendor": "XTOOL",
+    "model": "D8",
+    "serial": "D8-000000"
+  },
+  "vehicle": {
+    "name": "F-150",
+    "year": 2007,
+    "vin": "1FTPW14V87F828326",
+    "odometer": 191745,
+    "odometer_unit": "mi",
+    "diagnosis_route": "Automatic Detection -> Model:F-150 -> Model Year:2007 MY -> Capacity:5.4L -> Type Of Engine:3V"
+  },
+  "generated_at": "2023-04-25T17:36:00",
+  "modules": [
+    "4X4",
+    "ABS",
+    "DSM",
+    "EATC",
+    "IC",
+    "PAM",
+    "PCM",
+    "RCM",
+    "VSM"
+  ],
+  "ecu": {
+    "System Name Instrument": "Cluster(IC)",
+    "System Configuration Standard configuration": "module",
+    "Part Number": "7L34_10849_EAB"
+  },
+  "dtcs": [],
+  "live_data": [
+    {
+      "name": "Status Of Air Conditioning (A/C) Panel Servo Position",
+      "value": "161",
+      "maximum": "177",
+      "minimum": "145",
+      "unit": "",
+      "module": "EATC"
+    },
+    {
+      "name": "Status Of Air Conditioning Switch",
+      "value": "Not Pressed",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "EATC"
+    },
+    {
+      "name": "State Of Air Conditioning (A/C) Sunload Sensor",
+      "value": "241",
+      "maximum": "265",
+      "minimum": "217",
+      "unit": "",
+      "module": "EATC"
+    },
+    {
+      "name": "Speed Of Blower Motor",
+      "value": "2040",
+      "maximum": "2244",
+      "minimum": "1836",
+      "unit": "rpm",
+      "module": "EATC"
+    },
+    {
+      "name": "State Of Rear Defrost Switch",
+      "value": "Not Pressed",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "EATC"
+    },
+    {
+      "name": "Recirculation State",
+      "value": "Not Pressed",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "EATC"
+    },
+    {
+      "name": "Number Of Diagnostic Trouble Codes (DTCs) Stored In Module",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "",
+      "module": "EATC"
+    },
+    {
+      "name": "State Of Driver Climate Controlled Seat 1",
+      "value": "OFF",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "EATC"
+    },
+    {
+      "name": "State Of Driver Climate Controlled Seat 2",
+      "value": "Off",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "EATC"
+    },
+    {
+      "name": "Operating State Of Electronic Control Unit (ECU)",
+      "value": "Operational State",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "EATC"
+    },
+    {
+      "name": "State Of English/Metric Selector Not",
+      "value": "Activated",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "EATC"
+    },
+    {
+      "name": "Outside Temperature",
+      "value": "60.8",
+      "maximum": "66.9",
+      "minimum": "54.7",
+      "unit": "deg F",
+      "module": "EATC"
+    },
+    {
+      "name": "Fan Speed Setting Input",
+      "value": "Not Pressed",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "EATC"
+    },
+    {
+      "name": "Sensor Of Internal Temperature",
+      "value": "68.0",
+      "maximum": "74.8",
+      "minimum": "61.2",
+      "unit": "deg F",
+      "module": "EATC"
+    },
+    {
+      "name": "Position State Of Climate Control Blend Door",
+      "value": "126",
+      "maximum": "139",
+      "minimum": "113",
+      "unit": "",
+      "module": "EATC"
+    },
+    {
+      "name": "State Of Outside Temperature Display",
+      "value": "Off",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "EATC"
+    },
+    {
+      "name": "Input Of Passenger Temperature Selector",
+      "value": "Not Pressed",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "EATC"
+    },
+    {
+      "name": "Duty Cycle Of Illumination Input",
+      "value": "0.00",
+      "maximum": "0.00",
+      "minimum": "0.00",
+      "unit": "%",
+      "module": "EATC"
+    },
+    {
+      "name": "State Of Passenger Climate Controlled Seat 1",
+      "value": "OFF",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "EATC"
+    },
+    {
+      "name": "State Of Passenger Climate Controlled Seat 2",
+      "value": "Off",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "EATC"
+    },
+    {
+      "name": "Diagnostic Trouble Codes",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "",
+      "module": "EATC"
+    },
+    {
+      "name": "Switches Of Steering Wheel",
+      "value": "245",
+      "maximum": "270",
+      "minimum": "220",
+      "unit": "",
+      "module": "EATC"
+    },
+    {
+      "name": "State Of Temperature Selector",
+      "value": "Not Pressed",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "EATC"
+    },
+    {
+      "name": "Module Supply Voltage",
+      "value": "14.3",
+      "maximum": "15.7",
+      "minimum": "12.9",
+      "unit": "V",
+      "module": "EATC"
+    },
+    {
+      "name": "Controller Area Network (CAN) Message From Antilock Brake System (ABS) Is Lost.",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "Circuit Of Accessory Delay Relay",
+      "value": "On",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "State Of Battery Saver Relay",
+      "value": "On",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "Level Of Brake Fluid",
+      "value": "OK",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "Continuous Codes",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "Courtesy Lamps",
+      "value": "On",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "Ajar Switch State Of Driver Door",
+      "value": "Ajar",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "Outside Temperature",
+      "value": "62.6",
+      "maximum": "68.9",
+      "minimum": "56.3",
+      "unit": "deg F",
+      "module": "IC"
+    },
+    {
+      "name": "State Of Unfiltered External Temperature",
+      "value": "62.6",
+      "maximum": "68.9",
+      "minimum": "56.3",
+      "unit": "deg F",
+      "module": "IC"
+    },
+    {
+      "name": "Level Of Fuel",
+      "value": "41.57",
+      "maximum": "45.73",
+      "minimum": "37.41",
+      "unit": "%",
+      "module": "IC"
+    },
+    {
+      "name": "Circuit Of Rear Defrost Relay",
+      "value": "Off",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "Operating State Of Electronic Control Unit (ECU)",
+      "value": "Diagnostic mode",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "Position Of Adaptive Cruise Control (ACC)",
+      "value": "NO",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "Ignition Key In/Out",
+      "value": "In",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "Off/Unlock Position Of Ignition Switch",
+      "value": "NO",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "Run Position Of Ignition Switch",
+      "value": "YES",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "Start (Position 3)",
+      "value": "NO",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "Information Switch",
+      "value": "Not Pressed",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "State Of Liftgate Ajar Switch",
+      "value": "Closed",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "Ajar Switch State Of Left Rear Door",
+      "value": "Closed",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "Total Distance",
+      "value": "191590.26",
+      "maximum": "210749.30",
+      "minimum": "172431.23",
+      "unit": "mile",
+      "module": "IC"
+    },
+    {
+      "name": "Pressure Switch Of Oil OK",
+      "value": "Pressure",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "Controller Area Network (CAN) Message From Powertrain Control Module (PCM) Is Lost.",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "Input Of Parking Brake Switch",
+      "value": "Off",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "Duty Cycle Of Illumination Input",
+      "value": "0.00",
+      "maximum": "0.00",
+      "minimum": "0.00",
+      "unit": "%",
+      "module": "IC"
+    },
+    {
+      "name": "Ajar Switch State Of Passenger Door",
+      "value": "Closed",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "Parking Lamps",
+      "value": "Off",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "Switch For Rear Defrost",
+      "value": "Off",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "Reset Switch",
+      "value": "Inactive",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "Ajar Switch State Of Right Rear Door",
+      "value": "Closed",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "Due To Diagnostic Test, Number Of Trouble Codes Set",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "Setup Switch",
+      "value": "Not Pressed",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "Reset Switch Of Trip",
+      "value": "Off",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "IC"
+    },
+    {
+      "name": "Voltage Of Battery",
+      "value": "14.0",
+      "maximum": "15.6",
+      "minimum": "12.5",
+      "unit": "V",
+      "module": "IC"
+    }
+  ],
+  "remark": "",
+  "pages": 3,
+  "warnings": []
+}

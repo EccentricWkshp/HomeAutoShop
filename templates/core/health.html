@@ -1,0 +1,19 @@
+{% extends "base.html" %}{% load i18n %}
+{% block content %}
+<h1>{% translate "Instance health" %}</h1>
+<div class="card">
+  <table>
+    <tr><th>{% translate "Database" %}</th><td>{{ vendor }}</td></tr>
+    <tr><th>{% translate "Media files" %}</th><td>{{ media_count }} ({{ media_bytes|filesizeformat }})</td></tr>
+    <tr><th>{% translate "Last backup" %}</th>
+        <td>{% if backup_age %}{{ backup_age|floatformat:1 }} {% translate "days ago" %}
+            {% else %}<span class="pill danger">{% translate "never" %}</span>{% endif %}</td></tr>
+    <tr><th>{% translate "Offline mode" %}</th><td>{{ offline_mode|yesno }}</td></tr>
+    <tr><th>{% translate "Outbound allowlist" %}</th><td class="mono small">{{ allowlist|join:", " }}</td></tr>
+  </table>
+</div>
+<div class="card">
+  <h2>{% translate "Jobs" %}</h2>
+  <ul class="list small">{% for row in jobs %}<li>{{ row.state }}: {{ row.n }}</li>{% empty %}<li class="muted">{% translate "Queue empty." %}</li>{% endfor %}</ul>
+</div>
+{% endblock %}

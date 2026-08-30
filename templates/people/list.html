@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% load i18n %}
+{% block content %}
+<div class="spread"><h1>{% translate "People" %}</h1>
+  <a class="btn primary" href="{% url 'person_create' %}">{% translate "Add" %}</a></div>
+<section class="card"><ul class="list">
+  {% for person in people %}
+    <li><a href="{% url 'person_detail' person.pk %}">{{ person.display_name }}</a>
+      <div class="small muted">{% if person.is_household %}{% translate "Household" %}{% else %}{% translate "Contact" %}{% endif %}
+        {% if person.email %} · {{ person.email }}{% endif %}</div></li>
+  {% empty %}<li class="empty">{% translate "No people yet." %}</li>{% endfor %}
+</ul></section>
+{% endblock %}

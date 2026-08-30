@@ -1,0 +1,40 @@
+# TLS is mandatory, not optional (SPEC C-1): service workers, the camera, and
+# Web Serial/Bluetooth all refuse to run outside a secure context.
+#
+# How the certificate is obtained is chosen by TLS_MODE, which selects one of
+# config/caddy/tls-*.conf and mounts it here. An unrecognised value stops the
+# proxy from starting rather than quietly falling back to something weaker.
+#
+#   acme-dns  a real Let's Encrypt certificate, via a DNS challenge.
+#             Nothing to install on any device. Needs a public domain name.
+#   internal  Caddy's own CA. No prerequisites, but its root must be installed
+#             on every device that will ever open the site.
+#   custom    a certificate you supply and renew yourself.
+
+{$SITE_ADDRESS:shop.home.arpa} {
+	encode zstd gzip
+
+	# Media is served with an explicit type and no sniffing.
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	reverse_proxy app:8080 {
+		# X-Forwarded-Proto, -For and -Host are set by default; setting them
+		# again only earns a warning on every start. X-Real-IP is not.
+		header_up X-Real-IP {remote_host}
+	}
+
+	import /etc/caddy/tls.conf
+
+	log {
+		output stdout
+		format console
+	}
+}
+
+http:// {
+	redir https://{host}{uri} permanent
+}

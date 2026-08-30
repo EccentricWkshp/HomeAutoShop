@@ -1,0 +1,22 @@
+{
+  "name": "HomeAutoShop",
+  "short_name": "Shop",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#12151a",
+  "theme_color": "#12151a",
+  "description": "Self-hosted shop management for a home garage.",
+  "icons": [
+    { "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/static/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/static/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "New job", "url": "/work-orders/new/" },
+    { "name": "What's due", "url": "/due/" },
+    { "name": "Vehicles", "url": "/vehicles/" }
+  ]
+}

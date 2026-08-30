@@ -1,0 +1,25 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Trash" %} — {{ shop_name }}{% endblock %}
+{% block content %}
+<h1>{% translate "Trash" %}</h1>
+<p class="muted small">
+  {% blocktranslate %}Deleted records are kept for {{ retention_days }} days and can be restored. Nothing here is gone yet.{% endblocktranslate %}
+</p>
+{% for group in groups %}
+<section class="card">
+  <h2>{{ group.label }}</h2>
+  <ul class="list">
+    {% for row in group.rows %}
+      <li class="spread">
+        <div>{{ row }}<div class="small muted">{% translate "Deleted" %} {{ row.deleted_at|date:"Y-m-d H:i" }}</div></div>
+        <form method="post" action="{% url 'trash_restore' group.kind row.pk %}">{% csrf_token %}
+          <button type="submit">{% translate "Restore" %}</button>
+        </form>
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% empty %}
+<p class="empty card">{% translate "Nothing in the trash." %}</p>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,150 @@
+/*
+ * Service worker (SPEC §5.4, §9.4).
+ *
+ * The client is an **offline-capable cache with a write queue**, not a replica.
+ * That distinction is the whole design, and this file only handles the read
+ * half — the shell and recently-visited pages. The write queue lives in
+ * offline.js, because a queued write has to survive this worker being replaced.
+ *
+ * What is cached, per §5.4:
+ *   - the shell and the stylesheet, precached on install;
+ *   - pages and API reads, cached as they are visited (stale-while-revalidate);
+ *   - thumbnails. **Originals are never cached** — a phone with a hundred
+ *     full-size photos of a bellhousing in its cache is a phone with no space.
+ *
+ * A GET that misses while offline renders the offline page rather than the
+ * browser's error, so the app looks like it is waiting rather than broken.
+ */
+"use strict";
+
+var VERSION = "v1";
+var SHELL = "shell-" + VERSION;
+var PAGES = "pages-" + VERSION;
+var MEDIA = "media-" + VERSION;
+
+var PRECACHE = ["/static/app.css", "/static/offline.html", "/static/manifest.webmanifest"];
+
+self.addEventListener("install", function (event) {
+  event.waitUntil(
+    caches.open(SHELL).then(function (cache) {
+      // addAll rejects the whole install if any one URL 404s, which would
+      // leave the app with no worker at all. Each is added independently.
+      return Promise.all(PRECACHE.map(function (url) {
+        return cache.add(url).catch(function () { return null; });
+      }));
+    }).then(function () { return self.skipWaiting(); })
+  );
+});
+
+self.addEventListener("activate", function (event) {
+  event.waitUntil(
+    caches.keys().then(function (names) {
+      return Promise.all(names.map(function (name) {
+        if (name.indexOf(VERSION) < 0) { return caches.delete(name); }
+        return null;
+      }));
+    }).then(function () { return self.clients.claim(); })
+  );
+});
+
+function isMedia(url) {
+  return url.pathname.indexOf("/media/") === 0;
+}
+
+function isThumbnail(url) {
+  return url.pathname.indexOf("/media/derivatives/") === 0;
+}
+
+self.addEventListener("fetch", function (event) {
+  var request = event.request;
+  if (request.method !== "GET") { return; }
+
+  var url = new URL(request.url);
+  if (url.origin !== self.location.origin) { return; }
+
+  // Never cache an original. Thumbnails only.
+  if (isMedia(url) && !isThumbnail(url)) { return; }
+
+  if (isThumbnail(url) || url.pathname.indexOf("/static/") === 0) {
+    event.respondWith(cacheFirst(request, isThumbnail(url) ? MEDIA : SHELL));
+    return;
+  }
+
+  event.respondWith(staleWhileRevalidate(request));
+});
+
+function cacheFirst(request, cacheName) {
+  return caches.match(request).then(function (hit) {
+    if (hit) { return hit; }
+    return fetch(request).then(function (response) {
+      if (response.ok) {
+        var copy = response.clone();
+        caches.open(cacheName).then(function (cache) { cache.put(request, copy); });
+      }
+      return response;
+    });
+  });
+}
+
+function staleWhileRevalidate(request) {
+  return caches.match(request).then(function (hit) {
+    var network = fetch(request).then(function (response) {
+      if (response.ok) {
+        var copy = response.clone();
+        caches.open(PAGES).then(function (cache) { cache.put(request, copy); });
+      }
+      return response;
+    }).catch(function () {
+      // Offline. A cached copy beats an error page; the offline page beats the
+      // browser's dinosaur.
+      return hit || caches.match("/static/offline.html");
+    });
+    return hit || network;
+  });
+}
+
+/*
+ * Background Sync. Where the browser supports it, a reconnect wakes the worker
+ * and it tells every open tab to drain the queue — the tab owns the queue
+ * because IndexedDB access and the CSRF token both live there.
+ */
+self.addEventListener("sync", function (event) {
+  if (event.tag !== "homeautoshop-queue") { return; }
+  event.waitUntil(
+    self.clients.matchAll({ includeUncontrolled: true }).then(function (clients) {
+      clients.forEach(function (client) { client.postMessage({ type: "drain-queue" }); });
+    })
+  );
+});
+
+/*
+ * Web push for reminders (§9.4). The payload carries only a title and a body
+ * the server already decided to send — never a vehicle's identity, because a
+ * notification renders on a lock screen in front of whoever is standing there.
+ */
+self.addEventListener("push", function (event) {
+  var data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (err) { data = {}; }
+  event.waitUntil(
+    self.registration.showNotification(data.title || "HomeAutoShop", {
+      body: data.body || "",
+      tag: data.tag || "homeautoshop",
+      data: { url: data.url || "/" }
+    })
+  );
+});
+
+self.addEventListener("notificationclick", function (event) {
+  event.notification.close();
+  var target = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(function (clients) {
+      for (var i = 0; i < clients.length; i++) {
+        if (clients[i].url.indexOf(target) >= 0 && "focus" in clients[i]) {
+          return clients[i].focus();
+        }
+      }
+      return self.clients.openWindow(target);
+    })
+  );
+});

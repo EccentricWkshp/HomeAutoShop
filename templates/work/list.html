@@ -1,0 +1,25 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Work orders" %} — {{ shop_name }}{% endblock %}
+{% block content %}
+<div class="spread"><h1>{% translate "Work orders" %}</h1>
+  <a class="btn primary" href="{% url 'work_order_create' %}">{% translate "New" %}</a></div>
+<p class="row small">
+  <a class="btn" href="?status=open">{% translate "Open" %}</a>
+  <a class="btn" href="?status=all">{% translate "All" %}</a>
+  {% for value, label in statuses %}<a class="btn" href="?status={{ value }}">{{ label }}</a>{% endfor %}
+</p>
+<section class="card">
+  <ul class="list">
+    {% for wo in work_orders %}
+      <li>
+        <div class="spread">
+          <a href="{% url 'work_order_detail' wo.pk %}"><strong class="mono">{{ wo.number }}</strong> {{ wo.title }}</a>
+          <span class="pill">{{ wo.get_status_display }}</span>
+        </div>
+        <div class="small muted">{{ wo.asset.nickname }} · {{ wo.get_type_display }} · {{ wo.opened_at|date }}
+          {% if wo.blocked_reason %} · {{ wo.blocked_reason }}{% endif %}</div>
+      </li>
+    {% empty %}<li class="empty">{% translate "Nothing here." %}</li>{% endfor %}
+  </ul>
+</section>
+{% endblock %}

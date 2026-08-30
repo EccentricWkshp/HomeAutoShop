@@ -1,0 +1,84 @@
+{
+  "tool": {
+    "vendor": "XTOOL",
+    "model": "D8",
+    "serial": "D8-000000"
+  },
+  "vehicle": {
+    "name": "F-150",
+    "year": 2007,
+    "vin": "1FTPW14V87F828326",
+    "odometer": null,
+    "odometer_unit": "mi",
+    "diagnosis_route": "Automatic Detection -> Model:F-150 -> Model Year:2007 MY -> Capacity:5.4L -> Type Of Engine:3V"
+  },
+  "generated_at": "2024-04-07T17:38:00",
+  "modules": [
+    "4X4",
+    "ABS",
+    "DSM",
+    "EATC",
+    "IC",
+    "PAM",
+    "PCM",
+    "RCM",
+    "VSM"
+  ],
+  "ecu": {},
+  "dtcs": [
+    {
+      "code": "B1352-20",
+      "description": "Fault Of Ignition Key In Circuit",
+      "module": "IC",
+      "status_raw": "CMDTCs(Storage Trouble Code)",
+      "status": "stored",
+      "last_test": "",
+      "this_ignition": "",
+      "since_clear": ""
+    },
+    {
+      "code": "B1318-20",
+      "description": "The battery voltage level is too low.",
+      "module": "IC",
+      "status_raw": "CMDTCs(Storage Trouble Code)",
+      "status": "stored",
+      "last_test": "",
+      "this_ignition": "",
+      "since_clear": ""
+    },
+    {
+      "code": "B1322",
+      "description": "Circuit Of Left Front Door Ajar Switch Is Shorted To Ground.",
+      "module": "VSM",
+      "status_raw": "ODDTCs(Request Trouble Code)",
+      "status": "current",
+      "last_test": "",
+      "this_ignition": "",
+      "since_clear": ""
+    },
+    {
+      "code": "B1695",
+      "description": "Please See The Vehicle Service Manual.",
+      "module": "VSM",
+      "status_raw": "ODDTCs(Request Trouble Code)",
+      "status": "current",
+      "last_test": "",
+      "this_ignition": "",
+      "since_clear": ""
+    },
+    {
+      "code": "U1950",
+      "description": "Fault Of UBP Communication Bus",
+      "module": "VSM",
+      "status_raw": "CMDTCs(Storage Trouble Code)",
+      "status": "stored",
+      "last_test": "",
+      "this_ignition": "",
+      "since_clear": ""
+    }
+  ],
+  "live_data": [],
+  "remark": "",
+  "pages": 1,
+  "warnings": []
+}

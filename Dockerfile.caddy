@@ -1,0 +1,48 @@
+# Caddy with DNS-01 support compiled in.
+#
+# The stock image cannot do DNS challenges: every provider is a separate Go
+# module and Caddy has no runtime plugin loading. DNS-01 is the *only* challenge
+# a LAN instance can pass — HTTP-01 and TLS-ALPN-01 both require the CA to reach
+# port 80 or 443 from the internet, which is precisely what a local-first
+# instance must not offer.
+#
+# The default set is not an endorsement, just a starting point: `acmedns` works
+# with any provider at all, and the other three are common enough that most
+# people will not have to rebuild. Anyone else supplies their own from
+# https://github.com/caddy-dns — a list of ~100 — with a single build argument:
+#
+#   docker compose build --build-arg CADDY_DNS_MODULES=github.com/caddy-dns/hetzner proxy
+#
+# `acmedns` deserves the top slot on merit. It uses CNAME delegation, so the
+# credential the instance holds controls exactly one TXT record and cannot touch
+# the rest of the zone. Handing a self-hosted box an API token with edit rights
+# over your whole domain is the part of DNS-01 worth being uncomfortable about.
+
+ARG CADDY_VERSION=2
+
+FROM caddy:${CADDY_VERSION}-builder AS builder
+
+# Space-separated. Each becomes its own --with flag.
+ARG CADDY_DNS_MODULES="\
+github.com/caddy-dns/acmedns \
+github.com/caddy-dns/cloudflare \
+github.com/caddy-dns/desec \
+github.com/caddy-dns/duckdns"
+
+RUN set -eux; \
+    args=""; \
+    for module in ${CADDY_DNS_MODULES}; do args="${args} --with ${module}"; done; \
+    xcaddy build ${args}
+
+FROM caddy:${CADDY_VERSION}-alpine
+COPY --from=builder /usr/bin/caddy /usr/bin/caddy
+
+# Picks the tls-*.conf for TLS_MODE, and refuses an unknown one by name.
+COPY docker/caddy-entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+
+# Fail the build rather than the first renewal if nothing was compiled in.
+RUN caddy list-modules | grep -q '^dns\.providers\.' \
+    || (echo "no DNS provider modules compiled in" && exit 1)

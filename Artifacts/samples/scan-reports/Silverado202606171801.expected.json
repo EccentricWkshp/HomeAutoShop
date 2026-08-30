@@ -1,0 +1,602 @@
+{
+  "tool": {
+    "vendor": "XTOOL",
+    "model": "D8",
+    "serial": "D8-000000"
+  },
+  "vehicle": {
+    "name": "Silverado",
+    "year": 2012,
+    "vin": "1GCPKSE77CF409107",
+    "odometer": null,
+    "odometer_unit": "mi",
+    "diagnosis_route": "CHEVROLET->V15.40->Automatic Detection->2012->LD trk, MPV, incomplete->Chevrolet truck->Silverado"
+  },
+  "generated_at": "2026-06-17T18:01:00",
+  "modules": [
+    "Transmission control module"
+  ],
+  "ecu": {},
+  "dtcs": [],
+  "live_data": [
+    {
+      "name": "Engine torque",
+      "value": "23.6|22.1|16.2",
+      "maximum": "31.7",
+      "minimum": "21.2",
+      "unit": "lb-ft",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "Calc. throttle position",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "%",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "Engine speed",
+      "value": "605|599|606",
+      "maximum": "673",
+      "minimum": "545",
+      "unit": "rpm",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "Transmission ISS",
+      "value": "580|596|591",
+      "maximum": "658",
+      "minimum": "532",
+      "unit": "rpm",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "Transmission OSS",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "rpm",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "ISS/OSS supply voltage",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "Last shift time",
+      "value": "0.00",
+      "maximum": "0.00",
+      "minimum": "0.00",
+      "unit": "s",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "1-2 shift time",
+      "value": "0.00",
+      "maximum": "0.00",
+      "minimum": "0.00",
+      "unit": "s",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "2-3 shift time",
+      "value": "0.00",
+      "maximum": "0.00",
+      "minimum": "0.00",
+      "unit": "s",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "3-4 shift time",
+      "value": "0.00",
+      "maximum": "0.00",
+      "minimum": "0.00",
+      "unit": "s",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "4-5 shift time",
+      "value": "0.00",
+      "maximum": "0.00",
+      "minimum": "0.00",
+      "unit": "s",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "5-6 shift time",
+      "value": "0.00",
+      "maximum": "0.00",
+      "minimum": "0.00",
+      "unit": "s",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "Commanded gear",
+      "value": "1",
+      "maximum": "1",
+      "minimum": "1",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "Shift solenoid 1",
+      "value": "On",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "Shift solenoid 2",
+      "value": "On",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "Gear ratio",
+      "value": "8.00",
+      "maximum": "8.80",
+      "minimum": "7.20",
+      "unit": ": 1",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "High side driver 1",
+      "value": "Enable",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "High side drvr. 1 ckt. low voltage test status",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "High side drvr. 1 ckt. open test status",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "High side drvr. 1 ckt. high voltage test status",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "IMS A/B/C/P LOW",
+      "value": "HI HI LOW",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "IMS",
+      "value": "Park",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "ECT",
+      "value": "168.8|190.4|192.2",
+      "maximum": "211.4",
+      "minimum": "173.0",
+      "unit": "deg F",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "Trans. fluid temp",
+      "value": "84.2|89.6",
+      "maximum": "98.6",
+      "minimum": "80.6",
+      "unit": "deg F",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "TCM temperature",
+      "value": "86.0|91.4|93.2",
+      "maximum": "102.5",
+      "minimum": "83.9",
+      "unit": "deg F",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "Brake switch",
+      "value": "Applied",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "TCC slip speed",
+      "value": "20|11|9",
+      "maximum": "22",
+      "minimum": "18",
+      "unit": "rpm",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "Ignition voltage",
+      "value": "14.30|14.60",
+      "maximum": "16.06",
+      "minimum": "13.14",
+      "unit": "V",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "Tow / haul mode",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "Driver shift control",
+      "value": "Active",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "Driver shift request",
+      "value": "None",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "TFP switch 1",
+      "value": "High|Low",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "TFP switch 3",
+      "value": "Low",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "TFP switch 4",
+      "value": "Low",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "TFP switch 5",
+      "value": "Low",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "Vehicle speed",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "mph",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "PC sol. 2 pressure command",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "PC sol. 2 pressure command",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "psi",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "PC sol. 3 pressure command",
+      "value": "Yes",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "PC sol. 3 pressure command",
+      "value": "109.91",
+      "maximum": "120.90",
+      "minimum": "98.92",
+      "unit": "psi",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "PC sol. 4 pressure command",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "PC sol. 4 pressure command",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "psi",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "PC sol. 5 pressure command",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "PC sol. 5 pressure command",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "psi",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "TCC PC sol. pressure command",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "TCC PC sol. pressure command",
+      "value": "0",
+      "maximum": "0",
+      "minimum": "0",
+      "unit": "psi",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "Transmission hot mode",
+      "value": "No",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "Trans. oil life",
+      "value": "15",
+      "maximum": "16",
+      "minimum": "14",
+      "unit": "%",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "Shift sol. 1 ctrl. ckt. low voltage test status",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "Shift sol. 1 ctrl. ckt. open test status",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "Shift sol. 1 ctrl. ckt. high voltage test status",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "Shift sol. 2 ctrl. ckt. low voltage test status",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "Shift sol. 2 ctrl. ckt. open test status",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "Shift sol. 2 ctrl. ckt. high voltage test status",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "Line PC sol. perf. test status",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "Line PC sol. ckt. low voltage test status",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "Line PC sol. ckt. high voltage test status",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "PC sol. 2 perf. test status",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "PC sol. 2 ckt. low voltage test status",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "PC sol. 2 ckt. high voltage test status",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "PC sol. 3 perf. test status",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "PC sol. 3 ckt. low voltage test status",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "PC sol. 3 ckt. high voltage test status",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "PC sol. 4 perf. test status",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "PC sol. 4 ckt. low voltage test status",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "PC sol. 4 ckt. high voltage test status",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "PC sol. 5 perf. test status",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "PC sol. 5 ckt. low voltage test status",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "PC sol. 5 ckt. high voltage test status",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "TCC PC sol. perf. test status",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "TCC PC sol. ctrl. ckt. low voltage test status",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    },
+    {
+      "name": "TCC PC sol. ctrl. ckt. high voltage test status",
+      "value": "Normal",
+      "maximum": "",
+      "minimum": "",
+      "unit": "",
+      "module": "Transmission control module"
+    }
+  ],
+  "remark": "",
+  "pages": 3,
+  "warnings": []
+}

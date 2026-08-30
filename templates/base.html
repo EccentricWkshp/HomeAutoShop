@@ -1,0 +1,87 @@
+{% load i18n static %}<!doctype html>
+<html lang="{{ LANGUAGE_CODE|default:'en' }}" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{% block title %}{{ shop_name }}{% endblock %}</title>
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="{% static 'app.css' %}">
+<link rel="manifest" href="{% static 'manifest.webmanifest' %}">
+<link rel="icon" href="{% static 'icons/favicon-32.png' %}" sizes="32x32">
+<link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
+<meta name="theme-color" content="#12151a">
+</head>
+<body>
+<a class="skip" href="#main">{% translate "Skip to content" %}</a>
+
+{% if user.is_authenticated %}
+<header class="topbar">
+  <a class="brand" href="{% url 'dashboard' %}">{{ shop_name }}</a>
+  <form class="searchbox" action="{% url 'search' %}" method="get" role="search">
+    <label class="visually-hidden" for="topsearch">{% translate "Search" %}</label>
+    <input id="topsearch" type="search" name="q" value="{{ q|default:'' }}"
+           placeholder="{% translate 'Search vehicles, work orders, people…' %}">
+  </form>
+  {# Always visible and honest about what is waiting (SPEC §5.4, §9.2). #}
+  <a id="sync-indicator" class="pill sync" href="{% url 'sync_queue' %}"
+     role="status" aria-live="polite" hidden>{% translate "Up to date" %}</a>
+  <nav class="mainnav" aria-label="{% translate 'Main' %}">
+    <a href="{% url 'asset_list' %}">{% translate "Vehicles" %}</a>
+    <a href="{% url 'work_order_list' %}">{% translate "Work" %}</a>
+    <a href="{% url 'due_list' %}">{% translate "Due" %}</a>
+    <a href="{% url 'inspection_list' %}">{% translate "Inspect" %}</a>
+    <a href="{% url 'part_list' %}">{% translate "Parts" %}</a>
+    <a href="{% url 'inventory' %}">{% translate "Shelf" %}</a>
+    <a href="{% url 'purchase_list' %}">{% translate "Buying" %}</a>
+    <a href="{% url 'reports' %}">{% translate "Reports" %}</a>
+    <a href="{% url 'person_list' %}">{% translate "People" %}</a>
+  </nav>
+  <details class="usermenu">
+    <summary aria-label="{% translate 'Account' %}">{{ user.display_name }}</summary>
+    <div class="menu">
+      {% if offline_mode %}<p class="pill warn">{% translate "Offline mode" %}</p>{% endif %}
+      {% if user.is_admin %}
+        <a href="{% url 'health' %}">{% translate "Instance health" %}</a>
+        <a href="{% url 'reminders' %}">{% translate "Reminders" %}</a>
+        <a href="{% url 'diagnostic_queue' %}">{% translate "Scans to check" %}</a>
+        <a href="{% url 'integrations' %}">{% translate "Integrations" %}</a>
+        <a href="{% url 'lubelogger_import' %}">{% translate "Import from LubeLogger" %}</a>
+        <a href="{% url 'data_import' %}">{% translate "Import a spreadsheet" %}</a>
+        <a href="{% url 'trash' %}">{% translate "Trash" %}</a>
+        <a href="/admin/">{% translate "Administration" %}</a>
+      {% endif %}
+      <a href="{% url 'sync_queue' %}">{% translate "Waiting to sync" %}</a>
+      <a href="/api/v1/docs">{% translate "API" %}</a>
+      <form action="{% url 'logout' %}" method="post">{% csrf_token %}
+        <button class="linkish" type="submit">{% translate "Sign out" %}</button>
+      </form>
+    </div>
+  </details>
+</header>
+{% endif %}
+
+<main id="main" class="wrap">
+  {% if messages %}
+    <ul class="messages" role="status">
+      {% for message in messages %}<li class="msg {{ message.tags }}">{{ message }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+  {% block content %}{% endblock %}
+</main>
+
+{% if user.is_authenticated %}
+<nav class="tabbar" aria-label="{% translate 'Primary' %}">
+  <a href="{% url 'dashboard' %}"><span aria-hidden="true">◧</span>{% translate "Today" %}</a>
+  <a href="{% url 'asset_list' %}"><span aria-hidden="true">▤</span>{% translate "Vehicles" %}</a>
+  <a href="{% url 'work_order_create' %}" class="primary"><span aria-hidden="true">+</span>{% translate "New job" %}</a>
+  <a href="{% url 'due_list' %}"><span aria-hidden="true">⚡</span>{% translate "Due" %}</a>
+  <a href="{% url 'search' %}"><span aria-hidden="true">⌕</span>{% translate "Search" %}</a>
+</nav>
+
+{{ offline_strings|json_script:"offline-strings" }}
+<script src="{% static 'offline.js' %}" defer></script>
+{{ scanner_strings|json_script:"scanner-strings" }}
+<script src="{% static 'scanner.js' %}" defer></script>
+{% endif %}
+</body>
+</html>

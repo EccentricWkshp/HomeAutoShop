@@ -1,0 +1,196 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ inspection.template_name }} — {{ inspection.asset.nickname }}{% endblock %}
+{% block content %}
+
+<div class="spread">
+  <div>
+    <h1>{{ inspection.template_name }}</h1>
+    <p class="muted">
+      <a href="{% url 'asset_detail' inspection.asset.pk %}">{{ inspection.asset.nickname }}</a>
+      · {{ inspection.performed_on }}
+      {% if inspection.odometer %}· {{ inspection.odometer|floatformat:0 }} {{ inspection.asset.meter_unit }}{% endif %}
+      <span class="pill {% if inspection.overall == 'fail' %}danger{% elif inspection.overall == 'attention' %}warn{% endif %}">
+        {% if inspection.is_draft %}{% translate "In progress" %}
+        {% elif inspection.status == 'abandoned' %}{% translate "Abandoned" %}
+        {% else %}{{ inspection.get_overall_display }}{% endif %}
+      </span>
+    </p>
+  </div>
+  <div class="row">
+    {% if inspection.is_draft %}
+      <form method="post" action="{% url 'inspection_complete' inspection.pk %}">{% csrf_token %}
+        {% if missing_photos %}<input type="hidden" name="force" value="1">{% endif %}
+        <button class="primary" type="submit">{% translate "Sign off" %}</button>
+      </form>
+      <form method="post" action="{% url 'inspection_abandon' inspection.pk %}">{% csrf_token %}
+        <button type="submit"
+                title="{% translate 'Stop working on it but keep the record' %}">{% translate "Abandon" %}</button>
+      </form>
+    {% elif inspection.status == 'abandoned' %}
+      <form method="post" action="{% url 'inspection_resume' inspection.pk %}">{% csrf_token %}
+        <button class="primary" type="submit">{% translate "Resume" %}</button>
+      </form>
+    {% elif attention %}
+      <form method="post" action="{% url 'inspection_convert' inspection.pk %}">{% csrf_token %}
+        <button class="primary" type="submit">{% translate "Turn findings into work" %}</button>
+      </form>
+    {% endif %}
+
+    {# Started by mistake. Soft-deleted, so it is recoverable from Trash. #}
+    {# escapejs, because a translated prompt with an apostrophe would otherwise #}
+    {# end the JavaScript string early and break the button in that locale. #}
+    {% translate "Delete this inspection? It goes to the trash for 30 days." as confirm_delete %}
+    <form method="post" action="{% url 'inspection_delete' inspection.pk %}"
+          onsubmit="return confirm('{{ confirm_delete|escapejs }}')">
+      {% csrf_token %}
+      <button class="linkish" type="submit">{% translate "Delete" %}</button>
+    </form>
+  </div>
+</div>
+
+{% if inspection.status == 'abandoned' %}
+  <p class="msg warning">
+    {% translate "This inspection was abandoned. Nothing recorded on it has been lost — resume it to carry on, or delete it if it is not wanted." %}
+  </p>
+{% endif %}
+
+{% if missing_photos %}
+  <p class="msg warning">
+    ⚠ {% blocktranslate count counter=missing_photos|length %}{{ counter }} point needs a photo before sign-off.{% plural %}{{ counter }} points need a photo before sign-off.{% endblocktranslate %}
+  </p>
+{% endif %}
+
+{% if changes %}
+<section class="card">
+  <h2>{% translate "Changed since last time" %}</h2>
+  <ul class="list small">
+    {% for change in changes %}
+      <li class="spread">
+        <div>{{ change.result.name }} {{ change.result.position }}
+          <div class="muted">{{ change.was }} → {{ change.now }}</div></div>
+        {% if change.worsened %}<span class="pill warn">{% translate "worse" %}</span>
+        {% else %}<span class="pill ok">{% translate "better" %}</span>{% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+{% for area, results in grouped.items %}
+<section class="card">
+  <h2>{{ results.0.area_display }}</h2>
+  <ul class="list">
+    {% for result in results %}
+      <li>
+        <form method="post" action="{% url 'result_record' inspection.pk result.pk %}"
+              enctype="multipart/form-data" class="row" style="align-items:flex-start">
+          {% csrf_token %}
+          <div style="flex:1 1 14rem">
+            <strong>{{ result.name }}</strong>
+            {% if result.position %}<span class="mono small">{{ result.position }}</span>{% endif %}
+            {% if result.is_safety_critical %}<span class="pill danger">{% translate "Safety" %}</span>{% endif %}
+            {% if result.is_optional %}<span class="pill" title="{% translate 'Not fitted to every vehicle' %}">{% translate "if fitted" %}</span>{% endif %}
+            {% if result.is_ad_hoc %}<span class="pill">{% translate "yours" %}</span>{% endif %}
+            {% if result.guidance %}<div class="small muted">{{ result.guidance }}</div>{% endif %}
+            {% if result.disagreed %}
+              {# The rule said one thing, the human said another. Both are kept. #}
+              <div class="small muted">✎ {% translate "You overrode the rule, which said" %}
+                <strong>{{ result.auto_status }}</strong></div>
+            {% endif %}
+          </div>
+
+          {% if result.takes_measurement %}
+            <input type="number" step="0.01" name="value" value="{{ result.measured_value|default:'' }}"
+                   inputmode="decimal" placeholder="{{ result.unit }}" style="width:6rem"
+                   aria-label="{{ result.name }} {{ result.position }}">
+          {% endif %}
+
+          <select name="status" class="select" style="width:9rem" aria-label="{% translate 'Status' %}">
+            <option value="">{% translate "—" %}</option>
+            {% for value, label in statuses %}
+              <option value="{{ value }}" {% if result.status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+
+          <input name="note" value="{{ result.note }}" aria-label="{% translate 'Note' %}"
+                 placeholder="{% translate 'note' %}" style="flex:1 1 8rem">
+          <input type="file" name="files" accept="image/*" capture="environment" style="width:9rem"
+                 aria-label="{% translate 'Photo of this check' %}">
+          <button type="submit">{% translate "Save" %}</button>
+        </form>
+
+        <div class="row small" style="margin-top:.25rem">
+          {% if result.is_ad_hoc and inspection.is_draft %}
+            <form method="post" action="{% url 'result_remove' inspection.pk result.pk %}">{% csrf_token %}
+              <button class="linkish small" type="submit">{% translate "Remove" %}</button>
+            </form>
+          {% endif %}
+          {% if result.status %}
+            <span class="pill {% if result.status == 'fail' %}danger{% elif result.status == 'attention' %}warn{% elif result.status == 'pass' %}ok{% endif %}">
+              {{ result.get_status_display }}
+            </span>
+          {% endif %}
+          {% with photo=photos|default_if_none:'' %}{% endwith %}
+          {% for pk, link in photos.items %}
+            {% if pk == result.pk %}<a href="{{ link.media.file.url }}">
+              <img src="{{ link.media.display_url }}" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:6px"></a>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endfor %}
+
+{% if inspection.is_draft %}
+<section class="card">
+  <h2>{% translate "Add a check" %}</h2>
+  <p class="small muted">
+    {% translate "For something this checklist does not cover — an accessory, a known weak point, a fluid your drivetrain has and most do not. It is added to this inspection only, and no template changes." %}
+  </p>
+  <form method="post" action="{% url 'inspection_add_check' inspection.pk %}" class="formgrid">{% csrf_token %}
+    <div class="field">
+      <label for="id_check_name">{% translate "What are you checking?" %}</label>
+      <input name="name" id="id_check_name" class="input" required maxlength="160"
+             placeholder="{% translate 'Transfer case fluid' %}">
+    </div>
+    <div class="field">
+      <label for="id_check_area">{% translate "Where is it?" %}</label>
+      <select name="area" id="id_check_area" class="select">
+        {% for value, label in areas %}
+          <option value="{{ value }}" {% if value == 'under_hood' %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="id_check_unit">{% translate "Unit, if you are measuring" %}</label>
+      <input name="unit" id="id_check_unit" class="input" maxlength="16"
+             placeholder="{% translate 'mm, psi, V — leave blank for pass/fail' %}">
+    </div>
+    <div class="field">
+      <label><input type="checkbox" name="is_safety_critical"> {% translate "Safety critical" %}</label>
+    </div>
+    <div class="field full">
+      <label for="id_check_guidance">{% translate "What does good look like?" %}</label>
+      <input name="guidance" id="id_check_guidance" class="input" maxlength="500">
+    </div>
+    <div class="field full"><button type="submit">{% translate "Add to this inspection" %}</button></div>
+  </form>
+</section>
+{% endif %}
+
+<section class="card">
+  <h2>{% translate "Summary" %}</h2>
+  <div class="row">
+    {% for status, count in summary.items %}
+      <span class="pill {% if status == 'fail' %}danger{% elif status == 'attention' %}warn{% elif status == 'pass' %}ok{% endif %}">
+        {{ status }}: {{ count }}
+      </span>
+    {% endfor %}
+  </div>
+  <p class="small muted" style="margin-top:.5rem">
+    <a href="{% url 'wear_chart' inspection.asset.pk %}">{% translate "See measurement trends for this vehicle" %}</a>
+  </p>
+</section>
+{% endblock %}
