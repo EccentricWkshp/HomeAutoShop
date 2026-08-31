@@ -57,6 +57,13 @@ def identifiers_from(row: dict) -> tuple[str, str]:
     everything else as a plate. Trusting the column name instead would have
     searched for two 17-character VINs among the license plates and found
     nothing, which is exactly what it did.
+
+    **Only the 17-character form counts here**, which is narrower than what the
+    validator accepts. A pre-1981 VIN and a license plate are the same shape —
+    seven to thirteen letters and digits — so a column that could hold either
+    cannot be read to say which. `ABC-1234` is a plate, and guessing otherwise
+    would file a plate as a VIN on every row. Where a vehicle really does carry
+    a short VIN, it is typed on the vehicle rather than inferred from an import.
     """
     from homeautoshop.assets import vin as vinlib
 
@@ -71,9 +78,9 @@ def identifiers_from(row: dict) -> tuple[str, str]:
         if not value:
             continue
         checked = vinlib.validate(value)
-        if checked.is_well_formed and not vin:
+        if checked.is_well_formed and not checked.is_pre_1981 and not vin:
             vin = checked.vin
-        elif not checked.is_well_formed and not plate:
+        elif not plate:
             plate = value.upper()
     return vin, plate
 

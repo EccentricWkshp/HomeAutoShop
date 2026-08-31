@@ -50,19 +50,28 @@
 (function () {
   const vin = document.getElementById('id_vin');
   const out = document.getElementById('vin-feedback');
+  const year = document.getElementById('id_year');
   if (!vin || !out) return;
   let timer;
-  vin.addEventListener('input', function () {
+  function check() {
     clearTimeout(timer);
     timer = setTimeout(async function () {
       const value = vin.value.trim();
       if (!value) { out.innerHTML = ''; return; }
+      // The year decides whether a short VIN is a 1970s format or a typo, so
+      // it is sent too — otherwise this panel and the save would disagree.
+      let url = '{% url "vin_validate" %}?vin=' + encodeURIComponent(value);
+      const built = year && year.value.trim();
+      if (built) url += '&year=' + encodeURIComponent(built);
       try {
-        const resp = await fetch('{% url "vin_validate" %}?vin=' + encodeURIComponent(value));
+        const resp = await fetch(url);
         out.innerHTML = await resp.text();
       } catch (e) { out.innerHTML = ''; }
     }, 250);
-  });
+  }
+  vin.addEventListener('input', check);
+  // Typing the year changes the verdict on a VIN already in the box.
+  if (year) year.addEventListener('change', check);
 })();
 </script>
 {% endblock %}

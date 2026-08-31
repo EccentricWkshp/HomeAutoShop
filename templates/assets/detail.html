@@ -154,7 +154,8 @@
                 {{ asset.masked_vin }}
                 <a class="small" href="{% url 'asset_detail' asset.pk %}?vin=show">{% translate "Show" %}</a>
               {% endif %}
-              {% if vin_check.check_digit_valid %}<span class="pill ok">✓</span>
+              {% if vin_check.is_pre_1981 %}<span class="pill">{% translate "pre-1981" %}</span>
+              {% elif vin_check.check_digit_valid %}<span class="pill ok">✓</span>
               {% elif vin_check.is_well_formed %}<span class="pill warn">⚠</span>{% endif %}
             </td></tr>
         {% endif %}
@@ -164,7 +165,12 @@
         {% if asset.serial_number %}<tr><th>{% translate "Serial" %}</th><td class="mono">{{ asset.serial_number }}</td></tr>{% endif %}
       </table>
 
-      {% if asset.is_vehicle and asset.vin %}
+      {% comment %}
+      Not offered for a pre-1981 VIN: vPIC only knows the 17-character format,
+      so the button could only ever come back empty. Hidden rather than
+      shown-and-failing, the same way equipment hides it (FR-EQP-3).
+      {% endcomment %}
+      {% if asset.is_vehicle and asset.vin and not vin_check.is_pre_1981 %}
         <form method="post" action="{% url 'vin_decode' asset.pk %}" style="margin-top:.5rem">{% csrf_token %}
           <button type="submit" {% if offline_mode %}disabled{% endif %}>{% translate "Look up VIN" %}</button>
         </form>

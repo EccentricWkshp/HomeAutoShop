@@ -217,7 +217,7 @@ The client shows a persistent queue indicator — *N changes waiting to sync* �
 | **Time** | `timestamptz`, stored UTC, rendered in the user's timezone (falling back to the instance timezone). **Calendar facts** (purchase date, registration expiry, service date) are stored as `date`, not as a timestamp — this avoids the classic off-by-one when the operator travels. |
 | **Display units** | Derived from the active locale, with instance and per-user overrides. Conversion happens at the edge; a preference change never rewrites the database. |
 | **Locale** | Per-user, negotiated from `Accept-Language` and overridable, falling back to the instance default. Drives language, number and date formatting, units, and first-day-of-week — **independently of currency** (a US operator may buy parts in EUR). |
-| **VIN** | Uppercase, 17 characters for 1981+, `I`/`O`/`Q` rejected. Check digit validated locally per ISO 3779 (position 9) for North American VINs — this works offline and catches most typos before any network call is made. |
+| **VIN** | Uppercase. **17 characters for 1981+, and shorter formats accepted before that** — the standard starts with the 1981 model year, and a 1973–79 Ford truck's eleven characters (`F10GLU12345` — make, series, engine, year, plant, unit number) are complete as they are. `I`/`O`/`Q` rejected in the 17-character form, where the standard bans them; permitted in the older ones, which predate the ban. Check digit validated locally per ISO 3779 (position 9) for North American VINs — this works offline and catches most typos before any network call is made. A pre-1981 VIN has no check digit, no model-year position and no decoder, and the UI claims none of the three. |
 
 ### 5.6 Localization and internationalization
 
@@ -452,7 +452,7 @@ Requirements are `MUST` unless marked *(SHOULD)* or *(MAY)*. IDs are stable and 
 | ID | Requirement |
 | --- | --- |
 | FR-VEH-1 | Create a vehicle from a VIN, from a plate, or entirely by hand. **No field except a nickname is required** — a half-known project car must still be recordable. |
-| FR-VEH-2 | Validate a VIN locally (length, character set, ISO 3779 check digit) before any network call, showing errors inline. |
+| FR-VEH-2 | Validate a VIN locally (length, character set, ISO 3779 check digit) before any network call, showing errors inline. **Length is a rule about the year, not about VINs**: seventeen characters is required from the 1981 model year, and a shorter VIN is accepted and recorded as `pre_1981` rather than refused — a 1973–79 Ford truck's eleven characters are complete, and rejecting them rejected the exact population a home garage keeps. Where the model year is known and 1981 or later a short VIN is still an error, because there it is a typo; where the year is unknown the panel says which reading it took and that the year is what settles it. Nothing is claimed about a pre-1981 VIN that cannot be: no check digit, no model-year inference, no decode, and no VIN recall search — each is withheld rather than shown failing. |
 | FR-VEH-3 | Decode a VIN via the configured provider on explicit user action, populate empty fields, and mark each populated field with its provenance and decode timestamp. |
 | FR-VEH-4 | Never overwrite a user-edited field on re-decode; record the divergence in `field_overrides` and offer a review UI showing decoded-vs-yours. |
 | FR-VEH-5 | Scan a VIN barcode (Code 39 on the door jamb) or QR with the device camera, decoding on-device. |

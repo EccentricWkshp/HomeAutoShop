@@ -2,9 +2,18 @@
 {% if check.errors %}
   <ul class="errorlist">{% for error in check.errors %}<li>{{ error }}</li>{% endfor %}</ul>
 {% elif check.is_well_formed %}
-  <p class="small {% if check.check_digit_valid %}pill ok{% else %}pill warn{% endif %}">
-    {% if check.check_digit_valid %}✓ {% translate "Check digit valid" %}{% else %}⚠ {% translate "Check digit mismatch" %}{% endif %}
-  </p>
+  {% comment %}
+  A pre-1981 VIN gets neither tick nor warning triangle. It has no check digit
+  to pass or fail, and showing the ⚠ that means "check digit mismatch" against
+  a number that is complete and correct would report a fault that is not there.
+  {% endcomment %}
+  {% if check.is_pre_1981 %}
+    <p class="small pill">{% translate "Pre-1981 VIN" %}</p>
+  {% else %}
+    <p class="small {% if check.check_digit_valid %}pill ok{% else %}pill warn{% endif %}">
+      {% if check.check_digit_valid %}✓ {% translate "Check digit valid" %}{% else %}⚠ {% translate "Check digit mismatch" %}{% endif %}
+    </p>
+  {% endif %}
   {% for warning in check.warnings %}<p class="small muted">{{ warning }}</p>{% endfor %}
   {% if check.possible_years %}
     <p class="small muted">{% translate "Model year could be" %}

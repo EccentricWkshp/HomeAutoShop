@@ -278,6 +278,18 @@ class IdentifierShapeTests(TestCase):
         self.assertEqual(vin, "")
         self.assertEqual(plate, "ABC-1234")
 
+    def test_a_pre_1981_vin_shape_is_read_as_a_plate_here(self):
+        """A short VIN and a plate are the same shape, and this column could
+        hold either. Reading eleven characters as a VIN would file every plate
+        of that length as one — so an import stays with the safer reading and
+        a short VIN is typed on the vehicle instead."""
+        from homeautoshop.core.integrations.importer import identifiers_from
+
+        vin, plate = identifiers_from({"licensePlate": "F26SLU12345"})
+
+        self.assertEqual(vin, "")
+        self.assertEqual(plate, "F26SLU12345")
+
     def test_the_kind_label_is_not_mistaken_for_a_value(self):
         """`vehicleIdentifier` really does come back as "License Plate"."""
         from homeautoshop.core.integrations.importer import identifiers_from

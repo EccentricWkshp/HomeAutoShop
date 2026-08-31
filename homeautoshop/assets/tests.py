@@ -37,10 +37,14 @@ class VinValidationTests(TestCase):
         self.assertFalse(check.is_well_formed)
         self.assertIn("I", check.errors[0])
 
-    def test_wrong_length_suggests_the_pre_1981_case(self):
+    def test_a_shorter_vin_is_read_as_the_era_it_came_from(self):
+        """It used to be an error carrying a warning that said to save it
+        anyway — advice the model then refused to take. Seventeen characters
+        is the rule from 1981; `tests_vin_eras.py` covers the rest."""
         check = vinlib.validate("1M8GDM9AX")
-        self.assertFalse(check.is_well_formed)
-        self.assertTrue(any("1981" in w for w in check.warnings))
+        self.assertTrue(check.is_well_formed)
+        self.assertTrue(check.is_pre_1981)
+        self.assertFalse(check.errors)
 
     def test_bad_check_digit_warns_but_does_not_block(self):
         bad = GOOD_VIN[:8] + ("0" if GOOD_VIN[8] != "0" else "1") + GOOD_VIN[9:]

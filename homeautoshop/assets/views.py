@@ -450,8 +450,18 @@ def asset_delete(request, pk):
 @require_GET
 @login_required
 def vin_validate(request):
-    """Live, offline VIN validation for the form (FR-VEH-2)."""
-    check = vinlib.validate(request.GET.get("vin", ""))
+    """Live, offline VIN validation for the form (FR-VEH-2).
+
+    The model year comes along because it is what decides whether a short VIN
+    is a pre-1981 format or a typo. Without it this panel would say "read as a
+    pre-1981 VIN" about a half-typed one on a 2016 car and then the save would
+    refuse it — feedback that disagrees with the form it is attached to.
+    """
+    try:
+        year = int(request.GET.get("year") or 0) or None
+    except ValueError:
+        year = None
+    check = vinlib.validate(request.GET.get("vin", ""), year=year)
     return render(request, "assets/_vin_feedback.html", {"check": check})
 
 

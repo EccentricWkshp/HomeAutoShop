@@ -228,6 +228,11 @@ def vin_lookup_url(asset) -> str:
     We cannot answer this ourselves, so we send them somewhere that can and let
     them record the answer (FR-VEH-*, §8.4).
     """
-    if not asset.vin:
+    # NHTSA's VIN search takes the 17-character form and nothing else, so a
+    # pre-1981 VIN goes to the plain page rather than to a link that lands on
+    # an error — and campaigns that old are mostly not in there anyway.
+    from .vin import VIN_LENGTH
+
+    if len(asset.vin) != VIN_LENGTH:
         return "https://www.nhtsa.gov/recalls"
     return f"https://www.nhtsa.gov/recalls?vin={asset.vin}"

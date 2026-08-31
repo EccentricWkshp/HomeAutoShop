@@ -168,15 +168,22 @@ class Asset(RevisionedModel):
                 {"vin": _("Equipment does not carry a VIN or license plate.")}
             )
         if self.vin:
-            check = vinlib.validate(self.vin)
+            # The year is what makes a length rule mean anything: a short VIN
+            # on a 1978 truck is the format it shipped with, and the same
+            # entry on a 2016 one is a typo.
+            check = vinlib.validate(self.vin, year=self.year)
             if check.errors:
                 raise ValidationError({"vin": check.errors})
 
     def save(self, *args, **kwargs):
         self.vin = vinlib.normalize(self.vin)
         if self.vin:
-            self.vin_status = vinlib.validate(self.vin).status
-        elif self.vin_status != VinStatus.PRE_1981:
+            self.vin_status = vinlib.validate(self.vin, year=self.year).status
+        else:
+            # This used to preserve `pre_1981` across a cleared VIN, which was
+            # harmless only because nothing ever set it. Now that a short VIN
+            # does, clearing one would leave a record with no VIN still
+            # claiming a VIN format.
             self.vin_status = VinStatus.NONE
         if self.asset_kind == AssetKind.EQUIPMENT:
             self.vehicle_class = ""

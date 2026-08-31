@@ -89,7 +89,20 @@ def decode_vin(asset: Asset, *, user=None, force: bool = False, save: bool = Tru
     if not conf.VIN_DECODE_ENABLED:
         return DecodeResult(False, message=str(_("VIN decoding is turned off for this instance.")))
 
-    check = vinlib.validate(asset.vin)
+    check = vinlib.validate(asset.vin, year=asset.year)
+    if check.is_pre_1981 and check.is_well_formed:
+        # Offered and failing would be worse than not offered: vPIC only knows
+        # the 17-character format, and asking it about eleven characters
+        # returns a confident nothing.
+        return DecodeResult(
+            False,
+            message=str(
+                _(
+                    "A pre-1981 VIN cannot be looked up — the service only knows the "
+                    "17-character format. Fill in what you know by hand."
+                )
+            ),
+        )
     if not check.is_well_formed:
         return DecodeResult(
             False,
