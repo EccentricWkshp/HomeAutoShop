@@ -101,8 +101,30 @@ class LiveRegionTests(Base):
 
     def test_the_regions_it_replaces_are_marked(self):
         page = self.client.get(self.page).content.decode()
-        for region in ("job-items", "log", "time", "parts-used"):
+        for region in (
+            "job-items", "log", "time", "parts-used", "parts-needed", "photos",
+        ):
             self.assertIn('data-live="%s"' % region, page)
+
+    def test_every_card_that_takes_an_action_is_one(self):
+        """Reported as: adding a part under Parts needed jumps to the top. It
+        did, because that card was the one section on this page carrying forms
+        and no region — and a page where some actions keep your place and others
+        do not is harder to trust than one where none of them do."""
+        import re
+
+        page = self.client.get(self.page).content.decode()
+        for match in re.finditer(r'<section class="card[^"]*"([^>]*)>', page):
+            block = page[match.start():page.index("</section>", match.start())]
+            if "<form" not in block or 'method="post"' not in block:
+                continue
+            if "data-no-live" in block:
+                # An opt-out, and it has to be written down: a transition that
+                # changes the heading, the banner and the cost cannot be a
+                # region swap, and saying so beats looking like an oversight.
+                continue
+            with self.subTest(section=block[:80]):
+                self.assertIn("data-live=", match.group(1) + block[:200])
 
     def test_a_marked_region_has_an_id_to_scroll_to(self):
         """The same name does both jobs — the script finds the region by it and

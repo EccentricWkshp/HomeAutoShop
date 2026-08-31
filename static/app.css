@@ -509,15 +509,17 @@ pre.scroll { white-space: pre-wrap; word-break: break-word; }
 /* Marks the field the chosen action actually needs, before it is submitted. */
 .req { font-size: .75rem; color: var(--danger); font-weight: 600; margin-inline-start: .3rem; }
 
-/* Tool lookup results. Positioned in flow rather than floated over the page:
-   inside a job item on a phone, an absolutely positioned menu ends up off the
-   edge of the card it belongs to. */
-.toolpicker { position: relative; }
-.toolpicker .results { list-style: none; margin: .3rem 0 0; padding: 0;
-  border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
-.toolpicker .results li + li { border-top: 1px solid var(--line); }
-.toolpicker .results button { display: block; inline-size: 100%; text-align: start;
-  padding: .5rem .6rem; }
+/* Lookup results, for tools and for parts. Positioned in flow rather than
+   floated over the page: inside a job item on a phone, an absolutely positioned
+   menu ends up off the edge of the card it belongs to. */
+.picker { position: relative; }
+.picker .results { list-style: none; margin: .3rem 0 0; padding: 0;
+  border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden;
+  max-block-size: 17rem; overflow-y: auto; }
+.picker .results li + li { border-top: 1px solid var(--line); }
+.picker .results button { display: block; inline-size: 100%; text-align: start;
+  padding: .5rem .6rem; min-block-size: var(--tap); }
+.picker .nomatch { margin: .3rem 0 0; }
 
 /* The sections list inside the account menu is the phone's main navigation:
    the bar across the top is hidden below 800px and the bottom tabs only carry

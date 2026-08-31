@@ -144,7 +144,7 @@
                   still works with no script at all; the server resolves it.
                 {% endcomment %}
                 <form method="post" action="{% url 'job_item_tool_add' wo.pk item.pk %}"
-                      class="toolpicker small" data-search="{% url 'tool_search' %}">{% csrf_token %}<input type="hidden" name="_anchor" value="job-items">
+                      class="toolpicker picker small" data-search="{% url 'tool_search' %}">{% csrf_token %}<input type="hidden" name="_anchor" value="job-items">
                   <label class="visually-hidden" for="tool-{{ item.pk }}">{% translate "Tool" %}</label>
                   <div class="row">
                     <input type="search" id="tool-{{ item.pk }}" name="tool_query" autocomplete="off"
@@ -188,7 +188,7 @@
       </ul>
     </section>
 
-    <section class="card">
+    <section class="card" id="photos" data-live="photos">
       <h2>{% translate "Photos" %}</h2>
       <div class="thumbs">
         {% for link in photos %}
@@ -196,7 +196,7 @@
         {% empty %}<p class="muted small">{% translate "No photos yet." %}</p>{% endfor %}
       </div>
       <form method="post" action="{% url 'work_order_photo' wo.pk %}" enctype="multipart/form-data" class="row" style="margin-top:.75rem">
-        {% csrf_token %}
+        {% csrf_token %}<input type="hidden" name="_anchor" value="photos">
         {% comment %}
           Two inputs, not one with `capture`. `capture="environment"` does not
           mean "offer the camera" — it means *only* the camera, with no way to
@@ -232,7 +232,8 @@
       head: on the shelf, minus what other open jobs have already claimed.
       Two brake jobs and one box of pads is the case this exists for.
     {% endcomment %}
-    <section class="card{% if parts_needed.shortfalls %} warn-card{% endif %}">
+    <section class="card{% if parts_needed.shortfalls %} warn-card{% endif %}"
+             id="parts-needed" data-live="parts-needed">
       <div class="spread">
         <h2>{% translate "Parts needed" %}</h2>
         {% if parts_needed %}
@@ -266,7 +267,7 @@
                     · {{ requirement.get_origin_display|lower }}{% if requirement.note %} · {{ requirement.note }}{% endif %}
                     <form method="post" class="inline"
                           action="{% url 'work_order_part_unrequire' wo.pk requirement.pk %}">
-                      {% csrf_token %}
+                      {% csrf_token %}<input type="hidden" name="_anchor" value="parts-needed">
                       <button class="linkish small" type="submit"
                               aria-label="{% translate 'Remove from what this job needs' %}">×</button>
                     </form>
@@ -285,7 +286,7 @@
                   <span class="pill ok">{% translate "Used" %}</span>
                 {% elif line.state == "on_hand" %}
                   <form method="post" action="{% url 'work_order_part_use' wo.pk %}" class="inline">
-                    {% csrf_token %}
+                    {% csrf_token %}<input type="hidden" name="_anchor" value="parts-needed">
                     <input type="hidden" name="part" value="{{ line.part.pk }}">
                     <input type="hidden" name="qty" value="{{ line.outstanding }}">
                     <button type="submit">{% translate "Take it" %}</button>
@@ -318,7 +319,7 @@
           <div class="row" style="margin-top:.5rem">
             {% if "waiting_on_parts" in allowed_statuses %}
               <form method="post" action="{% url 'work_order_transition' wo.pk %}" class="inline">
-                {% csrf_token %}
+                {% csrf_token %}<input type="hidden" name="_anchor" value="parts-needed">
                 <input type="hidden" name="status" value="waiting_on_parts">
                 <input type="hidden" name="blocked_reason" value="{{ parts_blocked_reason }}">
                 <button type="submit">{% translate "Waiting on these" %}</button>
@@ -326,7 +327,7 @@
             {% endif %}
             {% if vendors %}
               <form method="post" action="{% url 'work_order_order_shortfall' wo.pk %}" class="row">
-                {% csrf_token %}
+                {% csrf_token %}<input type="hidden" name="_anchor" value="parts-needed">
                 <select name="vendor" class="select" required
                         aria-label="{% translate 'Order the missing parts from' %}">
                   <option value="">{% translate "Order from…" %}</option>
@@ -347,20 +348,25 @@
 
       <form method="post" action="{% url 'work_order_part_require' wo.pk %}" class="row"
             style="margin-top:.5rem">
-        {% csrf_token %}
-        <select name="part" id="id_needed_part" class="select" required style="flex:1"
-                aria-label="{% translate 'Part this job needs' %}">
-          <option value="">{% translate "Choose a part…" %}</option>
-          {% for part in parts %}
-            <option value="{{ part.pk }}" data-step="{{ part.qty_step }}">{{ part }} ({{ part.on_hand|floatformat:"-3" }})</option>
-          {% endfor %}
-        </select>
+        {% csrf_token %}<input type="hidden" name="_anchor" value="parts-needed">
+        <div style="flex:1">
+          {% include "partials/_partpicker.html" with field_id="id_needed_part" required=1 hide_label=1 asset=wo.asset label=_("Part this job needs") %}
+        </div>
         <select name="job_item" class="select" aria-label="{% translate 'For which job item' %}">
           <option value="">{% translate "The whole job" %}</option>
           {% for item in job_items %}<option value="{{ item.pk }}">{{ item.title }}</option>{% endfor %}
         </select>
         <input type="number" step="1" name="qty" value="1" style="width:5rem" inputmode="decimal"
-               data-step-from="id_needed_part" aria-label="{% translate 'How many' %}">
+               data-step-from="id_needed_part_chosen" aria-label="{% translate 'How many' %}">
+        {% comment %}
+        The units follow the part chosen beside them, because a work order
+        cannot know in the markup whether the next line is gaskets or half a
+        kilogram of R-134a. Empty and hidden until a part says otherwise, so
+        with no script nothing is submitted and the quantity is read in the
+        part's own unit — which is named in the chooser's own results.
+        {% endcomment %}
+        <select name="qty_unit" class="select" style="width:6rem" hidden
+                data-units-from="id_needed_part_chosen" aria-label="{% translate 'Unit' %}"></select>
         <button type="submit">{% translate "Need it" %}</button>
       </form>
     </section>
@@ -383,15 +389,20 @@
       {# One flow whether it comes off the shelf or was bought for the job. #}
       <form method="post" action="{% url 'work_order_part_use' wo.pk %}" class="row" style="margin-top:.5rem">
         {% csrf_token %}<input type="hidden" name="_anchor" value="parts-used">
-        <select name="part" id="id_used_part" class="select" required style="flex:1"
-                aria-label="{% translate 'Part used' %}">
-          <option value="">{% translate "Choose a part…" %}</option>
-          {% for part in parts %}
-            <option value="{{ part.pk }}" data-step="{{ part.qty_step }}">{{ part }} ({{ part.on_hand }})</option>
-          {% endfor %}
-        </select>
+        <div style="flex:1">
+          {% include "partials/_partpicker.html" with field_id="id_used_part" required=1 hide_label=1 asset=wo.asset label=_("Part used") %}
+        </div>
         <input type="number" step="1" name="qty" value="1" style="width:5rem" inputmode="decimal"
-               data-step-from="id_used_part" aria-label="{% translate 'How many' %}">
+               data-step-from="id_used_part_chosen" aria-label="{% translate 'How many' %}">
+        {% comment %}
+        The units follow the part chosen beside them, because a work order
+        cannot know in the markup whether the next line is gaskets or half a
+        kilogram of R-134a. Empty and hidden until a part says otherwise, so
+        with no script nothing is submitted and the quantity is read in the
+        part's own unit — which is named in the chooser's own results.
+        {% endcomment %}
+        <select name="qty_unit" class="select" style="width:6rem" hidden
+                data-units-from="id_used_part_chosen" aria-label="{% translate 'Unit' %}"></select>
         <button type="submit">{% translate "Use" %}</button>
       </form>
     </section>
@@ -422,7 +433,15 @@
         {% endcomment %}
         {{ status_requirements|json_script:"status-requirements" }}
         <form method="post" action="{% url 'work_order_transition' wo.pk %}" class="stack"
-              data-status-form data-requirements="status-requirements">{% csrf_token %}
+              data-status-form data-requirements="status-requirements"
+              {% comment %}
+              Deliberately not a live region. A transition changes the status
+              pill in the heading, the blocked banner, which transitions are
+              offered next, and the cost — replacing this one card would leave
+              every one of those showing the state before the change. A full
+              reload is the honest answer where the whole page moved.
+              {% endcomment %}
+              data-no-live>{% csrf_token %}
           <div class="field">
             <label for="status-select">{% translate "Move it to" %}</label>
             <select name="status" class="select" id="status-select">
@@ -504,7 +523,7 @@
       </ul>
     </section>
     {% endif %}
-    <section class="card">
+    <section class="card" id="other-costs" data-live="other-costs">
       <h2>{% translate "Other costs" %}</h2>
       <ul class="list small">
         {% for expense in expenses %}
@@ -514,7 +533,7 @@
         {% empty %}<li class="muted">{% translate "None recorded." %}</li>{% endfor %}
       </ul>
       <form method="post" action="{% url 'work_order_expense_add' wo.pk %}" class="formgrid" style="margin-top:.5rem">
-        {% csrf_token %}
+        {% csrf_token %}<input type="hidden" name="_anchor" value="other-costs">
         {% for field in expense_form %}
           <div class="field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}</div>
         {% endfor %}

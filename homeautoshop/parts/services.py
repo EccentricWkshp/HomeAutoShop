@@ -10,10 +10,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
+from uuid import UUID
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.utils.translation import gettext_lazy as _
 
 from .models import Part, PartFitment, PartUsage, StockLot, StockTransaction
@@ -194,6 +195,181 @@ def find(query: str, limit: int = 25) -> list[Part]:
             | Q(cross_refs__value__icontains=query)
         ).distinct()[:limit]
     )
+
+
+# --------------------------------------------------------------------------
+# What a part chooser offers (SPEC §7.2, FR-PART-1)
+# --------------------------------------------------------------------------
+
+#: How many parts a chooser rests on before anybody has typed anything.
+#: Deliberately small. The resting state is a shortlist, not a catalogue.
+SHORTLIST = 8
+
+#: And how many a search answers with. Past this the answer is a narrower
+#: query, not a longer list — scrolling twenty-five rows is already a failure.
+CHOOSER_LIMIT = 25
+
+
+@dataclass(frozen=True, slots=True)
+class PartChoice:
+    """One row in a part chooser, and the two facts that place it.
+
+    Both facts are shown, not just used for sorting. A chooser that quietly
+    reorders itself teaches nobody anything; one that says "3 on hand · fits
+    this vehicle" beside the name answers the question that was going to be
+    asked next anyway.
+    """
+
+    part: Part
+    on_hand: Decimal
+    fits: bool
+
+    @property
+    def tier(self) -> int:
+        """Lower sorts first.
+
+        Fitment outranks stock on purpose. **Planning is the act of finding the
+        gap between what is on the shelf and what has to be bought**, so a part
+        that fits this vehicle and is not in stock is not noise to be filtered
+        out — it is the single most useful row on the screen. Ranking it up and
+        printing "none on hand" beside it makes the gap visible at the moment
+        the choice is made, instead of after the requirement is saved.
+        """
+        if self.fits:
+            return 0 if self.on_hand > 0 else 1
+        if self.on_hand > 0:
+            return 2
+        # Brake cleaner and zip ties fit everything and are never planned for.
+        return 3 if self.part.is_consumable else 4
+
+
+def candidates(
+    query: str = "",
+    *,
+    asset=None,
+    exclude=(),
+    limit: int | None = None,
+) -> list[PartChoice]:
+    """The parts worth offering, best first.
+
+    Replaces handing a `<select>` five hundred rows of every part ever bought.
+    The catalogue only grows — nothing is removed from it when a part is used
+    up — so a chooser built by listing the table gets steadily less usable for
+    exactly the people using the application most, and it does so silently.
+
+    The fix is not a narrower catalogue. Nothing here is hidden: with something
+    typed, this searches everything by every identifier `find` knows. What
+    changes is what is offered *before* anybody types, which is a shortlist
+    assembled from relevance — the parts that fit this vehicle, the parts on
+    the shelf, and the consumables — rather than the first rows of the table.
+    """
+    query = (query or "").strip()
+    excluded = _as_pks(exclude)
+
+    fits: set = set()
+    if asset is not None:
+        fits = set(
+            PartFitment.objects.filter(asset=asset)
+            .exclude(confidence=PartFitment.Confidence.DOES_NOT_FIT)
+            .values_list("part_id", flat=True)
+        )
+
+    if query:
+        cap = limit or CHOOSER_LIMIT
+        # Over-fetched so the ranking below has something to rank; a search
+        # that matches more than this wants a better search, not more rows.
+        pool = [part for part in find(query, limit=cap * 4) if part.pk not in excluded]
+    else:
+        cap = limit or SHORTLIST
+        pool = _shortlist(fits, excluded, cap)
+
+    on_hand = _shelf_quantities([part.pk for part in pool])
+    choices = [
+        PartChoice(
+            part=part, on_hand=on_hand.get(part.pk, Decimal(0)), fits=part.pk in fits
+        )
+        for part in pool
+    ]
+    choices.sort(key=lambda choice: (choice.tier, choice.part.name.lower()))
+    return choices[:cap]
+
+
+def _shortlist(fits: set, excluded: set, cap: int) -> list[Part]:
+    """The three groups that earn a place with nothing typed, each bounded.
+
+    Queried as three capped groups rather than one `OR` because a single query
+    would have to be sliced *before* anything is ranked, and the slice would
+    then decide the shortlist on row order — dropping a part that fits this
+    vehicle in favour of the tenth thing on the shelf.
+    """
+    groups = (
+        Part.objects.filter(pk__in=fits),
+        Part.objects.filter(stock_lots__qty_on_hand__gt=0).distinct(),
+        Part.objects.filter(is_consumable=True),
+    )
+    picked: dict = {}
+    for group in groups:
+        for part in group.exclude(pk__in=excluded)[:cap]:
+            picked.setdefault(part.pk, part)
+    return list(picked.values())
+
+
+def _shelf_quantities(pks) -> dict:
+    """On-hand for every row in one query, because the chooser is a loop."""
+    if not pks:
+        return {}
+    rows = (
+        StockLot.objects.filter(part_id__in=pks)
+        .values("part_id")
+        .annotate(qty=Sum("qty_on_hand"))
+    )
+    return {row["part_id"]: row["qty"] or Decimal(0) for row in rows}
+
+
+def _as_pks(values) -> set:
+    """Ids from a query string, with anything unparseable dropped.
+
+    `exclude` arrives from a URL. A malformed uuid there is a 500 from deep
+    inside the ORM, which is a poor answer to somebody editing a link.
+    """
+    keep = set()
+    for value in values or ():
+        try:
+            keep.add(UUID(str(value)))
+        except (ValueError, AttributeError, TypeError):
+            continue
+    return keep
+
+
+def resolve_part(data, field: str = "part"):
+    """The part a submitted chooser meant, id first and typed name second.
+
+    The chooser is a text box with a hidden id beside it, so with script the id
+    is filled in and this is a primary-key lookup. **With no script the id is
+    empty and the typed text is all there is**, and resolving it here is what
+    keeps the unenhanced form working rather than merely present.
+
+    Returns `(part, error)`. An ambiguous name is not resolved to its first
+    match: picking one of four things somebody might have meant, silently, is
+    worse than saying so.
+    """
+    part = Part.objects.filter(pk=data.get(field) or None).first()
+    if part is not None:
+        return part, ""
+
+    typed = (data.get(f"{field}_query") or "").strip()
+    if not typed:
+        return None, _("Choose a part first.")
+
+    exact = list(Part.objects.filter(name__iexact=typed)[:2])
+    matches = exact or find(typed, limit=2)
+    if len(matches) == 1:
+        return matches[0], ""
+    if not matches:
+        return None, _("No part matches “%(typed)s”.") % {"typed": typed}
+    return None, _("More than one part matches “%(typed)s”. Pick one from the list.") % {
+        "typed": typed
+    }
 
 
 def restock_list() -> list[Part]:

@@ -310,12 +310,7 @@
       {% endcomment %}
       <form method="post" action="{% url 'kit_item_add' part.pk %}" class="stack">{% csrf_token %}
         <div class="field">
-          <label for="id_kit_part">{% translate "Part inside this kit" %}</label>
-          <select name="part" id="id_kit_part" class="select" required>
-            {% for candidate in other_parts %}
-              <option value="{{ candidate.pk }}" data-step="{{ candidate.qty_step }}">{{ candidate }}</option>
-            {% endfor %}
-          </select>
+          {% include "partials/_partpicker.html" with field_id="id_kit_part" required=1 exclude=part.pk label=_("Part inside this kit") %}
         </div>
         <div class="field">
           <label for="id_kit_quantity">{% translate "How many are in the box" %}</label>
@@ -327,7 +322,7 @@
           {% endcomment %}
           <input type="number" step="1" min="1" name="quantity" value="1"
                  id="id_kit_quantity" inputmode="decimal" style="width:7rem"
-                 data-step-from="id_kit_part">
+                 data-step-from="id_kit_part_chosen">
         </div>
         <div class="field">
           <label for="id_kit_value">{% translate "Price each" %}</label>

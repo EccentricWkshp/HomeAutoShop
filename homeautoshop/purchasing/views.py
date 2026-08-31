@@ -15,7 +15,8 @@ from homeautoshop.core.measurements import Money
 from homeautoshop.core.moneyform import MoneyFormMixin, parse_amount
 from homeautoshop.mediafiles.models import MediaLink
 from homeautoshop.mediafiles.services import ingest
-from homeautoshop.parts.models import Location, Part
+from homeautoshop.parts.models import Location
+from homeautoshop.parts.services import resolve_part
 
 from .models import Expense, Purchase, PurchaseLine, PurchaseStatus, Vendor
 
@@ -100,7 +101,6 @@ def purchase_detail(request, pk):
             "purchase": purchase,
             "lines": purchase.lines.all(),
             "locations": Location.objects.all(),
-            "parts": Part.objects.all()[:500],
             "receipts": MediaLink.for_entity(purchase),
             # Shows the shape an amount takes here, without asserting a value.
             "zero_amount": Money(0, purchase.currency),
@@ -156,9 +156,14 @@ def purchase_line_add(request, pk):
         messages.error(request, exc.messages[0])
         return redirect("purchase_detail", pk=purchase.pk)
 
+    # A line with no part is ordinary — "not cataloged" is a real answer, and
+    # the description carries what was bought — so a name that resolves to
+    # nothing is not an error here the way it is on a work order.
+    part, _problem = resolve_part(request.POST)
+
     PurchaseLine.objects.create(
         purchase=purchase,
-        part_id=request.POST.get("part") or None,
+        part=part,
         description_as_ordered=(request.POST.get("description") or "").strip(),
         qty_ordered=request.POST.get("qty_ordered") or 1,
         unit_price_minor=unit_price,

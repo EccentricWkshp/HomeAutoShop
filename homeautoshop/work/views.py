@@ -21,8 +21,7 @@ from homeautoshop.assets.services import record_reading
 from homeautoshop.mediafiles.models import MediaLink
 from homeautoshop.core.costs import work_order_cost
 from homeautoshop.mediafiles.services import ingest
-from homeautoshop.parts.models import Part
-from homeautoshop.parts.services import consume
+from homeautoshop.parts.services import consume, resolve_part
 from homeautoshop.purchasing.models import Vendor
 from homeautoshop.purchasing.views import ExpenseForm
 
@@ -219,7 +218,6 @@ def work_order_detail(request, pk):
             "time_entries": wo.time_entries.select_related("user"),
             "rollup": work_order_cost(wo),
             "expense_form": ExpenseForm(),
-            "parts": Part.objects.all()[:500],
             # Empty whenever WrenchLedger is absent, off, or unreachable, so
             # the page renders exactly as it did before the integration existed.
             "tool_warnings": readiness.for_work_order(wo),
@@ -603,9 +601,12 @@ def part_require(request, pk):
     reason it exists is to be answerable *before* the wheel is off.
     """
     wo = get_object_or_404(WorkOrder, pk=pk)
-    part = Part.objects.filter(pk=request.POST.get("part") or None).first()
+    # The chooser is a search box with a hidden id beside it, and with no script
+    # only the typed name arrives. Resolving it here is what keeps the
+    # unenhanced form working rather than merely rendering.
+    part, problem = resolve_part(request.POST)
     if part is None:
-        messages.error(request, _("Choose a part first."))
+        messages.error(request, problem)
         return redirect("work_order_detail", pk=wo.pk)
 
     job_item = JobItem.objects.filter(
@@ -744,7 +745,10 @@ def part_use(request, pk):
     part is installed either way and the record should say so.
     """
     wo = get_object_or_404(WorkOrder, pk=pk)
-    part = get_object_or_404(Part, pk=request.POST.get("part"))
+    part, problem = resolve_part(request.POST)
+    if part is None:
+        messages.error(request, problem)
+        return redirect("work_order_detail", pk=wo.pk)
     try:
         result = consume(
             part,

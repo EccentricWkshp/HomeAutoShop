@@ -99,20 +99,18 @@
       <h2>{% translate "Add a line" %}</h2>
       <form method="post" action="{% url 'purchase_line_add' purchase.pk %}" class="formgrid">{% csrf_token %}
         <div class="field">
-          <label for="id_part">{% translate "Part" %}</label>
-          <select name="part" id="id_part" class="select">
-            <option value="">{% translate "Not cataloged" %}</option>
-            {% for part in parts %}
-              <option value="{{ part.pk }}" data-step="{{ part.qty_step }}">{{ part }}</option>
-            {% endfor %}
-          </select>
+          {% comment %}
+          Leaving it empty is "not cataloged", which is a real answer on an
+          order line: the description below carries what was bought.
+          {% endcomment %}
+          {% include "partials/_partpicker.html" with field_id="id_part" label=_("Part") %}
         </div>
         <div class="field"><label for="id_description">{% translate "Description" %}</label>
           <input name="description" id="id_description" class="input"></div>
         <div class="field"><label for="id_qty">{% translate "Quantity" %}</label>
           {# Whole ones unless the part chosen above is measured out. #}
           <input type="number" step="1" name="qty_ordered" id="id_qty" value="1" class="input"
-                 data-step-from="id_part"></div>
+                 data-step-from="id_part_chosen"></div>
         <div class="field"><label for="id_price">{% translate "Unit price" %}</label>
           <input type="text" inputmode="decimal" autocomplete="off" name="unit_price_minor"
                  id="id_price" placeholder="{{ zero_amount }}" class="input"></div>

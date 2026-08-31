@@ -1272,10 +1272,16 @@ class QuantityStepTests(TestCase):
 
     def test_a_part_picker_carries_each_parts_step_for_the_box_beside_it(self):
         """The kit form cannot know which part is coming, so the choice does:
-        whole ones by default, relaxed by the part that gets picked."""
+        whole ones by default, relaxed by the part that gets picked.
+
+        The step used to ride on each `<option>`, which meant rendering every
+        part into the page to carry it. The chooser is a search now, so it
+        arrives with the chosen row instead — same wiring, from a source that
+        does not grow. `tests_chooser.py` covers the half that answers.
+        """
         page = self.page(self.gasket)
-        self.assertIn('data-step-from="id_kit_part"', page)
-        self.assertIn('data-step="0.001"', page)
+        self.assertIn('data-step-from="id_kit_part_chosen"', page)
+        self.assertIn('id="id_kit_part_chosen"', page)
 
     def test_storage_still_takes_fractions_whatever_the_box_says(self):
         """The step is a spinner, not a rule. Half a litre must still record."""

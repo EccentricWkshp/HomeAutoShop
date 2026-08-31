@@ -1,0 +1,53 @@
+{% load i18n %}
+{% comment %}
+A part chooser that does not grow.
+
+This replaces a `<select>` that was filled with `Part.objects.all()[:500]` on
+four different screens. The catalogue only ever grows — a part is not removed
+when it is used up, and should not be, since knowing what a fuel pump cost in
+2015 is the point — so that list got worse every month, for exactly the people
+using the application most, and past five hundred it silently stopped listing
+parts at all.
+
+Search instead of scroll, and a **shortlist** rather than a catalogue before
+anything is typed: the parts that fit this vehicle, the parts on the shelf, and
+the consumables. Nothing is hidden — typing searches every part by every
+identifier — but the resting state is eight rows chosen for relevance instead
+of five hundred in insertion order.
+
+Every row prints what is on hand, including "none on hand", because planning is
+the act of finding the gap between the shelf and the shopping list. A part that
+fits and is not in stock is the most useful row on the screen, not noise.
+
+With no script this is a text box whose name the server resolves, so the form
+still works — an unambiguous name is a part, an ambiguous one says so, and a
+name matching nothing offers to add it rather than failing quietly.
+
+Arguments: `field_id`, `label`, and optionally `asset` (whose fitments rank the
+shortlist), `exclude` (a part id to leave out), `required`, and `hide_label` for
+the inline rows where the button beside it already says what the box is for.
+{% endcomment %}
+<div class="picker partpicker" data-part-search="{% url 'part_search' %}"
+     {% if asset %}data-asset="{{ asset.pk }}"{% endif %}
+     {% if exclude %}data-exclude="{{ exclude }}"{% endif %}>
+  <label {% if hide_label %}class="visually-hidden" {% endif %}for="{{ field_id }}">{{ label }}</label>
+  {% comment %}
+  A search box with results under it, and deliberately not an ARIA combobox.
+  Claiming `role="combobox"` promises arrow-key navigation and an active
+  descendant; without those the promise is a lie told to a screen reader, and
+  the honest control — a search field whose results are buttons you can reach
+  with Tab — is fully operable by keyboard as it stands.
+  {% endcomment %}
+  <input type="search" id="{{ field_id }}" name="part_query" class="input"
+         autocomplete="off"
+         placeholder="{% translate 'Search parts by name or number' %}"
+         {% if required %}required{% endif %}>
+  {# The chosen part, and what it says about itself. #}
+  <input type="hidden" name="part" id="{{ field_id }}_chosen">
+  <ul class="results" id="{{ field_id }}_results" hidden></ul>
+  <p class="small muted nomatch" hidden>
+    {# Named by the script; without it the link still reaches the same form. #}
+    <a href="{% url 'part_create' %}" data-new-part
+       data-template="{% translate 'Add “%s” as a new part' %}">{% translate "Add it as a new part" %}</a>
+  </p>
+</div>

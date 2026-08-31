@@ -4,13 +4,16 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+from uuid import UUID
 
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db.models import Prefetch, Q, Sum
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.defaultfilters import floatformat
 from django.urls import reverse
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
@@ -25,8 +28,8 @@ from .models import (
     StockTransaction,
 )
 from .services import (
-    close_kit, consume, cycle_count, expiring_lots, find, kit_weights, open_kit,
-    outstanding_cores, restock_list, split_kit_cost,
+    candidates, close_kit, consume, cycle_count, expiring_lots, find, kit_weights,
+    open_kit, outstanding_cores, restock_list, resolve_part, split_kit_cost,
 )
 
 
@@ -230,9 +233,13 @@ def fitment_delete(request, pk, fitment_id):
 def kit_item_add(request, pk):
     """Record a part as being inside this kit (FR-INV-9)."""
     kit = get_object_or_404(Part, pk=pk)
+    inside, problem = resolve_part(request.POST)
+    if inside is None:
+        messages.error(request, problem)
+        return redirect("part_detail", pk=kit.pk)
     item = PartKitItem(
         kit=kit,
-        part_id=request.POST.get("part") or None,
+        part=inside,
         quantity=request.POST.get("quantity") or 1,
     )
     typed = (request.POST.get("value") or "").strip()
@@ -433,7 +440,6 @@ def part_detail(request, pk):
             # The answer to "do I already have one of these?" when the one you
             # have is inside a box with three other things.
             "in_kits": part.available_in_kits(),
-            "other_parts": Part.objects.exclude(pk=part.pk)[:500],
             "usages": part.usages.select_related(
                 "work_order", "work_order__asset", "asset"
             )[:25],
@@ -444,6 +450,76 @@ def part_detail(request, pk):
             "vehicles": Asset.objects.all(),
         },
     )
+
+
+@login_required
+def part_search(request):
+    """What a part chooser offers, as JSON (FR-PART-1).
+
+    The chooser used to be a `<select>` holding `Part.objects.all()[:500]` —
+    every part ever bought, in one flat list, on four different screens. Parts
+    are never removed from the catalogue when they are used up, so that list
+    only ever grows: a second vehicle or a year of jobs turns choosing a part
+    into scrolling past everything that was ever chosen before, and at five
+    hundred it silently stopped listing them at all.
+
+    The list is gone. This answers a search box instead, so length stops being
+    the reader's problem — and with nothing typed it answers with the
+    shortlist, which is what makes the resting state short.
+    """
+    asset = Asset.objects.filter(pk=_uuid(request.GET.get("asset"))).first()
+    choices = candidates(
+        request.GET.get("q", ""),
+        asset=asset,
+        exclude=(request.GET.get("exclude") or "").split(","),
+    )
+    return JsonResponse({"results": [part_row(choice) for choice in choices]})
+
+
+def part_row(choice) -> dict:
+    """One chooser row: what it is, what is on the shelf, and how it is measured.
+
+    The last two matter because the quantity box beside the chooser cannot know
+    in the markup whether it is about gaskets or about kilograms of refrigerant.
+    The chosen part carries its own step and its own convertible units, exactly
+    as the `<option>` attributes used to.
+    """
+    part = choice.part
+    return {
+        "id": str(part.pk),
+        "name": str(part),
+        "detail": _detail(choice),
+        "fits": choice.fits,
+        "step": part.qty_step,
+        "unit": part.unit,
+        "units": list(part.compatible_units),
+    }
+
+
+def _detail(choice) -> str:
+    """The line under the name, which is the whole point of ranking out loud.
+
+    "none on hand" is the useful half during planning: a part that fits and is
+    not on the shelf is the thing that has to be bought, and saying so here
+    means the gap is visible before the requirement is even saved.
+    """
+    part = choice.part
+    if choice.on_hand > 0:
+        stock = _("%(qty)s %(unit)s on hand") % {
+            "qty": floatformat(choice.on_hand, "-3"),
+            "unit": part.unit_label,
+        }
+    else:
+        stock = _("none on hand")
+    return f"{stock} · {_('fits this vehicle')}" if choice.fits else stock
+
+
+def _uuid(value):
+    """A primary key from a query string, or nothing — never an exception."""
+    try:
+        return UUID(str(value))
+    except (ValueError, AttributeError, TypeError):
+        return None
 
 
 @login_required
@@ -464,7 +540,11 @@ def part_create(request):
             messages.success(request, _("Added %(name)s.") % {"name": part.name})
             return redirect("part_detail", pk=part.pk)
     else:
-        form = PartForm()
+        # `?name=` arrives from a chooser that found nothing — the planning case,
+        # where the part being named is one nobody has bought yet. Carrying the
+        # typed name through means the search that failed becomes the first
+        # field of the form that fixes it, instead of being retyped.
+        form = PartForm(initial={"name": (request.GET.get("name") or "").strip()[:200]})
     return render(
         request, "parts/form.html", {"form": form, "part": None, "scanned_upc": scanned}
     )

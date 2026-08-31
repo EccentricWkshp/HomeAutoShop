@@ -248,6 +248,7 @@ urlpatterns = [
     path("parts/", parts.part_list, name="part_list"),
     path("parts/new/", parts.part_create, name="part_create"),
     path("parts/by-code/", parts.part_by_code, name="part_by_code"),
+    path("parts/search/", parts.part_search, name="part_search"),
     path("parts/<uuid:pk>/", parts.part_detail, name="part_detail"),
     path("parts/<uuid:pk>/edit/", parts.part_edit, name="part_edit"),
     path("parts/<uuid:pk>/crossrefs/", parts.crossref_add, name="crossref_add"),

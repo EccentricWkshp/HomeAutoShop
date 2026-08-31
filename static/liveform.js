@@ -66,6 +66,15 @@
     if (!fresh) return false;
     var hadFocus = region.contains(document.activeElement);
     region.innerHTML = fresh.innerHTML;
+    // The markup is new, so nothing in it is wired: `forms.js` binds to
+    // elements, and the ones it bound to have just been thrown away. Without
+    // this the part picker inside a swapped region stops searching and the
+    // delete button beside it stops confirming — enhancements that quietly
+    // lapse partway through using the page, which is worse than never having
+    // been there.
+    if (window.homeautoshop && window.homeautoshop.enhance) {
+      window.homeautoshop.enhance(region);
+    }
     updateMessages(doc);
     keepFocus(region, hadFocus);
     return true;

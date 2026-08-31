@@ -22,6 +22,21 @@
     if (element) element.addEventListener(event, handler);
   }
 
+  /* What the currently chosen part says about itself.
+   *
+   * Two shapes answer this, and both are a chooser: a `<select>` carries the
+   * fact on the selected `<option>`, and a search picker carries it on the
+   * hidden input holding the id, written there when a result is clicked. The
+   * boxes downstream — how big a step, which units convert — should not have
+   * to know which kind of chooser they are standing next to. */
+  function chosen(source, key) {
+    if (source.tagName === "SELECT") {
+      var option = source.options[source.selectedIndex];
+      return option ? option.getAttribute("data-" + key) : null;
+    }
+    return source.getAttribute("data-" + key);
+  }
+
   /* --------------------------------------------------- dependent settings
    * A field whose parent switch is off does nothing. Showing it anyway makes
    * the reader work out which of forty controls are currently live.
@@ -191,9 +206,162 @@
         window.clearTimeout(timer);
         timer = window.setTimeout(search, 250);
       });
-      on(input, "blur", function () {
-        // Long enough for a click on a result to land first.
-        window.setTimeout(close, 200);
+      // Same reasoning as the part picker below: blurring the input to reach
+      // the first result must not delete it.
+      on(form, "focusout", function () {
+        window.setTimeout(function () {
+          if (!form.contains(document.activeElement)) close();
+        }, 150);
+      });
+    });
+  }
+
+  /* ------------------------------------------------------------- part search
+   * The chooser this replaces was a `<select>` holding every part ever bought,
+   * which is a control that gets worse the more the application is used. This
+   * asks the server instead, so the number of parts stops being the reader's
+   * problem — and it asks *before* anything is typed too, because the useful
+   * default is a shortlist of what fits this vehicle and what is on the shelf,
+   * not the first eight rows of a table.
+   *
+   * Unlike the tool picker, choosing here does not submit: there is a quantity
+   * beside it, and often a job item, and submitting on the first click would
+   * take the choice and throw away the rest of the form.
+   */
+  function wirePartPickers(root) {
+    root.querySelectorAll("[data-part-search]").forEach(function (picker) {
+      var input = picker.querySelector('input[name="part_query"]');
+      var idField = picker.querySelector('input[name="part"]');
+      var list = picker.querySelector(".results");
+      var nomatch = picker.querySelector(".nomatch");
+      var newLink = picker.querySelector("[data-new-part]");
+      if (!input || !idField || !list) return;
+
+      var endpoint = picker.getAttribute("data-part-search");
+      var timer = null;
+      var lastQuery = null;
+
+      var close = function () {
+        list.hidden = true;
+        list.textContent = "";
+      };
+
+      var offerToAdd = function (query) {
+        if (!nomatch) return;
+        // Only worth offering for something somebody actually typed: an empty
+        // shortlist on a new install means "add some parts", which the parts
+        // screen says better than a line under a search box.
+        var wanted = query.length >= 2;
+        nomatch.hidden = !wanted;
+        if (wanted && newLink) {
+          var base = newLink.getAttribute("href").split("?")[0];
+          newLink.href = base + "?name=" + encodeURIComponent(query);
+          newLink.textContent = newLink.getAttribute("data-template")
+            ? newLink.getAttribute("data-template").replace("%s", query)
+            : newLink.textContent;
+        }
+      };
+
+      var choose = function (part) {
+        idField.value = part.id;
+        // The quantity box and the unit picker read their settings from here,
+        // exactly as they read them from a chosen `<option>` before.
+        idField.setAttribute("data-step", part.step);
+        idField.setAttribute("data-units", (part.units || []).join(","));
+        input.value = part.name;
+        input.setAttribute("data-picked", part.name);
+        // Forget what was last asked, or retyping the same search after a
+        // change of mind is answered with the early return below and no list.
+        lastQuery = null;
+        close();
+        if (nomatch) nomatch.hidden = true;
+        idField.dispatchEvent(new Event("change", { bubbles: true }));
+      };
+
+      var render = function (payload, query) {
+        list.textContent = "";
+        var results = payload.results || [];
+        if (!results.length) {
+          close();
+          offerToAdd(query);
+          return;
+        }
+        if (nomatch) nomatch.hidden = true;
+        results.forEach(function (part) {
+          // A plain list item: `role="option"` outside a listbox is an
+          // invalid claim, and the list is not one — see the note in the
+          // template about not promising combobox behaviour it lacks.
+          var item = document.createElement("li");
+          var button = document.createElement("button");
+          button.type = "button";
+          button.className = "linkish";
+          button.appendChild(document.createTextNode(part.name));
+          if (part.detail) {
+            var detail = document.createElement("span");
+            detail.className = "muted small";
+            detail.textContent = " — " + part.detail;
+            button.appendChild(detail);
+          }
+          button.addEventListener("click", function () {
+            choose(part);
+          });
+          item.appendChild(button);
+          list.appendChild(item);
+        });
+        list.hidden = false;
+      };
+
+      var ask = function () {
+        var query = input.value.trim();
+        // Typing after picking something means the pick is stale, and leaving
+        // the old id in place would submit a part nobody is looking at.
+        if (query !== input.getAttribute("data-picked")) idField.value = "";
+        if (query.length === 1) {
+          close();
+          return;
+        }
+        if (query === lastQuery) return;
+        lastQuery = query;
+
+        var url = endpoint + "?q=" + encodeURIComponent(query);
+        var asset = picker.getAttribute("data-asset");
+        var exclude = picker.getAttribute("data-exclude");
+        if (asset) url += "&asset=" + encodeURIComponent(asset);
+        if (exclude) url += "&exclude=" + encodeURIComponent(exclude);
+
+        fetch(url, { headers: { Accept: "application/json" } })
+          .then(function (response) {
+            return response.ok ? response.json() : { results: [] };
+          })
+          .then(function (payload) {
+            render(payload, query);
+          })
+          // Unreachable is not an error worth shouting about: the box still
+          // submits and the server resolves the name that was typed.
+          .catch(close);
+      };
+
+      on(input, "input", function () {
+        window.clearTimeout(timer);
+        timer = window.setTimeout(ask, 250);
+      });
+      // The shortlist is the whole point, so it is shown on arrival rather
+      // than waiting for somebody to guess at a first letter.
+      on(input, "focus", function () {
+        if (!input.value.trim()) {
+          lastQuery = null;
+          ask();
+        }
+      });
+      // Closing on the input's own blur was a keyboard trap: tabbing to the
+      // first result blurs the input, and a timer then deleted the button that
+      // had just taken focus. So close only once focus has left the picker *as
+      // a whole* — after a moment, which is both what lets a click on a result
+      // land first and what gives focus time to arrive on the button.
+      on(picker, "focusout", function () {
+        window.setTimeout(function () {
+          if (!picker.contains(document.activeElement)) close();
+        }, 150);
       });
     });
   }
@@ -212,8 +380,7 @@
       if (!select) return;
       var floor = input.getAttribute("min");
       var apply = function () {
-        var option = select.options[select.selectedIndex];
-        var step = (option && option.getAttribute("data-step")) || "1";
+        var step = chosen(select, "step") || "1";
         input.step = step;
         // Only where the markup set one: a receiving box with no floor should
         // not acquire one here.
@@ -226,24 +393,22 @@
 
   /* ----------------------------------------------- the units the part uses
    * Which units apply depends on which part, and a quantity box beside a part
-   * picker cannot know that in the markup. So the options carry their own list
-   * and the select beside them is filled from whichever is chosen.
+   * chooser cannot know that in the markup. So the chosen part carries its own
+   * list — on the `<option>` where the chooser is a select, on the hidden field
+   * where it is a search — and this fills the select beside it from whichever
+   * is chosen.
    *
    * It starts empty and hidden, which is what makes this safe to skip: with no
    * script the field never reaches the server and the quantity is read in the
-   * part's own unit — named in the option text, so the reader is not guessing
-   * either way. A counted part gets no picker at all, because there is no
-   * factor between a gasket and a litre.
+   * part's own unit, which the chooser's own results name. A counted part gets
+   * no picker at all, because there is no factor between a gasket and a litre.
    */
   function wireUnitPickers(root) {
     root.querySelectorAll("select[data-units-from]").forEach(function (picker) {
       var parts = document.getElementById(picker.getAttribute("data-units-from"));
       if (!parts) return;
       var apply = function () {
-        var option = parts.options[parts.selectedIndex];
-        var units = ((option && option.getAttribute("data-units")) || "")
-          .split(",")
-          .filter(Boolean);
+        var units = (chosen(parts, "units") || "").split(",").filter(Boolean);
         picker.textContent = "";
         // One unit is not a choice, and a dropdown with a single option is a
         // control that asks a question with no answers.
@@ -274,14 +439,27 @@
     });
   }
 
+  /* Run over a subtree rather than the whole document, because `liveform.js`
+   * replaces a region's contents when a form in it is posted — and everything
+   * above is bound to elements, so the replacements arrive unwired. Before
+   * this, the second thing you did inside a live region met a tool picker that
+   * had stopped searching and a delete button that had stopped confirming. */
+  function enhance(root) {
+    wireDependents(root);
+    wireLabelledButtons(root);
+    wireStatusForm(root);
+    wireToolPickers(root);
+    wirePartPickers(root);
+    wireQuantitySteps(root);
+    wireUnitPickers(root);
+    wireConfirms(root);
+  }
+
+  window.homeautoshop = window.homeautoshop || {};
+  window.homeautoshop.enhance = enhance;
+
   function start() {
-    wireDependents(document);
-    wireLabelledButtons(document);
-    wireStatusForm(document);
-    wireToolPickers(document);
-    wireQuantitySteps(document);
-    wireUnitPickers(document);
-    wireConfirms(document);
+    enhance(document);
   }
 
   if (document.readyState === "loading") {
