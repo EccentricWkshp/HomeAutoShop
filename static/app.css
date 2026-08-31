@@ -247,6 +247,19 @@ label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: .
 .factline dt::after { content: ":"; }
 .factline dd { margin: 0; }
 
+/* Two stacked buttons that move a list item up or down. Narrow, because they
+   sit beside every row and must not out-weigh what the row says — but the pair
+   is a full tap target tall, and each half stays comfortably hittable with a
+   thumb. Disabled at the ends of the list rather than removed: controls that
+   appear and vanish as items move past them are harder to aim at than ones
+   that are simply unavailable. */
+.reorder { display: flex; flex-direction: column; gap: .15rem; }
+.reorder button {
+  padding: .25rem .55rem; min-height: calc(var(--tap) / 2); min-width: 2.25rem;
+  font-weight: 400; line-height: 1;
+}
+.reorder button[disabled] { opacity: .3; cursor: default; }
+
 .timeline { list-style: none; padding: 0; margin: 0; }
 .timeline li { display: grid; grid-template-columns: 5.5rem 1fr; gap: .75rem; padding: .6rem 0; border-bottom: 1px solid var(--line); }
 .timeline time { color: var(--muted); font-size: .8rem; }

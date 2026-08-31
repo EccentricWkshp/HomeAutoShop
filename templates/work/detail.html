@@ -86,8 +86,37 @@
                 {% if item.is_done %}☑{% else %}☐{% endif %}
               </button>
             </form>
+            {% comment %}
+            Buttons, not dragging. Dragging needs a script to exist at all,
+            needs a second mechanism built beside it to be reachable from a
+            keyboard, and is unpleasant on the phone this list is actually read
+            on. Disabled at the ends rather than omitted, so the row's controls
+            do not shift about as items move past them.
+            {% endcomment %}
+            <div class="reorder">
+              <form method="post" action="{% url 'job_item_move' wo.pk item.pk %}">{% csrf_token %}
+                <input type="hidden" name="direction" value="up">
+                <button class="iconbtn small" type="submit" {% if forloop.first %}disabled{% endif %}
+                        aria-label="{% blocktranslate with name=item.title %}Move {{ name }} up{% endblocktranslate %}">
+                  <span aria-hidden="true">↑</span>
+                </button>
+              </form>
+              <form method="post" action="{% url 'job_item_move' wo.pk item.pk %}">{% csrf_token %}
+                <input type="hidden" name="direction" value="down">
+                <button class="iconbtn small" type="submit" {% if forloop.last %}disabled{% endif %}
+                        aria-label="{% blocktranslate with name=item.title %}Move {{ name }} down{% endblocktranslate %}">
+                  <span aria-hidden="true">↓</span>
+                </button>
+              </form>
+            </div>
             <div style="flex:1">
-              <strong {% if item.is_done %}style="text-decoration:line-through;opacity:.65"{% endif %}>{{ item.title }}</strong>
+              <a href="{% url 'job_item_edit' wo.pk item.pk %}">
+                <strong {% if item.is_done %}style="text-decoration:line-through;opacity:.65"{% endif %}>{{ item.title }}</strong>
+              </a>
+              {% if item.status == 'doing' or item.status == 'skipped' %}
+                <span class="pill">{{ item.get_status_display }}</span>
+              {% endif %}
+              {% if item.assigned_to %}<span class="small muted">{{ item.assigned_to.display_name }}</span>{% endif %}
               {% if item.description %}<div class="small muted">{{ item.description }}</div>{% endif %}
               {% for reference in item.tools.all %}
                 <div class="small">

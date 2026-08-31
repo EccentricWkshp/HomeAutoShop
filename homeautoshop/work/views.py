@@ -98,6 +98,52 @@ class JobItemForm(forms.ModelForm):
         widgets = {"description": forms.Textarea(attrs={"rows": 2})}
 
 
+class JobItemEditForm(forms.ModelForm):
+    """A job item after it has been written down (FR-WO-12).
+
+    Everything about it except its position, which is what the up and down
+    buttons are for — a sequence number in a box asks somebody to know what the
+    other items are numbered, and to renumber the rest by hand when they insert
+    one.
+
+    `status` is here because the checkbox on the work order can only say *done*
+    or *not done*, so **In progress** and **Skipped** existed in the model and
+    were unreachable from any screen. Skipped in particular is the one worth
+    reaching: a job item that was considered and deliberately not done is a
+    different record from one still waiting, and only one of them belongs on
+    next week's list.
+    """
+
+    class Meta:
+        model = JobItem
+        fields = ["title", "description", "status", "assigned_to", "service_item"]
+        widgets = {"description": forms.Textarea(attrs={"rows": 3})}
+        labels = {
+            "assigned_to": _("Who is doing it"),
+            "service_item": _("Maintenance this completes"),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["assigned_to"].required = False
+        self.fields["service_item"].required = False
+        self.fields["assigned_to"].empty_label = _("— nobody in particular —")
+        self.fields["service_item"].empty_label = _("— none —")
+        # Only this vehicle's maintenance: the field is a global list of every
+        # service item in the shop otherwise, and completing a job item rolls
+        # that interval forward on whatever vehicle it belongs to.
+        if self.instance.pk:
+            self.fields["service_item"].queryset = self.fields[
+                "service_item"
+            ].queryset.filter(asset=self.instance.work_order.asset)
+        for name, field in self.fields.items():
+            field.required = name == "title"
+            css = "select" if isinstance(field.widget, forms.Select) else "input"
+            if isinstance(field.widget, forms.Textarea):
+                css = "input textarea"
+            field.widget.attrs.setdefault("class", css)
+
+
 @login_required
 def work_order_list(request):
     status = request.GET.get("status", "open")
@@ -356,6 +402,97 @@ def job_item_create(request, pk):
         item.work_order = wo
         item.sequence = wo.job_items.count()
         item.save()
+    return redirect("work_order_detail", pk=wo.pk)
+
+
+@login_required
+def job_item_edit(request, pk, item_id):
+    """Change a job item after it was written down (FR-WO-12)."""
+    wo = get_object_or_404(WorkOrder, pk=pk)
+    item = get_object_or_404(JobItem, pk=item_id, work_order=wo)
+    form = JobItemEditForm(request.POST or None, instance=item)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, _("Saved."))
+        return redirect("work_order_detail", pk=wo.pk)
+    return render(
+        request, "work/job_item_form.html", {"wo": wo, "item": item, "form": form}
+    )
+
+
+@require_POST
+@login_required
+def job_item_delete(request, pk, item_id):
+    """Remove a job item that should not be on the list.
+
+    Refused once parts have been used against it: the usage is what the job
+    cost and what the vehicle's history says was fitted, and a soft delete does
+    not take those rows with it — the item would vanish from the screen while
+    its costs stayed in the total, which is worse than leaving it. **Skipped**
+    is the answer for work that was considered and not done, and it keeps the
+    record rather than hiding it.
+    """
+    wo = get_object_or_404(WorkOrder, pk=pk)
+    item = get_object_or_404(JobItem, pk=item_id, work_order=wo)
+
+    if item.part_usages.exists():
+        messages.error(
+            request,
+            _(
+                "Parts were used on this item, so removing it would leave their "
+                "cost in the job with nothing to explain it. Mark it skipped "
+                "instead."
+            ),
+        )
+        return redirect("work_order_detail", pk=wo.pk)
+
+    title = item.title
+    # Pointers, not records of work: they go with it. A requirement is a claim
+    # somebody made and survives, moved up to the job as a whole.
+    item.tools.all().delete()
+    item.part_requirements.update(job_item=None)
+    item.delete()
+    _resequence(wo)
+    messages.success(request, _("Removed %(what)s.") % {"what": title})
+    return redirect("work_order_detail", pk=wo.pk)
+
+
+def _resequence(wo) -> None:
+    """Number the items 0, 1, 2… however they were numbered before.
+
+    Removing one leaves a gap, and two items created in the same second can
+    share a sequence. Renumbering the whole short list is cheaper to reason
+    about than defending every operation against both.
+    """
+    for position, item in enumerate(wo.job_items.all()):
+        if item.sequence != position:
+            item.sequence = position
+            item.save(update_fields=["sequence"])
+
+
+@require_POST
+@login_required
+def job_item_move(request, pk, item_id):
+    """Move a job item up or down the list (FR-WO-12).
+
+    Buttons rather than dragging. Dragging needs a script to exist at all,
+    cannot be done from a keyboard without building a second mechanism anyway,
+    and is unpleasant on a phone held in one oily hand — which is the machine
+    this list is read on. Two buttons work everywhere, need nothing, and are
+    operable by anybody who can reach a Tab key.
+    """
+    wo = get_object_or_404(WorkOrder, pk=pk)
+    item = get_object_or_404(JobItem, pk=item_id, work_order=wo)
+
+    items = list(wo.job_items.all())
+    here = next(i for i, row in enumerate(items) if row.pk == item.pk)
+    there = here - 1 if request.POST.get("direction") == "up" else here + 1
+    if 0 <= there < len(items):
+        items[here], items[there] = items[there], items[here]
+        for position, row in enumerate(items):
+            if row.sequence != position:
+                row.sequence = position
+                row.save(update_fields=["sequence"])
     return redirect("work_order_detail", pk=wo.pk)
 
 

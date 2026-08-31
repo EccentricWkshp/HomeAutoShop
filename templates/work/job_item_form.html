@@ -1,0 +1,48 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ item.title }} — {{ wo.number }}{% endblock %}
+{% block content %}
+{% url 'work_order_detail' wo.pk as back_url %}
+{% include "partials/_back.html" with url=back_url label=wo.number %}
+<h1>{% translate "Edit a job item" %}</h1>
+<p class="muted">{{ wo.number }} · {{ wo.asset.nickname }}</p>
+
+<form method="post" class="card">{% csrf_token %}
+  {% if form.non_field_errors %}{{ form.non_field_errors }}{% endif %}
+  <div class="formgrid">
+    {% for field in form %}
+      <div class="field {% if field.name == 'description' or field.name == 'title' %}full{% endif %}">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}
+        {% if field.help_text %}<p class="helptext">{{ field.help_text }}</p>{% endif %}{{ field.errors }}
+      </div>
+    {% endfor %}
+  </div>
+  {% comment %}
+  Where the item sits in the list is not a box here. A sequence number asks
+  somebody to know what the other items are numbered and to renumber the rest
+  by hand to insert one; the up and down buttons on the work order say the same
+  thing without any of that.
+  {% endcomment %}
+  <p class="small muted">
+    {% translate "Its place in the list is set with the up and down buttons on the work order." %}
+  </p>
+  {% include "partials/_formactions.html" with cancel_url=back_url %}
+</form>
+
+<section class="card">
+  <h2>{% translate "Remove this item" %}</h2>
+  <p class="small muted">
+    {% translate "For an item that should not be on the list at all. Work that was considered and deliberately not done is Skipped rather than removed — that is a record worth keeping, and only one of the two belongs on next week's list." %}
+  </p>
+  {% if item.part_usages.exists %}
+    <p class="msg warning">
+      {% translate "Parts were used on this item. Removing it would leave their cost in the job with nothing to explain it, so mark it skipped instead." %}
+    </p>
+  {% else %}
+    <form method="post" action="{% url 'job_item_delete' wo.pk item.pk %}"
+          data-confirm="{% blocktranslate with name=item.title %}Remove {{ name }}?{% endblocktranslate %}">
+      {% csrf_token %}
+      <button class="danger" type="submit">{% translate "Remove this item" %}</button>
+    </form>
+  {% endif %}
+</section>
+{% endblock %}

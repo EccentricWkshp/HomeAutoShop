@@ -157,7 +157,8 @@ class EveryPageRendersTests(TestCase):
         # Routes whose `pk` is not an asset.
         if name in {
             "work_order_detail", "work_order_edit", "work_order_transition", "note_create",
-            "job_item_create", "job_item_toggle", "work_order_photo", "work_order_part_use",
+            "job_item_create", "job_item_toggle", "job_item_edit", "job_item_move",
+            "job_item_delete", "work_order_photo", "work_order_part_use",
             "work_order_time_add", "work_order_expense_add", "job_item_tool_add",
             "job_item_tool_remove",
         }:

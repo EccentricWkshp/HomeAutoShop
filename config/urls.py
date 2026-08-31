@@ -129,6 +129,14 @@ urlpatterns = [
     path("work-orders/<uuid:pk>/notes/", work.note_create, name="note_create"),
     path("work-orders/<uuid:pk>/items/", work.job_item_create, name="job_item_create"),
     path("work-orders/<uuid:pk>/items/<uuid:item_id>/toggle/", work.job_item_toggle, name="job_item_toggle"),
+    # A list of work changes as the work does: items get reworded, reassigned,
+    # skipped, and done in a different order from the one they were written in.
+    path("work-orders/<uuid:pk>/items/<uuid:item_id>/edit/", work.job_item_edit,
+         name="job_item_edit"),
+    path("work-orders/<uuid:pk>/items/<uuid:item_id>/move/", work.job_item_move,
+         name="job_item_move"),
+    path("work-orders/<uuid:pk>/items/<uuid:item_id>/delete/", work.job_item_delete,
+         name="job_item_delete"),
     path("work-orders/<uuid:pk>/photos/", work.work_order_photo, name="work_order_photo"),
     path("work-orders/<uuid:pk>/parts/", work.part_use, name="work_order_part_use"),
     # Needing a part and using one are different acts: the first is a claim

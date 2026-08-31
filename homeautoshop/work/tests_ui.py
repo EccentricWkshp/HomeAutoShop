@@ -401,3 +401,195 @@ class ToolLookupTests(Base):
                 reverse("work_order_detail", args=[self.wo.pk])
             ).content.decode()
         self.assertNotIn('list="tool-options"', page)
+
+
+class JobItemEditTests(Base):
+    """A list of work changes as the work does (FR-WO-12).
+
+    Reported as: job items should be editable and re-orderable. They were
+    write-once — a typo stayed a typo, and the only status the screen could
+    reach was done or not done, so **In progress** and **Skipped** existed in
+    the model and nowhere else.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.items = [
+            JobItem.objects.create(
+                work_order=self.wo, title=title, sequence=position
+            )
+            for position, title in enumerate(["Oil", "Brakes", "Rattle"])
+        ]
+
+    def titles(self) -> list[str]:
+        return [item.title for item in self.wo.job_items.all()]
+
+    def edit_url(self, item):
+        return reverse("job_item_edit", args=[self.wo.pk, item.pk])
+
+    # -- editing ----------------------------------------------------------
+
+    def test_the_work_order_links_to_each_item(self):
+        page = self.client.get(
+            reverse("work_order_detail", args=[self.wo.pk])
+        ).content.decode()
+        for item in self.items:
+            self.assertIn(self.edit_url(item), page)
+
+    def test_a_title_can_be_corrected(self):
+        self.client.post(
+            self.edit_url(self.items[0]),
+            {"title": "Oil and filter", "status": "todo"},
+        )
+        self.items[0].refresh_from_db()
+        self.assertEqual(self.items[0].title, "Oil and filter")
+
+    def test_a_status_the_checkbox_cannot_reach_is_reachable_here(self):
+        """The checkbox is a toggle, so it only ever says done or not done."""
+        self.client.post(
+            self.edit_url(self.items[1]),
+            {"title": "Brakes", "status": JobItem.Status.SKIPPED},
+        )
+        self.items[1].refresh_from_db()
+        self.assertEqual(self.items[1].status, JobItem.Status.SKIPPED)
+
+    def test_a_status_worth_seeing_is_shown_on_the_list(self):
+        self.items[1].status = JobItem.Status.DOING
+        self.items[1].save()
+        response = self.client.get(reverse("work_order_detail", args=[self.wo.pk]))
+        self.assertContains(response, "In progress")
+
+    def test_an_item_can_be_given_to_somebody(self):
+        other = User.objects.create_user(
+            username="sam", password="x" * 16, role=Role.ADMIN
+        )
+        self.client.post(
+            self.edit_url(self.items[0]),
+            {"title": "Oil", "status": "todo", "assigned_to": str(other.pk)},
+        )
+        self.items[0].refresh_from_db()
+        self.assertEqual(self.items[0].assigned_to, other)
+
+    def test_an_item_of_another_work_order_is_not_reachable_from_this_one(self):
+        other = WorkOrder.objects.create(asset=self.asset, title="Something else")
+        response = self.client.get(
+            reverse("job_item_edit", args=[other.pk, self.items[0].pk])
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_the_form_does_not_offer_a_sequence_box(self):
+        """A number here asks somebody to know what the others are numbered."""
+        page = self.client.get(self.edit_url(self.items[0])).content.decode()
+        self.assertNotIn('name="sequence"', page)
+
+    # -- ordering ---------------------------------------------------------
+
+    def shift(self, item, direction):
+        """Not `move`: the base class already has one, and it moves a whole
+        work order between statuses."""
+        return self.client.post(
+            reverse("job_item_move", args=[self.wo.pk, item.pk]),
+            {"direction": direction},
+            follow=True,
+        )
+
+    def test_an_item_moves_up(self):
+        self.shift(self.items[1], "up")
+        self.assertEqual(self.titles(), ["Brakes", "Oil", "Rattle"])
+
+    def test_an_item_moves_down(self):
+        self.shift(self.items[0], "down")
+        self.assertEqual(self.titles(), ["Brakes", "Oil", "Rattle"])
+
+    def test_the_first_one_does_not_move_up_off_the_end(self):
+        self.shift(self.items[0], "up")
+        self.assertEqual(self.titles(), ["Oil", "Brakes", "Rattle"])
+
+    def test_the_last_one_does_not_move_down_off_the_end(self):
+        self.shift(self.items[2], "down")
+        self.assertEqual(self.titles(), ["Oil", "Brakes", "Rattle"])
+
+    def test_the_buttons_at_the_ends_are_disabled_rather_than_missing(self):
+        """Controls that appear and vanish as items move past them are harder
+        to aim at than ones that are simply unavailable."""
+        self.assertEqual(self.item_list_markup().count("disabled"), 2)
+
+    def item_list_markup(self) -> str:
+        """Just the job items card, so an unrelated disabled control elsewhere
+        on a long page cannot make this pass or fail by accident."""
+        page = self.client.get(
+            reverse("work_order_detail", args=[self.wo.pk])
+        ).content.decode()
+        start = page.index("Job items")
+        return page[start:page.index("</section>", start)]
+
+    def test_items_sharing_a_sequence_still_reorder(self):
+        """Two created in the same request can hold the same number, and a swap
+        that only exchanges values would leave them exactly as they were."""
+        JobItem.objects.filter(work_order=self.wo).update(sequence=0)
+
+        self.shift(self.wo.job_items.all()[2], "up")
+
+        self.assertEqual(
+            [item.sequence for item in self.wo.job_items.all()], [0, 1, 2]
+        )
+
+    def test_moving_needs_no_script(self):
+        """Two buttons and a form post: nothing here is drag and drop."""
+        page = self.client.get(
+            reverse("work_order_detail", args=[self.wo.pk])
+        ).content.decode()
+        self.assertIn(reverse("job_item_move", args=[self.wo.pk, self.items[0].pk]), page)
+        self.assertNotIn("draggable", page)
+
+    # -- removing ---------------------------------------------------------
+
+    def test_an_item_can_be_removed(self):
+        self.client.post(reverse("job_item_delete", args=[self.wo.pk, self.items[1].pk]))
+        self.assertEqual(self.titles(), ["Oil", "Rattle"])
+
+    def test_removing_one_closes_the_gap_it_left(self):
+        self.client.post(reverse("job_item_delete", args=[self.wo.pk, self.items[0].pk]))
+        self.assertEqual([item.sequence for item in self.wo.job_items.all()], [0, 1])
+
+    def test_an_item_parts_were_used_on_is_refused(self):
+        """The usage is what the job cost. A soft delete does not take those
+        rows with it, so the item would vanish while its cost stayed."""
+        from homeautoshop.parts.models import Part, PartUsage
+
+        part = Part.objects.create(name="Oil filter")
+        PartUsage.objects.create(
+            work_order=self.wo, job_item=self.items[0], part=part, qty=1
+        )
+
+        response = self.client.post(
+            reverse("job_item_delete", args=[self.wo.pk, self.items[0].pk]),
+            follow=True,
+        )
+
+        self.assertIn("Oil", self.titles())
+        self.assertContains(response, "Mark it skipped instead")
+
+    def test_a_part_this_item_needed_survives_it(self):
+        """A requirement is a claim somebody made about the job, not a record
+        of this line — it moves up to the work order rather than going too."""
+        from homeautoshop.parts.models import Part
+        from homeautoshop.work.models import PartRequirement
+
+        part = Part.objects.create(name="Brake pads")
+        requirement = PartRequirement.objects.create(
+            work_order=self.wo, job_item=self.items[1], part=part, qty=1
+        )
+
+        self.client.post(reverse("job_item_delete", args=[self.wo.pk, self.items[1].pk]))
+
+        requirement.refresh_from_db()
+        self.assertIsNone(requirement.job_item)
+
+    def test_the_tools_it_pointed_at_go_with_it(self):
+        tool = ShopTool.objects.create(tool_id="t-1", name="Torque wrench")
+        JobItemTool.objects.create(job_item=self.items[0], tool=tool)
+
+        self.client.post(reverse("job_item_delete", args=[self.wo.pk, self.items[0].pk]))
+
+        self.assertEqual(JobItemTool.objects.count(), 0)
