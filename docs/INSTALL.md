@@ -45,6 +45,19 @@ Four values matter before first boot. The rest have working defaults.
 
 Any secret can be supplied out of a file instead by pointing `<NAME>_FILE` at a path.
 
+**Almost everything else in this file is edited in the application instead.**
+The shop name, units and currency, Offline Mode, the integration addresses and
+their keys, the reminder settings and the backup schedule all live under
+*Settings* in the account menu, and a value set there wins over the one in
+`.env`. Set the four above, start it, and change the rest from a browser.
+
+Two things stay here because they cannot live in the database:
+
+| | |
+| --- | --- |
+| `CREDENTIAL_KEY` | Encrypts the integration keys you enter in the UI. A key kept in the database it protects is not a key. Leave it blank and it is derived from `SECRET_KEY` — that works, and it is weaker, because then one secret protects two things. Changing it invalidates every stored credential at once, which is the intended emergency behaviour. |
+| `TESSERACT_LANGS` | Which OCR language packs go **into the image**, so it is a build-time choice: `eng` by default, and `TESSERACT_LANGS="eng fra spa" docker compose build` to add more. It also sets what the application asks for, so the two halves cannot drift. |
+
 ## 3. Start it
 
 ```bash
@@ -350,8 +363,15 @@ docker compose exec app python manage.py backup
   nothing twice.
 - **Turn on reminders** — off by default, and a channel has to exist and be
   enabled before anything is delivered.
+- **Take a backup and look at it.** Account menu → *Backup* → **Back up now**.
+  The same screen lists what is held with sizes, lets you download one, and
+  prints the restore command with this instance's real paths already in it —
+  which is worth reading once now rather than for the first time during an
+  actual restore.
 - **Check the backup destination** has room, and that something is copying it
   off this machine. A backup on the same disk as the database is not a backup.
+  Note what a backup deliberately does *not* contain: the integration keys you
+  entered. A restored instance says which ones need typing in again.
 
 ## 8. Installing it on the phone
 

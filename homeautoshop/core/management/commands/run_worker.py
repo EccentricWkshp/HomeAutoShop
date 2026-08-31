@@ -5,6 +5,7 @@ import time
 from django.core.management.base import BaseCommand
 
 from homeautoshop.core.jobs import drain
+from homeautoshop.core.runtime import ensure_overlay, is_stale
 from homeautoshop.core.schedule import tick
 
 
@@ -22,6 +23,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         scheduling = not options["no_schedule"]
+        # Records which configuration this process is running, so it can notice
+        # when that stops being true (§17.2).
+        ensure_overlay()
         if options["once"]:
             queued = tick() if scheduling else 0
             self.stdout.write(f"queued {queued}, ran {drain()} job(s)")
@@ -40,6 +44,15 @@ class Command(BaseCommand):
                 if scheduling and now - last_scheduled >= 60:
                     tick()
                     last_scheduled = now
+                    # A restart-class setting has been changed since this
+                    # process booted, so it is running stale configuration.
+                    # Exiting is the whole mechanism: compose has
+                    # `restart: unless-stopped`, so it comes back within
+                    # seconds with the new values — no signal to deliver
+                    # across containers, and nothing to build (§17.2).
+                    if is_stale():
+                        self.stdout.write("configuration changed; restarting")
+                        return
                 if not drain():
                     time.sleep(options["interval"])
             except KeyboardInterrupt:

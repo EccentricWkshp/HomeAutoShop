@@ -17,8 +17,7 @@ exactly as it did before the integration existed (FR-WL-7).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-
-from django.conf import settings
+from homeautoshop.core.runtime import conf
 
 
 @dataclass(slots=True)
@@ -31,7 +30,7 @@ class ToolWarning:
 
 
 def enabled() -> bool:
-    return bool(settings.WRENCHLEDGER_API_KEY) and not settings.OFFLINE_MODE
+    return bool(conf.WRENCHLEDGER_API_KEY) and not conf.OFFLINE_MODE
 
 
 def for_work_order(work_order) -> list[ToolWarning]:

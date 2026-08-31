@@ -26,6 +26,7 @@ from django.conf import settings
 from django.core import serializers
 from django.db import connection
 from django.utils import timezone
+from .runtime import conf
 
 log = logging.getLogger(__name__)
 
@@ -48,10 +49,21 @@ REDACTED_FIELDS = {
     "accounts.ApiToken": ("token_hash",),
 }
 
+# Skipped outright rather than field-redacted (§17.1). Integration credentials
+# live in their own table precisely so this can be a whole-table decision: the
+# alternative is per-field surgery on every row and one forgotten column.
+EXCLUDED_MODELS = {"core.Credential"}
+
+#: The database table behind them, for the physical backup below, where there
+#: are no models to skip — only a dump.
+EXCLUDED_TABLES = ("core_credential",)
+
 
 def _iter_models():
     for app_label in EXPORTED_APPS:
         for model in apps.get_app_config(app_label).get_models():
+            if f"{model._meta.app_label}.{model.__name__}" in EXCLUDED_MODELS:
+                continue
             yield model
 
 
@@ -79,7 +91,7 @@ def build_export(destination: Path | None = None) -> Path:
         "application": "HomeAutoShop",
         "schema_version": SCHEMA_VERSION,
         "exported_at": stamp.isoformat(),
-        "shop_name": settings.SHOP_NAME,
+        "shop_name": conf.SHOP_NAME,
         "tables": {},
         "media_files": 0,
     }
@@ -129,9 +141,13 @@ proprietary container.
 
 ## What is not here
 
-Password hashes and API token hashes are omitted deliberately — they are
-credentials, not your data. Restoring an instance from a backup (rather than
-this export) preserves logins.
+Password hashes, API token hashes, and the integration credentials you entered
+in the settings screen are all omitted deliberately — they are credentials, not
+your data. An instance built from this archive will need each integration
+re-authenticated, and it says which ones on the first screen after a restore.
+
+Restoring from a *backup* (rather than this export) preserves logins. It does
+not preserve integration credentials either, and for the same reason.
 """
 
 
@@ -151,7 +167,12 @@ def run_backup() -> Path:
         if source.exists():
             with connection.cursor() as cursor:
                 cursor.execute("PRAGMA wal_checkpoint(FULL);")
-            shutil.copy2(source, target / "database.sqlite3")
+            copy = target / "database.sqlite3"
+            shutil.copy2(source, copy)
+            # The **copy** is stripped, never the live file. Deleting from the
+            # running database to make a clean backup would be a spectacular
+            # way to lose every credential in the shop.
+            _strip_credentials(copy)
     else:
         # pg_dump runs in the container that has the client binaries.
         cfg = connection.settings_dict
@@ -161,6 +182,11 @@ def run_backup() -> Path:
             [
                 "pg_dump",
                 "--format=custom",
+                # The schema is kept and the rows are not (§17.1). A physical
+                # dump excludes nothing by default, so a credential entered in
+                # the UI would otherwise ride along to whatever NAS or laptop
+                # this archive is carried to.
+                *[f"--exclude-table-data={table}" for table in EXCLUDED_TABLES],
                 f"--dbname={cfg['NAME']}",
                 f"--host={cfg['HOST']}",
                 f"--port={cfg['PORT'] or 5432}",
@@ -207,13 +233,42 @@ def run_backup() -> Path:
     return target
 
 
+def _strip_credentials(database: Path) -> None:
+    """Empty the credential table in a copied SQLite file (§17.1)."""
+    import sqlite3
+
+    handle = None
+    try:
+        handle = sqlite3.connect(database)
+        for table in EXCLUDED_TABLES:
+            handle.execute(f"DELETE FROM {table}")  # noqa: S608 - fixed names
+        handle.commit()
+    except sqlite3.Error as exc:
+        # A backup containing credentials is worse than no backup: it is one
+        # that quietly breaks the promise made on the settings screen.
+        log.error("could not strip credentials from %s: %s", database, exc)
+        if handle is not None:
+            handle.close()
+            handle = None
+        database.unlink(missing_ok=True)
+        raise BackupFailed(f"credentials could not be excluded from the backup: {exc}") from exc
+    finally:
+        # `with sqlite3.connect(...)` commits; it does **not** close. The
+        # connection outlived the block, and on Windows an open handle stops
+        # the file being deleted — so a backup could be taken and then not
+        # pruned, or not removed from the backup screen, with nothing raised
+        # anywhere to say why.
+        if handle is not None:
+            handle.close()
+
+
 def prune_backups() -> int:
     """Grandfather-father-son retention (SPEC §13.1)."""
     root = settings.BACKUP_DIR
     if not root.exists():
         return 0
     runs = sorted((p for p in root.iterdir() if p.is_dir()), reverse=True)
-    keep: set[Path] = set(runs[: settings.BACKUP_RETENTION_DAILY])
+    keep: set[Path] = set(runs[: conf.BACKUP_RETENTION_DAILY])
 
     seen_weeks: set[str] = set()
     seen_months: set[str] = set()
@@ -225,10 +280,10 @@ def prune_backups() -> int:
             continue
         week = f"{when.isocalendar().year}-{when.isocalendar().week}"
         month = f"{when.year}-{when.month}"
-        if week not in seen_weeks and len(seen_weeks) < settings.BACKUP_RETENTION_WEEKLY:
+        if week not in seen_weeks and len(seen_weeks) < conf.BACKUP_RETENTION_WEEKLY:
             seen_weeks.add(week)
             keep.add(run)
-        if month not in seen_months and len(seen_months) < settings.BACKUP_RETENTION_MONTHLY:
+        if month not in seen_months and len(seen_months) < conf.BACKUP_RETENTION_MONTHLY:
             seen_months.add(month)
             keep.add(run)
 

@@ -1,0 +1,151 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Read a parts order" %}{% endblock %}
+{% block content %}
+
+<div class="spread">
+  <div>
+    <h1>{% translate "Read a parts order" %}</h1>
+    <p class="muted">{% translate "One PDF becomes a purchase, its lines, and the parts in your catalog." %}</p>
+  </div>
+  <a class="btn" href="{% url 'purchase_list' %}">{% translate "All purchases" %}</a>
+</div>
+
+<div class="cols two">
+  <div class="stack">
+    <section class="card">
+      <h2>{% translate "The file" %}</h2>
+      <p class="small muted">
+        {% blocktranslate %}A RockAuto order confirmation, saved as a PDF — from the confirmation page or from the email. It carries the brand, the manufacturer part number, the part type, the price, the core charge and the quantity for every line, grouped under the vehicle each was looked up against.{% endblocktranslate %}
+      </p>
+      <form method="post" enctype="multipart/form-data" class="stack">{% csrf_token %}
+        <div class="field">
+          <label for="order">{% translate "Order confirmation" %}</label>
+          <input id="order" type="file" name="order" accept=".pdf,application/pdf" required>
+        </div>
+        <div class="row">
+          <button type="submit" name="action" value="preview">{% translate "See what it would do" %}</button>
+          <button type="submit" name="action" value="commit" class="primary">{% translate "Read it in" %}</button>
+        </div>
+      </form>
+      <p class="small muted">
+        {% blocktranslate %}Reading the same order twice does not make a second purchase — it updates the one already here, unless some of it has been received, in which case it leaves it alone.{% endblocktranslate %}
+      </p>
+    </section>
+  </div>
+
+  <div class="stack">
+    {% if report %}
+      <section class="card">
+        <h2>
+          {% if report.dry_run %}{% translate "What it would do" %}{% else %}{% translate "What it did" %}{% endif %}
+        </h2>
+        {% comment %}
+          The preview has to lead somewhere. A browser clears a file input on
+          submit and nothing can put it back, so without this the safe path
+          asked for the same file twice — which is how a preview stops being
+          used. The document was stored on the way past; this confirms it.
+        {% endcomment %}
+        {% if report.dry_run and held %}
+          <form method="post" class="row">{% csrf_token %}
+            <input type="hidden" name="held" value="{{ held }}">
+            <button type="submit" name="action" value="commit" class="primary">
+              {% translate "Read this in" %}
+            </button>
+            <span class="small muted">
+              {% blocktranslate with name=held_name %}from {{ name }}, already read{% endblocktranslate %}
+            </span>
+          </form>
+        {% endif %}
+        <table class="small">
+          <tr><th>{% translate "Order" %}</th><td class="mono">{{ report.order.order_number }}</td></tr>
+          <tr><th>{% translate "Ordered" %}</th><td>{{ report.order.ordered_on|default:"—" }}</td></tr>
+          <tr><th>{% translate "Paid with" %}</th><td>{{ report.order.payment_method|default:"—" }}</td></tr>
+          <tr><th>{% translate "Parts" %}</th>
+              <td>{% blocktranslate with new=report.parts_created known=report.parts_matched %}{{ new }} new, {{ known }} already here{% endblocktranslate %}</td></tr>
+          <tr><th>{% translate "Fitment recorded" %}</th><td>{{ report.fitments_recorded }}</td></tr>
+          <tr><th>{% translate "Parts subtotal" %}</th><td class="mono">{{ report.order.subtotal }}</td></tr>
+          <tr><th>{% translate "Shipping" %}</th><td class="mono">{{ report.order.shipping }}</td></tr>
+          <tr><th>{% translate "Tax" %}</th><td class="mono">{{ report.order.tax }}</td></tr>
+          {% for label, amount in report.order.adjustments %}
+            <tr><th>{{ label }}</th><td class="mono">−{{ report.order.discount }}</td></tr>
+          {% endfor %}
+          <tr><th>{% translate "Order total" %}</th>
+              <td class="mono"><strong>{{ report.order.total }}</strong></td></tr>
+        </table>
+        {% if report.already_imported %}
+          <p class="msg warning">{% translate "This order was already read in once." %}</p>
+        {% endif %}
+        {% for warning in report.warnings %}
+          <p class="msg warning">{{ warning }}</p>
+        {% endfor %}
+      </section>
+
+      {% if report.vehicles_matched %}
+        <section class="card">
+          <h2>{% translate "Vehicles named on the order" %}</h2>
+          <ul class="list small">
+            {% for heading, asset in report.vehicles_matched.items %}
+              <li>
+                <span class="mono">{{ heading }}</span>
+                {% if asset %}
+                  → <a href="{% url 'asset_detail' asset.pk %}">{{ asset.nickname }}</a>
+                {% else %}
+                  <span class="muted">{% translate "— not one of your vehicles, recorded as fitment only" %}</span>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+          <p class="small muted">
+            {% blocktranslate %}Fitment from an order is the vendor's claim, not an installation anybody watched. It is stored as "stated by vendor" and becomes confirmed when the part is actually fitted on a work order.{% endblocktranslate %}
+          </p>
+        </section>
+      {% endif %}
+
+      <section class="card">
+        <h2>{% translate "Lines" %}</h2>
+        <div class="tablewrap">
+          <table>
+            <thead><tr>
+              <th>{% translate "Part" %}</th><th>{% translate "What it is" %}</th>
+              <th>{% translate "Each" %}</th><th>{% translate "Core" %}</th>
+              <th>{% translate "Qty" %}</th><th></th>
+            </tr></thead>
+            <tbody>
+              {% for outcome in report.outcomes %}
+                <tr{% if not outcome.charged %} class="muted"{% endif %}>
+                  <th class="mono small">{{ outcome.line.brand }} {{ outcome.line.part_number }}</th>
+                  <td class="small">{{ outcome.line.description }}
+                    {% if not outcome.charged %}
+                      <span class="pill">{% translate "inside a kit" %}</span>
+                    {% endif %}
+                  </td>
+                  <td class="mono small">{{ outcome.line.unit_price }}</td>
+                  <td class="mono small">
+                    {% comment %}
+                      A dash, not a zero. The column printed one, and on an
+                      invoice "no core on this line" and "a core of nothing"
+                      are different statements.
+                    {% endcomment %}
+                    {% if outcome.line.core is None %}—{% else %}{{ outcome.line.core }}{% endif %}
+                  </td>
+                  <td class="mono small">{{ outcome.line.quantity }}</td>
+                  <td class="small">
+                    {% if outcome.created_part %}
+                      <span class="pill ok">{% translate "new part" %}</span>
+                    {% else %}
+                      <span class="pill">{{ outcome.status }}</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <p class="small muted">
+          {% blocktranslate %}A kit's contents are listed here and added to the catalog, so you can find them again on their own — but they carry no money, because the kit they came in was already charged for.{% endblocktranslate %}
+        </p>
+      </section>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

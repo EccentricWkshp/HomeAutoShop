@@ -9,6 +9,7 @@
       </div>
     {% endfor %}
   </div>
-  <button class="primary" type="submit">{% translate "Create" %}</button>
+  {% if purchase %}{% url 'purchase_detail' purchase.pk as cancel_to %}{% else %}{% url 'purchase_list' as cancel_to %}{% endif %}
+  {% include "partials/_formactions.html" with cancel_url=cancel_to label=_("Create") %}
 </form>
 {% endblock %}

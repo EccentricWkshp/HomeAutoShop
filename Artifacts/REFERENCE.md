@@ -16,7 +16,7 @@
 ```
                     ┌──────────┐
                     │ planned  │◄────────────────┐
-                    └────┬─────┘                 │
+                    └────┬─────┘◄──── un-start ──┤
                          │ start                 │ reopen
                     ┌────▼─────────┐             │
              ┌──────┤ in_progress  ├──────┐      │
@@ -33,7 +33,9 @@
                     └──────────┘            └───────────┘
 ```
 
+- **Any open state can return to `planned`.** Not in the diagram above and it should have been: starting a job by accident is not a rare event in a home shop, and without this the only way back was to complete the work order and reopen it — pushing a false completion through the record, and firing every service completion attached to it, to undo a mis-tap.
 - `waiting_on_parts` **requires** a linked purchase or a note explaining the block; this state drives the dashboard's blocked list (FR-REP-1).
+- **A work order can be deleted from any state**, which is a separate question from the graph. The graph governs the work; it has nothing to say about a record that should not exist. Deletion is the ordinary soft delete — 30-day trash, restorable (P-5) — and is refused only while other work orders name it as their parent.
 - `complete` requires `odometer_out` (FR-WO-9) and triggers `service_completion` for every linked job item (FR-MAINT-5).
 - `abandoned` is a first-class outcome. Home shop projects genuinely get abandoned, and recording that honestly is more useful than an eternally open work order.
 - Reopening a completed work order is allowed, is audit-logged, and **does not** reverse service completions — a later correction is a new completion record, not a rewrite of history.
@@ -49,6 +51,7 @@
 - Service-information providers: LEMON (default, with mirror list), Operation CHARM, ALLDATA DIY (seeded and enabled, per-vehicle subscription status).
 - Equipment schedule templates: small engine, generator, mower — hour-based and season-based.
 - Inspection templates ([SCHEMA-INSPECTION-TEMPLATES.md](SCHEMA-INSPECTION-TEMPLATES.md)): **pre-purchase inspection**, annual safety/roadworthiness, seasonal (winter prep / storage), post-repair quality check, and a motorcycle-specific template. Class-scoped per `vehicle_class`.
+- **Parts-order readers.** RockAuto order confirmations, read by word geometry (`purchasing/importers/rockauto.py`) against a corpus of nine real orders captured as redacted text and geometry — the originals are shipping documents carrying a name, a street address, a phone number and an email, and are never committed.
 - Parser profiles for any scan-tool report formats with a sample corpus at build time. **Ships empty until the first sample arrives** (§8.3a) — the manual mapping wizard covers the gap.
 - A demo dataset (three vehicles with history) that installs and uninstalls cleanly, for evaluation and for tests.
 

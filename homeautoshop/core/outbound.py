@@ -25,6 +25,8 @@ from urllib.parse import urlparse
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
+from .runtime import allowlist, conf
+
 log = logging.getLogger(__name__)
 
 
@@ -57,7 +59,7 @@ class Response:
 
 def _host_allowed(host: str) -> bool:
     host = (host or "").lower()
-    for entry in settings.OUTBOUND_ALLOWLIST:
+    for entry in allowlist():
         entry = entry.lower().strip()
         if host == entry or host.endswith(f".{entry}"):
             return True
@@ -82,7 +84,7 @@ def fetch_json(
     if parsed.scheme not in ("http", "https"):
         raise OutboundBlocked(_("Only http and https are permitted."))
 
-    if settings.OFFLINE_MODE:
+    if conf.OFFLINE_MODE:
         raise OutboundBlocked(
             _("Offline Mode is on, so no outbound requests are made. Enter the details by hand.")
         )
@@ -164,7 +166,7 @@ def post_json(
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
         raise OutboundBlocked(_("Only http and https are permitted."))
-    if settings.OFFLINE_MODE:
+    if conf.OFFLINE_MODE:
         raise OutboundBlocked(_("Offline Mode is on, so no outbound requests are made."))
     if not _host_allowed(parsed.hostname or ""):
         raise OutboundBlocked(

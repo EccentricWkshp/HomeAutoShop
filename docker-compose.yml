@@ -4,7 +4,15 @@
 name: homeautoshop
 
 x-app: &app
-  build: .
+  build:
+    context: .
+    args:
+      # OCR language packs (FR-DOC-5). The image installs exactly these and the
+      # application is told to use exactly these, from one variable, because the
+      # two halves failing apart is silent both ways: an uninstalled language is
+      # an error on a background job, and an unused pack is megabytes of image
+      # nobody asked for. Add a language here, rebuild, and it is available.
+      TESSERACT_LANGS: ${TESSERACT_LANGS:-eng}
   image: homeautoshop:local
   restart: unless-stopped
   env_file: [.env]
@@ -15,6 +23,7 @@ x-app: &app
     STATIC_HASHED: "true"
     MEDIA_ROOT: /data/media
     BACKUP_DIR: /data/backups
+    OCR_LANGUAGES: ${TESSERACT_LANGS:-eng}
   volumes:
     - media-data:/data/media
     - backup-data:/data/backups
@@ -59,7 +68,7 @@ services:
     command: >
       sh -c "python manage.py migrate --noinput &&
              python manage.py seed &&
-             gunicorn config.wsgi:application --bind 0.0.0.0:8080 --workers 3 --timeout 120 --access-logfile -"
+             gunicorn config.wsgi:application --bind 0.0.0.0:8080 --workers 3 --timeout 120 --access-logfile - --pid /tmp/gunicorn.pid"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8080/healthz')"]
       # Checked often enough to notice the app is up. At a 30s interval the

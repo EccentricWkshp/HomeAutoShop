@@ -29,6 +29,9 @@ from homeautoshop.maintenance.models import AssetServiceItem, ServiceDefinition
 from homeautoshop.parts.models import Part
 from homeautoshop.people.models import Person
 from homeautoshop.purchasing.models import Purchase, Vendor
+from django.core.files.base import ContentFile
+
+from homeautoshop.mediafiles.models import Media
 from homeautoshop.work.models import JobItem, WorkOrder
 
 VIN = "1M8GDM9AXKP042788"
@@ -91,6 +94,13 @@ class EveryPageRendersTests(TestCase):
         cls.inspection = Inspection.objects.create(
             asset=cls.asset, template_name="Winter prep"
         )
+        # Photos are served by the application now rather than linked straight
+        # to object storage, so the route that does it is a page like any other.
+        cls.media = Media(kind=Media.Kind.PHOTO, original_filename="a.jpg", mime="image/jpeg")
+        # One save, not two: Media is append-only, so attaching the file
+        # afterwards is an edit and is refused.
+        cls.media.file.save("a.jpg", ContentFile(b"not really a jpeg"), save=False)
+        cls.media.save()
 
     def setUp(self):
         self.client.force_login(self.admin)
@@ -138,6 +148,7 @@ class EveryPageRendersTests(TestCase):
             "channel_id": str(self.channel.pk),
             "kind": "vehicles",
             "name": "wrenchledger",
+            "variant": "thumb",
         }
         # Routes whose `pk` is not an asset.
         if name in {
@@ -161,6 +172,9 @@ class EveryPageRendersTests(TestCase):
             "session_map",
         }:
             by_name["pk"] = str(self.session.pk)
+        elif name in {"media_file", "media_file_variant"}:
+            by_name["pk"] = str(self.media.pk)
+            by_name["variant"] = "thumb"
         elif name in {"profile_toggle"}:
             by_name["pk"] = str(self.profile.pk)
         elif name in {

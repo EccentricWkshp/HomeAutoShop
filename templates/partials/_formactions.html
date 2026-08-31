@@ -1,0 +1,22 @@
+{% load i18n %}
+{% comment %}
+  Save and Cancel, together, on every full-page form.
+
+  Cancel is not decoration. A form that fills the page has replaced whatever the
+  reader was looking at, and without a way out the only exits are the browser's
+  back button — which re-posts on some forms and warns about it on others — or
+  saving changes nobody wanted to keep. On a phone there is no visible back
+  button at all.
+
+  It is a link rather than a button because that is what it does: it goes
+  somewhere. Nothing is submitted, so nothing needs confirming.
+
+  Usage:  {% include "partials/_formactions.html" with cancel_url=... %}
+          {% include "partials/_formactions.html" with cancel_url=... label=_("Create") %}
+{% endcomment %}
+<div class="row formactions">
+  <button class="primary" type="submit">{% if label %}{{ label }}{% else %}{% translate "Save" %}{% endif %}</button>
+  {% if cancel_url %}
+    <a class="btn" href="{{ cancel_url }}">{% if cancel_label %}{{ cancel_label }}{% else %}{% translate "Cancel" %}{% endif %}</a>
+  {% endif %}
+</div>

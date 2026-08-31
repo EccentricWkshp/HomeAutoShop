@@ -13,7 +13,7 @@
     </p>
   </div>
   {% if session.raw_media %}
-    <a class="btn" href="{{ session.raw_media.file.url }}">{% translate "The original report" %}</a>
+    <a class="btn" href="{{ session.raw_media.url_for }}">{% translate "The original report" %}</a>
   {% endif %}
 </div>
 

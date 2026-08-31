@@ -18,6 +18,17 @@
       <div class="mono" style="font-size:1.3rem">{{ rollup.total }}</div>
     </div>
     <a class="btn" href="{% url 'work_order_edit' wo.pk %}">{% translate "Edit" %}</a>
+    {% comment %}
+      Available whatever the status. The status graph governs the work, not
+      whether a record should exist — and the ones most worth deleting are the
+      half-finished ones somebody made while learning the application. It is
+      the ordinary soft delete, so it goes to the trash for 30 days.
+    {% endcomment %}
+    <form method="post" action="{% url 'work_order_delete' wo.pk %}"
+          data-confirm="{% blocktranslate with n=wo.number %}Delete {{ n }}? It goes to the trash for 30 days.{% endblocktranslate %}">
+      {% csrf_token %}
+      <button class="btn danger" type="submit">{% translate "Delete" %}</button>
+    </form>
   </div>
 </div>
 
@@ -93,14 +104,26 @@
                 </div>
               {% endfor %}
               {% if tools_enabled %}
+                {% comment %}
+                  It used to ask for a WrenchLedger tool id and a name, typed
+                  from memory, and pointed `list=` at a datalist that was never
+                  rendered — autocompletion promised and not delivered. This
+                  searches instead: the tools already referenced here, matched
+                  locally so it still works offline, plus WrenchLedger's own
+                  search when it is reachable. Typing a name and submitting
+                  still works with no script at all; the server resolves it.
+                {% endcomment %}
                 <form method="post" action="{% url 'job_item_tool_add' wo.pk item.pk %}"
-                      class="row small">{% csrf_token %}
+                      class="toolpicker small" data-search="{% url 'tool_search' %}">{% csrf_token %}
                   <label class="visually-hidden" for="tool-{{ item.pk }}">{% translate "Tool" %}</label>
-                  <input id="tool-{{ item.pk }}" name="tool_id" list="tool-options"
-                         placeholder="{% translate 'Tool id' %}">
-                  <input name="tool_name" aria-label="{% translate 'Tool name' %}"
-                         placeholder="{% translate 'Name' %}">
-                  <button class="linkish small" type="submit">{% translate "Add tool" %}</button>
+                  <div class="row">
+                    <input type="search" id="tool-{{ item.pk }}" name="tool_query" autocomplete="off"
+                           placeholder="{% translate 'Search tools by name' %}" style="flex:1">
+                    <button class="linkish small" type="submit">{% translate "Add tool" %}</button>
+                  </div>
+                  <input type="hidden" name="tool_id">
+                  <input type="hidden" name="tool_name">
+                  <ul class="results" role="listbox" hidden></ul>
                 </form>
               {% endif %}
             </div>
@@ -139,14 +162,27 @@
       <h2>{% translate "Photos" %}</h2>
       <div class="thumbs">
         {% for link in photos %}
-          <a href="{{ link.media.file.url }}">
+          <a href="{{ link.media.url_for }}">
             <img src="{{ link.media.display_url }}" alt="{{ link.caption|default:link.get_role_display }}">
           </a>
         {% empty %}<p class="muted small">{% translate "No photos yet." %}</p>{% endfor %}
       </div>
       <form method="post" action="{% url 'work_order_photo' wo.pk %}" enctype="multipart/form-data" class="row" style="margin-top:.75rem">
         {% csrf_token %}
-        <input type="file" name="files" accept="image/*" capture="environment" multiple
+        {% comment %}
+          Two inputs, not one with `capture`. `capture="environment"` does not
+          mean "offer the camera" — it means *only* the camera, with no way to
+          reach a photo already taken. On a phone that made it impossible to
+          attach a picture shot five minutes earlier. One-tap capture is still
+          worth having in the garage (FR-DOC-2), so it stays as its own control
+          and the plain input beside it opens the picker with the library in it.
+        {% endcomment %}
+        <label class="filepick">
+          <input type="file" name="files" accept="image/*" capture="environment"
+                 aria-label="{% translate 'Take a photo' %}">
+          <span>{% translate "Take a photo" %}</span>
+        </label>
+        <input type="file" name="files" accept="image/*" multiple
                aria-label="{% translate 'Photos of this job' %}">
         <select name="role" class="select" aria-label="{% translate 'What these photos show' %}">
           <option value="other">{% translate "General" %}</option>
@@ -241,21 +277,37 @@
     <section class="card">
       <h2>{% translate "Status" %}</h2>
       {% if next_statuses %}
-        <form method="post" action="{% url 'work_order_transition' wo.pk %}" class="stack">{% csrf_token %}
-          <select name="status" class="select" id="status-select" aria-label="{% translate 'Move it to' %}">
-            {% for value, label in next_statuses %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
-          </select>
+        {% comment %}
+          Both extra fields used to sit here unlabelled as to which status
+          needed them, so the only way to find out that completing needs a
+          meter reading was to press the button and be refused. The requirement
+          is attached to the status instead: the browser marks the field
+          required and shows it the moment that status is chosen, and hides it
+          the rest of the time. With no script both fields simply stay visible,
+          which is where this started — nothing is worse than it was.
+        {% endcomment %}
+        {{ status_requirements|json_script:"status-requirements" }}
+        <form method="post" action="{% url 'work_order_transition' wo.pk %}" class="stack"
+              data-status-form data-requirements="status-requirements">{% csrf_token %}
+          <div class="field">
+            <label for="status-select">{% translate "Move it to" %}</label>
+            <select name="status" class="select" id="status-select">
+              {% for value, label in next_statuses %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+            </select>
+          </div>
           {% comment %}Completing without the meter reading loses the one number that
              makes the record useful later (FR-WO-9).{% endcomment %}
           {% if asset.has_meter %}
-            <div class="field">
-              <label for="id_odometer_out">{% translate "Meter at completion" %} ({{ asset.meter_unit }})</label>
+            <div class="field" data-required-for="odometer_out">
+              <label for="id_odometer_out">{% translate "Meter at completion" %} ({{ asset.meter_unit }})
+                <span class="req" hidden>{% translate "required" %}</span></label>
               <input type="number" step="0.01" name="odometer_out" id="id_odometer_out" inputmode="decimal"
                      value="{{ wo.odometer_out|default_if_none:'' }}">
             </div>
           {% endif %}
-          <div class="field">
-            <label for="id_blocked_reason">{% translate "Blocked on (if waiting)" %}</label>
+          <div class="field" data-required-for="blocked_reason">
+            <label for="id_blocked_reason">{% translate "What it is waiting for" %}
+              <span class="req" hidden>{% translate "required" %}</span></label>
             <input name="blocked_reason" id="id_blocked_reason" value="{{ wo.blocked_reason }}">
           </div>
           <button class="primary" type="submit">{% translate "Update status" %}</button>

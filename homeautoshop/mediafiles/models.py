@@ -81,9 +81,24 @@ class Media(AppendOnlyModel):
     @property
     def display_url(self) -> str:
         """Thumbnail if derived, else the original. Never blocks on processing."""
-        if self.thumb:
-            return self.thumb.url
-        return self.file.url if self.file else ""
+        return self.url_for("thumb" if self.thumb else "original")
+
+    def url_for(self, variant: str = "original") -> str:
+        """Where a browser should ask for this file.
+
+        Never the storage backend's own URL. With object storage that is a
+        presigned link signed against `http://storage:9000` — a hostname that
+        exists only inside the container network, so every photo was a broken
+        image and a dead link. See `mediafiles/views.py` for why the fix is a
+        route here rather than a second published port.
+        """
+        from django.urls import reverse
+
+        if not self.file:
+            return ""
+        if variant == "original":
+            return reverse("media_file", args=[self.pk])
+        return reverse("media_file_variant", args=[self.pk, variant])
 
     @staticmethod
     def hash_bytes(data: bytes) -> str:

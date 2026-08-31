@@ -14,7 +14,7 @@
   </div>
   <div>
     <div class="small muted">{% translate "Total" %}</div>
-    <div class="mono" style="font-size:1.4rem">{{ purchase.total_minor }} <span class="small">{{ purchase.currency }}</span></div>
+    <div class="mono" style="font-size:1.4rem">{{ purchase.total }}</div>
   </div>
 </div>
 
@@ -91,11 +91,11 @@
     <section class="card">
       <h2>{% translate "Totals" %}</h2>
       <table class="small">
-        <tr><th>{% translate "Subtotal" %}</th><td class="mono">{{ purchase.subtotal_minor }}</td></tr>
-        <tr><th>{% translate "Tax" %}</th><td class="mono">{{ purchase.tax_minor }}</td></tr>
-        <tr><th>{% translate "Shipping" %}</th><td class="mono">{{ purchase.shipping_minor }}</td></tr>
-        <tr><th>{% translate "Discount" %}</th><td class="mono">−{{ purchase.discount_minor }}</td></tr>
-        <tr><th>{% translate "Total" %}</th><td class="mono"><strong>{{ purchase.total_minor }}</strong></td></tr>
+        <tr><th>{% translate "Subtotal" %}</th><td class="mono">{{ purchase.subtotal }}</td></tr>
+        <tr><th>{% translate "Tax" %}</th><td class="mono">{{ purchase.tax }}</td></tr>
+        <tr><th>{% translate "Shipping" %}</th><td class="mono">{{ purchase.shipping }}</td></tr>
+        <tr><th>{% translate "Discount" %}</th><td class="mono">−{{ purchase.discount }}</td></tr>
+        <tr><th>{% translate "Total" %}</th><td class="mono"><strong>{{ purchase.total }}</strong></td></tr>
       </table>
       <p class="small muted">{% translate "Amounts are in minor units of" %} {{ purchase.currency }}.</p>
     </section>
@@ -104,13 +104,26 @@
       <h2>{% translate "Receipt" %}</h2>
       <div class="thumbs">
         {% for link in receipts %}
-          <a href="{{ link.media.file.url }}"><img src="{{ link.media.display_url }}" alt="{% translate 'Receipt' %}"></a>
+          <a href="{{ link.media.url_for }}"><img src="{{ link.media.display_url }}" alt="{% translate 'Receipt' %}"></a>
         {% empty %}<p class="muted small">{% translate "No receipt attached." %}</p>{% endfor %}
       </div>
       <form method="post" action="{% url 'purchase_receipt_upload' purchase.pk %}"
             enctype="multipart/form-data" class="row" style="margin-top:.5rem">
         {% csrf_token %}
-        <input type="file" name="files" accept="image/*,application/pdf" capture="environment" multiple
+        {% comment %}
+          Two inputs, not one with `capture`. `capture="environment"` does not
+          mean "offer the camera" — it means *only* the camera, with no way to
+          reach a photo already taken. On a phone that made it impossible to
+          attach a picture shot five minutes earlier. One-tap capture is still
+          worth having in the garage (FR-DOC-2), so it stays as its own control
+          and the plain input beside it opens the picker with the library in it.
+        {% endcomment %}
+        <label class="filepick">
+          <input type="file" name="files" accept="image/*" capture="environment"
+                 aria-label="{% translate 'Photograph the receipt' %}">
+          <span>{% translate "Photograph it" %}</span>
+        </label>
+        <input type="file" name="files" accept="image/*,application/pdf" multiple
                aria-label="{% translate 'Receipts' %}">
         <button type="submit">{% translate "Attach" %}</button>
       </form>

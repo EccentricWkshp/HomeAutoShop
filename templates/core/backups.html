@@ -1,0 +1,124 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Backup" %}{% endblock %}
+{% block content %}
+
+<h1>{% translate "Backup" %}</h1>
+
+{% if backup_age is None %}
+  <p class="msg danger">
+    {% translate "Nothing has ever been backed up. Everything in this shop is on one disk." %}
+  </p>
+{% elif backup_age > warn_after %}
+  <p class="msg warning">
+    {% blocktranslate with n=backup_age|floatformat:0 %}The last backup was {{ n }} days ago.{% endblocktranslate %}
+  </p>
+{% else %}
+  <p class="muted">
+    {% blocktranslate with n=backup_age|floatformat:1 %}Last backed up {{ n }} days ago.{% endblocktranslate %}
+  </p>
+{% endif %}
+
+<div class="card">
+  <div class="row">
+    <form method="post" action="{% url 'backup_now' %}">{% csrf_token %}
+      <button type="submit" {% if running %}disabled{% endif %}>{% translate "Back up now" %}</button>
+    </form>
+    <form method="post" action="{% url 'backup_now' %}">{% csrf_token %}
+      <input type="hidden" name="what" value="export">
+      <button type="submit" class="btn" {% if running %}disabled{% endif %}>{% translate "Build a portable export" %}</button>
+    </form>
+  </div>
+  {% if running %}
+    <p class="small">
+      <span class="pill">{% translate "running" %}</span>
+      {% blocktranslate with since=running.created_at %}Started {{ since }}. Reload this page to see it land.{% endblocktranslate %}
+    </p>
+  {% endif %}
+  <p class="small muted">
+    {% blocktranslate %}A backup is for getting this instance back. An export is a ZIP of plain JSON and every file, readable without this application — that is the point of it.{% endblocktranslate %}
+  </p>
+</div>
+
+<div class="card">
+  <h2>{% translate "What is held" %}</h2>
+  {% if held %}
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>{% translate "Taken" %}</th><th>{% translate "Kind" %}</th>
+            <th>{% translate "Contents" %}</th><th>{% translate "Size" %}</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in held %}
+            <tr>
+              <td class="mono small">{{ item.name }}</td>
+              <td>{% if item.kind == "export" %}{% translate "Export" %}{% else %}{% translate "Backup" %}{% endif %}</td>
+              <td class="small">
+                {% if item.kind == "backup" %}
+                  {% if item.complete %}
+                    {% translate "database" %}{% if item.media %} · {% translate "media" %}{% endif %}
+                  {% else %}
+                    <span class="pill danger">{% translate "no database in it" %}</span>
+                  {% endif %}
+                {% else %}
+                  {% translate "every table, every file" %}
+                {% endif %}
+              </td>
+              <td>{{ item.bytes|filesizeformat }}</td>
+              <td class="row">
+                <a class="btn small" href="{% url 'backup_download' item.name %}">{% translate "Download" %}</a>
+                <form method="post" action="{% url 'backup_delete' item.name %}">{% csrf_token %}
+                  <button type="submit" class="linkish danger small">{% translate "Delete" %}</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="muted">{% translate "Nothing here yet." %}</p>
+  {% endif %}
+  <p class="small muted">
+    {% blocktranslate with dir=directory %}Held in {{ dir }} inside the container, which is a volume — it survives a rebuild and it does not survive the disk. Copy them somewhere else.{% endblocktranslate %}
+    {% if free_bytes %}
+      {% blocktranslate with free=free_bytes|filesizeformat %}{{ free }} free there.{% endblocktranslate %}
+    {% endif %}
+  </p>
+</div>
+
+<div class="card">
+  <h2>{% translate "Schedule" %}</h2>
+  <table class="small">
+    <tr><th>{% translate "Runs every" %}</th>
+        <td>{% blocktranslate count n=interval_hours %}{{ n }} hour{% plural %}{{ n }} hours{% endblocktranslate %}</td></tr>
+    <tr><th>{% translate "Kept" %}</th>
+        <td>{% blocktranslate with d=retention.daily w=retention.weekly m=retention.monthly %}{{ d }} daily, {{ w }} weekly, {{ m }} monthly{% endblocktranslate %}</td></tr>
+  </table>
+  <a class="btn" href="{% url 'settings' 'backup' %}">{% translate "Change the schedule" %}</a>
+</div>
+
+<div class="card">
+  <h2>{% translate "Restoring" %}</h2>
+  <p class="small">
+    {% blocktranslate %}Restore stays on the command line. Swapping the database out from underneath a running application is not something a web request should attempt, and a half-finished one leaves an instance that is neither the old state nor the new.{% endblocktranslate %}
+  </p>
+  <pre class="mono"><code>{{ restore_command }}</code></pre>
+  <p class="small muted">
+    {% blocktranslate %}Integration keys are not in the backup, on purpose. After a restore the settings screen lists which ones need entering again.{% endblocktranslate %}
+  </p>
+</div>
+
+{% if recent %}
+  <div class="card">
+    <h2>{% translate "Recently" %}</h2>
+    <ul class="list small">
+      {% for row in recent %}
+        <li>{{ row.at }} — {{ row.get_action_display }} {{ row.summary }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+{% endblock %}

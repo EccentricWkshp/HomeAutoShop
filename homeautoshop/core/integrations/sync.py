@@ -23,11 +23,10 @@ from __future__ import annotations
 
 import logging
 from datetime import timedelta
-
-from django.conf import settings
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
+from ..runtime import conf
 from homeautoshop.core.models import Setting
 
 log = logging.getLogger(__name__)
@@ -55,9 +54,9 @@ class SyncSkipped(Exception):
 
 def due(*, now=None) -> bool:
     """Whether a scheduled pull should happen at all."""
-    if settings.LUBELOGGER_MODE not in SYNC_MODES:
+    if conf.LUBELOGGER_MODE not in SYNC_MODES:
         return False
-    if settings.OFFLINE_MODE or not settings.LUBELOGGER_URL:
+    if conf.OFFLINE_MODE or not conf.LUBELOGGER_URL:
         return False
     last = Setting.get(LAST_SYNC_KEY)
     if not last:
@@ -70,7 +69,7 @@ def due(*, now=None) -> bool:
         return True
     if timezone.is_naive(when):
         when = timezone.make_aware(when, timezone.get_current_timezone())
-    return (now - when) >= timedelta(hours=settings.LUBELOGGER_SYNC_HOURS)
+    return (now - when) >= timedelta(hours=conf.LUBELOGGER_SYNC_HOURS)
 
 
 def window_start(*, now=None):
@@ -92,9 +91,9 @@ def run(*, client=None, force: bool = False) -> dict:
     """Pull whatever is new. Returns a summary for the health screen."""
     if not force and not due():
         raise SyncSkipped(_("Not due, or sync is not switched on."))
-    if settings.LUBELOGGER_MODE not in SYNC_MODES:
+    if conf.LUBELOGGER_MODE not in SYNC_MODES:
         raise SyncSkipped(_("LubeLogger is not set to sync."))
-    if settings.OFFLINE_MODE:
+    if conf.OFFLINE_MODE:
         raise SyncSkipped(_("Offline Mode is on, so nothing is fetched."))
 
     from .importer import run_import
@@ -123,7 +122,7 @@ def run(*, client=None, force: bool = False) -> dict:
         Setting.put(LAST_SYNC_KEY, started.isoformat())
     Setting.put(LAST_RESULT_KEY, summary)
 
-    if settings.LUBELOGGER_MODE == "pull_push_odometer":
+    if conf.LUBELOGGER_MODE == "pull_push_odometer":
         summary["pushed"] = push_odometer(client=client)
     return summary
 

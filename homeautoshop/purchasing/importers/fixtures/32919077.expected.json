@@ -1,0 +1,38 @@
+{
+ "discount_minor": 0,
+ "lines": [
+  {
+   "brand": "BOSCH",
+   "core_minor": 0,
+   "description": "Fuel Pump",
+   "is_kit_component": false,
+   "part_number": "69348",
+   "quantity": "1",
+   "total_minor": 12289,
+   "unit_price_minor": 12289,
+   "vehicle": "2006 FORD F-150 5.4L V8"
+  },
+  {
+   "brand": "DORMAN",
+   "core_minor": 0,
+   "description": "Fuel Pump Drive Module",
+   "is_kit_component": false,
+   "part_number": "590001 (590-001)",
+   "quantity": "1",
+   "total_minor": 5779,
+   "unit_price_minor": 5779,
+   "vehicle": "2006 FORD F-150 5.4L V8"
+  }
+ ],
+ "order_number": "32919077",
+ "ordered_on": "2015-06-05",
+ "payment_method": "MasterCard",
+ "shipping_minor": 1175,
+ "subtotal_minor": 18068,
+ "tax_minor": 0,
+ "total_minor": 19243,
+ "vehicles": [
+  "2006 FORD F-150 5.4L V8"
+ ],
+ "warnings": []
+}

@@ -14,6 +14,7 @@ import traceback
 from django.utils import timezone
 
 from .models import Job
+from .runtime import conf
 
 log = logging.getLogger(__name__)
 
@@ -48,6 +49,38 @@ def _media_ocr(payload: dict) -> None:
         ocr(media)
 
 
+@handler("media.ocr_sweep")
+def _media_ocr_sweep(payload: dict) -> None:
+    """Pick up media that wanted OCR while OCR was switched off.
+
+    Without this the toggle is one-way in practice: everything uploaded while
+    it was off stays `pending` for ever, because the only thing that ever
+    enqueued an OCR job was the upload itself.
+    """
+
+    from homeautoshop.mediafiles.models import Media
+
+    if not conf.OCR_ENABLED:
+        return
+
+    backlog = Media.objects.filter(ocr_status=Media.OcrStatus.PENDING).values_list("pk", flat=True)
+    queued = set(
+        Job.objects.filter(
+            type="media.ocr", state__in=(Job.State.PENDING, Job.State.RUNNING)
+        ).values_list("payload__media_id", flat=True)
+    )
+    # Capped per pass so a first run against years of uploads does not put ten
+    # thousand rows on the queue at once; the sweep runs again in an hour.
+    added = [
+        Job(type="media.ocr", payload={"media_id": str(pk)})
+        for pk in backlog[:500]
+        if str(pk) not in queued
+    ]
+    if added:
+        Job.objects.bulk_create(added)
+        log.info("queued OCR for %s file(s) from the backlog", len(added))
+
+
 @handler("reminders.evaluate")
 def _reminders(payload: dict) -> None:
     from .notifications import run
@@ -60,6 +93,26 @@ def _backup_run(payload: dict) -> None:
     from .backup import run_backup
 
     run_backup()
+
+
+@handler("export.build")
+def _export_build(payload: dict) -> None:
+    """Build the portable ZIP in the background (R-10, P-4).
+
+    Enqueued rather than streamed from the request: an export is every row and
+    every photo, so on any shop with real history it outlives the proxy's
+    timeout and would leave the operator on a dead page.
+    """
+    from .backup import build_export
+    from .models import AuditLog
+
+    destination = build_export()
+    AuditLog.objects.create(
+        entity_type="Export",
+        action=AuditLog.Action.EXPORT,
+        summary=destination.name,
+        source="system",
+    )
 
 
 @handler("lubelogger.sync")
@@ -86,11 +139,10 @@ def _wrenchledger_sync(payload: dict) -> None:
     Tool availability is a convenience; nothing depends on it being current,
     and the UI already shows how old the answer is.
     """
-    from django.conf import settings
 
     from .integrations import wrenchledger
 
-    if not settings.WRENCHLEDGER_API_KEY or settings.OFFLINE_MODE:
+    if not conf.WRENCHLEDGER_API_KEY or conf.OFFLINE_MODE:
         return
     try:
         wrenchledger.sync(tool_ids=payload.get("tool_ids"))

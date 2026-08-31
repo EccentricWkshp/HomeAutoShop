@@ -301,7 +301,7 @@ class ImportFlowTests(TestCase):
         response = self.client.post(
             reverse("session_import", args=[self.asset.pk]), {}, follow=True
         )
-        self.assertContains(response, "Choose a scan-tool report")
+        self.assertContains(response, "Choose a report or a photo")
 
     def test_discarding_a_draft_leaves_nothing_behind(self):
         self._import()

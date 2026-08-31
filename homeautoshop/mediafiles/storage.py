@@ -1,9 +1,9 @@
 """
 S3-compatible object storage (SPEC §5.1, FR-DOC-8).
 
-MinIO earns its container by letting large photos stream directly to and from
-the browser via presigned URLs, without passing through the app process — which
-matters on a low-power host over garage Wi-Fi.
+MinIO earns its container by keeping large photos out of the database and off
+the application's own disk, so a backup is a database dump and a file tree
+rather than one enormous blob.
 
 The two rules that shape this module:
 
@@ -12,6 +12,14 @@ The two rules that shape this module:
 * **A storage outage must not hide the service history** (NFR-R-6). Failures
   here raise rather than corrupt, and the app degrades to read-only with a
   banner rather than pretending the file was saved.
+
+**What this module does *not* do by default is hand a URL to a browser.** A
+presigned URL is signed against the endpoint the application talks to, and in
+Compose that is `http://storage:9000` — a hostname that resolves only on the
+container network. Photos are therefore served by the application
+(`mediafiles/views.py`), which also makes reading one require a login rather
+than possession of a link. `public_endpoint` below is for the operator who has
+genuinely published their object store; it is blank unless they say otherwise.
 """
 
 from __future__ import annotations

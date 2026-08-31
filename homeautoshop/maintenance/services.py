@@ -16,13 +16,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
-
-from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from homeautoshop.core.measurements import convert
+from homeautoshop.core.runtime import conf
 
 from .models import (
     AssetServiceItem,
@@ -53,7 +52,7 @@ def usage_rate(asset, *, today: date | None = None) -> UsageRate:
     today = today or timezone.localdate()
     unit = asset.meter_unit or "mi"
     default = UsageRate(
-        Decimal(settings.DEFAULT_DISTANCE_PER_DAY), unit, observed=False
+        Decimal(conf.DEFAULT_DISTANCE_PER_DAY), unit, observed=False
     )
     if not asset.has_meter:
         return UsageRate(Decimal(0), unit, observed=False)
@@ -136,8 +135,8 @@ def _status_for(item: AssetServiceItem, asset, today: date) -> str:
     if item.snooze_until and item.snooze_until >= today:
         return ServiceStatus.SNOOZED
 
-    lead_days = settings.DUE_SOON_DAYS
-    lead_distance = Decimal(settings.DUE_SOON_DISTANCE)
+    lead_days = conf.DUE_SOON_DAYS
+    lead_distance = Decimal(conf.DUE_SOON_DISTANCE)
 
     overdue = False
     due_soon = False

@@ -29,11 +29,13 @@ remember which brand of caliper they used.
 | Localization scaffolding + CI gate on unwrapped strings | ✅ |
 | Ownership history, 30-day trash with restore | ✅ |
 | Object storage (MinIO/S3) with presigned URLs | ✅ |
-| OCR of documents and photographed receipts | ✅ (needs Tesseract) |
+| OCR of documents, photographed receipts and scanned PDFs | ✅ |
+| **Read a photographed printout — battery testers and anything else that only prints paper** | ✅ |
 | REST API + OpenAPI at `/api/v1/docs` | ✅ |
 | **Parts catalog, cross-refs, confirmed fitment** | ✅ |
 | **Inventory: locations, FIFO lots, ledger, cycle counts** | ✅ |
 | **Purchasing: vendors, partial receiving, landed cost, cores** | ✅ |
+| **Read a supplier order PDF into the catalog — parts, prices, cores and fitment** | ✅ |
 | **Costs: per work order, per vehicle, per distance, CSV export** | ✅ |
 | **Time tracking** | ✅ |
 | **LubeLogger one-time import (dry-run, idempotent)** | ✅ |
@@ -66,9 +68,10 @@ remember which brand of caliper they used.
 | **Scan a bin label to see what is in it** | ✅ |
 | **Scan a part's barcode to find it — or create it with the code kept** | ✅ |
 | **LubeLogger: pair a vehicle by hand when it carries no VIN** | ✅ |
-| Settings in the UI (R-9) · backup from the UI (R-10) | Roadmap |
+| **Instance settings in the UI, with the `.env` file as the fallback** | ✅ |
+| **Backup, export and download from the UI — restore stays a command** | ✅ |
 
-599 tests, all passing — on SQLite and on Postgres 18.
+843 tests, all passing — on SQLite and on Postgres 18.
 
 ## Quick start
 

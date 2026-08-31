@@ -13,6 +13,7 @@
       </div>
     {% endfor %}
   </div>
-  <button class="primary" type="submit">{% translate "Save" %}</button>
+  {% if wo %}{% url 'work_order_detail' wo.pk as cancel_to %}{% else %}{% url 'work_order_list' as cancel_to %}{% endif %}
+  {% include "partials/_formactions.html" with cancel_url=cancel_to %}
 </form>
 {% endblock %}

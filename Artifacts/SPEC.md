@@ -5,9 +5,13 @@
 | **Document** | `Artifacts/SPEC.md` |
 | **Companion documents** | [README.md](README.md) · [REFERENCE.md](REFERENCE.md) · [SCHEMA-PARSER-PROFILES.md](SCHEMA-PARSER-PROFILES.md) · [SCHEMA-INSPECTION-TEMPLATES.md](SCHEMA-INSPECTION-TEMPLATES.md) · [INTEGRATION-LUBELOGGER.md](INTEGRATION-LUBELOGGER.md) · [INTEGRATION-WRENCHLEDGER.md](INTEGRATION-WRENCHLEDGER.md) |
 | **Status** | Draft for review |
-| **Version** | 0.6.0 |
-| **Date** | 2026-08-30 |
+| **Version** | 0.6.4 |
+| **Date** | 2026-08-31 |
 | **Scope decisions** | Docker Compose deployment · all four feature modules in scope · household multi-user with garage PWA · four external integrations |
+| **v0.6.4 changes** | Follow-ups from using the parts-order import. The preview now **leads to the import**: a browser clears a file input on submit, so previewing and then importing meant uploading the same file twice — which is how a preview stops being used. The document is stored on the way past (deduplicated by SHA-256) and the review screen carries a signed reference to it. Money is shown as money: the review screen and the purchase screens printed minor units, so a $155.87 order read as `15587`. And **every full-page form has a Cancel beside its Save** — without one the only exits were the browser's back button, which re-posts, or saving changes nobody wanted. |
+| **v0.6.3 changes** | **Supplier order confirmations are read into the catalogue** (FR-PUR-1, FR-PART-2/3). A RockAuto order PDF becomes a purchase with its lines, the parts in it — brand, manufacturer part number, part type, price, core charge, quantity — and fitment against the vehicle each was looked up under, recorded as *stated by vendor* rather than confirmed (FR-PART-4). Read by word geometry for the same reason §8.3a needs it: both text columns wrap, and they wrap above as well as below their own row. Kits are charged once and their contents catalogued but not billed; a rebate is money, not part of a part number. It rehearses before it writes, and `external_ref` makes a second read of the same file update rather than duplicate (§6.2). Also: the main navigation is reachable on a phone, where it had been hidden entirely below 800px with no route to seven of the nine sections. |
+| **v0.6.2 changes** | Fixes from first real use, three of which were load-bearing. **Uploaded files are served by the application** rather than linked to object storage: a presigned URL is signed against `http://storage:9000`, which resolves only inside Compose, so every photo was a broken image — and the route that replaces it needs a login, which a presigned link does not (§5.1, §12.3). **`capture` is no longer the only way to attach a photo** — it means camera-only, so the phone's library was unreachable. **A scan-tool report may be a photograph**, read by OCR, which is what §7.9 always promised for equipment that only prints paper. Plus: any open work order can return to `planned` (REFERENCE.md §1); work orders can be deleted from any state; the status form marks the field a chosen transition needs *before* it is submitted; the parent picker excludes cycles and explains itself when empty; the tool box searches WrenchLedger instead of asking for an id from memory; the timezone is a picker; a credential set in the environment no longer reports itself as unset. |
+| **v0.6.1 changes** | **R-9 and R-10 are built**, and §17 records them as shipped rather than planned. Instance settings now live in a typed registry with **database → environment → default** precedence, credentials in a separate encrypted table excluded from both backup paths and from the export, and a non-dismissible pending-restart banner for the three settings Django resolves at startup (§17.2). Backup, export, download and retention are a screen; restore stays a command, printed with this instance's paths. Two §14 entries that were documented and unread — `OCR_ENABLED` and `RECALLS_ENABLED` — now gate something, and the image-only-PDF OCR fallback §7.9 promised is implemented. `SCAN_IMPORT_ENABLED` and `EQUIPMENT_ENABLED` remain unread and are deliberately **absent** from the settings screen. |
 | **v0.6.0 changes** | **Phase 4 is built.** New §15.1 records what shipped against each phase, and what the implementation decided differently from this document — the parser-profile engine is data *plus* a built-in-parser escape hatch (§8.3a), Web Push is the one place a local-first instance must talk to a cloud service (§9.4), and recurring work is enqueued by the worker rather than by cron (§5.2). §14 gains the settings Phase 4 introduced. OQ-16, OQ-19 and R-3's remainder are unchanged; **OQ-18 is now answered by omission and says so.** |
 | **v0.5.3 changes** | **R-9 credentials resolved**: they move to the UI, in a separate encrypted `credential` table stripped from the portable export and from both backup paths, with a restored instance stating which integrations need re-authenticating (§17.1). New §17.2 defines how a changed setting reaches a running process — per-setting `immediate` vs `restart`, a non-dismissible pending-restart banner, `SIGHUP` for the web tier and a `config_generation` self-exit for the worker. New **R-10**: backup and export operable from the UI, since the app currently warns that a backup is overdue without offering any way to take one. |
 | **v0.5.2 changes** | New roadmap item **R-9** (§17, §17.1): move instance configuration out of `.env` and into the UI, with the environment retained for bootstrap and lock-out-risk values, and the handling of credentials called out as unresolved. §14 now points at it. |
@@ -523,7 +527,7 @@ Small powered equipment is in scope (OQ-15). It reuses the asset, work order, pa
 
 | ID | Requirement |
 | --- | --- |
-| FR-PUR-1 | Record a purchase with lines, tax, shipping, discounts, and core charges, and attach the receipt image. |
+| FR-PUR-1 | Record a purchase with lines, tax, shipping, discounts, and core charges, and attach the receipt image. **A supplier's order confirmation may be read in instead of typed**: the PDF becomes the purchase, its lines, the parts, and their fitment, after a preview the operator confirms. |
 | FR-PUR-2 | Support partial receiving; receiving creates stock lots at the actual landed cost. |
 | FR-PUR-3 | Allocate tax and shipping proportionally across lines so landed cost is real *(SHOULD)*. |
 | FR-PUR-4 | Track core charges through return, with an outstanding-cores list. **Uncollected core charges are the most commonly lost money in a home shop.** |
@@ -1112,9 +1116,14 @@ Additionally: per-vehicle PDF/CSV export (FR-REP-2), CSV export on every report 
 
 ## 14. Configuration reference
 
-Environment variables, with `_FILE` variants supported for secrets. Most of
-this table is intended to become editable in the application rather than in a
-file — see **R-9** (§17.1) for which entries move and which cannot.
+Environment variables, with `_FILE` variants supported for secrets.
+
+**Most of this table is now edited in the application, not in a file.** R-9 is
+built: a value stored through the settings screen wins over the environment,
+which in turn wins over the default. What remains environment-only is what
+cannot live in the database — values read before the database is reachable, and
+values a wrong answer would lock an operator out of the settings screen with.
+§17.1 lists which is which.
 
 | Variable | Default | Notes |
 | --- | --- | --- |
@@ -1124,6 +1133,7 @@ file — see **R-9** (§17.1) for which entries move and which cannot.
 | `DATABASE_URL` | compose-provided | Postgres DSN |
 | `STORAGE_DRIVER` | `s3` | `s3` \| `filesystem` |
 | `STORAGE_*` | compose-provided | Endpoint, bucket, credentials |
+| `STORAGE_PUBLIC_ENDPOINT` | unset | Only for an operator who has genuinely published their object store on an address a browser can reach. Blank — the default — means files are served by the application, which needs no second hostname, no second certificate and no exposed port, and makes reading a photo require a login |
 | `UNITS` | `imperial` | `imperial` \| `metric`; per-user override |
 | `CURRENCY` | `USD` | ISO 4217 |
 | `TZ` | `UTC` | Instance display timezone |
@@ -1133,7 +1143,10 @@ file — see **R-9** (§17.1) for which entries move and which cannot.
 | `PLATE_PROVIDER` | unset | Adapter name; blank disables |
 | `PLATE_API_KEY` | unset | Operator-supplied |
 | `PLATE_MONTHLY_CAP` | `0` | `0` = no cap |
-| `OCR_ENABLED` | `true` | Local OCR in `worker`; also the fallback for image-only scan-tool PDFs |
+| `OCR_ENABLED` | `true` | Local OCR in `worker`; also the fallback for image-only scan-tool PDFs. Off leaves media `pending`, not `failed`, so switching it back on has a backlog to work through (`media.ocr_sweep`) |
+| `TESSERACT_LANGS` | `eng` | **Build argument**, passed by `docker-compose.yml` to both the image and `OCR_LANGUAGES`. One variable for both halves: a pack installed and never asked for is image weight, and a language asked for and never installed is a failure on a background job |
+| `OCR_LANGUAGES` | `eng` | Set from `TESSERACT_LANGS`. Narrowed at run time to what the image actually has — Tesseract fails the whole call for one missing language, so a fourth added without a rebuild would otherwise take the other three down |
+| `OCR_PDF_MAX_PAGES` | `20` | How far into an image-only PDF to read. A receipt is one page; a service manual is hundreds |
 | `SCAN_IMPORT_ENABLED` | `true` | Scan-tool report import pipeline (§8.3) |
 | `SERVICE_INFO_ENABLED` | `true` | Service-information link-out providers (§8.5) |
 | `LOCALE_DEFAULT` | `en-US` | Instance default; users negotiate their own (§5.6) |
@@ -1164,11 +1177,13 @@ file — see **R-9** (§17.1) for which entries move and which cannot.
 | `PLATE_LOOKUP_MONTHLY_CAP` | `0` | `0` means no cap. A cap is the difference between a mistake costing a dollar and a mistake costing a month's budget |
 | `PLATE_LOOKUP_COST_MINOR` | `0` | The operator's own per-call estimate, shown before each lookup. Nothing reads a price list; providers do not publish one |
 | ~~`BACKUP_CRON`~~ | *(not an environment setting)* | The worker enqueues `backup.run` daily on its own schedule (§15.1), so the interval is code rather than a crontab. R-9 moves it to the UI, where a schedule belongs |
+| `BACKUP_INTERVAL_HOURS` | `24` | How often the worker enqueues `backup.run`. Editable in the UI (R-10) |
 | `BACKUP_RETENTION` | `7d4w6m` | GFS |
 | `BACKUP_PASSPHRASE` | unset | Enables encryption |
 | `LABOR_RATE_MINOR` | `0` | Time valuation; `0` hides it. Named for minor units rather than cents, since not every currency has hundredths (§5.5) |
 | `MAX_UPLOAD_MB` | `50` | Per file |
 | `CREDENTIAL_KEY` | derived from `SECRET_KEY` | R-9 — encrypts stored integration credentials. Stays in the environment by definition: a key kept in the database it protects is not a key. Rotating it invalidates every stored credential at once, which is the intended emergency behavior. |
+| `GUNICORN_PIDFILE` | `/tmp/gunicorn.pid` | Written by `gunicorn --pid`. Without it the pending-restart banner names the command instead of offering a button that would quietly do nothing (§17.2) |
 | `LOG_LEVEL` | `info` | |
 
 ---
@@ -1337,8 +1352,11 @@ guess is only defensible if there is a way to say which vehicle is which.
   three are marked optional. The readiness gate is the integration.
 - **The offline VIN dataset** (OQ-6). Still the right design; still an
   admin-triggered download nobody has needed.
-- **R-9 and R-10.** Both remain roadmap. Phase 4 *added* settings to §14 rather
-  than moving any of them out of the environment.
+- **`SCAN_IMPORT_ENABLED` and `EQUIPMENT_ENABLED`** (§14). Both are documented
+  and neither is read by anything. They are therefore **not** on the settings
+  screen: a switch that does nothing is worse than an absent one, because it is
+  a promise the instance cannot keep. `OCR_ENABLED`, `RECALLS_ENABLED` and
+  `SERVICE_INFO_ENABLED` were in the same state and now gate something.
 
 ---
 
@@ -1395,10 +1413,27 @@ Explicitly out of v1 scope, retained so the decisions are not re-litigated and s
 | R-6 | **Project budget burn-down** | new | `budget_cents` on a project work order with variance tracking. Home builds overrun; watching it happen is the point. |
 | R-7 | **Maintenance cost forecasting** | new | Projecting the next 12 months of spend from due service items and historical part costs. Nearly free given the data already modeled. |
 | R-8 | **RTL locale testing** | §5.6 | The layout is built for it; only verification is deferred. |
-| R-9 | **Instance settings in the UI, not the `.env` file** | new | The `setting` entity already exists and already promises this — *"instance configuration surfaced in the UI, overriding environment defaults"* — but holds only `last_backup_at`. Today, renaming the shop, changing the reminder cooldown, or throwing the Offline Mode kill switch means a text editor and a container restart, which puts routine choices behind a deployment step and puts an emergency control (NFR-S-2) out of reach of the person who needs it. Precedence becomes **database → environment → default**, so an instance nobody has touched behaves exactly as it does now. See §17.1 for what moves and what cannot. |
-| R-10 | **Backup and restore, operable from the UI** | new | The health page reports how long ago the last backup ran, and the reminder digest raises a warning when it goes stale — and neither offers any way to act. Telling someone their backup is overdue while making them go and find a shell is worse than saying nothing at all. The machinery already exists: `backup.run` is a registered job handler and `manage.py backup` ships, so this is a screen over finished work. Scope: **Back up now**, enqueued and showing progress · the held backups with timestamp, size and contents · download · the portable export (P-4) on the same screen · retention and schedule, which arrive with R-9. **Restore stays on the command line** — swapping the database underneath a running process is not something a web request should attempt — but the screen shows the exact command with this instance's real paths filled in, rather than leaving an operator to reassemble it from the docs during the one hour they can least afford it. |
+| ~~R-9~~ | **Instance settings in the UI** — *built in v0.6.1* | new | The `setting` entity already exists and already promises this — *"instance configuration surfaced in the UI, overriding environment defaults"* — but holds only `last_backup_at`. Today, renaming the shop, changing the reminder cooldown, or throwing the Offline Mode kill switch means a text editor and a container restart, which puts routine choices behind a deployment step and puts an emergency control (NFR-S-2) out of reach of the person who needs it. Precedence becomes **database → environment → default**, so an instance nobody has touched behaves exactly as it does now. See §17.1 for what moves and what cannot. |
+| ~~R-10~~ | **Backup operable from the UI** — *built in v0.6.1* | new | The health page reports how long ago the last backup ran, and the reminder digest raises a warning when it goes stale — and neither offers any way to act. Telling someone their backup is overdue while making them go and find a shell is worse than saying nothing at all. The machinery already exists: `backup.run` is a registered job handler and `manage.py backup` ships, so this is a screen over finished work. Scope: **Back up now**, enqueued and showing progress · the held backups with timestamp, size and contents · download · the portable export (P-4) on the same screen · retention and schedule, which arrive with R-9. **Restore stays on the command line** — swapping the database underneath a running process is not something a web request should attempt — but the screen shows the exact command with this instance's real paths filled in, rather than leaving an operator to reassemble it from the docs during the one hour they can least afford it. |
 
 ### 17.1 R-9 — what moves, and what does not
+
+> **Built in v0.6.1.** The registry is `homeautoshop/core/settings_registry.py`;
+> the accessor and the credential store are `homeautoshop/core/runtime.py`. Two
+> things came out differently from the design below and are worth recording:
+>
+> * **`conf.X`, not `settings.X`.** §17.2 called for "a lazily-read accessor",
+>   and the shape it took is an attribute lens over `django.conf.settings` — one
+>   token different at each of the ninety-odd call sites, evaluated when asked,
+>   falling through to the environment when no row exists. Values are cached for
+>   one second per process, which is a dozen fewer queries per page render and
+>   well inside the time it takes to walk to the workshop after throwing the
+>   Offline Mode switch.
+> * **The outbound allowlist had to become derived.** It is assembled at import
+>   from the configured integration addresses — and those addresses are now
+>   editable. Left alone, a LubeLogger saved on the settings screen would have
+>   been configured, enabled, and refused: the worst of the three states,
+>   because everything says it should work. It is computed per call instead.
 
 Three groups, because treating them alike is how a settings page becomes a
 lockout or a leak.
@@ -1460,6 +1495,17 @@ Two further constraints apply to everything that moves:
   case that most needs an answer to *who turned this off*.
 
 ### 17.2 R-9 — making a change take effect
+
+> **Built in v0.6.1**, with one correction. The overlay for restart-class
+> settings does **not** run in `AppConfig.ready()`, which is the obvious place
+> and the wrong one: `ready()` runs for every management command, including the
+> `migrate` that creates the table it would be reading, and Django warns about
+> database access there for exactly that reason. It runs on the first request
+> (`ConfigMiddleware`, placed before `LocaleMiddleware` so a stored language is
+> not one request late) and at worker start. Exactly three settings are
+> restart-class — `LANGUAGE_CODE`, `TIME_ZONE`, `MAX_UPLOAD_MB` — and a test
+> asserts that set, because a setting marked `restart` that did not need to be
+> makes people restart for nothing.
 
 Settings are read at import time today, so a value edited in the UI changes
 nothing until the process restarts. Most entries can become immediate by moving

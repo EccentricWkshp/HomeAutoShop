@@ -8,10 +8,32 @@
     <tr><th>{% translate "Last backup" %}</th>
         <td>{% if backup_age %}{{ backup_age|floatformat:1 }} {% translate "days ago" %}
             {% else %}<span class="pill danger">{% translate "never" %}</span>{% endif %}</td></tr>
+    <tr><th>{% translate "Text recognition" %}</th>
+        <td>
+          {% if not ocr.enabled %}<span class="pill">{% translate "Turned off" %}</span>
+          {% elif not ocr.version %}<span class="pill danger">{% translate "Tesseract is not installed" %}</span>
+            <span class="small muted">{% translate "Documents and receipts will not become searchable." %}</span>
+          {% else %}<span class="pill ok">{% translate "Ready" %}</span>
+            <span class="small mono">{{ ocr.version }} · {{ ocr.configured|join:", " }}</span>
+            {% if ocr.missing %}<div class="small"><span class="pill danger">
+              {% blocktranslate with names=ocr.missing|join:", " %}Not installed in this image: {{ names }}{% endblocktranslate %}</span>
+              {% translate "Rebuild after changing TESSERACT_LANGS." %}
+            </div>{% endif %}
+          {% endif %}
+          {% if ocr_pending or ocr_failed %}<div class="small muted">
+            {% blocktranslate count n=ocr_pending %}{{ n }} file waiting{% plural %}{{ n }} files waiting{% endblocktranslate %} ·
+            {% blocktranslate count n=ocr_failed %}{{ n }} unreadable{% plural %}{{ n }} unreadable{% endblocktranslate %}
+          </div>{% endif %}
+        </td></tr>
     <tr><th>{% translate "Offline mode" %}</th><td>{{ offline_mode|yesno }}</td></tr>
     <tr><th>{% translate "Outbound allowlist" %}</th><td class="mono small">{{ allowlist|join:", " }}</td></tr>
   </table>
 </div>
+<p class="row">
+  <a class="btn" href="{% url 'settings' %}">{% translate "Settings" %}</a>
+  <a class="btn" href="{% url 'backups' %}">{% translate "Backup" %}</a>
+</p>
+
 <div class="card">
   <h2>{% translate "Jobs" %}</h2>
   <ul class="list small">{% for row in jobs %}<li>{{ row.state }}: {{ row.n }}</li>{% empty %}<li class="muted">{% translate "Queue empty." %}</li>{% endfor %}</ul>

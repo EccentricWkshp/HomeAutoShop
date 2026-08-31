@@ -333,3 +333,58 @@ pre.scroll { white-space: pre-wrap; word-break: break-word; }
 .unitbox { display: inline-flex; align-items: center; gap: .3rem; }
 .unitbox input { inline-size: 5rem; }
 .unitbox label { margin: 0; white-space: nowrap; font-size: .8rem; }
+
+/* Settings (R-9). A section list rather than one very long form: the groups
+   are how somebody thinks about the question they came here with. */
+.subnav { display: flex; flex-wrap: wrap; gap: .25rem .75rem; margin: 0 0 1rem; }
+.subnav a { padding: .35rem 0; border-bottom: 2px solid transparent; }
+.subnav a[aria-current="page"] { border-bottom-color: var(--accent); color: var(--fg); }
+
+/* A checkbox and its wording on one line, with the label wrapping under the
+   box rather than beside it — a switch whose text runs off the screen is a
+   switch nobody can read on a phone. */
+.check { display: flex; align-items: flex-start; gap: .5rem; margin: 0; }
+.check input { inline-size: auto; margin-block-start: .2rem; flex: none; }
+
+/* The pending-restart banner (§17.2). It does not fade and there is nothing to
+   dismiss it with: the only thing that clears it is an actual restart. */
+.restartbanner { border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent);
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+  padding: .6rem .8rem; border-radius: var(--radius); margin: 0 0 1rem; }
+.restartbanner .row { margin-top: .4rem; }
+
+/* A file input styled as a button, so "take a photo" and "choose a photo" read
+   as two choices rather than one control with a mystery mode. */
+.filepick { display: inline-flex; align-items: center; position: relative; margin: 0;
+  border: 1px solid var(--line); border-radius: var(--radius); padding: .55rem .8rem;
+  cursor: pointer; white-space: nowrap; }
+.filepick input { position: absolute; inset: 0; opacity: 0; cursor: pointer; inline-size: 100%; }
+
+/* Marks the field the chosen action actually needs, before it is submitted. */
+.req { font-size: .75rem; color: var(--danger); font-weight: 600; margin-inline-start: .3rem; }
+
+/* Tool lookup results. Positioned in flow rather than floated over the page:
+   inside a job item on a phone, an absolutely positioned menu ends up off the
+   edge of the card it belongs to. */
+.toolpicker { position: relative; }
+.toolpicker .results { list-style: none; margin: .3rem 0 0; padding: 0;
+  border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.toolpicker .results li + li { border-top: 1px solid var(--line); }
+.toolpicker .results button { display: block; inline-size: 100%; text-align: start;
+  padding: .5rem .6rem; }
+
+/* The sections list inside the account menu is the phone's main navigation:
+   the bar across the top is hidden below 800px and the bottom tabs only carry
+   five destinations, so without this Work, Inspect, Parts, Shelf, Buying,
+   Reports and People had no route at all on a phone. Hidden on a wide screen,
+   where the bar is doing the job. */
+.menusections { display: block; border-bottom: 1px solid var(--line);
+  margin-block-end: .35rem; padding-block-end: .35rem; }
+.menuhead { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--muted); margin: .5rem 0 .15rem; padding-inline: .6rem; }
+@media (min-width: 800px) { .menusections, .menuhead { display: none; } }
+
+/* Save and Cancel together. Separated a little so a thumb aiming for one on a
+   phone does not catch the other — they are adjacent and one of them discards
+   what you just typed. */
+.formactions { gap: .75rem; margin-block-start: 1rem; align-items: center; }

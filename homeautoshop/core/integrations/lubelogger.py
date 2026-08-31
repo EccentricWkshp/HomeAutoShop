@@ -27,10 +27,9 @@ from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 
 from urllib.parse import urlencode
-
-from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
+from ..runtime import conf
 from homeautoshop.core.outbound import OutboundBlocked, OutboundFailed, fetch_json
 
 log = logging.getLogger(__name__)
@@ -155,13 +154,13 @@ def instance_url() -> str:
     link and the code that *reads* it have to agree on this string exactly. One
     function, so they cannot drift.
     """
-    return (settings.LUBELOGGER_URL or "").rstrip("/")
+    return (conf.LUBELOGGER_URL or "").rstrip("/")
 
 
 class LubeLoggerClient:
     def __init__(self, base_url: str | None = None, api_key: str | None = None) -> None:
         self.base_url = (base_url or instance_url()).rstrip("/")
-        self.api_key = api_key or settings.LUBELOGGER_API_KEY
+        self.api_key = api_key or conf.LUBELOGGER_API_KEY
         if not self.base_url:
             raise NotConfigured(
                 "LUBELOGGER_URL is not set. The integration is optional; nothing "

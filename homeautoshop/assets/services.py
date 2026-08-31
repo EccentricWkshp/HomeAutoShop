@@ -24,6 +24,7 @@ from homeautoshop.core.outbound import OutboundBlocked, OutboundFailed, fetch_js
 
 from . import vin as vinlib
 from .models import Asset, UsageReading
+from homeautoshop.core.runtime import conf
 
 log = logging.getLogger(__name__)
 
@@ -85,7 +86,7 @@ def decode_vin(asset: Asset, *, user=None, force: bool = False, save: bool = Tru
     """
     if asset.asset_kind != "vehicle":
         return DecodeResult(False, message=str(_("Equipment does not have a VIN to decode.")))
-    if not settings.VIN_DECODE_ENABLED:
+    if not conf.VIN_DECODE_ENABLED:
         return DecodeResult(False, message=str(_("VIN decoding is turned off for this instance.")))
 
     check = vinlib.validate(asset.vin)

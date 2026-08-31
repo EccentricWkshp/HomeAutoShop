@@ -35,6 +35,7 @@ from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
 from .models import Setting
+from .runtime import conf
 
 log = logging.getLogger(__name__)
 
@@ -61,7 +62,7 @@ def available() -> bool:
         import pywebpush  # noqa: F401
     except ImportError:
         return False
-    return not settings.OFFLINE_MODE
+    return not conf.OFFLINE_MODE
 
 
 def keys() -> dict:
@@ -116,7 +117,7 @@ def send(channel, *, title: str, body: str, url: str = "/") -> None:
     Deliberately terse. This passes through a third party and lands on a lock
     screen: what it says is that something needs attention, not what or whose.
     """
-    if settings.OFFLINE_MODE:
+    if conf.OFFLINE_MODE:
         raise PushUnavailable(_("Offline Mode is on, so nothing is pushed."))
 
     subscription = channel.subscription or {}

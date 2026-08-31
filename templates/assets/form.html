@@ -39,10 +39,8 @@
       </div>
     {% endfor %}
   </div>
-  <div class="row">
-    <button class="primary" type="submit">{% translate "Save" %}</button>
-    {% if asset %}<a class="btn" href="{% url 'asset_detail' asset.pk %}">{% translate "Cancel" %}</a>{% endif %}
-  </div>
+  {% if asset %}{% url 'asset_detail' asset.pk as cancel_to %}{% else %}{% url 'asset_list' as cancel_to %}{% endif %}
+  {% include "partials/_formactions.html" with cancel_url=cancel_to %}
 </form>
 
 <script>

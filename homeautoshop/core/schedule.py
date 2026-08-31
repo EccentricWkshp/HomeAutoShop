@@ -26,11 +26,10 @@ from __future__ import annotations
 
 import logging
 from datetime import timedelta
-
-from django.conf import settings
 from django.utils import timezone
 
 from .models import Job, Setting
+from .runtime import conf
 
 log = logging.getLogger(__name__)
 
@@ -40,18 +39,21 @@ LAST_RUN_PREFIX = "schedule.last."
 def recurring() -> list[tuple[str, timedelta]]:
     """What runs on a timer, and how often.
 
-    Read fresh each pass rather than captured at import, so changing a setting
-    and restarting the app is enough — no code path has an interval baked in.
+    Read fresh each pass rather than captured at import, so a schedule changed
+    on the settings screen is honoured by the next pass — within a minute, with
+    nothing restarted and no code path holding an interval it captured at boot.
     """
     plan: list[tuple[str, timedelta]] = [
-        ("backup.run", timedelta(days=1)),
+        ("backup.run", timedelta(hours=conf.BACKUP_INTERVAL_HOURS)),
     ]
-    if settings.REMINDERS_ENABLED:
+    if conf.OCR_ENABLED:
+        plan.append(("media.ocr_sweep", timedelta(hours=1)))
+    if conf.REMINDERS_ENABLED:
         plan.append(("reminders.evaluate", timedelta(hours=12)))
-    if settings.LUBELOGGER_URL and settings.LUBELOGGER_MODE in ("pull", "pull_push_odometer"):
-        plan.append(("lubelogger.sync", timedelta(hours=settings.LUBELOGGER_SYNC_HOURS)))
-    if settings.WRENCHLEDGER_API_KEY:
-        plan.append(("wrenchledger.sync", timedelta(hours=settings.WRENCHLEDGER_SYNC_HOURS)))
+    if conf.LUBELOGGER_URL and conf.LUBELOGGER_MODE in ("pull", "pull_push_odometer"):
+        plan.append(("lubelogger.sync", timedelta(hours=conf.LUBELOGGER_SYNC_HOURS)))
+    if conf.WRENCHLEDGER_API_KEY:
+        plan.append(("wrenchledger.sync", timedelta(hours=conf.WRENCHLEDGER_SYNC_HOURS)))
     return plan
 
 

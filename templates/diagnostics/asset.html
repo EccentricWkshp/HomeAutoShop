@@ -98,13 +98,36 @@
       <p class="small muted">
         {% translate "A PDF from a scan tool, or a CSV or text export if yours makes one. Use the export where you have one — it reads more reliably." %}
       </p>
+      {% comment %}
+        Photographs belong here, and did not used to be accepted: the file box
+        took PDFs and text, so a picture of a battery tester slip was decoded
+        as UTF-8 and handed to the parsers as line noise. Plenty of shop
+        equipment prints paper and nothing else, which is exactly the case OCR
+        was specified for (§7.9, FR-DOC-5).
+      {% endcomment %}
+      <p class="small muted">
+        {% translate "A photo works too — a battery or charging-system printout, or anything else that only ever comes out on paper. It is read with text recognition, so check what it found before confirming." %}
+      </p>
       <form method="post" action="{% url 'session_import' asset.pk %}"
             enctype="multipart/form-data" class="stack">{% csrf_token %}
         <div class="field">
-          <label for="report">{% translate "Report file" %}</label>
-          <input id="report" type="file" name="report" accept=".pdf,.csv,.txt,.json">
+          <label for="report">{% translate "Report file or photo" %}</label>
+          <input id="report" type="file" name="report"
+                 accept=".pdf,.csv,.txt,.json,image/*">
         </div>
-        <button class="primary" type="submit">{% translate "Read it" %}</button>
+        <div class="row">
+          <label class="filepick">
+            {% comment %}
+              A separate name: this is one file field, not a list, so two
+              inputs sharing a name would depend on which one the parser
+              happens to keep.
+            {% endcomment %}
+            <input type="file" name="report_photo" accept="image/*" capture="environment"
+                   aria-label="{% translate 'Photograph a printout' %}">
+            <span>{% translate "Photograph a printout" %}</span>
+          </label>
+          <button class="primary" type="submit">{% translate "Read it" %}</button>
+        </div>
       </form>
     </section>
 

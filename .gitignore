@@ -15,6 +15,9 @@ staticfiles/
 # them. What ships is redacted word geometry plus its fixtures - see
 # homeautoshop/scantools/capture.py. Note the directory itself is NOT ignored:
 # a negation cannot re-include anything inside an excluded directory.
+# Parts orders are shipping documents: a name, a street address, a phone number and an
+# email, twice over. Captured as redacted text and geometry by
+# homeautoshop/purchasing/importers/capture.py, and the capture is what ships.
 Artifacts/samples/**/*.pdf
 Artifacts/samples/*.jpg
 Artifacts/samples/**/*.jpeg

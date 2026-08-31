@@ -36,6 +36,7 @@ from django.utils.translation import gettext_lazy as _
 
 from homeautoshop.core.models import AuditLog, Setting
 from homeautoshop.core.outbound import OutboundBlocked, OutboundFailed, fetch_json
+from homeautoshop.core.runtime import conf
 
 log = logging.getLogger(__name__)
 
@@ -86,8 +87,8 @@ class PlateLookupProvider:
 
     def __init__(self, name: str = "", base_url: str = "", api_key: str = "") -> None:
         self.name = name or settings.PLATE_LOOKUP_PROVIDER
-        self.base_url = (base_url or settings.PLATE_LOOKUP_URL).rstrip("/")
-        self.api_key = api_key or settings.PLATE_LOOKUP_KEY
+        self.base_url = (base_url or conf.PLATE_LOOKUP_URL).rstrip("/")
+        self.api_key = api_key or conf.PLATE_LOOKUP_KEY
 
     def lookup(self, plate: str, region: str, *, user=None) -> PlateResult:
         if not self.base_url:
@@ -149,7 +150,7 @@ def usage(*, today: date | None = None) -> int:
 
 def remaining(*, today: date | None = None) -> int | None:
     """Calls left before the cap, or None when no cap is set."""
-    cap = settings.PLATE_LOOKUP_MONTHLY_CAP
+    cap = conf.PLATE_LOOKUP_MONTHLY_CAP
     if cap <= 0:
         return None
     return max(0, cap - usage(today=today))
@@ -185,13 +186,13 @@ def _previous_period() -> str:
 def preflight() -> dict:
     """What the confirmation screen has to say before spending anything."""
     return {
-        "enabled": settings.PLATE_LOOKUP_ENABLED,
+        "enabled": conf.PLATE_LOOKUP_ENABLED,
         "provider": settings.PLATE_LOOKUP_PROVIDER,
         "used": usage(),
-        "cap": settings.PLATE_LOOKUP_MONTHLY_CAP,
+        "cap": conf.PLATE_LOOKUP_MONTHLY_CAP,
         "remaining": remaining(),
-        "cost_estimate": settings.PLATE_LOOKUP_COST_MINOR,
-        "currency": settings.CURRENCY_REPORTING,
+        "cost_estimate": conf.PLATE_LOOKUP_COST_MINOR,
+        "currency": conf.CURRENCY_REPORTING,
     }
 
 
@@ -200,11 +201,11 @@ def lookup(plate: str, region: str, *, user=None, provider=None) -> PlateResult:
     plate = (plate or "").strip().upper()
     region = (region or "").strip().upper()
 
-    if not settings.PLATE_LOOKUP_ENABLED:
+    if not conf.PLATE_LOOKUP_ENABLED:
         raise LookupUnavailable(
             _("Plate lookup is switched off. It costs money per call, so it is off until you turn it on.")
         )
-    if settings.OFFLINE_MODE:
+    if conf.OFFLINE_MODE:
         raise LookupUnavailable(_("Offline Mode is on, so the plate is not sent anywhere."))
     if not plate:
         raise LookupUnavailable(_("Enter a plate to look up."))
@@ -217,7 +218,7 @@ def lookup(plate: str, region: str, *, user=None, provider=None) -> PlateResult:
     if left is not None and left <= 0:
         raise CapReached(
             _("The monthly limit of %(cap)d lookups is used up. Raise it or wait for next month.")
-            % {"cap": settings.PLATE_LOOKUP_MONTHLY_CAP}
+            % {"cap": conf.PLATE_LOOKUP_MONTHLY_CAP}
         )
 
     adapter = provider or PlateLookupProvider()

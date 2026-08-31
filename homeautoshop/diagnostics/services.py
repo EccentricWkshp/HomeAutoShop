@@ -66,7 +66,11 @@ def session_from_upload(asset, upload, *, user=None, work_order=None) -> Diagnos
 
     media: Media | None = None
     try:
-        media, _created = ingest(upload, kind=Media.Kind.DOCUMENT, user=user)
+        media, _created = ingest(
+            upload,
+            kind=Media.Kind.PHOTO if document.media_type == "image" else Media.Kind.DOCUMENT,
+            user=user,
+        )
     except Exception:  # noqa: BLE001 - a session without its original still works
         # The extracted text and words are already in hand, so an unreachable
         # object store costs the operator the original PDF, not the import.
@@ -101,7 +105,11 @@ def session_from_upload(asset, upload, *, user=None, work_order=None) -> Diagnos
 
 
 def _source_for(media_type: str) -> str:
-    return SessionSource.PDF_REPORT if media_type == "pdf" else SessionSource.FILE_IMPORT
+    if media_type == "pdf":
+        return SessionSource.PDF_REPORT
+    if media_type == "image":
+        return SessionSource.PHOTO
+    return SessionSource.FILE_IMPORT
 
 
 def _apply_extraction(

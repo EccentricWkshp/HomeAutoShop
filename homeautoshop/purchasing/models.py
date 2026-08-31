@@ -16,8 +16,10 @@ from django.db import models, transaction
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
+from homeautoshop.core.measurements import Money
 from homeautoshop.core.models import BaseModel, RevisionedModel
 from homeautoshop.core.money import money, money_columns
+from homeautoshop.core.runtime import conf
 
 
 class Vendor(RevisionedModel):
@@ -92,6 +94,19 @@ class Purchase(RevisionedModel):
     @property
     def subtotal_minor(self) -> int:
         return sum(line.line_total_minor for line in self.lines.all())
+
+    @property
+    def subtotal(self):
+        return Money(self.subtotal_minor, self.currency)
+
+    @property
+    def total(self):
+        """The same number the screens were printing in cents.
+
+        `total_minor` is the storage form (§5.5); templates rendered it raw, so
+        a $155.87 order displayed as `15587`.
+        """
+        return Money(self.total_minor, self.currency)
 
     @property
     def total_minor(self) -> int:
@@ -268,8 +283,7 @@ class Expense(RevisionedModel):
 
     @property
     def counts_toward_asset_cost(self) -> bool:
-        from django.conf import settings
-
+        
         if self.category in EXCLUDED_FROM_ASSET_COST:
-            return getattr(settings, "COST_INCLUDE_TOOLING", False)
+            return conf.COST_INCLUDE_TOOLING
         return True

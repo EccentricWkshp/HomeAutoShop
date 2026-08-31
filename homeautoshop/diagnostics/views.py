@@ -105,9 +105,11 @@ def session_import(request, pk):
     asset = get_object_or_404(Asset, pk=pk)
     require(request.user, "asset.edit", asset)
 
-    upload = request.FILES.get("report")
+    # Either control: the file picker, or the camera button beside it. A photo
+    # of a printout is a report here — see engine.read.
+    upload = request.FILES.get("report") or request.FILES.get("report_photo")
     if not upload:
-        messages.warning(request, _("Choose a scan-tool report to read."))
+        messages.warning(request, _("Choose a report or a photo to read."))
         return redirect("asset_diagnostics", pk=asset.pk)
 
     try:

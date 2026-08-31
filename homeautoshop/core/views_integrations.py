@@ -18,6 +18,7 @@ from django.shortcuts import redirect, render
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
 
+from .runtime import conf
 from homeautoshop.accounts.models import require
 
 from .integrations import sync as lubelogger_sync
@@ -38,36 +39,36 @@ def integrations(request):
         request,
         "core/integrations.html",
         {
-            "offline": settings.OFFLINE_MODE,
+            "offline": conf.OFFLINE_MODE,
             "vin_decode": {
-                "enabled": settings.VIN_DECODE_ENABLED,
+                "enabled": conf.VIN_DECODE_ENABLED,
                 "url": settings.VPIC_BASE_URL,
             },
             "lubelogger": {
-                "url": settings.LUBELOGGER_URL,
-                "mode": settings.LUBELOGGER_MODE,
-                "syncs": settings.LUBELOGGER_MODE in lubelogger_sync.SYNC_MODES,
-                "every_hours": settings.LUBELOGGER_SYNC_HOURS,
+                "url": conf.LUBELOGGER_URL,
+                "mode": conf.LUBELOGGER_MODE,
+                "syncs": conf.LUBELOGGER_MODE in lubelogger_sync.SYNC_MODES,
+                "every_hours": conf.LUBELOGGER_SYNC_HOURS,
                 "last": Setting.get(lubelogger_sync.LAST_SYNC_KEY),
                 "result": Setting.get(lubelogger_sync.LAST_RESULT_KEY) or {},
             },
             "wrenchledger": {
-                "configured": bool(settings.WRENCHLEDGER_API_KEY),
+                "configured": bool(conf.WRENCHLEDGER_API_KEY),
                 "url": settings.WRENCHLEDGER_URL,
                 "last": Setting.get(wl.LAST_SYNC_KEY),
                 "required_scopes": wl.REQUIRED_SCOPES,
-                "consumables_owner": settings.CONSUMABLES_OWNER,
+                "consumables_owner": conf.CONSUMABLES_OWNER,
             },
             "plate": {
-                "enabled": settings.PLATE_LOOKUP_ENABLED,
+                "enabled": conf.PLATE_LOOKUP_ENABLED,
                 "provider": settings.PLATE_LOOKUP_PROVIDER,
-                "cap": settings.PLATE_LOOKUP_MONTHLY_CAP,
+                "cap": conf.PLATE_LOOKUP_MONTHLY_CAP,
             },
             # The house placement (INTEGRATION-WRENCHLEDGER.md §10): contextual,
             # static, dismissible, and gone the moment a connection exists.
             "show_wl_placement": (
-                settings.SHOW_PRODUCT_LINKS
-                and not settings.WRENCHLEDGER_API_KEY
+                conf.SHOW_PRODUCT_LINKS
+                and not conf.WRENCHLEDGER_API_KEY
                 and not Setting.get(DISMISSED_KEY)
             ),
             "activity": AuditLog.objects.filter(action=AuditLog.Action.OUTBOUND)[:50],
@@ -81,7 +82,7 @@ def integration_test(request, name):
     """A real call, not a configuration check (FR-INT-1)."""
     require(request.user, "integration.manage")
 
-    if settings.OFFLINE_MODE:
+    if conf.OFFLINE_MODE:
         messages.warning(
             request,
             _("Offline Mode is on, so nothing was contacted."),

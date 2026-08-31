@@ -41,6 +41,18 @@ def env_int(key: str, default: int) -> int:
 # --------------------------------------------------------------------------
 
 SECRET_KEY = env("SECRET_KEY", "dev-only-insecure-key-change-me")
+# Encrypts integration credentials stored in the database (R-9, §17.1). It
+# stays in the environment by definition: a key kept in the database it
+# protects is not a key. Blank derives it from SECRET_KEY, which keeps an
+# existing instance working without a new variable at the cost of one secret
+# protecting two things. Rotating it invalidates every stored credential at
+# once, which is the intended emergency behaviour.
+CREDENTIAL_KEY = env("CREDENTIAL_KEY", "")
+# Written by gunicorn --pid, and the only thing that makes the "Apply and
+# restart" button in the pending-restart banner possible (§17.2). Absent — a
+# runserver, a slim profile — the banner names the command instead of offering
+# a button that would quietly do nothing.
+GUNICORN_PIDFILE = env("GUNICORN_PIDFILE", "/tmp/gunicorn.pid")
 DEBUG = env_bool("DEBUG", False)
 SHOP_NAME = env("SHOP_NAME", "Home Shop")
 BASE_URL = env("BASE_URL", "http://localhost:8000")
@@ -76,6 +88,9 @@ MIDDLEWARE = [
     # security headers but skips session, locale and auth work it never needs.
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    # Before LocaleMiddleware, which reads LANGUAGE_CODE: a stored language
+    # applied after it would take an extra request to appear (§17.2).
+    "homeautoshop.core.middleware.ConfigMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -232,6 +247,21 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = MAX_UPLOAD_MB * 1024 * 1024
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
 STRIP_GPS_EXIF = env_bool("STRIP_GPS_EXIF", True)  # FR-DOC-9
 
+# OCR (FR-DOC-5, §14). Runs in the worker, entirely on this machine — the
+# reason it is worth the image weight is that the alternative for a receipt is
+# somebody else's server. Turning it off leaves media marked `pending` rather
+# than `failed`, so switching it back on has a backlog to work through instead
+# of a set of rows that claim to have been tried.
+OCR_ENABLED = env_bool("OCR_ENABLED", True)
+# Tesseract language codes, in preference order. Set from docker-compose.yml
+# from the same variable that decides which packs the image installs; asking
+# for a language that was never installed is an error, not a fallback.
+OCR_LANGUAGES = "+".join(env("OCR_LANGUAGES", "eng").replace(",", " ").split())
+# How far into an image-only PDF to read. A receipt is one page and a scan-tool
+# report a handful; a service manual is hundreds, and rasterising all of them at
+# 300 DPI is hours of worker time for text nobody searches.
+OCR_PDF_MAX_PAGES = env_int("OCR_PDF_MAX_PAGES", 20)
+
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
@@ -245,6 +275,12 @@ if STORAGE_DRIVER == "s3":
             "access_key": env("STORAGE_ACCESS_KEY", ""),
             "secret_key": env("STORAGE_SECRET_KEY", ""),
             "region": env("STORAGE_REGION", "us-east-1"),
+            # Only for an operator who has actually published their object
+            # store on an address a browser can reach. Left blank — the
+            # default — files are served by the application instead, which
+            # needs no second hostname, no second certificate, and no exposed
+            # port. See homeautoshop/mediafiles/views.py.
+            "public_endpoint": env("STORAGE_PUBLIC_ENDPOINT", ""),
         },
     }
 
@@ -288,6 +324,7 @@ WHITENOISE_MIMETYPES = {".webmanifest": "application/manifest+json"}
 
 OFFLINE_MODE = env_bool("OFFLINE_MODE", False)
 VIN_DECODE_ENABLED = env_bool("VIN_DECODE_ENABLED", True)
+RECALLS_ENABLED = env_bool("RECALLS_ENABLED", True)
 VIN_DECODE_TIMEOUT = env_int("VIN_DECODE_TIMEOUT", 5)
 VPIC_BASE_URL = env("VPIC_BASE_URL", "https://vpic.nhtsa.dot.gov/api/vehicles")
 SERVICE_INFO_ENABLED = env_bool("SERVICE_INFO_ENABLED", True)
@@ -391,6 +428,10 @@ EMAIL_BACKEND = (
 # --------------------------------------------------------------------------
 
 BACKUP_DIR = Path(env("BACKUP_DIR", str(BASE_DIR / "data" / "backups")))
+# How often the worker enqueues `backup.run` (§15.1). An interval rather than
+# a cron expression: the worker asks what is due on each pass, so there is no
+# crontab to parse and no second scheduler to supervise.
+BACKUP_INTERVAL_HOURS = env_int("BACKUP_INTERVAL_HOURS", 24)
 BACKUP_RETENTION_DAILY = env_int("BACKUP_RETENTION_DAILY", 7)
 BACKUP_RETENTION_WEEKLY = env_int("BACKUP_RETENTION_WEEKLY", 4)
 BACKUP_RETENTION_MONTHLY = env_int("BACKUP_RETENTION_MONTHLY", 6)

@@ -12,6 +12,15 @@ ENV PYTHONUNBUFFERED=1 \
 # break nightly backups while everything else kept working. Take the client
 # from PGDG and keep PG_MAJOR in step with docker-compose.yml.
 ARG PG_MAJOR=18
+
+# Which OCR language packs to install (FR-DOC-5). Space-separated Tesseract
+# codes, which double as Debian package suffixes: `eng fra spa deu`. It is
+# passed from docker-compose.yml, which hands the same list to OCR_LANGUAGES
+# at run time. One variable for both halves on purpose: a pack installed and
+# never asked for is dead weight in the image, and a language asked for but
+# never installed is a failure on a background job nobody is watching.
+ARG TESSERACT_LANGS="eng"
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates curl gnupg \
     && install -d /usr/share/postgresql-common/pgdg \
@@ -23,7 +32,9 @@ https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
         > /etc/apt/sources.list.d/pgdg.list \
     && apt-get update && apt-get install -y --no-install-recommends \
         postgresql-client-${PG_MAJOR} libjpeg62-turbo libwebp7 gettext \
-        tesseract-ocr tesseract-ocr-eng tesseract-ocr-fra tesseract-ocr-spa \
+        tesseract-ocr \
+    && apt-get install -y --no-install-recommends \
+        $(for lang in ${TESSERACT_LANGS}; do echo "tesseract-ocr-$lang"; done) \
     && apt-get purge -y curl gnupg && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
@@ -46,6 +57,12 @@ USER shop
 RUN STATIC_HASHED=true python manage.py collectstatic --noinput --clear
 
 EXPOSE 8080
+# `--pid` is not decoration: it is what lets the settings screen reload the web
+# tier after a restart-class change (SPEC §17.2). SIGHUP to the master retires
+# workers gracefully — in-flight requests finish — so it is a reload, not an
+# outage. Without it the pending-restart banner names the command instead of
+# offering a button that would quietly do nothing.
 CMD ["gunicorn", "config.wsgi:application", \
      "--bind", "0.0.0.0:8080", "--workers", "3", "--timeout", "120", \
+     "--pid", "/tmp/gunicorn.pid", \
      "--access-logfile", "-", "--error-logfile", "-"]

@@ -4,14 +4,38 @@ from __future__ import annotations
 
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
+from .runtime import conf
+
+
+def _pending_restart(request) -> dict:
+    """What is waiting for a restart, if anything (§17.2).
+
+    Only computed for somebody who could act on it. A banner telling a person
+    with no settings permission that the instance needs restarting is noise
+    they cannot clear, on every page, for ever.
+    """
+    user = getattr(request, "user", None)
+    if not (user and user.is_authenticated and getattr(user, "is_admin", False)):
+        return {}
+    from .runtime import pending_restart_keys
+    from .settings_registry import BY_KEY
+
+    keys = pending_restart_keys()
+    if not keys:
+        return {}
+    return {
+        "pending_restart": [BY_KEY[key].label for key in keys if key in BY_KEY],
+        "can_self_restart": bool(getattr(settings, "GUNICORN_PIDFILE", "")),
+    }
 
 
 def instance(request):
     return {
-        "shop_name": settings.SHOP_NAME,
-        "offline_mode": settings.OFFLINE_MODE,
-        "show_product_links": settings.SHOP_NAME and settings.SHOW_PRODUCT_LINKS,
-        "units_preference": getattr(getattr(request, "user", None), "units", None) or settings.UNITS,
+        **_pending_restart(request),
+        "shop_name": conf.SHOP_NAME,
+        "offline_mode": conf.OFFLINE_MODE,
+        "show_product_links": conf.SHOP_NAME and conf.SHOW_PRODUCT_LINKS,
+        "units_preference": getattr(getattr(request, "user", None), "units", None) or conf.UNITS,
         # Handed to scanner.js as JSON, same reasoning as below: the script is a
         # cacheable static file and its wording still comes from the catalog.
         "scanner_strings": {

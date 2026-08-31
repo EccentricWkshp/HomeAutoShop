@@ -18,10 +18,9 @@ from __future__ import annotations
 
 import io
 from decimal import Decimal
-
-from django.conf import settings
 from django.utils import timezone
 from django.utils.translation import gettext as _
+from .runtime import conf
 
 PAGE_MARGIN = 42
 
@@ -72,7 +71,7 @@ def build_vehicle_report(asset, *, include_costs: bool = True) -> bytes:
         topMargin=PAGE_MARGIN,
         bottomMargin=PAGE_MARGIN,
         title=f"{asset.nickname} — {_('Service history')}",
-        author=settings.SHOP_NAME,
+        author=conf.SHOP_NAME,
     )
 
     def table(rows, widths, *, header=True):
@@ -220,7 +219,7 @@ def build_vehicle_report(asset, *, include_costs: bool = True) -> bytes:
                 "Produced by %(shop)s on %(date)s. This document lists what was recorded; "
                 "gaps in it are gaps in the record, not assertions that nothing happened."
             )
-            % {"shop": settings.SHOP_NAME, "date": timezone.localdate().isoformat()},
+            % {"shop": conf.SHOP_NAME, "date": timezone.localdate().isoformat()},
             styles["Muted"],
         )
     )

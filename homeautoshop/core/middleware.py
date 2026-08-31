@@ -1,4 +1,4 @@
-"""Request-scoped current user, so BaseModel can stamp `created_by`."""
+"""Request-scoped current user, and applying stored configuration (R-9, §17.2)."""
 
 from __future__ import annotations
 
@@ -22,3 +22,28 @@ class CurrentUserMiddleware:
             return self.get_response(request)
         finally:
             _current_user.reset(token)
+
+
+class ConfigMiddleware:
+    """Apply the stored restart-class settings, once, before serving anything.
+
+    §17.2 divides settings into those that take effect immediately — read
+    through `conf` at the moment they are needed — and those Django resolves
+    for itself at startup: the locale, the upload ceiling, the timezone. The
+    second group has to be written into `django.conf.settings` before Django
+    reads them, and this is the first point in a request where the database is
+    guaranteed to exist.
+
+    Placed early in `MIDDLEWARE` for one specific reason: `LocaleMiddleware`
+    reads `settings.LANGUAGE_CODE`, so an overlay applied after it would take
+    an extra request to show up and look like a bug in the language setting.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        from .runtime import ensure_overlay
+
+        ensure_overlay()
+        return self.get_response(request)

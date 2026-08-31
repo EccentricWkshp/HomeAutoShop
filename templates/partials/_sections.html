@@ -1,0 +1,24 @@
+{% load i18n %}
+{% comment %}
+  The nine sections of the application, in one place.
+
+  Rendered twice: once as the horizontal bar across the top on a wide screen,
+  and once inside the account menu on a phone. Twice rather than once because a
+  `<details>` menu hides its own contents when closed, so the same element
+  cannot also be an always-visible bar — and the alternative, a fifth row in the
+  sticky header, costs vertical space on every page to solve a problem that only
+  exists on one screen.
+
+  What must not happen is the list being written out twice, which is how one
+  copy quietly loses a section. Only one of the two is ever displayed, so
+  neither the reading order nor the accessibility tree gets a duplicate.
+{% endcomment %}
+<a href="{% url 'asset_list' %}">{% translate "Vehicles" %}</a>
+<a href="{% url 'work_order_list' %}">{% translate "Work" %}</a>
+<a href="{% url 'due_list' %}">{% translate "Due" %}</a>
+<a href="{% url 'inspection_list' %}">{% translate "Inspect" %}</a>
+<a href="{% url 'part_list' %}">{% translate "Parts" %}</a>
+<a href="{% url 'inventory' %}">{% translate "Shelf" %}</a>
+<a href="{% url 'purchase_list' %}">{% translate "Buying" %}</a>
+<a href="{% url 'reports' %}">{% translate "Reports" %}</a>
+<a href="{% url 'person_list' %}">{% translate "People" %}</a>

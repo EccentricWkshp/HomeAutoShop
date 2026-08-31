@@ -125,6 +125,9 @@ def read(upload, *, filename: str = "") -> Document:
     if raw[:5] == b"%PDF-":
         return _read_pdf(raw)
 
+    if _is_image(raw):
+        return _read_image(raw)
+
     text = normalize(raw.decode("utf-8", errors="replace"))
     stripped = text.lstrip()
     if stripped[:1] in "{[":
@@ -138,6 +141,44 @@ def read(upload, *, filename: str = "") -> Document:
     if _looks_delimited(text) or name.endswith(".csv"):
         return Document(text=text, media_type="csv")
     return Document(text=text, media_type="text")
+
+
+#: Magic bytes, because the extension is not to be trusted here either — a
+#: phone hands over `image.jpg` for a HEIC often enough to matter.
+IMAGE_SIGNATURES = (
+    b"\xff\xd8\xff",       # JPEG
+    b"\x89PNG\r\n\x1a\n",  # PNG
+    b"GIF8",                 # GIF
+    b"BM",                   # BMP
+)
+
+
+def _is_image(raw: bytes) -> bool:
+    if raw.startswith(IMAGE_SIGNATURES):
+        return True
+    # RIFF containers name their type at byte 8; HEIC and HEIF, which is what
+    # an iPhone actually hands over, name theirs at 4.
+    return (raw[:4] == b"RIFF" and raw[8:12] == b"WEBP") or raw[4:8] == b"ftyp"
+
+
+def _read_image(raw: bytes) -> Document:
+    """Read a photographed report (§7.9, FR-DOC-5).
+
+    Not every tool prints to a file. A battery tester prints a paper slip, and
+    a compression tester prints nothing at all — what the operator has is a
+    photo taken with the phone already in their hand, which is precisely the
+    case OCR was specified for and the one the import would not accept: the
+    JPEG was decoded as UTF-8 and handed to the parsers as line noise.
+
+    OCR runs inline here rather than on the queue, unlike an uploaded document.
+    The difference is that this one has somebody standing in front of it
+    waiting to review what was read, and a review screen that appears empty and
+    fills in later is worse than a request that takes two seconds.
+    """
+    from homeautoshop.mediafiles.services import read_image_text
+
+    text = normalize(read_image_text(raw))
+    return Document(text=text, media_type="image")
 
 
 def _looks_delimited(text: str) -> bool:
@@ -160,6 +201,13 @@ def _read_pdf(raw: bytes) -> Document:
     text = "\n".join(
         " ".join(normalize(str(w.get("text", ""))) for w in page) for page in pages
     )
+    if not text.strip():
+        # An image-only PDF — a scanner's output, or a tool that renders its
+        # report as a picture. §7.9 always promised the OCR fallback here; the
+        # word geometry is gone either way, so a profile matches on text alone.
+        from homeautoshop.mediafiles.services import read_pdf_text_by_ocr
+
+        text = normalize(read_pdf_text_by_ocr(raw))
     metadata: dict = {}
     try:  # pragma: no cover - metadata is absent on every sample we have
         import pdfplumber

@@ -114,7 +114,7 @@
 
           <input name="note" value="{{ result.note }}" aria-label="{% translate 'Note' %}"
                  placeholder="{% translate 'note' %}" style="flex:1 1 8rem">
-          <input type="file" name="files" accept="image/*" capture="environment" style="width:9rem"
+          <input type="file" name="files" accept="image/*" style="width:9rem"
                  aria-label="{% translate 'Photo of this check' %}">
           <button type="submit">{% translate "Save" %}</button>
         </form>
@@ -132,7 +132,7 @@
           {% endif %}
           {% with photo=photos|default_if_none:'' %}{% endwith %}
           {% for pk, link in photos.items %}
-            {% if pk == result.pk %}<a href="{{ link.media.file.url }}">
+            {% if pk == result.pk %}<a href="{{ link.media.url_for }}">
               <img src="{{ link.media.display_url }}" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:6px"></a>
             {% endif %}
           {% endfor %}

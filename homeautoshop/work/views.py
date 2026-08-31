@@ -8,6 +8,7 @@ from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext as _
@@ -24,6 +25,7 @@ from homeautoshop.purchasing.views import ExpenseForm
 
 from . import readiness
 from .models import (
+    REQUIREMENTS,
     JobItem,
     JobItemTool,
     ShopTool,
@@ -54,7 +56,25 @@ class WorkOrderForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["asset"].queryset = Asset.objects.exclude(status="sold")
-        self.fields["parent"].queryset = WorkOrder.objects.filter(type=WorkOrderType.PROJECT)
+
+        # A parent is a *project* — that is what the field is for, and what its
+        # help text promises. The bug was not the filter, it was that a shop
+        # with no projects got an empty dropdown and no explanation, which
+        # reads as broken. The empty case now says what to do; see the label
+        # below and the template.
+        parents = WorkOrder.objects.filter(type=WorkOrderType.PROJECT)
+        if self.instance.pk:
+            # A work order cannot be its own parent, and neither can anything
+            # already underneath it — either one makes a cycle that the
+            # timeline walks forever.
+            parents = parents.exclude(pk__in=self.instance.descendant_ids() | {self.instance.pk})
+        self.fields["parent"].queryset = parents
+        self.fields["parent"].empty_label = _("Not part of a project")
+        if not parents.exists():
+            self.fields["parent"].help_text = _(
+                "Nothing here yet — set a work order's type to Project and it "
+                "becomes available as a parent."
+            )
         for name, field in self.fields.items():
             if name not in ("asset", "title"):
                 field.required = False
@@ -120,6 +140,17 @@ def work_order_detail(request, pk):
             "next_statuses": [
                 (s, dict(WorkOrderStatus.choices)[s]) for s in _allowed_next(wo)
             ],
+            # Which target needs which field, handed to the browser so the form
+            # can say so before it is submitted rather than after. The check
+            # itself stays in `transition_to`; this is only the sign on it.
+            "status_requirements": {
+                status: REQUIREMENTS[status]
+                for status in _allowed_next(wo)
+                if status in REQUIREMENTS
+                # Completing a work order on something with no meter needs no
+                # reading, so marking the field required would be a lie.
+                and not (status == WorkOrderStatus.COMPLETE and not wo.asset.has_meter)
+            },
             "service_links": wo.asset.service_info_links.select_related("provider"),
             "pinned_specs": wo.asset.specs.filter(is_pinned=True, is_sensitive=False)[:12],
             "part_usages": wo.part_usages.select_related("part", "stock_lot"),
@@ -206,6 +237,55 @@ def work_order_transition(request, pk):
             )
         messages.success(request, _("Moved to %(s)s.") % {"s": wo.get_status_display()})
     return redirect("work_order_detail", pk=wo.pk)
+
+
+@require_POST
+@login_required
+def work_order_delete(request, pk):
+    """Remove a work order, whatever state it is in.
+
+    Deliberately not gated on status. The status graph governs *the work* —
+    whether a job can be completed before it is started — and it has nothing
+    useful to say about a record that should not exist at all. The ones most
+    worth deleting are the half-finished ones somebody made while learning the
+    application, and requiring those to be walked to `complete` first would
+    mean firing every service completion attached to them on the way past.
+
+    This is the ordinary soft delete (P-5): it goes to the 30-day trash and can
+    be restored from there, so a mis-click costs nothing.
+    """
+    from homeautoshop.core.models import AuditLog
+
+    wo = get_object_or_404(WorkOrder, pk=pk)
+    children = wo.children.count()
+    if children:
+        # Deleting the parent would leave its children pointing at a row in the
+        # trash — visible nowhere, restorable by nobody looking for them.
+        messages.error(
+            request,
+            _(
+                "%(n)s work order(s) sit under this one. Move or delete those first, "
+                "so nothing is left pointing at a record that is gone."
+            )
+            % {"n": children},
+        )
+        return redirect("work_order_detail", pk=wo.pk)
+
+    number, asset = wo.number, wo.asset
+    wo.delete()
+    AuditLog.objects.create(
+        entity_type="WorkOrder",
+        entity_id=wo.pk,
+        action=AuditLog.Action.DELETE,
+        user=request.user,
+        summary=f"{number} — {wo.title}"[:255],
+    )
+    messages.success(
+        request,
+        _("%(n)s was deleted. It is in the trash for 30 days if you want it back.")
+        % {"n": number},
+    )
+    return redirect("asset_detail", pk=asset.pk)
 
 
 @require_POST
@@ -313,6 +393,68 @@ def time_add(request, pk):
 # --------------------------------------------------------------------------
 
 
+@login_required
+def tool_search(request):
+    """Find a tool by name instead of by remembering its id (FR-WL-3).
+
+    An endpoint for this already existed and nothing ever called it: the form
+    asked for a tool id and a name typed from memory, and its `list=` pointed
+    at a datalist that was never rendered. Autocompletion promised in the
+    markup, wired to nothing, with a working search sitting one URL away.
+
+    This replaces that one rather than sitting beside it, and changes one thing
+    about how it answers. The old one returned **either** WrenchLedger's
+    results or the local cache — so with WrenchLedger reachable, a tool named
+    here and not there was invisible. Both are searched, and merged.
+
+    Two sources, in this order:
+
+    * **Tools already referenced here**, matched locally. Instant, and it works
+      with WrenchLedger unreachable or Offline Mode on — the tools somebody
+      reaches for repeatedly are exactly the ones already cached.
+    * **WrenchLedger's own search**, for everything else. Failure is not an
+      error: the local results still stand, and the caller is told the remote
+      half did not answer rather than being shown a silently short list.
+    """
+    query = (request.GET.get("q") or "").strip()
+    if len(query) < 2:
+        return JsonResponse({"results": [], "remote": False})
+
+    found: dict[str, dict] = {}
+    for tool in ShopTool.objects.filter(
+        Q(name__icontains=query) | Q(tool_id__icontains=query) | Q(brand__icontains=query)
+    )[:10]:
+        found[tool.tool_id] = {
+            "id": tool.tool_id,
+            "name": tool.name or tool.tool_id,
+            "detail": " ".join(x for x in (tool.brand, tool.model) if x),
+            "known": True,
+        }
+
+    remote_ok = False
+    if readiness.enabled():
+        try:
+            from homeautoshop.core.integrations.wrenchledger import WrenchLedgerClient
+
+            for row in WrenchLedgerClient().search_tools(query)[:15]:
+                tool_id = str(row.get("id") or row.get("tool_id") or "").strip()
+                if not tool_id or tool_id in found:
+                    continue
+                found[tool_id] = {
+                    "id": tool_id,
+                    "name": str(row.get("name") or tool_id),
+                    "detail": " ".join(
+                        str(x) for x in (row.get("brand"), row.get("model")) if x
+                    ),
+                    "known": False,
+                }
+            remote_ok = True
+        except Exception as exc:  # noqa: BLE001 - the local half still stands
+            log.info("tool search could not reach WrenchLedger: %s", exc)
+
+    return JsonResponse({"results": list(found.values())[:20], "remote": remote_ok})
+
+
 @require_POST
 @login_required
 def job_item_tool_add(request, pk, item_id):
@@ -321,13 +463,35 @@ def job_item_tool_add(request, pk, item_id):
     item = get_object_or_404(JobItem, pk=item_id, work_order=wo)
 
     tool_id = (request.POST.get("tool_id") or "").strip()
+    typed = (request.POST.get("tool_query") or "").strip()
+
+    if not tool_id and typed:
+        # No script, or a name typed and never picked from the list. Resolve it
+        # against what is already known; an exact single match is unambiguous
+        # and anything else is a question rather than a guess.
+        matches = list(
+            ShopTool.objects.filter(Q(name__iexact=typed) | Q(tool_id__iexact=typed))[:2]
+        )
+        if len(matches) == 1:
+            tool_id = matches[0].tool_id
+        elif len(matches) > 1:
+            messages.warning(
+                request, _("More than one tool is called that. Pick one from the list.")
+            )
+            return redirect("work_order_detail", pk=wo.pk)
+        else:
+            # Nothing known by that name. Recorded anyway under the typed text:
+            # WrenchLedger is optional and never load-bearing (FR-WL-7), so a
+            # tool named by hand has to keep working.
+            tool_id = typed[:64]
+
     if not tool_id:
         messages.warning(request, _("Choose a tool first."))
         return redirect("work_order_detail", pk=wo.pk)
 
     tool, _created = ShopTool.objects.get_or_create(
         tool_id=tool_id[:64],
-        defaults={"name": (request.POST.get("tool_name") or "").strip()[:160]},
+        defaults={"name": (request.POST.get("tool_name") or typed or "").strip()[:160]},
     )
     JobItemTool.objects.get_or_create(job_item=item, tool=tool)
 
@@ -359,44 +523,3 @@ def job_item_tool_remove(request, pk, reference_id):
     reference.delete()
     messages.success(request, _("Tool reference removed."))
     return redirect("work_order_detail", pk=wo.pk)
-
-
-@login_required
-def tool_search(request):
-    """Search-as-you-type against WrenchLedger, for the picker.
-
-    Falls back to what is already cached when the API is unreachable, so adding
-    a tool you have used before keeps working with the WAN down (G-7).
-    """
-    query = (request.GET.get("q") or "").strip()
-    if not query:
-        return JsonResponse({"tools": []})
-
-    if readiness.enabled():
-        try:
-            from homeautoshop.core.integrations.wrenchledger import (
-                WrenchLedgerClient,
-                keep_tool_fields,
-            )
-
-            rows = [keep_tool_fields(row) for row in WrenchLedgerClient().search_tools(query)]
-            return JsonResponse(
-                {
-                    "tools": [
-                        {"id": str(row.get("id")), "name": str(row.get("name") or "")}
-                        for row in rows
-                        if row.get("id")
-                    ],
-                    "source": "wrenchledger",
-                }
-            )
-        except Exception as exc:  # noqa: BLE001 - the cache is the fallback
-            log.info("tool search fell back to the cache: %s", exc)
-
-    cached = ShopTool.objects.filter(name__icontains=query)[:20]
-    return JsonResponse(
-        {
-            "tools": [{"id": t.tool_id, "name": t.name} for t in cached],
-            "source": "cache",
-        }
-    )

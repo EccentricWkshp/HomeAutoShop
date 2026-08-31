@@ -110,7 +110,7 @@ real thing.
 venv/Scripts/python manage.py test
 ```
 
-261 tests, ~11s. They cover the invariants that are cheap to break and expensive
+843 tests, ~65s. They cover the invariants that are cheap to break and expensive
 to find later: unit round-trips, money arithmetic, optimistic concurrency, the
 append-only guarantee, the work-order state machine, VIN check digits, decode
 override preservation, the outbound allowlist, media deduplication, and export

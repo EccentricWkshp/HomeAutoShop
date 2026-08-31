@@ -1,0 +1,148 @@
+{
+ "discount_minor": 0,
+ "lines": [
+  {
+   "brand": "DELPHI",
+   "core_minor": 0,
+   "description": "Sway Bar Bushing",
+   "is_kit_component": false,
+   "part_number": "TD4056W",
+   "quantity": "1",
+   "total_minor": 403,
+   "unit_price_minor": 403,
+   "vehicle": "2004 SUZUKI AERIO 2.3L L4"
+  },
+  {
+   "brand": "DELPHI",
+   "core_minor": 0,
+   "description": "Sway Bar Bushing",
+   "is_kit_component": false,
+   "part_number": "TD4735W",
+   "quantity": "1",
+   "total_minor": 906,
+   "unit_price_minor": 906,
+   "vehicle": "2004 SUZUKI AERIO 2.3L L4"
+  },
+  {
+   "brand": "DELPHI",
+   "core_minor": 0,
+   "description": "Sway Bar Link",
+   "is_kit_component": false,
+   "part_number": "TC1835",
+   "quantity": "1",
+   "total_minor": 1240,
+   "unit_price_minor": 1240,
+   "vehicle": "2004 SUZUKI AERIO 2.3L L4"
+  },
+  {
+   "brand": "DELPHI",
+   "core_minor": 0,
+   "description": "Sway Bar Link",
+   "is_kit_component": false,
+   "part_number": "TC1836",
+   "quantity": "1",
+   "total_minor": 1240,
+   "unit_price_minor": 1240,
+   "vehicle": "2004 SUZUKI AERIO 2.3L L4"
+  },
+  {
+   "brand": "DELPHI",
+   "core_minor": 0,
+   "description": "Sway Bar Link",
+   "is_kit_component": false,
+   "part_number": "TC2420",
+   "quantity": "2",
+   "total_minor": 2824,
+   "unit_price_minor": 1412,
+   "vehicle": "2004 SUZUKI AERIO 2.3L L4"
+  },
+  {
+   "brand": "GPD",
+   "core_minor": null,
+   "description": "A/C Compressor & Component Kit",
+   "is_kit_component": false,
+   "part_number": "9642644B",
+   "quantity": "1",
+   "total_minor": 35879,
+   "unit_price_minor": 35879,
+   "vehicle": "2004 SUZUKI AERIO 2.3L L4"
+  },
+  {
+   "brand": "GPD",
+   "core_minor": 0,
+   "description": "A/C Expansion Valve",
+   "is_kit_component": true,
+   "part_number": "3411375",
+   "quantity": "1",
+   "total_minor": null,
+   "unit_price_minor": 846,
+   "vehicle": "2004 SUZUKI AERIO 2.3L L4"
+  },
+  {
+   "brand": "GPD",
+   "core_minor": 0,
+   "description": "A/C Compressor",
+   "is_kit_component": true,
+   "part_number": "6511690",
+   "quantity": "1",
+   "total_minor": null,
+   "unit_price_minor": 17526,
+   "vehicle": "2004 SUZUKI AERIO 2.3L L4"
+  },
+  {
+   "brand": "GPD",
+   "core_minor": 0,
+   "description": "A/C Condenser",
+   "is_kit_component": true,
+   "part_number": "4696C",
+   "quantity": "1",
+   "total_minor": null,
+   "unit_price_minor": 17507,
+   "vehicle": "2004 SUZUKI AERIO 2.3L L4"
+  },
+  {
+   "brand": "GPD",
+   "core_minor": 0,
+   "description": "A/C System Service Valve / Core / Cap",
+   "is_kit_component": false,
+   "part_number": "1311575",
+   "quantity": "1",
+   "total_minor": 292,
+   "unit_price_minor": 292,
+   "vehicle": "2004 SUZUKI AERIO 2.3L L4"
+  },
+  {
+   "brand": "UAC",
+   "core_minor": 0,
+   "description": "A/C System O-Rings / Seals",
+   "is_kit_component": false,
+   "part_number": "RS2690",
+   "quantity": "1",
+   "total_minor": 695,
+   "unit_price_minor": 695,
+   "vehicle": "2004 SUZUKI AERIO 2.3L L4"
+  },
+  {
+   "brand": "UAC",
+   "core_minor": 0,
+   "description": "A/C Receiver Drier Desiccant Element",
+   "is_kit_component": false,
+   "part_number": "RD10136KTC",
+   "quantity": "1",
+   "total_minor": 734,
+   "unit_price_minor": 734,
+   "vehicle": "2004 SUZUKI AERIO 2.3L L4"
+  }
+ ],
+ "order_number": "357640871",
+ "ordered_on": "2026-08-22",
+ "payment_method": "Visa",
+ "shipping_minor": 5596,
+ "subtotal_minor": 44213,
+ "tax_minor": 3985,
+ "total_minor": 53794,
+ "vehicles": [
+  "2004 SUZUKI AERIO 2.3L L4"
+ ],
+ "warnings": []
+}

@@ -41,6 +41,7 @@ from django.conf import settings
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
+from ..runtime import conf
 from homeautoshop.core.outbound import OutboundBlocked, OutboundFailed, fetch_json
 
 log = logging.getLogger(__name__)
@@ -103,7 +104,7 @@ class Connection:
 class WrenchLedgerClient:
     def __init__(self, base_url: str | None = None, api_key: str | None = None) -> None:
         self.base_url = (base_url or settings.WRENCHLEDGER_URL or DEFAULT_BASE).rstrip("/")
-        self.api_key = api_key or settings.WRENCHLEDGER_API_KEY
+        self.api_key = api_key or conf.WRENCHLEDGER_API_KEY
         if not self.api_key:
             raise NotConfigured(
                 "WRENCHLEDGER_API_KEY is not set. The integration is optional; "
@@ -278,7 +279,7 @@ def sync(*, client=None, tool_ids: list[str] | None = None) -> dict:
     from homeautoshop.core.models import Setting
     from homeautoshop.work.models import ShopTool
 
-    if settings.OFFLINE_MODE:
+    if conf.OFFLINE_MODE:
         raise OutboundBlocked(_("Offline Mode is on, so nothing is fetched."))
 
     client = client or WrenchLedgerClient()

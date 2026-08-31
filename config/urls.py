@@ -8,12 +8,15 @@ from homeautoshop.api.urls import api
 from homeautoshop.assets import views as assets
 from homeautoshop.core import views as core
 from homeautoshop.core import views_integrations as integrations
+from homeautoshop.core import views_settings as instance_settings
 from homeautoshop.diagnostics import views as diagnostics
+from homeautoshop.mediafiles import views as mediafiles
 from homeautoshop.inspections import views as inspections
 from homeautoshop.maintenance import views as maintenance
 from homeautoshop.parts import views as parts
 from homeautoshop.people import views as people
 from homeautoshop.purchasing import views as purchasing
+from homeautoshop.purchasing import views_import as purchasing_import
 from homeautoshop.work import views as work
 
 urlpatterns = [
@@ -32,6 +35,16 @@ urlpatterns = [
     path("reminders/channels/", core.reminder_channel_add, name="reminder_channel_add"),
     path("reminders/channels/<uuid:channel_id>/", core.reminder_channel_action,
          name="reminder_channel_action"),
+    # Instance settings and backup (SPEC §17 R-9, R-10).
+    path("settings/", instance_settings.settings_view, name="settings"),
+    # Before the `<str:group>` pattern, which would otherwise match this and
+    # 404 on an unknown group — the banner's button leading nowhere.
+    path("settings/apply-restart/", instance_settings.settings_restart, name="settings_restart"),
+    path("settings/<str:group>/", instance_settings.settings_view, name="settings"),
+    path("backups/", instance_settings.backups, name="backups"),
+    path("backups/run/", instance_settings.backup_now, name="backup_now"),
+    path("backups/<str:name>/download/", instance_settings.backup_download, name="backup_download"),
+    path("backups/<str:name>/delete/", instance_settings.backup_delete, name="backup_delete"),
     path("integrations/", integrations.integrations, name="integrations"),
     path("integrations/<str:name>/test/", integrations.integration_test, name="integration_test"),
     path("integrations/<str:name>/sync/", integrations.integration_sync, name="integration_sync"),
@@ -47,6 +60,11 @@ urlpatterns = [
     path("reminders/push/", core.push_subscribe, name="push_subscribe"),
     # The worker is served from the root so its scope covers the whole app.
     path("sw.js", core.service_worker, name="service_worker"),
+    # Uploaded files are served by the application, not linked straight to the
+    # object store: a presigned URL names a host only the containers can
+    # resolve, and is readable by anyone who copies it. See mediafiles/views.py.
+    path("files/<uuid:pk>/", mediafiles.media_file, name="media_file"),
+    path("files/<uuid:pk>/<str:variant>/", mediafiles.media_file, name="media_file_variant"),
     path("trash/", core.trash, name="trash"),
     path("trash/<str:kind>/<uuid:pk>/restore/", core.trash_restore, name="trash_restore"),
     path("healthz", core.healthz, name="healthz"),
@@ -88,6 +106,7 @@ urlpatterns = [
     path("work-orders/<uuid:pk>/", work.work_order_detail, name="work_order_detail"),
     path("work-orders/<uuid:pk>/edit/", work.work_order_edit, name="work_order_edit"),
     path("work-orders/<uuid:pk>/status/", work.work_order_transition, name="work_order_transition"),
+    path("work-orders/<uuid:pk>/delete/", work.work_order_delete, name="work_order_delete"),
     path("work-orders/<uuid:pk>/notes/", work.note_create, name="note_create"),
     path("work-orders/<uuid:pk>/items/", work.job_item_create, name="job_item_create"),
     path("work-orders/<uuid:pk>/items/<uuid:item_id>/toggle/", work.job_item_toggle, name="job_item_toggle"),
@@ -98,6 +117,7 @@ urlpatterns = [
          name="job_item_tool_add"),
     path("work-orders/<uuid:pk>/tools/<uuid:reference_id>/remove/", work.job_item_tool_remove,
          name="job_item_tool_remove"),
+    # Tool lookup for a job item, so nobody has to remember a WrenchLedger id.
     path("tools/search/", work.tool_search, name="tool_search"),
     path("work-orders/<uuid:pk>/expenses/", purchasing.expense_add, name="work_order_expense_add"),
     path("vehicles/<uuid:pk>/specs/", assets.asset_specs, name="asset_specs"),
@@ -181,6 +201,9 @@ urlpatterns = [
     # Purchasing
     path("purchases/", purchasing.purchase_list, name="purchase_list"),
     path("purchases/new/", purchasing.purchase_create, name="purchase_create"),
+    # A supplier order confirmation becomes a purchase, its lines, and the
+    # parts in the catalogue (FR-PUR-1, FR-PART-2).
+    path("purchases/import/", purchasing_import.order_import, name="order_import"),
     path("purchases/<uuid:pk>/", purchasing.purchase_detail, name="purchase_detail"),
     path("purchases/<uuid:pk>/lines/", purchasing.purchase_line_add, name="purchase_line_add"),
     path(

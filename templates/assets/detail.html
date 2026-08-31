@@ -74,14 +74,29 @@
       <h2>{% translate "Photos" %}</h2>
       <div class="thumbs">
         {% for link in photos %}
-          <a href="{{ link.media.file.url }}"><img src="{{ link.media.display_url }}" alt="{{ link.caption|default:asset.nickname }}"></a>
+          <a href="{{ link.media.url_for }}"><img src="{{ link.media.display_url }}" alt="{{ link.caption|default:asset.nickname }}"></a>
         {% empty %}<p class="muted small">{% translate "No photos yet." %}</p>{% endfor %}
       </div>
       <form method="post" action="{% url 'asset_photo_upload' asset.pk %}" enctype="multipart/form-data" class="row" style="margin-top:.75rem">
         {% csrf_token %}
-        {# capture= opens the camera straight from the garage (FR-DOC-2). #}
-        <input type="file" name="files" accept="image/*" capture="environment" multiple
-               aria-label="{% translate 'Photos of this vehicle' %}">
+        {% comment %}
+          Two inputs, not one with `capture`. `capture="environment"` does not
+          mean "offer the camera" — it means *only* the camera, with no way to
+          reach a photo already taken. On a phone that made it impossible to
+          attach a picture shot five minutes earlier. One-tap capture is still
+          worth having in the garage (FR-DOC-2), so it stays as its own control
+          and the plain input beside it opens the picker with the library in it.
+        {% endcomment %}
+        <label class="filepick">
+          <input type="file" name="files" accept="image/*" capture="environment"
+                 aria-label="{% translate 'Take a photo of this vehicle' %}">
+          <span>{% translate "Take a photo" %}</span>
+        </label>
+        <label class="filepick">
+          <input type="file" name="files" accept="image/*" multiple
+                 aria-label="{% translate 'Choose photos of this vehicle' %}">
+          <span>{% translate "Choose photos" %}</span>
+        </label>
         <button type="submit">{% translate "Add photos" %}</button>
       </form>
     </section>
@@ -180,7 +195,12 @@
     {% endwith %}
 
     <section class="card">
-      <h2>{% translate "Owners" %}</h2>
+      {% comment %}
+        Not "Owners": the list holds co-owners and the primary driver too, and
+        a heading that names only one of the three roles makes the other two
+        look like they are in the wrong place.
+      {% endcomment %}
+      <h2>{% translate "Owners and drivers" %}</h2>
       <ul class="list small">
         {% for o in asset.ownerships.all %}
           <li class="spread">
@@ -198,9 +218,23 @@
       </ul>
       <form method="post" action="{% url 'ownership_add' asset.pk %}" class="stack" style="margin-top:.5rem">
         {% csrf_token %}
-        {{ ownership_form.person }}
-        {{ ownership_form.role }}
-        <button type="submit" class="small">{% translate "Add owner" %}</button>
+        <div class="field">
+          <label for="{{ ownership_form.person.auto_id }}">{% translate "Person" %}</label>
+          {{ ownership_form.person }}
+        </div>
+        <div class="field">
+          <label for="{{ ownership_form.role.auto_id }}">{% translate "Their role" %}</label>
+          {{ ownership_form.role }}
+        </div>
+        {% comment %}
+          The button used to read "Add owner" whatever role was selected, so
+          adding a primary driver said it was adding an owner. It is labelled
+          from the role instead — by the browser where there is script, and
+          correctly for the default role where there is not.
+        {% endcomment %}
+        <button type="submit" class="small"
+                data-label-from="{{ ownership_form.role.auto_id }}"
+                data-label-template="{% translate 'Add %(role)s' %}">{% translate "Add owner" %}</button>
       </form>
       <p class="small"><a href="{% url 'person_create' %}">{% translate "Add a new person first" %}</a></p>
     </section>

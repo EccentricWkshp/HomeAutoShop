@@ -51,7 +51,8 @@
     </div>
     {% if not lubelogger.syncs %}
       <p class="small muted">
-        {% translate "Set LUBELOGGER_MODE to pull in your .env to have it fetch on a schedule. For most people the one-time import is enough." %}
+        {% blocktranslate %}Set it to pull on the settings screen to have it fetch on a schedule. For most people the one-time import is enough.{% endblocktranslate %}
+        <a href="{% url 'settings' 'integrations' %}">{% translate "Integration settings" %}</a>
       </p>
     {% endif %}
   {% else %}

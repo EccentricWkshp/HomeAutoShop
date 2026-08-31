@@ -17,6 +17,7 @@ from django.utils import timezone
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_http_methods, require_POST
 
+from .runtime import allowlist, conf
 from homeautoshop.accounts.models import can
 from homeautoshop.assets.models import Asset
 from homeautoshop.work.models import WorkOrder, WorkOrderStatus
@@ -60,11 +61,11 @@ def lubelogger_import(request):
         # FR-INT-1 wants a *real connectivity check*, and there is one right
         # here. Whether the key is needed is the server's answer to give, not
         # something to infer from a blank setting.
-        "configured": bool(settings.LUBELOGGER_URL),
-        "instance_url": settings.LUBELOGGER_URL,
-        "has_key": bool(settings.LUBELOGGER_API_KEY),
-        "mode": settings.LUBELOGGER_MODE,
-        "offline_mode": settings.OFFLINE_MODE,
+        "configured": bool(conf.LUBELOGGER_URL),
+        "instance_url": conf.LUBELOGGER_URL,
+        "has_key": bool(conf.LUBELOGGER_API_KEY),
+        "mode": conf.LUBELOGGER_MODE,
+        "offline_mode": conf.OFFLINE_MODE,
     }
 
     if request.method == "POST":
@@ -232,7 +233,7 @@ def dashboard(request):
                 "url": "/admin/",
             }
         )
-    elif backup_age > settings.BACKUP_WARN_AFTER_DAYS:
+    elif backup_age > conf.BACKUP_WARN_AFTER_DAYS:
         alerts.append(
             {
                 "level": "warn",
@@ -278,6 +279,7 @@ def health(request):
     from django.db import connection
 
     from homeautoshop.mediafiles.models import Media
+    from homeautoshop.mediafiles.services import tesseract_status
 
     media = Media.objects.aggregate(n=Count("id"))
     return render(
@@ -288,9 +290,17 @@ def health(request):
             "media_count": media["n"],
             "media_bytes": sum(Media.objects.values_list("bytes", flat=True)),
             "jobs": Job.objects.values("state").annotate(n=Count("id")),
+            "ocr": tesseract_status(),
+            "ocr_pending": Media.objects.filter(ocr_status=Media.OcrStatus.PENDING).count(),
+            "ocr_failed": Media.objects.filter(ocr_status=Media.OcrStatus.FAILED).count(),
             "backup_age": last_backup_age_days(),
-            "offline_mode": settings.OFFLINE_MODE,
-            "allowlist": settings.OUTBOUND_ALLOWLIST,
+            "offline_mode": conf.OFFLINE_MODE,
+            # The computed one, not the imported one: the integration
+            # addresses it is derived from are editable now, so the list read
+            # at import is no longer what an outbound request is checked
+            # against — and a health screen showing the wrong one is worse
+            # than a health screen showing nothing.
+            "allowlist": allowlist(),
         },
     )
 
@@ -538,7 +548,7 @@ def reminder_channel_action(request, channel_id):
                 Alert(
                     dedupe_key=f"test:{timezone.now().timestamp()}",
                     severity="info",
-                    title=_("Test message from %(shop)s") % {"shop": settings.SHOP_NAME},
+                    title=_("Test message from %(shop)s") % {"shop": conf.SHOP_NAME},
                     detail=_("If you are reading this, delivery works."),
                 )
             ]),

@@ -298,6 +298,38 @@ class Setting(models.Model):
         cls.objects.update_or_create(key=key, defaults={"value": {"v": value}})
 
 
+class Credential(models.Model):
+    """An integration secret, kept apart from the settings it belongs with.
+
+    §17.1: credentials are entered in the UI like anything else, but they are
+    deliberately **not** `setting` rows. Two reasons, and both are about the
+    artifacts this instance produces rather than about the live database:
+
+    * The portable export walks the models it is given. A separate table can be
+      skipped outright; a mixed one would need field-level surgery on every row.
+    * The Postgres backup is a physical dump, so nothing is excluded merely by
+      not asking for it — `--exclude-table-data` needs a table to name.
+
+    Encryption at rest is kept **as well as** exclusion, not instead of it.
+    They defend different things: exclusion protects the archive that gets
+    carried to a NAS, encryption protects the live volume.
+
+    The ciphertext is never rendered and there is no read path to the UI — a
+    credential can be replaced or cleared, never displayed back.
+    """
+
+    key = models.CharField(max_length=64, primary_key=True)
+    ciphertext = models.TextField()
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _("Credential")
+        verbose_name_plural = _("Credentials")
+
+    def __str__(self) -> str:
+        return self.key
+
+
 class ExternalRef(models.Model):
     """Provenance for anything imported from another system (SPEC §6.2).
 

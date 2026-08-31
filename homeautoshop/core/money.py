@@ -14,11 +14,11 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from django.conf import settings
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from .measurements import Money, minor_units
+from homeautoshop.core.runtime import conf
 
 
 def money_columns(name: str, *, verbose_name=None, null: bool = False, default: int | None = 0):
@@ -74,7 +74,7 @@ def money(name: str) -> MoneyAccessor:
 
 
 def default_currency() -> str:
-    return getattr(settings, "CURRENCY_REPORTING", "USD")
+    return conf.CURRENCY_REPORTING
 
 
 def to_minor(value, currency: str | None = None) -> int:

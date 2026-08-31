@@ -1,0 +1,49 @@
+{
+ "discount_minor": 700,
+ "lines": [
+  {
+   "brand": "ACDELCO",
+   "core_minor": 3500,
+   "description": "Caliper",
+   "is_kit_component": false,
+   "part_number": "18FR2451",
+   "quantity": "1",
+   "total_minor": 8879,
+   "unit_price_minor": 5379,
+   "vehicle": "2007 FORD F-150 5.4L V8"
+  },
+  {
+   "brand": "ACDELCO",
+   "core_minor": 0,
+   "description": "Caliper Bracket Bolt",
+   "is_kit_component": false,
+   "part_number": "18K17001",
+   "quantity": "1",
+   "total_minor": 252,
+   "unit_price_minor": 252,
+   "vehicle": "2007 FORD F-150 5.4L V8"
+  },
+  {
+   "brand": "ACDELCO",
+   "core_minor": 0,
+   "description": "Brake Pad",
+   "is_kit_component": false,
+   "part_number": "17D1083MHF1",
+   "quantity": "1",
+   "total_minor": 3779,
+   "unit_price_minor": 3779,
+   "vehicle": "2007 FORD F-150 5.4L V8"
+  }
+ ],
+ "order_number": "197262834",
+ "ordered_on": "2022-01-24",
+ "payment_method": "Visa",
+ "shipping_minor": 2199,
+ "subtotal_minor": 12910,
+ "tax_minor": 1178,
+ "total_minor": 15587,
+ "vehicles": [
+  "2007 FORD F-150 5.4L V8"
+ ],
+ "warnings": []
+}

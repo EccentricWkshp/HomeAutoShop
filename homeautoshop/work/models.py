@@ -48,28 +48,48 @@ OPEN_STATUSES = (
     WorkOrderStatus.ON_HOLD,
 )
 
-# The lifecycle from SPEC Appendix A. Reopening a completed work order is
+# The lifecycle from REFERENCE.md §1. Reopening a completed work order is
 # allowed and audit-logged; it does not rewrite history.
+#
+# **Every open status can go back to `planned`**, which the diagram did not
+# show and the first person to use this immediately wanted. Starting a job by
+# accident is not a rare event in a home shop, and the graph as drawn made an
+# accidental "start" unrecoverable except by completing the work order and
+# reopening it — pushing a false completion through the record, and firing the
+# service completions attached to it, to undo a mis-tap. Going back is cheaper
+# to allow than that is to explain.
 TRANSITIONS: dict[str, tuple[str, ...]] = {
     WorkOrderStatus.PLANNED: (WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.ABANDONED),
     WorkOrderStatus.IN_PROGRESS: (
+        WorkOrderStatus.PLANNED,
         WorkOrderStatus.WAITING_ON_PARTS,
         WorkOrderStatus.ON_HOLD,
         WorkOrderStatus.COMPLETE,
         WorkOrderStatus.ABANDONED,
     ),
     WorkOrderStatus.WAITING_ON_PARTS: (
+        WorkOrderStatus.PLANNED,
         WorkOrderStatus.IN_PROGRESS,
         WorkOrderStatus.ON_HOLD,
         WorkOrderStatus.ABANDONED,
     ),
     WorkOrderStatus.ON_HOLD: (
+        WorkOrderStatus.PLANNED,
         WorkOrderStatus.IN_PROGRESS,
         WorkOrderStatus.WAITING_ON_PARTS,
         WorkOrderStatus.ABANDONED,
     ),
     WorkOrderStatus.COMPLETE: (WorkOrderStatus.PLANNED, WorkOrderStatus.IN_PROGRESS),
     WorkOrderStatus.ABANDONED: (WorkOrderStatus.PLANNED, WorkOrderStatus.IN_PROGRESS),
+}
+
+#: What each target needs before it will be accepted, so a form can say so
+#: *before* it is submitted rather than after (§7.2). Read by the detail
+#: template; enforced, as it always was, in `transition_to` below — a hint in a
+#: browser is a courtesy, never the check.
+REQUIREMENTS: dict[str, str] = {
+    WorkOrderStatus.WAITING_ON_PARTS: "blocked_reason",
+    WorkOrderStatus.COMPLETE: "odometer_out",
 }
 
 
@@ -156,6 +176,27 @@ class WorkOrder(RevisionedModel):
         return f"{prefix}{seq:04d}"
 
     # -- lifecycle (Appendix A) ------------------------------------------
+
+    def descendant_ids(self) -> set:
+        """Every work order underneath this one, however deep.
+
+        Used to keep the parent picker from offering a cycle. Walked in Python
+        rather than with a recursive CTE because a home shop's project tree is
+        a handful of rows and a portable query beats a clever one.
+        """
+        found: set = set()
+        frontier = [self.pk]
+        while frontier:
+            children = list(
+                WorkOrder.all_objects.filter(parent_id__in=frontier)
+                .exclude(pk__in=found)
+                .values_list("pk", flat=True)
+            )
+            if not children:
+                break
+            found.update(children)
+            frontier = children
+        return found
 
     def can_transition_to(self, status: str) -> bool:
         return status in TRANSITIONS.get(self.status, ())

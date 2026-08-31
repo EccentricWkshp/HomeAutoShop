@@ -26,26 +26,32 @@
   <a id="sync-indicator" class="pill sync" href="{% url 'sync_queue' %}"
      role="status" aria-live="polite" hidden>{% translate "Up to date" %}</a>
   <nav class="mainnav" aria-label="{% translate 'Main' %}">
-    <a href="{% url 'asset_list' %}">{% translate "Vehicles" %}</a>
-    <a href="{% url 'work_order_list' %}">{% translate "Work" %}</a>
-    <a href="{% url 'due_list' %}">{% translate "Due" %}</a>
-    <a href="{% url 'inspection_list' %}">{% translate "Inspect" %}</a>
-    <a href="{% url 'part_list' %}">{% translate "Parts" %}</a>
-    <a href="{% url 'inventory' %}">{% translate "Shelf" %}</a>
-    <a href="{% url 'purchase_list' %}">{% translate "Buying" %}</a>
-    <a href="{% url 'reports' %}">{% translate "Reports" %}</a>
-    <a href="{% url 'person_list' %}">{% translate "People" %}</a>
+    {% include "partials/_sections.html" %}
   </nav>
   <details class="usermenu">
     <summary aria-label="{% translate 'Account' %}">{{ user.display_name }}</summary>
     <div class="menu">
       {% if offline_mode %}<p class="pill warn">{% translate "Offline mode" %}</p>{% endif %}
+      {% comment %}
+        On a phone the bar above is hidden and the bottom tabs carry five
+        destinations, so Work, Inspect, Parts, Shelf, Buying, Reports and
+        People were unreachable — the only way to any of them was to ask the
+        browser for the desktop site. They belong here, where somebody already
+        looks for everything that is not a tab.
+      {% endcomment %}
+      <nav class="menusections" aria-label="{% translate 'Sections' %}">
+        {% include "partials/_sections.html" %}
+      </nav>
       {% if user.is_admin %}
+        <p class="menuhead">{% translate "Managing this shop" %}</p>
+        <a href="{% url 'settings' %}">{% translate "Settings" %}</a>
+        <a href="{% url 'backups' %}">{% translate "Backup" %}</a>
         <a href="{% url 'health' %}">{% translate "Instance health" %}</a>
         <a href="{% url 'reminders' %}">{% translate "Reminders" %}</a>
         <a href="{% url 'diagnostic_queue' %}">{% translate "Scans to check" %}</a>
         <a href="{% url 'integrations' %}">{% translate "Integrations" %}</a>
         <a href="{% url 'lubelogger_import' %}">{% translate "Import from LubeLogger" %}</a>
+        <a href="{% url 'order_import' %}">{% translate "Read a parts order" %}</a>
         <a href="{% url 'data_import' %}">{% translate "Import a spreadsheet" %}</a>
         <a href="{% url 'trash' %}">{% translate "Trash" %}</a>
         <a href="/admin/">{% translate "Administration" %}</a>
@@ -61,6 +67,30 @@
 {% endif %}
 
 <main id="main" class="wrap">
+  {% comment %}
+    §17.2: a restart-class setting has been changed and this process is still
+    running the old one. Not dismissible and it does not fade — the failure
+    mode to avoid is an instance quietly running configuration that disagrees
+    with what its own settings page displays.
+  {% endcomment %}
+  {% if pending_restart %}
+    <div class="restartbanner" role="status">
+      <strong>{% translate "Waiting for a restart" %}</strong>
+      <p class="small">
+        {% translate "These were changed and are not in effect yet:" %}
+        {% for label in pending_restart %}{{ label }}{% if not forloop.last %} · {% endif %}{% endfor %}
+      </p>
+      <div class="row">
+        {% if can_self_restart %}
+          <form method="post" action="{% url 'settings_restart' %}">{% csrf_token %}
+            <button type="submit">{% translate "Apply and restart" %}</button>
+          </form>
+        {% else %}
+          <code class="mono small">docker compose restart app worker</code>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
   {% if messages %}
     <ul class="messages" role="status">
       {% for message in messages %}<li class="msg {{ message.tags }}">{{ message }}</li>{% endfor %}
@@ -82,6 +112,8 @@
 <script src="{% static 'offline.js' %}" defer></script>
 {{ scanner_strings|json_script:"scanner-strings" }}
 <script src="{% static 'scanner.js' %}" defer></script>
+{# Form behaviour only — every form it touches works correctly without it. #}
+<script src="{% static 'forms.js' %}" defer></script>
 {% endif %}
 </body>
 </html>

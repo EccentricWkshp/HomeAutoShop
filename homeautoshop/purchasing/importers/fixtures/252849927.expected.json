@@ -1,0 +1,27 @@
+{
+ "discount_minor": 0,
+ "lines": [
+  {
+   "brand": "VARIOUS MFR",
+   "core_minor": 0,
+   "description": "Fog / Driving Lamp Assembly",
+   "is_kit_component": false,
+   "part_number": "SZ2595100",
+   "quantity": "1",
+   "total_minor": 2499,
+   "unit_price_minor": 2499,
+   "vehicle": "2004 SUZUKI AERIO 2.3L L4"
+  }
+ ],
+ "order_number": "252849927",
+ "ordered_on": "2023-10-02",
+ "payment_method": "Visa",
+ "shipping_minor": 1399,
+ "subtotal_minor": 2499,
+ "tax_minor": 304,
+ "total_minor": 4202,
+ "vehicles": [
+  "2004 SUZUKI AERIO 2.3L L4"
+ ],
+ "warnings": []
+}

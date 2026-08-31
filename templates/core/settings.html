@@ -1,0 +1,120 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ group.label }} — {% translate "Settings" %}{% endblock %}
+{% block content %}
+
+<h1>{% translate "Settings" %}</h1>
+
+{% if needs_credentials %}
+  <div class="msg warning">
+    <p><strong>{% translate "Some integrations need their key entered again." %}</strong></p>
+    <p class="small">
+      {% translate "Keys are deliberately left out of every backup and export, so a restored instance never carries them. Until one is entered, that integration stays switched off rather than retrying and filling the log." %}
+    </p>
+    <ul class="list small">
+      {% for item in needs_credentials %}<li>{{ item.name }}</li>{% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+<nav class="subnav" aria-label="{% translate 'Settings sections' %}">
+  {% for item in groups %}
+    <a href="{% url 'settings' item.key %}"
+       {% if item.key == group.key %}aria-current="page"{% endif %}>{{ item.label }}</a>
+  {% endfor %}
+  <a href="{% url 'backups' %}">{% translate "Backup" %}</a>
+</nav>
+
+<form method="post" class="card">{% csrf_token %}
+  <h2>{{ group.label }}</h2>
+  {% if group.blurb %}<p class="muted">{{ group.blurb }}</p>{% endif %}
+
+  {% for field in fields %}
+    {% comment %}
+      A field whose parent switch is off does nothing, and a form full of
+      controls that currently do nothing is a form nobody can read. `data-child-of`
+      lets the browser hide it; with no script every field stays visible, which
+      is exactly the behaviour before this and is still correct.
+    {% endcomment %}
+    <div class="field{% if field.entry.depends_on %} dependent{% endif %}"
+         {% if field.entry.depends_on %}data-child-of="id_{{ field.entry.depends_on }}"{% endif %}>
+      {% if field.entry.kind == "bool" %}
+        <label for="id_{{ field.entry.key }}" class="check">
+          <input type="checkbox" id="id_{{ field.entry.key }}" name="{{ field.entry.key }}"
+                 {% if field.value %}checked{% endif %}
+                 {% if field.entry.help %}aria-describedby="help_{{ field.entry.key }}"{% endif %}>
+          <span>{{ field.entry.label }}</span>
+        </label>
+
+      {% elif field.entry.kind == "choice" %}
+        <label for="id_{{ field.entry.key }}">{{ field.entry.label }}</label>
+        <select id="id_{{ field.entry.key }}" name="{{ field.entry.key }}"
+                {% if field.entry.help %}aria-describedby="help_{{ field.entry.key }}"{% endif %}>
+          {% for value, label in field.entry.choices %}
+            <option value="{{ value }}" {% if value == field.value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+
+      {% elif field.entry.kind == "secret" %}
+        <label for="id_{{ field.entry.key }}">{{ field.entry.label }}</label>
+        {% comment %}
+          Three states, not two. A key set in the .env file has no row in the
+          credential table, so asking that table alone reported "not set" for a
+          key the application was busy authenticating with. It also has to say
+          which, because a checkbox here cannot remove something a file sets.
+        {% endcomment %}
+        <input type="password" id="id_{{ field.entry.key }}" name="{{ field.entry.key }}"
+               autocomplete="new-password"
+               placeholder="{% if field.source == 'stored' %}{% translate 'stored here — type to replace' %}{% elif field.source == 'environment' %}{% translate 'set in the .env file — type to override' %}{% else %}{% translate 'not set' %}{% endif %}"
+               {% if field.entry.help %}aria-describedby="help_{{ field.entry.key }}"{% endif %}>
+        {% if field.source == "stored" %}
+          <label class="check small">
+            <input type="checkbox" name="clear" value="{{ field.entry.key }}">
+            <span>{% translate "Remove the stored key" %}</span>
+          </label>
+        {% elif field.source == "environment" %}
+          <p class="small muted">
+            {% translate "This one comes from the environment file. Entering a value here takes over from it; clearing it again means editing that file." %}
+          </p>
+        {% endif %}
+
+      {% else %}
+        <label for="id_{{ field.entry.key }}">{{ field.entry.label }}</label>
+        {% if field.entry.kind == "int" %}
+          <div class="unitbox">
+            <input type="number" id="id_{{ field.entry.key }}" name="{{ field.entry.key }}"
+                   value="{{ field.value }}"
+                   {% if field.entry.minimum is not None %}min="{{ field.entry.minimum }}"{% endif %}
+                   {% if field.entry.maximum is not None %}max="{{ field.entry.maximum }}"{% endif %}
+                   {% if field.entry.help %}aria-describedby="help_{{ field.entry.key }}"{% endif %}>
+            {% comment %}
+              The unit beside the box, not only in the help text: a number
+              field with no visible unit is only readable by clearing it.
+            {% endcomment %}
+            {% if field.entry.unit %}<span class="unit small muted">{{ field.entry.unit }}</span>{% endif %}
+          </div>
+        {% else %}
+          <input type="text" id="id_{{ field.entry.key }}" name="{{ field.entry.key }}"
+                 value="{{ field.value }}"
+                 {% if field.entry.placeholder %}placeholder="{{ field.entry.placeholder }}"{% endif %}
+                 {% if field.entry.help %}aria-describedby="help_{{ field.entry.key }}"{% endif %}>
+        {% endif %}
+      {% endif %}
+
+      {% if field.entry.help or field.restart %}
+        <p class="small muted" id="help_{{ field.entry.key }}">
+          {{ field.entry.help }}
+          {# Said before it is edited, not after it is saved — §17.2. #}
+          {% if field.restart %}<span class="pill">{% translate "takes effect when the instance restarts" %}</span>{% endif %}
+        </p>
+      {% endif %}
+    </div>
+  {% endfor %}
+
+  {% url 'settings' group.key as cancel_to %}
+  {% include "partials/_formactions.html" with cancel_url=cancel_to cancel_label=_("Discard changes") %}
+</form>
+
+<p class="small muted">
+  {% blocktranslate %}Anything not here stays in the environment on purpose: values read before the database exists, and values a wrong answer would lock you out of this screen with.{% endblocktranslate %}
+</p>
+{% endblock %}

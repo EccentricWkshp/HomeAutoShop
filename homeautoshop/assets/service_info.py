@@ -33,6 +33,8 @@ from __future__ import annotations
 
 from urllib.parse import urlsplit, urlunsplit
 
+from homeautoshop.core.runtime import conf
+
 #: The segment that precedes the catalog string in both libraries.
 CATALOG_ROOT = "vehicles"
 
@@ -74,6 +76,8 @@ def dtc_url(link) -> str:
 
 def dtc_links(asset) -> list[dict]:
     """Every pinned provider that can reach a DTC index for this vehicle."""
+    if not conf.SERVICE_INFO_ENABLED:
+        return []
     found = []
     for link in asset.service_info_links.select_related("provider"):
         if link.is_hidden or not link.url:

@@ -19,10 +19,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from urllib.parse import quote
 
-from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
 from homeautoshop.core.outbound import OutboundBlocked, OutboundFailed, fetch_json
+from homeautoshop.core.runtime import conf
 
 from .models import Recall
 
@@ -65,6 +65,12 @@ def region_of(asset) -> str:
 
 def check(asset, *, user=None) -> RecallCheck:
     """Fetch campaigns for this vehicle's year/make/model."""
+    if not conf.RECALLS_ENABLED:
+        # Said plainly rather than returning an empty list. On a safety feature
+        # "no recalls found" and "nobody looked" must never look the same.
+        return RecallCheck(
+            message=str(_("Recall checking is switched off in this shop's settings."))
+        )
     if asset.asset_kind != "vehicle":
         return RecallCheck(message=str(_("Equipment is not covered by vehicle recalls.")))
     if not (asset.year and asset.make and asset.model):

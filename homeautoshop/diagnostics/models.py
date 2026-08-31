@@ -26,6 +26,10 @@ from homeautoshop.core.models import AppendOnlyModel, BaseModel, RevisionedModel
 class SessionSource(models.TextChoices):
     PDF_REPORT = "pdf_report", _("PDF report")
     FILE_IMPORT = "file_import", _("Structured file")
+    #: A photograph of a printout, read by OCR. Named apart from the others
+    #: because it is the one whose values were *guessed from pixels* — the
+    #: review screen has more reason to doubt it than a parsed CSV.
+    PHOTO = "photo", _("Photo of a printout")
     ELM327 = "elm327", _("ELM327 adapter")
     MANUAL = "manual", _("Typed in")
 
@@ -47,6 +51,7 @@ class MediaType(models.TextChoices):
     CSV = "csv", _("CSV")
     JSON = "json", _("JSON")
     TEXT = "text", _("Plain text")
+    IMAGE = "image", _("Photo")
 
 
 class ProfileSource(models.TextChoices):

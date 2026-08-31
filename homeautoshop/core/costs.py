@@ -14,12 +14,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from decimal import Decimal
-
-from django.conf import settings
 from django.db.models import Sum
 from django.utils.translation import gettext_lazy as _
 
 from .measurements import Money
+from .runtime import conf
 
 
 @dataclass(slots=True)
@@ -30,7 +29,7 @@ class CostLine:
 
     @property
     def money(self) -> Money:
-        return Money(self.amount_minor, settings.CURRENCY_REPORTING)
+        return Money(self.amount_minor, conf.CURRENCY_REPORTING)
 
 
 @dataclass(slots=True)
@@ -58,7 +57,7 @@ class Rollup:
 
 
 def _labour_minor(minutes: int) -> int:
-    rate = getattr(settings, "LABOR_RATE_MINOR", 0)
+    rate = conf.LABOR_RATE_MINOR
     if not rate or not minutes:
         return 0
     return int(Decimal(rate) * Decimal(minutes) / Decimal(60))
@@ -66,7 +65,7 @@ def _labour_minor(minutes: int) -> int:
 
 def work_order_cost(work_order) -> Rollup:
     """Itemised cost of one job (FR-COST-1)."""
-    rollup = Rollup(currency=settings.CURRENCY_REPORTING)
+    rollup = Rollup(currency=conf.CURRENCY_REPORTING)
 
     parts_minor = sum(u.line_total_minor for u in work_order.part_usages.select_related("part"))
     rollup.add(str(_("Parts")), parts_minor, f"{work_order.part_usages.count()} line(s)")
@@ -87,9 +86,9 @@ def asset_cost(asset, *, include_tooling: bool | None = None) -> Rollup:
     from homeautoshop.purchasing.models import EXCLUDED_FROM_ASSET_COST, Expense
 
     if include_tooling is None:
-        include_tooling = getattr(settings, "COST_INCLUDE_TOOLING", False)
+        include_tooling = conf.COST_INCLUDE_TOOLING
 
-    rollup = Rollup(currency=settings.CURRENCY_REPORTING)
+    rollup = Rollup(currency=conf.CURRENCY_REPORTING)
 
     parts_minor = 0
     for work_order in asset.work_orders.prefetch_related("part_usages"):
@@ -201,7 +200,7 @@ def spend_by_month(*, months: int = 12) -> list[dict]:
         buckets[key] = buckets.get(key, 0) + usage.line_total_minor
 
     return [
-        {"month": month, "amount_minor": amount, "money": Money(amount, settings.CURRENCY_REPORTING)}
+        {"month": month, "amount_minor": amount, "money": Money(amount, conf.CURRENCY_REPORTING)}
         for month, amount in sorted(buckets.items())
     ]
 
@@ -213,7 +212,7 @@ def inventory_value() -> Money:
     total = 0
     for lot in StockLot.objects.filter(qty_on_hand__gt=0):
         total += int(Decimal(lot.unit_cost_minor or 0) * Decimal(str(lot.qty_on_hand)))
-    return Money(total, settings.CURRENCY_REPORTING)
+    return Money(total, conf.CURRENCY_REPORTING)
 
 
 def active_warranties():

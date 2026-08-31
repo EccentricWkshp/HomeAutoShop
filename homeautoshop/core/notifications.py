@@ -27,6 +27,7 @@ from django.utils.translation import gettext as _
 from django.utils.translation import ngettext
 
 from .models import NotificationChannel, NotificationSent
+from .runtime import conf
 
 log = logging.getLogger(__name__)
 
@@ -63,10 +64,10 @@ class Digest:
         urgent = len(self.urgent)
         if urgent:
             return _("%(shop)s: %(n)d item(s) need attention") % {
-                "shop": settings.SHOP_NAME, "n": urgent
+                "shop": conf.SHOP_NAME, "n": urgent
             }
         return _("%(shop)s: %(n)d reminder(s)") % {
-            "shop": settings.SHOP_NAME, "n": len(self.alerts)
+            "shop": conf.SHOP_NAME, "n": len(self.alerts)
         }
 
     def as_text(self) -> str:
@@ -83,7 +84,7 @@ class Digest:
 
     def as_payload(self) -> dict:
         return {
-            "shop": settings.SHOP_NAME,
+            "shop": conf.SHOP_NAME,
             "generated_at": timezone.now().isoformat(),
             "count": len(self.alerts),
             "alerts": [
@@ -157,7 +158,7 @@ def collect() -> Digest:
             )
 
     age = last_backup_age_days()
-    if age is None or age > settings.BACKUP_WARN_AFTER_DAYS:
+    if age is None or age > conf.BACKUP_WARN_AFTER_DAYS:
         digest.alerts.append(
             Alert(
                 dedupe_key=f"backup:{'never' if age is None else int(age // 7)}",
@@ -174,7 +175,7 @@ def collect() -> Digest:
 
 
 def _already_said(channel: NotificationChannel, alert: Alert) -> bool:
-    cutoff = timezone.now() - timedelta(days=settings.REMINDER_COOLDOWN_DAYS)
+    cutoff = timezone.now() - timedelta(days=conf.REMINDER_COOLDOWN_DAYS)
     return NotificationSent.objects.filter(
         channel=channel, dedupe_key=alert.dedupe_key, sent_at__gte=cutoff
     ).exists()
@@ -220,16 +221,47 @@ def deliver(channel: NotificationChannel, digest: Digest) -> bool:
 
 
 def _send_email(channel: NotificationChannel, subject: str, digest: Digest) -> None:
-    from django.core.mail import EmailMessage
+    """Send through a connection built here, not through the default backend.
 
-    if not settings.EMAIL_HOST:
-        raise RuntimeError("SMTP_HOST is not configured")
-    body = f"{digest.as_text()}\n"
+    Django picks `EMAIL_BACKEND` once, at import, from whether `EMAIL_HOST` is
+    set — so relying on it would make every mail-server change a restart, and
+    an operator who has just typed their SMTP password into the settings screen
+    would watch the test send fail for no visible reason. Building the
+    connection at send time costs nothing and makes the setting mean what the
+    screen says it means.
+    """
+    from django.core.mail import EmailMessage, get_connection
+
+    host = conf.EMAIL_HOST
+    if not host:
+        raise RuntimeError("no SMTP server is configured")
+
+    # Django's configured backend is honoured — that is what keeps the console
+    # backend working in development and the in-memory one working in tests.
+    # The one case that has to be overridden is `dummy`, which is what
+    # `settings.py` chooses when `EMAIL_HOST` was empty *in the environment*:
+    # with the server now configured in the database, keeping it would drop
+    # every reminder on the floor and report success.
+    backend = settings.EMAIL_BACKEND
+    if backend.endswith("dummy.EmailBackend"):
+        backend = "django.core.mail.backends.smtp.EmailBackend"
+
+    connection = get_connection(
+        backend=backend,
+        host=host,
+        port=conf.EMAIL_PORT,
+        username=conf.EMAIL_HOST_USER,
+        password=conf.EMAIL_HOST_PASSWORD,
+        use_tls=conf.EMAIL_USE_TLS,
+        timeout=settings.EMAIL_TIMEOUT,
+        fail_silently=False,
+    )
     EmailMessage(
         subject=subject,
-        body=body,
-        from_email=settings.DEFAULT_FROM_EMAIL,
+        body=f"{digest.as_text()}\n",
+        from_email=conf.DEFAULT_FROM_EMAIL,
         to=[channel.target],
+        connection=connection,
     ).send(fail_silently=False)
 
 
@@ -265,10 +297,10 @@ def run(*, force: bool = False) -> dict:
     """Evaluate reminders and deliver them (job type `reminders.evaluate`)."""
     result = {"channels": 0, "sent": 0, "alerts": 0, "skipped": ""}
 
-    if settings.OFFLINE_MODE:
+    if conf.OFFLINE_MODE:
         result["skipped"] = "offline mode"
         return result
-    if not settings.REMINDERS_ENABLED and not force:
+    if not conf.REMINDERS_ENABLED and not force:
         result["skipped"] = "reminders disabled"
         return result
 

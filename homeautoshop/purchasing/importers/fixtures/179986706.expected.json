@@ -1,0 +1,60 @@
+{
+ "discount_minor": 0,
+ "lines": [
+  {
+   "brand": "MOOG",
+   "core_minor": 0,
+   "description": "Control Arm",
+   "is_kit_component": false,
+   "part_number": "RK621296",
+   "quantity": "1",
+   "total_minor": 6179,
+   "unit_price_minor": 6179,
+   "vehicle": "2004 SUZUKI AERIO 2.3L L4"
+  },
+  {
+   "brand": "MOOG",
+   "core_minor": 0,
+   "description": "Control Arm",
+   "is_kit_component": false,
+   "part_number": "RK621297",
+   "quantity": "1",
+   "total_minor": 6199,
+   "unit_price_minor": 6199,
+   "vehicle": "2004 SUZUKI AERIO 2.3L L4"
+  },
+  {
+   "brand": "SUSPENSIA",
+   "core_minor": 0,
+   "description": "Sway Bar Link",
+   "is_kit_component": false,
+   "part_number": "X37SL3257",
+   "quantity": "1",
+   "total_minor": 682,
+   "unit_price_minor": 682,
+   "vehicle": "2004 SUZUKI AERIO 2.3L L4"
+  },
+  {
+   "brand": "SUSPENSIA",
+   "core_minor": 0,
+   "description": "Sway Bar Link",
+   "is_kit_component": false,
+   "part_number": "X37SL3258",
+   "quantity": "1",
+   "total_minor": 682,
+   "unit_price_minor": 682,
+   "vehicle": "2004 SUZUKI AERIO 2.3L L4"
+  }
+ ],
+ "order_number": "179986706",
+ "ordered_on": "2021-07-03",
+ "payment_method": "Visa",
+ "shipping_minor": 2298,
+ "subtotal_minor": 13742,
+ "tax_minor": 1476,
+ "total_minor": 17516,
+ "vehicles": [
+  "2004 SUZUKI AERIO 2.3L L4"
+ ],
+ "warnings": []
+}
