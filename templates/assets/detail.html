@@ -74,7 +74,7 @@
       <h2>{% translate "Photos" %}</h2>
       <div class="thumbs">
         {% for link in photos %}
-          <a href="{{ link.media.url_for }}"><img src="{{ link.media.display_url }}" alt="{{ link.caption|default:asset.nickname }}"></a>
+          {% include "partials/_thumb.html" with media=link.media alt=link.caption|default:asset.nickname %}
         {% empty %}<p class="muted small">{% translate "No photos yet." %}</p>{% endfor %}
       </div>
       <form method="post" action="{% url 'asset_photo_upload' asset.pk %}" enctype="multipart/form-data" class="row" style="margin-top:.75rem">

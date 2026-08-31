@@ -9,6 +9,7 @@ capture must never be blocked on metadata.
 from __future__ import annotations
 
 import hashlib
+import pathlib
 
 from django.db import models
 from django.utils import timezone
@@ -20,6 +21,15 @@ from homeautoshop.core.models import AppendOnlyModel, BaseModel, uuid7
 def upload_to(instance: "Media", filename: str) -> str:
     stamp = timezone.now()
     return f"originals/{stamp:%Y/%m}/{instance.pk}/{filename}"
+
+
+#: What a browser will render in an `<img>`. Deliberately narrower than what
+#: we accept: HEIC is a fine original and an undrawable one, and SVG is left
+#: out because it can carry script and these bytes are served inline from the
+#: application's own origin.
+BROWSER_IMAGE_MIMES = frozenset(
+    {"image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"}
+)
 
 
 class Media(AppendOnlyModel):
@@ -79,9 +89,41 @@ class Media(AppendOnlyModel):
         return self.kind == self.Kind.PHOTO or self.mime.startswith("image/")
 
     @property
+    def has_image_preview(self) -> bool:
+        """Whether there is something a browser will actually draw.
+
+        A different question from `is_image`, and the distinction is the whole
+        bug: a PDF receipt is not an image and used to be handed to an `<img>`
+        anyway, and a HEIC straight off a phone *is* an image that Chrome and
+        Firefox refuse to draw. Both produced a broken-image icon where the
+        receipt should have been.
+        """
+        if self.thumb or self.preview:
+            return True
+        return bool(self.file) and self.mime in BROWSER_IMAGE_MIMES
+
+    @property
     def display_url(self) -> str:
-        """Thumbnail if derived, else the original. Never blocks on processing."""
-        return self.url_for("thumb" if self.thumb else "original")
+        """A URL for an `<img>`, or empty when there is no picture to show.
+
+        Empty rather than falling back to the original, so that a caller which
+        forgets to check renders no image instead of a broken one, and so that
+        a plain `{% if %}` in a template does the right thing without the
+        template knowing any of this.
+        """
+        if not self.has_image_preview:
+            return ""
+        if self.thumb:
+            return self.url_for("thumb")
+        if self.preview:
+            return self.url_for("preview")
+        return self.url_for("original")
+
+    @property
+    def extension_label(self) -> str:
+        """A short badge for a file with no picture: `PDF`, `CSV`, `FILE`."""
+        suffix = pathlib.Path(self.original_filename).suffix.lstrip(".")
+        return (suffix or self.mime.rsplit("/", 1)[-1] or "file")[:4].upper()
 
     def url_for(self, variant: str = "original") -> str:
         """Where a browser should ask for this file.

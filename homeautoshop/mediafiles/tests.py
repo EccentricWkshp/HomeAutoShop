@@ -11,6 +11,8 @@ from pathlib import Path
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 
+from homeautoshop.mediafiles.testing import local_storage
+
 from homeautoshop.assets.models import Asset
 from homeautoshop.core.jobs import drain
 from homeautoshop.core.models import Job
@@ -32,13 +34,13 @@ def make_image(size=(1200, 900), color=(180, 40, 40)) -> SimpleUploadedFile:
 # which storage backend holds the bytes. Without pinning it the suite inherits
 # STORAGE_DRIVER from the ambient .env and a plain `manage.py test` starts
 # trying to reach MinIO — tests that need the network are not tests.
-LOCAL_STORAGE = {"default": {"BACKEND": "django.core.files.storage.FileSystemStorage"}}
+
 
 
 class MediaTests(TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
-        self.override = override_settings(MEDIA_ROOT=self.tmp, STORAGES=LOCAL_STORAGE)
+        self.override = local_storage(self.tmp)
         self.override.enable()
         self.asset = Asset.objects.create(nickname="Truck")
 

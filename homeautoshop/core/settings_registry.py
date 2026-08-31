@@ -86,7 +86,7 @@ class Entry:
 
     key: str
     group: str
-    kind: str  # bool | int | str | choice | secret
+    kind: str  # bool | int | money | str | choice | secret
     label: Any
     help: Any = ""
     applies: str = IMMEDIATE
@@ -234,9 +234,9 @@ REGISTRY: tuple[Entry, ...] = (
         _("Off by default: a torque wrench you keep is not a cost of the car you bought it for."),
     ),
     Entry(
-        "LABOR_RATE_MINOR", "costs", "int",
+        "LABOR_RATE_MINOR", "costs", "money",
         _("Value your own time at"),
-        _("Per hour, in minor units — 2500 is $25.00. Zero hides labor value entirely."),
+        _("Per hour. Zero hides labor value entirely."),
         minimum=0,
         maximum=100_000_000,
     ),
@@ -380,9 +380,9 @@ REGISTRY: tuple[Entry, ...] = (
         depends_on="PLATE_LOOKUP_ENABLED",
     ),
     Entry(
-        "PLATE_LOOKUP_COST_MINOR", "outbound", "int",
+        "PLATE_LOOKUP_COST_MINOR", "outbound", "money",
         _("What one lookup costs you"),
-        _("Your own estimate, in minor units, shown before each lookup. No provider publishes a price list."),
+        _("Your own estimate, shown before each lookup. No provider publishes a price list."),
         minimum=0, maximum=1_000_000,
         depends_on="PLATE_LOOKUP_ENABLED",
     ),
@@ -513,6 +513,26 @@ def entries_for(group: str) -> list[Entry]:
     return [entry for entry in REGISTRY if entry.group == group]
 
 
+def settings_currency() -> str:
+    """The currency amounts on the settings screen are written in."""
+    from homeautoshop.core.runtime import conf
+
+    return conf.CURRENCY_REPORTING or "USD"
+
+
+def _within_range(entry: "Entry", value: int, render=str) -> int:
+    """Bounds, reported in whatever units the reader typed."""
+    if entry.minimum is not None and value < entry.minimum:
+        raise ValidationError(
+            _("The smallest value allowed is %(n)s.") % {"n": render(entry.minimum)}
+        )
+    if entry.maximum is not None and value > entry.maximum:
+        raise ValidationError(
+            _("The largest value allowed is %(n)s.") % {"n": render(entry.maximum)}
+        )
+    return value
+
+
 def coerce(entry: Entry, raw) -> Any:
     """Turn a form value into the stored type, or explain why it cannot be.
 
@@ -529,15 +549,18 @@ def coerce(entry: Entry, raw) -> Any:
             value = int(str(raw).strip() or 0)
         except (TypeError, ValueError):
             raise ValidationError(_("Enter a whole number.")) from None
-        if entry.minimum is not None and value < entry.minimum:
-            raise ValidationError(
-                _("The smallest value allowed is %(n)s.") % {"n": entry.minimum}
-            )
-        if entry.maximum is not None and value > entry.maximum:
-            raise ValidationError(
-                _("The largest value allowed is %(n)s.") % {"n": entry.maximum}
-            )
-        return value
+        return _within_range(entry, value)
+
+    if entry.kind == "money":
+        # Stored as minor units like every other amount; typed the way it is
+        # written. "2500 is $25.00" was a help-text apology for a form that
+        # should have taken $25.00 in the first place.
+        from homeautoshop.core.measurements import Money, format_money
+        from homeautoshop.core.moneyform import parse_amount
+
+        currency = settings_currency()
+        value = parse_amount(raw if str(raw).strip() else 0, currency)
+        return _within_range(entry, value, render=lambda n: format_money(Money(n, currency)))
 
     value = "" if raw is None else str(raw).strip()
 

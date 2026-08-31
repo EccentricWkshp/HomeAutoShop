@@ -1,0 +1,24 @@
+{% load i18n %}
+{% comment %}
+One attachment tile. Takes `media`, optionally `alt` and `small`.
+
+It exists because four screens each wrote their own
+`<img src="{{ media.display_url }}">`, and every one of them drew a broken
+image the moment somebody attached a PDF — which on the purchases screen is
+the ordinary case, since a receipt is usually a PDF. Rather than fix the same
+line four times and leave the fifth screen to repeat it, the decision about
+what a file looks like lives here.
+
+The link always points at the file itself, so a document is still one tap away
+whether or not there is a picture of it.
+{% endcomment %}
+<a class="thumb{% if small %} small{% endif %}" href="{{ media.url_for }}"
+   aria-label="{{ alt|default:media.original_filename }}"
+   title="{{ media.original_filename }}">
+  {% if media.display_url %}
+    {# Decorative: the link above it already carries the label. #}
+    <img src="{{ media.display_url }}" alt="">
+  {% else %}
+    <span class="doc" aria-hidden="true">{{ media.extension_label }}</span>
+  {% endif %}
+</a>

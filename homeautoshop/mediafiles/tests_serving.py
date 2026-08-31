@@ -24,45 +24,13 @@ from django.urls import reverse
 from homeautoshop.accounts.models import User
 from homeautoshop.assets.models import Asset
 from homeautoshop.mediafiles.models import Media, MediaLink
+from homeautoshop.mediafiles.testing import COMPOSE_S3, STATICFILES, LocalMediaMixin
 
 VIN = "1M8GDM9AXKP042788"
 
-#: Overriding STORAGES replaces the whole mapping, and Django looks up
-#: `staticfiles` in it on the first `{% static %}` tag — so a media-only
-#: override renders every page in the suite unrenderable.
-STATICFILES = {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"}
-
-#: What `docker-compose.yml` really sets, so the test fails the way production did.
-COMPOSE_S3 = {
-    "staticfiles": STATICFILES,
-    "default": {
-        "BACKEND": "homeautoshop.mediafiles.storage.S3Storage",
-        "OPTIONS": {
-            "endpoint_url": "http://storage:9000",
-            "bucket": "homeautoshop",
-            "access_key": "x",
-            "secret_key": "y",
-            "region": "us-east-1",
-            "public_endpoint": "",
-        },
-    }
-}
-
-
-class LocalMedia(TestCase):
+class LocalMedia(LocalMediaMixin, TestCase):
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp())
-        self.storage = override_settings(
-            MEDIA_ROOT=self.tmp,
-            STORAGES={
-                "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-                "staticfiles": STATICFILES,
-            },
-        )
-        self.storage.enable()
-        self.addCleanup(shutil.rmtree, self.tmp, True)
-        self.addCleanup(self.storage.disable)
-
+        super().setUp()
         self.user = User.objects.create_user(username="andy", password="x" * 16)
         self.client.force_login(self.user)
 

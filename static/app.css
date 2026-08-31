@@ -208,6 +208,18 @@ label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: .
 
 .thumbs { display: flex; gap: .5rem; flex-wrap: wrap; }
 .thumbs img { width: 104px; height: 104px; object-fit: cover; border-radius: var(--radius); border: 1px solid var(--line); }
+/* A receipt is usually a PDF. Until its first page has been rendered — and
+   for anything that can never have a picture — the tile says what the file
+   is instead of drawing a broken image. */
+.thumb { display: block; text-decoration: none; }
+.thumb .doc {
+  display: flex; align-items: center; justify-content: center;
+  width: 104px; height: 104px; box-sizing: border-box;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface-2); color: var(--muted);
+  font-size: .8rem; font-weight: 600; letter-spacing: .06em;
+}
+.thumb.small img, .thumb.small .doc { width: 56px; height: 56px; font-size: .65rem; }
 
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: .5rem; border-bottom: 1px solid var(--line); }

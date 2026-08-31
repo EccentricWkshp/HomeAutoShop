@@ -31,6 +31,10 @@ log = logging.getLogger(__name__)
 THUMB_SIZE = (400, 400)
 PREVIEW_SIZE = (1600, 1600)
 
+#: Enough to fill the 1600px preview from a Letter page (150 dpi is about
+#: 1275x1650), and a quarter of the pixels OCR needs at 300.
+PREVIEW_DPI = 150
+
 IMAGE_MIMES = {"image/jpeg", "image/png", "image/webp", "image/gif", "image/heic", "image/heif"}
 
 
@@ -103,12 +107,44 @@ def link(media: Media, entity, *, role: str = MediaLink.Role.OTHER, caption: str
     return obj
 
 
+def _mark_derived(media: Media) -> None:
+    """Record that derivation ran, whether or not it produced anything."""
+    media.derived_at = timezone.now()
+    media.save(update_fields=["derived_at", "updated_at"])
+
+
+def _preview_source(media: Media):
+    """The picture to make derivatives from, or None when there is not one.
+
+    A PDF is a document with a picture inside it, and rasterising its first
+    page turns a wall of identical file icons into receipts you can tell apart
+    at a glance. Anything else that Pillow cannot open has no preview and says
+    so by returning None — the original is still stored and still downloadable,
+    it simply gets a labelled tile on the page instead of an `<img>`.
+    """
+    from PIL import Image
+
+    if media.mime == "application/pdf":
+        return _pdf_first_page(media)
+    if not media.is_image:
+        return None
+    try:
+        with media.file.open("rb") as fh:
+            image = Image.open(fh)
+            image.load()
+        return image
+    except Exception as exc:
+        # A HEIC without pillow-heif, or a truncated upload. Not worth failing
+        # the job over: nothing here is recoverable by retrying.
+        log.warning("no preview for %s (%s): %s", media.pk, media.mime, exc)
+        return None
+
+
 def derive(media: Media) -> None:
     """Generate thumbnail and preview, and strip GPS EXIF. Idempotent."""
 
-    if not media.is_image or not media.file:
-        media.derived_at = timezone.now()
-        media.save(update_fields=["derived_at", "updated_at"])
+    if not media.file:
+        _mark_derived(media)
         return
 
     try:
@@ -117,28 +153,32 @@ def derive(media: Media) -> None:
         log.warning("Pillow unavailable; skipping derivation for %s", media.pk)
         return
 
-    with media.file.open("rb") as fh:
-        image = Image.open(fh)
-        image.load()
+    image = _preview_source(media)
+    if image is None:
+        _mark_derived(media)
+        return
 
-    # Honour the EXIF orientation tag, then discard EXIF entirely on the
-    # derivatives. exif_transpose bakes the rotation into pixels, so dropping
-    # the metadata afterwards cannot flip the image.
-    image = ImageOps.exif_transpose(image)
-    media.width, media.height = image.size
+    if media.is_image:
+        # Honour the EXIF orientation tag, then discard EXIF entirely on the
+        # derivatives. exif_transpose bakes the rotation into pixels, so
+        # dropping the metadata afterwards cannot flip the image.
+        image = ImageOps.exif_transpose(image)
+        # Only for a real image: for a PDF these would be the size of the
+        # bitmap we just rendered, which says nothing about the document.
+        media.width, media.height = image.size
 
-    exif = getattr(image, "getexif", lambda: None)()
-    if exif:
-        captured = exif.get(36867) or exif.get(306)
-        if captured and not media.captured_at:
-            try:
-                from datetime import datetime
+        exif = getattr(image, "getexif", lambda: None)()
+        if exif:
+            captured = exif.get(36867) or exif.get(306)
+            if captured and not media.captured_at:
+                try:
+                    from datetime import datetime
 
-                media.captured_at = timezone.make_aware(
-                    datetime.strptime(str(captured), "%Y:%m:%d %H:%M:%S")
-                )
-            except (ValueError, TypeError):
-                pass
+                    media.captured_at = timezone.make_aware(
+                        datetime.strptime(str(captured), "%Y:%m:%d %H:%M:%S")
+                    )
+                except (ValueError, TypeError):
+                    pass
 
     if image.mode not in ("RGB", "L"):
         image = image.convert("RGB")
@@ -347,6 +387,43 @@ def read_pdf_text_by_ocr(raw: bytes) -> str:
     finally:
         document.close()
     return "\n".join(found)
+
+
+def _pdf_first_page(media: Media, *, dpi: int = PREVIEW_DPI):
+    """Rasterise page one of a PDF, to use as its thumbnail.
+
+    Written out rather than calling `next()` on `_pdf_pages`: that generator
+    closes each bitmap as soon as its consumer is finished, and the PIL image
+    it yields borrows that buffer. Pulling one page out of it and using the
+    image afterwards would be reading freed memory. Here the copy is taken
+    before anything is closed.
+    """
+    try:
+        import pypdfium2
+    except ImportError:
+        log.info("no preview for PDF %s: pypdfium2 not installed", media.pk)
+        return None
+
+    try:
+        with media.file.open("rb") as fh:
+            data = fh.read()
+        document = pypdfium2.PdfDocument(data)
+        try:
+            if not len(document):
+                return None
+            page = document[0]
+            bitmap = page.render(scale=dpi / 72)
+            try:
+                return bitmap.to_pil().copy()
+            finally:
+                bitmap.close()
+                page.close()
+        finally:
+            document.close()
+    except Exception as exc:
+        # Encrypted, or malformed. Still stored, still downloadable, no picture.
+        log.warning("could not render PDF %s: %s", media.pk, exc)
+        return None
 
 
 def _pdf_pages(media: Media, *, dpi: int = 300):

@@ -129,7 +129,7 @@ class MoneyFlowTests(TestCase):
         wo = WorkOrder.objects.create(asset=self.asset, title="Front brakes")
         self.client.post(
             reverse("work_order_expense_add", args=[wo.pk]),
-            {"category": "machine_work", "amount_minor": "6000",
+            {"category": "machine_work", "amount_minor": "60.00",
              "incurred_on": "2026-08-29", "description": "Turn rotors"},
         )
         self.client.post(
@@ -148,7 +148,7 @@ class MoneyFlowTests(TestCase):
         self.client.post(reverse("work_order_part_use", args=[wo.pk]),
                          {"part": str(self.part.pk), "qty": "1"})
         self.client.post(reverse("work_order_expense_add", args=[wo.pk]),
-                         {"category": "machine_work", "amount_minor": "6000", "incurred_on": "2026-08-29"})
+                         {"category": "machine_work", "amount_minor": "60.00", "incurred_on": "2026-08-29"})
 
         response = self.client.get(reverse("work_order_detail", args=[wo.pk]))
         self.assertContains(response, "Cost so far")

@@ -54,8 +54,8 @@
         <p class="small">
           {% translate "The plate leaves your network. This will be lookup number" %}
           <strong>{{ preflight.used|add:1 }}</strong>
-          {% if preflight.cost_estimate %}
-            {% blocktranslate with cost=preflight.cost_estimate currency=preflight.currency %}at roughly {{ cost }} minor units of {{ currency }} each, by your own estimate.{% endblocktranslate %}
+          {% if preflight.cost_estimate.amount %}
+            {% blocktranslate with cost=preflight.cost_estimate %}at roughly {{ cost }} each, by your own estimate.{% endblocktranslate %}
           {% else %}
             {% translate "this month." %}
           {% endif %}

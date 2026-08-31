@@ -198,7 +198,7 @@ def _timeline(asset: Asset) -> list[dict]:
                 "kind": "media",
                 "title": link.caption or _("Photo"),
                 "detail": link.get_role_display(),
-                "url": link.media.display_url,
+                "url": link.media.url_for(),
             }
         )
     return sorted(events, key=lambda e: e["when"], reverse=True)[:60]

@@ -132,9 +132,7 @@
           {% endif %}
           {% with photo=photos|default_if_none:'' %}{% endwith %}
           {% for pk, link in photos.items %}
-            {% if pk == result.pk %}<a href="{{ link.media.url_for }}">
-              <img src="{{ link.media.display_url }}" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:6px"></a>
-            {% endif %}
+            {% if pk == result.pk %}{% include "partials/_thumb.html" with media=link.media alt=result.label small=1 %}{% endif %}
           {% endfor %}
         </div>
       </li>

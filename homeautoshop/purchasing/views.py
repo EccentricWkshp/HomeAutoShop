@@ -10,6 +10,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
 
+from homeautoshop.core.measurements import Money
+from homeautoshop.core.moneyform import MoneyFormMixin, parse_amount
 from homeautoshop.mediafiles.models import MediaLink
 from homeautoshop.mediafiles.services import ingest
 from homeautoshop.parts.models import Location, Part
@@ -31,7 +33,7 @@ class VendorForm(forms.ModelForm):
             field.widget.attrs.setdefault("class", css)
 
 
-class PurchaseForm(forms.ModelForm):
+class PurchaseForm(MoneyFormMixin, forms.ModelForm):
     class Meta:
         model = Purchase
         fields = [
@@ -41,9 +43,9 @@ class PurchaseForm(forms.ModelForm):
         ]
         widgets = {"ordered_on": forms.DateInput(attrs={"type": "date"}), "notes": forms.Textarea(attrs={"rows": 2})}
         labels = {
-            "tax_minor": _("Tax (minor units)"),
-            "shipping_minor": _("Shipping (minor units)"),
-            "discount_minor": _("Discount (minor units)"),
+            "tax_minor": _("Tax"),
+            "shipping_minor": _("Shipping"),
+            "discount_minor": _("Discount"),
         }
 
     def __init__(self, *args, **kwargs):
@@ -56,12 +58,12 @@ class PurchaseForm(forms.ModelForm):
             field.widget.attrs.setdefault("class", css)
 
 
-class ExpenseForm(forms.ModelForm):
+class ExpenseForm(MoneyFormMixin, forms.ModelForm):
     class Meta:
         model = Expense
         fields = ["category", "amount_minor", "incurred_on", "vendor", "description"]
         widgets = {"incurred_on": forms.DateInput(attrs={"type": "date"})}
-        labels = {"amount_minor": _("Amount (minor units)")}
+        labels = {"amount_minor": _("Amount")}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -99,6 +101,8 @@ def purchase_detail(request, pk):
             "locations": Location.objects.all(),
             "parts": Part.objects.all()[:500],
             "receipts": MediaLink.for_entity(purchase),
+            # Shows the shape an amount takes here, without asserting a value.
+            "zero_amount": Money(0, purchase.currency),
         },
     )
 
@@ -119,13 +123,24 @@ def purchase_create(request):
 @login_required
 def purchase_line_add(request, pk):
     purchase = get_object_or_404(Purchase, pk=pk)
+    # Written out by hand in the template rather than as a Django form, so the
+    # conversion has to be asked for here. It is the same `parse_amount` the
+    # form field uses, so `$12.40` off a receipt means the same thing on this
+    # screen as on every other one.
+    try:
+        unit_price = parse_amount(request.POST.get("unit_price_minor") or 0, purchase.currency)
+        core_charge = parse_amount(request.POST.get("core_charge_minor") or 0, purchase.currency)
+    except ValidationError as exc:
+        messages.error(request, exc.messages[0])
+        return redirect("purchase_detail", pk=purchase.pk)
+
     PurchaseLine.objects.create(
         purchase=purchase,
         part_id=request.POST.get("part") or None,
         description_as_ordered=(request.POST.get("description") or "").strip(),
         qty_ordered=request.POST.get("qty_ordered") or 1,
-        unit_price_minor=int(request.POST.get("unit_price_minor") or 0),
-        core_charge_minor=int(request.POST.get("core_charge_minor") or 0),
+        unit_price_minor=unit_price,
+        core_charge_minor=core_charge,
     )
     return redirect("purchase_detail", pk=purchase.pk)
 

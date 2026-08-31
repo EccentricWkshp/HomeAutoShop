@@ -79,7 +79,20 @@
 
       {% else %}
         <label for="id_{{ field.entry.key }}">{{ field.entry.label }}</label>
-        {% if field.entry.kind == "int" %}
+        {% if field.entry.kind == "money" %}
+          {% comment %}
+            Text rather than `type=number`: a number input silently submits
+            nothing when its contents do not parse, so pasting an amount with
+            a currency symbol in it would clear the box instead of saying so.
+          {% endcomment %}
+          <div class="unitbox">
+            <input type="text" inputmode="decimal" autocomplete="off"
+                   id="id_{{ field.entry.key }}" name="{{ field.entry.key }}"
+                   value="{{ field.value }}"
+                   {% if field.entry.help %}aria-describedby="help_{{ field.entry.key }}"{% endif %}>
+            <span class="unit small muted">{{ field.currency }}</span>
+          </div>
+        {% elif field.entry.kind == "int" %}
           <div class="unitbox">
             <input type="number" id="id_{{ field.entry.key }}" name="{{ field.entry.key }}"
                    value="{{ field.value }}"

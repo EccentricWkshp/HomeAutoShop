@@ -34,6 +34,7 @@ from django.conf import settings
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
+from homeautoshop.core.measurements import Money
 from homeautoshop.core.models import AuditLog, Setting
 from homeautoshop.core.outbound import OutboundBlocked, OutboundFailed, fetch_json
 from homeautoshop.core.runtime import conf
@@ -191,7 +192,7 @@ def preflight() -> dict:
         "used": usage(),
         "cap": conf.PLATE_LOOKUP_MONTHLY_CAP,
         "remaining": remaining(),
-        "cost_estimate": conf.PLATE_LOOKUP_COST_MINOR,
+        "cost_estimate": Money(conf.PLATE_LOOKUP_COST_MINOR, conf.CURRENCY_REPORTING),
         "currency": conf.CURRENCY_REPORTING,
     }
 

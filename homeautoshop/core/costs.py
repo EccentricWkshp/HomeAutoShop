@@ -125,6 +125,19 @@ class PerDistance:
     unit: str
     from_date: date | None
     to_date: date | None
+    currency: str = "USD"
+
+    @property
+    def per_unit(self) -> "Money":
+        """The figure as money, because `0.20 minor units per mi` is not a price.
+
+        Rounded to the smallest coin: a per-mile cost carried to more places
+        than the currency has would be false precision on top of an estimate
+        that already depends on odometer readings somebody typed.
+        """
+        from .measurements import Money
+
+        return Money(int(self.minor_per_unit.to_integral_value()), self.currency)
 
     @property
     def is_computable(self) -> bool:

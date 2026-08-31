@@ -338,3 +338,42 @@ class AccessibilityGuardTests(TestCase):
 
     def test_the_templates_pass(self):
         call_command("check_accessibility")
+
+    def _scan(self, markup: str):
+        """Run the real checker over one made-up template."""
+        import tempfile
+        from pathlib import Path
+
+        from homeautoshop.core.management.commands.check_accessibility import Command
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            page = root / "page.html"
+            page.write_text(markup, encoding="utf-8")
+            return Command()._scan(page, root)
+
+    def test_an_image_with_no_alt_is_still_caught(self):
+        """The gate was taught to skip comments; it must still see markup."""
+        findings = self._scan('<img src="/x.png">\n')
+        self.assertEqual(len(findings), 1)
+        self.assertIn("alt", findings[0].why)
+
+    def test_markup_quoted_inside_a_comment_is_not_a_finding(self):
+        """A comment explaining a rule was reported as breaking it.
+
+        Which is wrong on its own, and worse in what it encourages: the way to
+        make the gate pass was to damage the explanation.
+        """
+        self.assertEqual(
+            self._scan('{% comment %}\nnever write <img src="x">\n{% endcomment %}\n'), []
+        )
+        self.assertEqual(self._scan('{# <img src="x"> #}\n'), [])
+        self.assertEqual(self._scan('<!-- <img src="x"> -->\n'), [])
+
+    def test_a_finding_after_a_comment_reports_the_right_line(self):
+        """Blanking a comment must not move anything that follows it."""
+        findings = self._scan(
+            '{% comment %}\ntwo\nthree\n{% endcomment %}\n<img src="/x.png">\n'
+        )
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0].line, 5)

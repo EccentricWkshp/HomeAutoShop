@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import logging
 import mimetypes
+from pathlib import Path
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -51,6 +52,31 @@ log = logging.getLogger(__name__)
 #: Which derivative to hand back. The original is the default because a link
 #: with no variant is what somebody clicked to see the full-size picture.
 VARIANTS = ("original", "thumb", "preview")
+
+#: What `derive()` writes every derivative as, regardless of the original.
+DERIVATIVE_TYPE = "image/jpeg"
+
+#: What may be rendered in place, as opposed to handed over as a download.
+#:
+#: Uploads carry whatever content type the browser claimed, and these bytes
+#: come back from the application's **own origin** — so an SVG or an HTML file
+#: served inline would run its own script with the reader's session behind it.
+#: Nothing on this list can: raster images cannot script, and a PDF's own
+#: scripting is sandboxed inside the viewer, with no reach into the page.
+#:
+#: An allowlist rather than a list of things to block, because the failure of
+#: a blocklist here is silent and the failure of this is a download.
+INLINE_TYPES = frozenset(
+    {
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/gif",
+        "image/avif",
+        "application/pdf",
+        "text/plain",
+    }
+)
 
 
 def _public_endpoint() -> str:
@@ -71,11 +97,15 @@ def media_file(request, pk, variant: str = "original"):
     if media is None:
         raise Http404
 
-    handle = {
-        "original": media.file,
-        "thumb": media.thumb or media.file,
-        "preview": media.preview or media.file,
-    }[variant]
+    # The type travels with the bytes, not with the row. Derivatives are
+    # always written as JPEG, so a thumbnail of a PDF receipt is an image —
+    # sending it as `application/pdf` because that is what the *original* is
+    # gives the browser a picture it has been told not to draw.
+    derived = {"thumb": media.thumb, "preview": media.preview}.get(variant)
+    if derived:
+        handle, content_type = derived, DERIVATIVE_TYPE
+    else:
+        handle, content_type = media.file, ""
     if not handle:
         raise Http404
 
@@ -92,11 +122,29 @@ def media_file(request, pk, variant: str = "original"):
         log.warning("media %s (%s) is not in storage: %s", media.pk, variant, exc)
         raise Http404 from exc
 
-    content_type = media.mime or mimetypes.guess_type(handle.name)[0] or "application/octet-stream"
+    content_type = (
+        content_type
+        or media.mime
+        or mimetypes.guess_type(handle.name)[0]
+        or "application/octet-stream"
+    )
+    if content_type in INLINE_TYPES:
+        disposition = "inline"
+    else:
+        # Not refused — the file is still the operator's and still theirs to
+        # keep. It just arrives as a download rather than as something this
+        # origin executes.
+        disposition = "attachment"
+        content_type = "application/octet-stream"
+
     response = FileResponse(stream, content_type=content_type)
-    # Shown inline — this is a photo on a page, not a download. The original
-    # filename is offered for anyone who does save it.
-    response["Content-Disposition"] = f'inline; filename="{media.original_filename or handle.name}"'
+    # The original filename is offered for anyone who saves it; a derivative
+    # offers its own, because saving a JPEG under a `.pdf` name helps nobody.
+    filename = handle.name if derived else (media.original_filename or handle.name)
+    response["Content-Disposition"] = f'{disposition}; filename="{Path(filename).name}"'
+    # Without this a browser may sniff past the type above and render the file
+    # as whatever its bytes look like, which is the whole thing being avoided.
+    response["X-Content-Type-Options"] = "nosniff"
     # Private, because the response is only correct for the person who asked
     # for it: a shared cache holding it would serve it to somebody signed out.
     response["Cache-Control"] = "private, max-age=3600"

@@ -66,6 +66,26 @@ class Finding:
         return f"{self.path}:{self.line}: {self.why}: {self.what[:70]}"
 
 
+
+#: Template and HTML comments. Never rendered, so never scanned: a comment
+#: that quotes markup in order to explain a rule was reported as breaking that
+#: rule — which is wrong, and worse, invites someone to mangle the explanation
+#: to appease the checker.
+COMMENT = re.compile(
+    r"\{%\s*comment\s*%\}.*?\{%\s*endcomment\s*%\}|\{#.*?#\}|<!--.*?-->",
+    re.S,
+)
+
+
+def _without_comments(text: str) -> str:
+    """Blank out comments, preserving offsets so reported lines stay true."""
+
+    def blank(match) -> str:
+        return "".join("\n" if char == "\n" else " " for char in match.group(0))
+
+    return COMMENT.sub(blank, text)
+
+
 class Command(BaseCommand):
     help = "Check templates against the checkable half of WCAG 2.1 AA (SPEC §9.5)."
 
@@ -88,7 +108,7 @@ class Command(BaseCommand):
         )
 
     def _scan(self, path: Path, root: Path) -> list[Finding]:
-        text = path.read_text(encoding="utf-8")
+        text = _without_comments(path.read_text(encoding="utf-8"))
         relative = path.relative_to(root)
         findings: list[Finding] = []
 

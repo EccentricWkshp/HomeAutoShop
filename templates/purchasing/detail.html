@@ -78,10 +78,12 @@
           <input name="description" id="id_description" class="input"></div>
         <div class="field"><label for="id_qty">{% translate "Quantity" %}</label>
           <input type="number" step="0.001" name="qty_ordered" id="id_qty" value="1" class="input"></div>
-        <div class="field"><label for="id_price">{% translate "Unit price (minor units)" %}</label>
-          <input type="number" name="unit_price_minor" id="id_price" value="0" class="input"></div>
-        <div class="field"><label for="id_core">{% translate "Core charge (minor units)" %}</label>
-          <input type="number" name="core_charge_minor" id="id_core" value="0" class="input"></div>
+        <div class="field"><label for="id_price">{% translate "Unit price" %}</label>
+          <input type="text" inputmode="decimal" autocomplete="off" name="unit_price_minor"
+                 id="id_price" placeholder="{{ zero_amount }}" class="input"></div>
+        <div class="field"><label for="id_core">{% translate "Core charge" %}</label>
+          <input type="text" inputmode="decimal" autocomplete="off" name="core_charge_minor"
+                 id="id_core" placeholder="{{ zero_amount }}" class="input"></div>
         <div class="field full"><button class="primary" type="submit">{% translate "Add line" %}</button></div>
       </form>
     </section>
@@ -97,14 +99,13 @@
         <tr><th>{% translate "Discount" %}</th><td class="mono">−{{ purchase.discount }}</td></tr>
         <tr><th>{% translate "Total" %}</th><td class="mono"><strong>{{ purchase.total }}</strong></td></tr>
       </table>
-      <p class="small muted">{% translate "Amounts are in minor units of" %} {{ purchase.currency }}.</p>
     </section>
 
     <section class="card">
       <h2>{% translate "Receipt" %}</h2>
       <div class="thumbs">
         {% for link in receipts %}
-          <a href="{{ link.media.url_for }}"><img src="{{ link.media.display_url }}" alt="{% translate 'Receipt' %}"></a>
+          {% include "partials/_thumb.html" with media=link.media alt=link.caption|default:_("Receipt") %}
         {% empty %}<p class="muted small">{% translate "No receipt attached." %}</p>{% endfor %}
       </div>
       <form method="post" action="{% url 'purchase_receipt_upload' purchase.pk %}"

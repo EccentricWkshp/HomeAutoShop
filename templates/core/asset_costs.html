@@ -30,8 +30,8 @@
     <h2>{% translate "Cost per distance" %}</h2>
     {% if per_distance.is_computable %}
       <p class="mono" style="font-size:1.5rem;margin:0">
-        {{ per_distance.minor_per_unit|floatformat:2 }}
-        <span class="small muted">{% translate "minor units per" %} {{ per_distance.unit }}</span>
+        {{ per_distance.per_unit }}
+        <span class="small muted">{% translate "per" %} {{ per_distance.unit }}</span>
       </p>
     {% else %}
       <p class="muted">{% translate "Not yet." %}</p>

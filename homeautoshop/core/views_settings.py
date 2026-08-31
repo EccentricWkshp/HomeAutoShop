@@ -38,7 +38,7 @@ from . import runtime
 from .backup import last_backup_age_days
 from .models import AuditLog, Job
 from .runtime import conf
-from .settings_registry import BY_KEY, GROUPS, RESTART, entries_for
+from .settings_registry import BY_KEY, GROUPS, RESTART, entries_for, settings_currency
 
 log = logging.getLogger(__name__)
 
@@ -64,9 +64,19 @@ def _field(entry, *, stored_secrets: set[str]) -> dict:
         elif getattr(django_settings, entry.key, ""):
             source = "environment"
 
+    value = "" if entry.is_secret else runtime.current(entry.key)
+    currency = ""
+    if entry.kind == "money":
+        from homeautoshop.core.measurements import Money
+
+        currency = settings_currency()
+        # Shown as an amount, because that is now what the box accepts.
+        value = Money(int(value or 0), currency).to_decimal()
+
     return {
         "entry": entry,
-        "value": "" if entry.is_secret else runtime.current(entry.key),
+        "value": value,
+        "currency": currency,
         "source": source,
         "has_secret": source != "none",
         "from_environment": source == "environment",

@@ -13,12 +13,13 @@ from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
 
 from homeautoshop.core.costs import inventory_value
+from homeautoshop.core.moneyform import MoneyFormMixin
 
 from .models import Location, Part, PartCrossRef, PartUsage, StockLot, StockTransaction
 from .services import consume, cycle_count, expiring_lots, find, outstanding_cores, restock_list
 
 
-class PartForm(forms.ModelForm):
+class PartForm(MoneyFormMixin, forms.ModelForm):
     class Meta:
         model = Part
         fields = [
@@ -27,7 +28,7 @@ class PartForm(forms.ModelForm):
             "min_quantity", "notes",
         ]
         widgets = {"notes": forms.Textarea(attrs={"rows": 2})}
-        labels = {"core_value_minor": _("Core charge (minor units)")}
+        labels = {"core_value_minor": _("Core charge")}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -40,7 +41,7 @@ class PartForm(forms.ModelForm):
                 field.widget.attrs.setdefault("class", css)
 
 
-class LotForm(forms.ModelForm):
+class LotForm(MoneyFormMixin, forms.ModelForm):
     quantity = forms.DecimalField(max_digits=12, decimal_places=3, min_value=0)
 
     class Meta:
