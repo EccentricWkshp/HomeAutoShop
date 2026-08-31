@@ -1,0 +1,7824 @@
+# English (Canada) translation for HomeAutoShop.
+#
+# Machine-drafted and not yet reviewed by a native speaker. Every entry here
+# was written by translating the source string in isolation, which is exactly
+# where that approach is weakest: an English label that reads as a noun on one
+# screen and a verb on another gets one guess, and shop vocabulary is full of
+# both. Corrections are welcome and are the point.
+#
+# Editing this file: change the msgstr, leave the msgid alone, keep every
+# placeholder (%(name)s, %s) exactly as it appears in the source, then run
+#     docker compose exec app python manage.py compilemessages
+# and commit the .mo beside it.
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+msgid ""
+msgstr ""
+"Project-Id-Version: HomeAutoShop\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-30 23:13-0700\n"
+"PO-Revision-Date: 2026-08-30 23:13-0700\n"
+"Last-Translator: machine-drafted, pending review\n"
+"Language-Team: English (Canada)\n"
+"Language: en_CA\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: homeautoshop/accounts/forms.py:32
+msgid "The two passwords did not match."
+msgstr ""
+
+#: homeautoshop/accounts/forms.py:47 homeautoshop/core/settings_registry.py:454
+#: templates/auth/login.html:14
+msgid "Password"
+msgstr ""
+
+#: homeautoshop/accounts/forms.py:52
+msgid "Password again"
+msgstr ""
+
+#: homeautoshop/accounts/models.py:21
+msgid "Administrator"
+msgstr ""
+
+#: homeautoshop/accounts/models.py:22
+msgid "Member"
+msgstr ""
+
+#: homeautoshop/accounts/models.py:35
+msgid "Links this login to a human, so authored records attribute to a person."
+msgstr ""
+
+#: homeautoshop/accounts/models.py:37
+msgid "Overrides the instance default."
+msgstr ""
+
+#: homeautoshop/accounts/models.py:42
+msgid "Imperial"
+msgstr ""
+
+#: homeautoshop/accounts/models.py:42
+msgid "Metric"
+msgstr ""
+
+#: homeautoshop/accounts/models.py:43
+msgid "Display only; storage is unaffected."
+msgstr ""
+
+#: homeautoshop/accounts/models.py:118 homeautoshop/diagnostics/models.py:39
+#: templates/diagnostics/asset.html:25 templates/diagnostics/queue.html:17
+msgid "Read"
+msgstr ""
+
+#: homeautoshop/accounts/models.py:118
+msgid "Write"
+msgstr ""
+
+#: homeautoshop/accounts/views.py:54 homeautoshop/core/settings_registry.py:449
+#: homeautoshop/core/views_setup.py:84 templates/accounts/users.html:15
+#: templates/auth/login.html:10
+msgid "Username"
+msgstr ""
+
+#: homeautoshop/accounts/views.py:55 homeautoshop/accounts/views.py:91
+msgid "Their name"
+msgstr ""
+
+#: homeautoshop/accounts/views.py:56 homeautoshop/accounts/views.py:92
+#: homeautoshop/core/models.py:398 homeautoshop/core/views_setup.py:95
+#: templates/people/detail.html:21
+msgid "Email"
+msgstr ""
+
+#: homeautoshop/accounts/views.py:57 homeautoshop/accounts/views.py:93
+#: homeautoshop/core/reports.py:117 templates/accounts/users.html:17
+msgid "Role"
+msgstr ""
+
+#: homeautoshop/accounts/views.py:58 homeautoshop/accounts/views.py:94
+msgid "Linked to"
+msgstr ""
+
+#: homeautoshop/accounts/views.py:61
+msgid "What they will sign in with."
+msgstr ""
+
+#: homeautoshop/accounts/views.py:62
+msgid "Optional. Only used for password reset, and only if mail is set up."
+msgstr ""
+
+#: homeautoshop/accounts/views.py:63
+msgid "Links this login to a person, so their work is attributed to them."
+msgstr ""
+
+#: homeautoshop/accounts/views.py:72 homeautoshop/accounts/views.py:104
+msgid "Nobody in particular"
+msgstr ""
+
+#: homeautoshop/accounts/views.py:80 homeautoshop/core/views_setup.py:149
+msgid "That username is taken."
+msgstr ""
+
+#: homeautoshop/accounts/views.py:167
+#, python-format
+msgid "%(name)s can sign in now. Give them the password you just set."
+msgstr ""
+
+#: homeautoshop/accounts/views.py:186 homeautoshop/assets/views.py:306
+#: homeautoshop/assets/views.py:692 homeautoshop/parts/views.py:128
+#: homeautoshop/people/views.py:68 homeautoshop/work/views.py:234
+msgid "Saved."
+msgstr ""
+
+#: homeautoshop/accounts/views.py:214 templates/accounts/user.html:66
+msgid "You cannot deactivate your own account. Ask another administrator."
+msgstr ""
+
+#: homeautoshop/accounts/views.py:224
+#, python-format
+msgid "%(name)s can sign in again."
+msgstr ""
+
+#: homeautoshop/accounts/views.py:226
+#, python-format
+msgid "%(name)s can no longer sign in. Everything they recorded stays."
+msgstr ""
+
+#: homeautoshop/accounts/views.py:253
+#, python-format
+msgid "Password set for %(name)s. Tell them what it is."
+msgstr ""
+
+#: homeautoshop/accounts/views.py:274
+msgid "That would leave the shop with no administrator, and no way back in. Make somebody else an administrator first."
+msgstr ""
+
+#: homeautoshop/assets/models.py:31 templates/assets/specs_from_scan.html:18
+#: templates/diagnostics/queue.html:17 templates/inspections/list.html:33
+#: templates/work/detail.html:471
+msgid "Vehicle"
+msgstr ""
+
+#: homeautoshop/assets/models.py:32
+msgid "Equipment"
+msgstr ""
+
+#: homeautoshop/assets/models.py:36
+msgid "Car"
+msgstr ""
+
+#: homeautoshop/assets/models.py:37
+msgid "Truck"
+msgstr ""
+
+#: homeautoshop/assets/models.py:38
+msgid "Motorcycle"
+msgstr ""
+
+#: homeautoshop/assets/models.py:39
+msgid "Trailer"
+msgstr ""
+
+#: homeautoshop/assets/models.py:40
+msgid "RV"
+msgstr ""
+
+#: homeautoshop/assets/models.py:41
+msgid "Bus"
+msgstr ""
+
+#: homeautoshop/assets/models.py:42
+msgid "Other plated"
+msgstr ""
+
+#: homeautoshop/assets/models.py:46
+msgid "Prospect"
+msgstr ""
+
+#: homeautoshop/assets/models.py:47
+msgid "Active"
+msgstr ""
+
+#: homeautoshop/assets/models.py:48 homeautoshop/work/models.py:32
+msgid "Project"
+msgstr ""
+
+#: homeautoshop/assets/models.py:49 homeautoshop/diagnostics/models.py:216
+msgid "Stored"
+msgstr ""
+
+#: homeautoshop/assets/models.py:50
+msgid "Sold"
+msgstr ""
+
+#: homeautoshop/assets/models.py:51
+msgid "Parted out"
+msgstr ""
+
+#: homeautoshop/assets/models.py:52 homeautoshop/core/tests_locales.py:190
+msgid "Totaled"
+msgstr "Totalled"
+
+#: homeautoshop/assets/models.py:56
+msgid "Validated"
+msgstr ""
+
+#: homeautoshop/assets/models.py:57
+msgid "Not validated"
+msgstr ""
+
+#: homeautoshop/assets/models.py:58
+msgid "Pre-1981 format"
+msgstr ""
+
+#: homeautoshop/assets/models.py:59
+msgid "No VIN"
+msgstr ""
+
+#: homeautoshop/assets/models.py:84
+msgid "What the household actually calls it — “the red truck”."
+msgstr ""
+
+#: homeautoshop/assets/models.py:96
+msgid "State or province."
+msgstr ""
+
+#: homeautoshop/assets/models.py:122
+msgid "Odometer"
+msgstr ""
+
+#: homeautoshop/assets/models.py:123
+msgid "Engine hours"
+msgstr ""
+
+#: homeautoshop/assets/models.py:124
+msgid "Cycles"
+msgstr ""
+
+#: homeautoshop/assets/models.py:125
+msgid "No meter"
+msgstr ""
+
+#: homeautoshop/assets/models.py:146
+msgid "Fields the operator corrected; a re-decode must never clobber these."
+msgstr ""
+
+#: homeautoshop/assets/models.py:168
+msgid "Equipment does not carry a VIN or license plate."
+msgstr "Equipment does not carry a VIN or licence plate."
+
+#: homeautoshop/assets/models.py:252
+msgid "Owner"
+msgstr ""
+
+#: homeautoshop/assets/models.py:253
+msgid "Co-owner"
+msgstr ""
+
+#: homeautoshop/assets/models.py:254
+msgid "Primary driver"
+msgstr ""
+
+#: homeautoshop/assets/models.py:282 homeautoshop/assets/models.py:572
+msgid "Entered by hand"
+msgstr ""
+
+#: homeautoshop/assets/models.py:283
+msgid "From a work order"
+msgstr ""
+
+#: homeautoshop/assets/models.py:284
+msgid "Scan tool"
+msgstr ""
+
+#: homeautoshop/assets/models.py:285
+msgid "From a document"
+msgstr ""
+
+#: homeautoshop/assets/models.py:286 homeautoshop/diagnostics/models.py:60
+#: homeautoshop/inspections/models.py:76 homeautoshop/maintenance/models.py:59
+#: templates/core/lubelogger.html:95
+msgid "Imported"
+msgstr ""
+
+#: homeautoshop/assets/models.py:298
+msgid "Set when the reading decreases — allowed, but it needs an explanation."
+msgstr ""
+
+#: homeautoshop/assets/models.py:314
+msgid "A decreasing reading needs a note explaining why."
+msgstr ""
+
+#: homeautoshop/assets/models.py:343
+msgid "Ordered mirror list; the first reachable one wins."
+msgstr ""
+
+#: homeautoshop/assets/models.py:348
+#, python-brace-format
+msgid "Tokens: {make} {year} {model}. Only as deep as the pattern is reliable."
+msgstr ""
+
+#: homeautoshop/assets/models.py:356
+msgid "Path from the vehicle root to this library's DTC index, if it has one."
+msgstr ""
+
+#: homeautoshop/assets/models.py:362
+msgid "Site root only"
+msgstr ""
+
+#: homeautoshop/assets/models.py:363
+msgid "Make"
+msgstr ""
+
+#: homeautoshop/assets/models.py:364
+msgid "Make and year"
+msgstr ""
+
+#: homeautoshop/assets/models.py:371
+msgid "Free, no sign-up"
+msgstr ""
+
+#: homeautoshop/assets/models.py:372
+msgid "Paid subscription"
+msgstr ""
+
+#: homeautoshop/assets/models.py:373
+msgid "Account required"
+msgstr ""
+
+#: homeautoshop/assets/models.py:424
+msgid "Hidden for this vehicle. CHARM has no entry for a 2025 Crosstrek and never will, so a permanent empty box is worse than no box (OQ-11)."
+msgstr ""
+
+#: homeautoshop/assets/models.py:432
+msgid "Subscribed"
+msgstr ""
+
+#: homeautoshop/assets/models.py:433
+msgid "Not subscribed"
+msgstr ""
+
+#: homeautoshop/assets/models.py:434
+msgid "Unknown"
+msgstr ""
+
+#: homeautoshop/assets/models.py:436
+msgid "ALLDATA DIY is sold per vehicle, so this is per asset."
+msgstr ""
+
+#: homeautoshop/assets/models.py:460
+msgid "Fluids and capacities"
+msgstr ""
+
+#: homeautoshop/assets/models.py:461
+msgid "Torque specs"
+msgstr ""
+
+#: homeautoshop/assets/models.py:462 homeautoshop/inspections/models.py:35
+msgid "Tires and wheels"
+msgstr ""
+
+#: homeautoshop/assets/models.py:463
+msgid "Electrical"
+msgstr ""
+
+#: homeautoshop/assets/models.py:464
+msgid "Alignment"
+msgstr ""
+
+#: homeautoshop/assets/models.py:465
+msgid "Filters and part numbers"
+msgstr ""
+
+#: homeautoshop/assets/models.py:466
+msgid "Keys and access codes"
+msgstr ""
+
+#: homeautoshop/assets/models.py:467 homeautoshop/assets/models.py:501
+#: homeautoshop/maintenance/models.py:254 homeautoshop/mediafiles/models.py:167
+#: homeautoshop/purchasing/models.py:243
+msgid "Other"
+msgstr ""
+
+#: homeautoshop/assets/models.py:490
+msgid "e.g. “cold, curb weight” — a spec without its condition is a guess."
+msgstr ""
+
+#: homeautoshop/assets/models.py:496
+msgid "Owner's manual"
+msgstr ""
+
+#: homeautoshop/assets/models.py:497
+msgid "OEM document"
+msgstr ""
+
+#: homeautoshop/assets/models.py:498
+msgid "Measured"
+msgstr ""
+
+#: homeautoshop/assets/models.py:499
+msgid "From a VIN decode"
+msgstr ""
+
+#: homeautoshop/assets/models.py:500
+msgid "Read from a scan tool"
+msgstr ""
+
+#: homeautoshop/assets/models.py:506
+msgid "The page it came from (FR-SPEC-2)."
+msgstr ""
+
+#: homeautoshop/assets/models.py:510
+msgid "Hidden from reports and shared exports. Key and radio codes belong here."
+msgstr ""
+
+#: homeautoshop/assets/models.py:513
+msgid "Show in the quick-reference panel on work orders."
+msgstr ""
+
+#: homeautoshop/assets/models.py:556
+msgid "Not checked"
+msgstr ""
+
+#: homeautoshop/assets/models.py:557
+msgid "Scheduled"
+msgstr ""
+
+#: homeautoshop/assets/models.py:558 homeautoshop/core/models.py:255
+#: homeautoshop/mediafiles/models.py:45 homeautoshop/work/models.py:272
+#: templates/maintenance/schedule.html:64
+msgid "Done"
+msgstr ""
+
+#: homeautoshop/assets/models.py:559
+msgid "Does not apply to this VIN"
+msgstr ""
+
+#: homeautoshop/assets/models.py:572
+msgid "NHTSA"
+msgstr ""
+
+#: homeautoshop/assets/plate.py:96
+msgid "No plate-lookup provider is configured."
+msgstr ""
+
+#: homeautoshop/assets/plate.py:207
+msgid "Plate lookup is switched off. It costs money per call, so it is off until you turn it on."
+msgstr ""
+
+#: homeautoshop/assets/plate.py:210
+msgid "Offline Mode is on, so the plate is not sent anywhere."
+msgstr ""
+
+#: homeautoshop/assets/plate.py:212
+msgid "Enter a plate to look up."
+msgstr ""
+
+#: homeautoshop/assets/plate.py:215
+msgid "Say which state or province issued it — coverage and terms differ by jurisdiction."
+msgstr ""
+
+#: homeautoshop/assets/plate.py:221
+#, python-format
+msgid "The monthly limit of %(cap)d lookups is used up. Raise it or wait for next month."
+msgstr ""
+
+#: homeautoshop/assets/plate.py:236
+#, python-format
+msgid "The provider did not answer usefully (%(err)s)."
+msgstr ""
+
+#: homeautoshop/assets/recalls.py:37
+msgid "Transport Canada"
+msgstr ""
+
+#: homeautoshop/assets/recalls.py:38
+msgid "PROFECO"
+msgstr ""
+
+#: homeautoshop/assets/recalls.py:72
+msgid "Recall checking is switched off in this shop's settings."
+msgstr ""
+
+#: homeautoshop/assets/recalls.py:75
+msgid "Equipment is not covered by vehicle recalls."
+msgstr ""
+
+#: homeautoshop/assets/recalls.py:78
+msgid "A year, make and model are needed before recalls can be looked up."
+msgstr ""
+
+#: homeautoshop/assets/recalls.py:88
+#, python-format
+msgid "Recall data here comes from NHTSA, which covers US-market vehicles. This vehicle is registered in a region served by %(authority)s, which is not wired up — so an empty list here would not mean the vehicle is clear."
+msgstr ""
+
+#: homeautoshop/assets/recalls.py:108
+msgid "Could not reach the recall service. Try again later."
+msgstr ""
+
+#: homeautoshop/assets/recalls.py:113
+msgid "The recall service returned nothing usable."
+msgstr ""
+
+#: homeautoshop/assets/recalls.py:135
+msgid "NHTSA returned no campaigns — but it answers exactly the same way when it is rate-limiting, so this is not a clean bill of health. Try again in a minute, especially if you have just checked several vehicles."
+msgstr ""
+
+#: homeautoshop/assets/recalls.py:141
+msgid "NHTSA lists no campaigns for this year, make and model. That is not the same as the vehicle being clear — coverage is US-market only, and a campaign issued tomorrow will not be here until you look again."
+msgstr ""
+
+#: homeautoshop/assets/recalls.py:176
+#, python-format
+msgid "%(n)d campaign(s) found for this year, make and model. These may or may not apply to your VIN — NHTSA's free data cannot tell us, so mark each one yourself after checking."
+msgstr ""
+
+#: homeautoshop/assets/services.py:58
+msgid "Nothing new to fill in — the details already on file were kept."
+msgstr ""
+
+#: homeautoshop/assets/services.py:59
+#, python-format
+msgid "Filled in %(n)d field(s) from the VIN."
+msgstr ""
+
+#: homeautoshop/assets/services.py:88
+msgid "Equipment does not have a VIN to decode."
+msgstr ""
+
+#: homeautoshop/assets/services.py:90
+msgid "VIN decoding is turned off for this instance."
+msgstr ""
+
+#: homeautoshop/assets/services.py:96
+msgid "That VIN is not well formed, so there is nothing to look up."
+msgstr ""
+
+#: homeautoshop/assets/services.py:123
+msgid "Could not reach the VIN service. Enter what you know and try the lookup later."
+msgstr ""
+
+#: homeautoshop/assets/services.py:129
+msgid "The VIN service returned nothing for that VIN."
+msgstr ""
+
+#: homeautoshop/assets/services.py:183
+msgid "That VIN decoded thinly. This is normal for imported, pre-1981, or unusual vehicles — fill in the rest by hand."
+msgstr ""
+
+#: homeautoshop/assets/views.py:187 homeautoshop/core/tests_locales.py:203
+#: homeautoshop/core/views.py:624
+msgid "Meter reading"
+msgstr ""
+
+#: homeautoshop/assets/views.py:199 homeautoshop/diagnostics/models.py:54
+#: homeautoshop/mediafiles/models.py:37
+msgid "Photo"
+msgstr ""
+
+#: homeautoshop/assets/views.py:290 homeautoshop/inspections/views.py:147
+#: homeautoshop/parts/views.py:112 homeautoshop/people/views.py:54
+#, python-format
+msgid "Added %(name)s."
+msgstr ""
+
+#: homeautoshop/assets/views.py:335
+#, python-format
+msgid "Left your edits alone: %(fields)s."
+msgstr ""
+
+#: homeautoshop/assets/views.py:363
+msgid "Recorded, and flagged as lower than the previous reading."
+msgstr ""
+
+#: homeautoshop/assets/views.py:366
+msgid "Reading recorded."
+msgstr ""
+
+#: homeautoshop/assets/views.py:368
+msgid "Check the reading and try again."
+msgstr ""
+
+#: homeautoshop/assets/views.py:386 homeautoshop/work/views.py:381
+#, python-format
+msgid "Added %(n)d photo(s)."
+msgstr ""
+
+#: homeautoshop/assets/views.py:388
+msgid "Those photos were already on file."
+msgstr ""
+
+#: homeautoshop/assets/views.py:401
+msgid "Paste the full address of the manual page."
+msgstr ""
+
+#: homeautoshop/assets/views.py:413
+#, python-format
+msgid "Pinned %(provider)s for this vehicle."
+msgstr ""
+
+#: homeautoshop/assets/views.py:446
+msgid "Pick a person and a role."
+msgstr ""
+
+#: homeautoshop/assets/views.py:462
+#, python-format
+msgid "%(name)s is now on record."
+msgstr ""
+
+#: homeautoshop/assets/views.py:474
+msgid "Ownership ended. The history stays on the record."
+msgstr ""
+
+#: homeautoshop/assets/views.py:545 homeautoshop/assets/views.py:694
+msgid "A spec needs a group, a name and a value."
+msgstr ""
+
+#: homeautoshop/assets/views.py:562
+#, python-format
+msgid "%(name)s is already on the sheet under that group. Edit that one instead."
+msgstr ""
+
+#: homeautoshop/assets/views.py:568 homeautoshop/assets/views.py:651
+#: homeautoshop/assets/views.py:682
+#, python-format
+msgid "Updated %(name)s."
+msgstr ""
+
+#: homeautoshop/assets/views.py:637
+msgid "There is nothing recorded for that field."
+msgstr ""
+
+#: homeautoshop/assets/views.py:651
+#, python-format
+msgid "Added %(name)s to the spec sheet."
+msgstr ""
+
+#: homeautoshop/assets/views.py:689
+msgid "Saved, and marked sensitive — it stays out of reports and shared exports."
+msgstr ""
+
+#: homeautoshop/assets/views.py:751
+#, python-format
+msgid "Recorded %(n)d identifier(s) from the scan report."
+msgstr ""
+
+#: homeautoshop/assets/views.py:757
+msgid "Choose a scan-tool report to read."
+msgstr ""
+
+#: homeautoshop/assets/views.py:766 homeautoshop/diagnostics/views.py:128
+#, python-format
+msgid "That file could not be read as a scan report: %(detail)s"
+msgstr ""
+
+#: homeautoshop/assets/views.py:777 homeautoshop/diagnostics/views.py:120
+#, python-format
+msgid "That report is for VIN %(found)s, which is not this vehicle."
+msgstr ""
+
+#: homeautoshop/assets/views.py:786
+msgid "No module identifiers in that report — not every scan records them."
+msgstr ""
+
+#: homeautoshop/assets/views.py:836
+#, python-format
+msgid "Copied %(n)d spec(s) from %(name)s."
+msgstr ""
+
+#: homeautoshop/assets/views.py:884
+msgid "Recorded."
+msgstr ""
+
+#: homeautoshop/assets/views.py:960
+#, python-format
+msgid "The provider had no VIN for %(plate)s. The call still counted."
+msgstr ""
+
+#: homeautoshop/assets/views.py:1011
+#, python-format
+msgid "%(name)s is hidden for %(vehicle)s."
+msgstr ""
+
+#: homeautoshop/assets/views.py:1013
+#, python-format
+msgid "%(name)s is back."
+msgstr ""
+
+#: homeautoshop/assets/vin.py:103
+#, python-format
+msgid "A VIN is 17 characters; this one has %(n)d."
+msgstr ""
+
+#: homeautoshop/assets/vin.py:108
+msgid "Vehicles built before 1981 often have shorter VINs. Save it as-is if that is the case."
+msgstr ""
+
+#: homeautoshop/assets/vin.py:114
+#, python-format
+msgid "A VIN never contains %(chars)s — those are usually a mistyped 1 or 0."
+msgstr ""
+
+#: homeautoshop/assets/vin.py:120
+msgid "A VIN uses only letters and digits."
+msgstr ""
+
+#: homeautoshop/assets/vin.py:135
+#, python-format
+msgid "Check digit does not match (expected %(expected)s at position 9). Usually a typo — but imported and gray-market vehicles can fail this legitimately."
+msgstr "Check digit does not match (expected %(expected)s at position 9). Usually a typo — but imported and grey-market vehicles can fail this legitimately."
+
+#: homeautoshop/assets/vpic_fields.py:31 homeautoshop/core/reports.py:103
+#: templates/assets/detail.html:151
+msgid "Engine"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:33
+msgid "Horsepower"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:34
+msgid "Power (kW)"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:35
+msgid "Cylinders"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:36
+msgid "Configuration"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:37
+msgid "Displacement (cc)"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:38
+msgid "Engine made by"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:39
+msgid "Engine model"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:40
+msgid "Fuel injection"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:41
+msgid "Turbocharged"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:42
+msgid "Valvetrain"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:43
+msgid "Cooling"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:44
+msgid "Other engine notes"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:45
+msgid "Electrification"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:46
+msgid "Battery type"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:47
+msgid "Charger level"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:51
+msgid "Body and dimensions"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:53
+msgid "Vehicle type"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:54
+msgid "Series"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:55
+msgid "Series detail"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:56
+msgid "Cab type"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:57
+msgid "Bed type"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:58
+msgid "Bed length (in)"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:59
+msgid "Doors"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:60
+msgid "Seats"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:61
+msgid "Seat rows"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:62
+msgid "Gross weight rating"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:63
+msgid "Curb weight (lb)"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:64
+msgid "Wheelbase (in)"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:65
+msgid "Wheels"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:66
+msgid "Front wheel size"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:67
+msgid "Rear wheel size"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:68
+msgid "Track width"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:72
+msgid "Safety equipment"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:74
+msgid "Brake system"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:75
+msgid "Brake detail"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:76
+msgid "Anti-lock brakes"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:77
+msgid "Stability control"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:78
+msgid "Traction control"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:79
+msgid "Tire pressure monitoring"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:80
+msgid "Front airbags"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:81
+msgid "Side airbags"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:82
+msgid "Curtain airbags"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:83
+msgid "Knee airbags"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:84
+msgid "Seat belt type"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:85
+msgid "Blind spot monitoring"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:86
+msgid "Forward collision warning"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:87
+msgid "Lane departure warning"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:88
+msgid "Reversing camera"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:89
+msgid "Park assist"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:90
+msgid "Adaptive cruise"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:91
+msgid "Daytime running lights"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:92
+msgid "Keyless ignition"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:96
+msgid "Where it was built"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:98
+msgid "Manufacturer"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:99
+msgid "Plant"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:100
+msgid "Plant city"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:101
+msgid "Plant state"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:102
+msgid "Plant country"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:103
+msgid "NCSA make"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:104
+msgid "NCSA model"
+msgstr ""
+
+#: homeautoshop/assets/vpic_fields.py:105
+msgid "NCSA body type"
+msgstr ""
+
+#: homeautoshop/core/context.py:42
+msgid "Camera"
+msgstr ""
+
+#: homeautoshop/core/context.py:43 templates/assets/plate.html:66
+#: templates/assets/specs.html:34 templates/assets/specs_from_scan.html:50
+#: templates/diagnostics/map.html:79 templates/partials/_formactions.html:20
+msgid "Cancel"
+msgstr ""
+
+#: homeautoshop/core/context.py:44
+msgid "Starting the camera…"
+msgstr ""
+
+#: homeautoshop/core/context.py:45
+msgid "Hold the code in view."
+msgstr ""
+
+#: homeautoshop/core/context.py:46
+msgid "Camera access was refused. Allow it in the browser's site settings."
+msgstr ""
+
+#: homeautoshop/core/context.py:47
+msgid "No camera was available."
+msgstr ""
+
+#: homeautoshop/core/context.py:48
+msgid "That code is not one of this shop's labels."
+msgstr ""
+
+#: homeautoshop/core/context.py:50
+msgid "Scanning needs Chrome or Edge over HTTPS. Safari and Firefox cannot do it yet — type the value in instead."
+msgstr ""
+
+#: homeautoshop/core/context.py:58 templates/base.html:27
+msgid "Up to date"
+msgstr ""
+
+#: homeautoshop/core/context.py:59
+msgid "Offline"
+msgstr ""
+
+#: homeautoshop/core/context.py:60
+#, python-format
+msgid "%(n)s waiting to sync"
+msgstr ""
+
+#: homeautoshop/core/context.py:61
+#, python-format
+msgid "%(n)s need a decision"
+msgstr ""
+
+#: homeautoshop/core/context.py:62
+msgid "something has been waiting over two weeks"
+msgstr ""
+
+#: homeautoshop/core/costs.py:71 homeautoshop/core/costs.py:96
+#: homeautoshop/core/csvimport.py:80 homeautoshop/core/reports.py:133
+#: homeautoshop/core/search.py:195 templates/partials/_sections.html:20
+#: templates/parts/list.html:2 templates/parts/list.html:4
+#: templates/purchasing/order_import.html:64
+msgid "Parts"
+msgstr ""
+
+#: homeautoshop/core/costs.py:79 homeautoshop/core/costs.py:114
+msgid "Time (estimated)"
+msgstr ""
+
+#: homeautoshop/core/costs.py:156
+msgid "Not enough odometer history yet."
+msgstr ""
+
+#: homeautoshop/core/costs.py:158
+#, python-format
+msgid "%(distance)s %(unit)s between %(start)s and %(end)s"
+msgstr ""
+
+#: homeautoshop/core/csvimport.py:59
+msgid "Row"
+msgstr ""
+
+#: homeautoshop/core/csvimport.py:72 templates/assets/list.html:2
+#: templates/base.html:108 templates/partials/_sections.html:16
+#: templates/people/detail.html:7
+msgid "Vehicles"
+msgstr ""
+
+#: homeautoshop/core/csvimport.py:88 homeautoshop/core/reports.py:73
+#: homeautoshop/core/reports.py:126
+msgid "Service history"
+msgstr ""
+
+#: homeautoshop/core/csvimport.py:143
+#, python-format
+msgid "Say which column holds: %(fields)s"
+msgstr ""
+
+#: homeautoshop/core/csvimport.py:191
+msgid "no name and nothing to build one from"
+msgstr ""
+
+#: homeautoshop/core/csvimport.py:229
+msgid "no part name"
+msgstr ""
+
+#: homeautoshop/core/csvimport.py:258
+msgid "that date could not be read"
+msgstr ""
+
+#: homeautoshop/core/csvimport.py:264
+msgid "no vehicle matched — add a VIN, plate or name column"
+msgstr ""
+
+#: homeautoshop/core/csvimport.py:273
+msgid "Imported service"
+msgstr ""
+
+#: homeautoshop/core/integrations/importer.py:351
+msgid "Fuel (imported)"
+msgstr ""
+
+#: homeautoshop/core/integrations/importer.py:360
+#, python-format
+msgid "Imported %(kind)s"
+msgstr ""
+
+#: homeautoshop/core/integrations/importer.py:391
+msgid "Imported total"
+msgstr ""
+
+#: homeautoshop/core/integrations/importer.py:437
+msgid "Planned work"
+msgstr ""
+
+#: homeautoshop/core/integrations/lubelogger.py:239
+#: homeautoshop/core/integrations/wrenchledger.py:161
+#, python-format
+msgid "Could not reach %(url)s (%(err)s)."
+msgstr ""
+
+#: homeautoshop/core/integrations/lubelogger.py:257
+#, python-format
+msgid "This instance is returning locale-formatted numbers (%(sample)s). Importing would silently corrupt costs, so it is refused. Set LUBELOGGER_INVARIANT_API=true on the LubeLogger side."
+msgstr ""
+
+#: homeautoshop/core/integrations/lubelogger.py:265
+msgid "Reachable, authenticated, and returning invariant values."
+msgstr ""
+
+#: homeautoshop/core/integrations/sync.py:93
+msgid "Not due, or sync is not switched on."
+msgstr ""
+
+#: homeautoshop/core/integrations/sync.py:95
+msgid "LubeLogger is not set to sync."
+msgstr ""
+
+#: homeautoshop/core/integrations/sync.py:97
+#: homeautoshop/core/integrations/wrenchledger.py:283
+msgid "Offline Mode is on, so nothing is fetched."
+msgstr ""
+
+#: homeautoshop/core/integrations/wrenchledger.py:151
+msgid "The key works, but this WrenchLedger workspace's plan does not include API access. Nothing here needs fixing — the plan does."
+msgstr ""
+
+#: homeautoshop/core/integrations/wrenchledger.py:157
+msgid "WrenchLedger rejected that key. Check it was copied whole, and not expired."
+msgstr ""
+
+#: homeautoshop/core/integrations/wrenchledger.py:166
+msgid "WrenchLedger answered with something unexpected."
+msgstr ""
+
+#: homeautoshop/core/integrations/wrenchledger.py:194
+msgid "This workspace's plan does not include API access."
+msgstr ""
+
+#: homeautoshop/core/integrations/wrenchledger.py:201
+#, python-format
+msgid "That key is missing %(scopes)s, so availability cannot be read."
+msgstr ""
+
+#: homeautoshop/core/integrations/wrenchledger.py:325
+msgid "someone"
+msgstr ""
+
+#: homeautoshop/core/measurements.py:180
+msgid "miles"
+msgstr ""
+
+#: homeautoshop/core/measurements.py:181
+msgid "kilometres"
+msgstr ""
+
+#: homeautoshop/core/measurements.py:182
+#: homeautoshop/core/settings_registry.py:412
+#: homeautoshop/core/settings_registry.py:423
+#: homeautoshop/core/settings_registry.py:473
+#: templates/maintenance/schedule.html:47 templates/work/detail.html:400
+msgid "hours"
+msgstr ""
+
+#: homeautoshop/core/measurements.py:183
+msgid "cycles"
+msgstr ""
+
+#: homeautoshop/core/models.py:205
+#, python-format
+msgid "%(model)s is append-only; record a correction instead of editing."
+msgstr ""
+
+#: homeautoshop/core/models.py:215
+msgid "Created"
+msgstr ""
+
+#: homeautoshop/core/models.py:216
+msgid "Updated"
+msgstr ""
+
+#: homeautoshop/core/models.py:217 templates/core/trash.html:14
+msgid "Deleted"
+msgstr ""
+
+#: homeautoshop/core/models.py:218
+msgid "Restored"
+msgstr ""
+
+#: homeautoshop/core/models.py:219
+msgid "Signed in"
+msgstr ""
+
+#: homeautoshop/core/models.py:220
+msgid "Failed sign-in"
+msgstr ""
+
+#: homeautoshop/core/models.py:221
+msgid "Exported"
+msgstr ""
+
+#: homeautoshop/core/models.py:222
+msgid "Backed up"
+msgstr ""
+
+#: homeautoshop/core/models.py:223
+msgid "Outbound request"
+msgstr ""
+
+#: homeautoshop/core/models.py:253 homeautoshop/diagnostics/models.py:217
+#: homeautoshop/mediafiles/models.py:44
+msgid "Pending"
+msgstr ""
+
+#: homeautoshop/core/models.py:254
+msgid "Running"
+msgstr ""
+
+#: homeautoshop/core/models.py:256 homeautoshop/maintenance/models.py:258
+#: homeautoshop/mediafiles/models.py:46
+msgid "Failed"
+msgstr ""
+
+#: homeautoshop/core/models.py:326
+msgid "Credential"
+msgstr ""
+
+#: homeautoshop/core/models.py:327
+msgid "Credentials"
+msgstr ""
+
+#: homeautoshop/core/models.py:342
+msgid "Linked"
+msgstr ""
+
+#: homeautoshop/core/models.py:343
+msgid "Gone from the source"
+msgstr ""
+
+#: homeautoshop/core/models.py:344 templates/core/lubelogger.html:153
+msgid "Changed on both sides"
+msgstr ""
+
+#: homeautoshop/core/models.py:399
+msgid "Webhook"
+msgstr ""
+
+#: homeautoshop/core/models.py:400
+msgid "Phone notification"
+msgstr ""
+
+#: homeautoshop/core/models.py:405
+msgid "Email address, or the URL to POST to."
+msgstr ""
+
+#: homeautoshop/core/models.py:418
+msgid "Leave blank for a shop-wide channel."
+msgstr ""
+
+#: homeautoshop/core/models.py:422
+msgid "Include routine items, not just safety and overdue."
+msgstr ""
+
+#: homeautoshop/core/models.py:444
+msgid "this browser"
+msgstr ""
+
+#: homeautoshop/core/money.py:36
+msgid "Minor units (e.g. cents). Never a float."
+msgstr ""
+
+#: homeautoshop/core/moneyform.py:43 homeautoshop/core/moneyform.py:61
+msgid "Enter an amount, like 12.34."
+msgstr ""
+
+#: homeautoshop/core/notifications.py:66
+#, python-format
+msgid "%(shop)s: %(n)d item(s) need attention"
+msgstr ""
+
+#: homeautoshop/core/notifications.py:69
+#, python-format
+msgid "%(shop)s: %(n)d reminder(s)"
+msgstr ""
+
+#: homeautoshop/core/notifications.py:82
+#, python-format
+msgid "Open the shop: %(url)s"
+msgstr ""
+
+#: homeautoshop/core/notifications.py:139
+#, python-format
+msgid "%(name)s registration"
+msgstr ""
+
+#: homeautoshop/core/notifications.py:140
+#, python-format
+msgid "Expired %(d)s"
+msgstr ""
+
+#: homeautoshop/core/notifications.py:142
+#, python-format
+msgid "Expires %(d)s"
+msgstr ""
+
+#: homeautoshop/core/notifications.py:154
+#, python-format
+msgid "Return window closing: %(v)s"
+msgstr ""
+
+#: homeautoshop/core/notifications.py:155
+#, python-format
+msgid "Returnable until %(d)s"
+msgstr ""
+
+#: homeautoshop/core/notifications.py:166
+msgid "Backups"
+msgstr ""
+
+#: homeautoshop/core/notifications.py:167 homeautoshop/core/views.py:234
+msgid "No backup has ever run."
+msgstr ""
+
+#: homeautoshop/core/notifications.py:169 homeautoshop/core/views.py:242
+#, python-format
+msgid "Last backup was %(n)d days ago."
+msgstr ""
+
+#: homeautoshop/core/notifications.py:285
+msgid "Something is due"
+msgstr ""
+
+#: homeautoshop/core/notifications.py:294
+#, python-format
+msgid "%(n)d item needs attention."
+msgid_plural "%(n)d items need attention."
+msgstr[0] ""
+msgstr[1] ""
+
+#: homeautoshop/core/outbound.py:85 homeautoshop/core/outbound.py:168
+msgid "Only http and https are permitted."
+msgstr ""
+
+#: homeautoshop/core/outbound.py:89
+msgid "Offline Mode is on, so no outbound requests are made. Enter the details by hand."
+msgstr ""
+
+#: homeautoshop/core/outbound.py:94 homeautoshop/core/outbound.py:173
+#, python-format
+msgid "%(host)s is not on the outbound allowlist."
+msgstr ""
+
+#: homeautoshop/core/outbound.py:107
+#, python-format
+msgid "Redirect refused (%(url)s)."
+msgstr ""
+
+#: homeautoshop/core/outbound.py:143
+msgid "Empty response."
+msgstr ""
+
+#: homeautoshop/core/outbound.py:170
+msgid "Offline Mode is on, so no outbound requests are made."
+msgstr ""
+
+#: homeautoshop/core/reports.py:97 templates/diagnostics/session.html:37
+msgid "Field"
+msgstr ""
+
+#: homeautoshop/core/reports.py:97 homeautoshop/core/reports.py:198
+#: templates/diagnostics/session.html:37 templates/diagnostics/session.html:132
+#: templates/parts/inventory.html:13
+msgid "Value"
+msgstr ""
+
+#: homeautoshop/core/reports.py:99 templates/assets/detail.html:136
+#: templates/assets/plate.html:81
+msgid "VIN"
+msgstr ""
+
+#: homeautoshop/core/reports.py:101 templates/assets/detail.html:149
+#: templates/assets/plate.html:39
+msgid "Plate"
+msgstr ""
+
+#: homeautoshop/core/reports.py:105 homeautoshop/diagnostics/dtc.py:51
+#: homeautoshop/diagnostics/dtc.py:52 homeautoshop/diagnostics/dtc.py:53
+msgid "Transmission"
+msgstr ""
+
+#: homeautoshop/core/reports.py:108 homeautoshop/core/reports.py:133
+#: templates/assets/detail.html:109
+msgid "Meter"
+msgstr ""
+
+#: homeautoshop/core/reports.py:109 homeautoshop/core/reports.py:169
+#: homeautoshop/core/reports.py:178 templates/inspections/detail.html:108
+#: templates/maintenance/schedule.html:19 templates/work/detail.html:426
+msgid "Status"
+msgstr ""
+
+#: homeautoshop/core/reports.py:116
+msgid "Ownership"
+msgstr ""
+
+#: homeautoshop/core/reports.py:117 templates/assets/detail.html:224
+msgid "Person"
+msgstr ""
+
+#: homeautoshop/core/reports.py:117
+msgid "From"
+msgstr ""
+
+#: homeautoshop/core/reports.py:117
+msgid "To"
+msgstr ""
+
+#: homeautoshop/core/reports.py:121
+msgid "present"
+msgstr ""
+
+#: homeautoshop/core/reports.py:133 homeautoshop/core/reports.py:156
+msgid "Date"
+msgstr ""
+
+#: homeautoshop/core/reports.py:133 templates/partials/_sections.html:17
+msgid "Work"
+msgstr ""
+
+#: homeautoshop/core/reports.py:150
+msgid "No completed work recorded."
+msgstr ""
+
+#: homeautoshop/core/reports.py:155 homeautoshop/core/settings_registry.py:277
+#: templates/assets/detail.html:56 templates/inspections/list.html:2
+#: templates/inspections/list.html:4
+msgid "Inspections"
+msgstr ""
+
+#: homeautoshop/core/reports.py:156 homeautoshop/purchasing/models.py:240
+#: homeautoshop/work/models.py:31
+msgid "Inspection"
+msgstr ""
+
+#: homeautoshop/core/reports.py:156
+msgid "Outcome"
+msgstr ""
+
+#: homeautoshop/core/reports.py:156
+msgid "Flagged"
+msgstr ""
+
+#: homeautoshop/core/reports.py:168
+msgid "Due or overdue at time of printing"
+msgstr ""
+
+#: homeautoshop/core/reports.py:169 homeautoshop/core/reports.py:198
+#: templates/maintenance/schedule.html:18 templates/purchasing/detail.html:36
+msgid "Item"
+msgstr ""
+
+#: homeautoshop/core/reports.py:169
+msgid "Next due"
+msgstr ""
+
+#: homeautoshop/core/reports.py:177
+msgid "Recall campaigns not marked complete"
+msgstr ""
+
+#: homeautoshop/core/reports.py:178
+msgid "Campaign"
+msgstr ""
+
+#: homeautoshop/core/reports.py:178
+msgid "Component"
+msgstr ""
+
+#: homeautoshop/core/reports.py:187
+msgid "Campaigns are listed by year, make and model. Whether each applies to this VIN must be confirmed with the manufacturer."
+msgstr ""
+
+#: homeautoshop/core/reports.py:197 templates/assets/specs.html:5
+msgid "Reference specifications"
+msgstr ""
+
+#: homeautoshop/core/reports.py:198
+msgid "Group"
+msgstr ""
+
+#: homeautoshop/core/reports.py:207
+msgid "Cost of ownership recorded here"
+msgstr ""
+
+#: homeautoshop/core/reports.py:208
+msgid "Category"
+msgstr ""
+
+#: homeautoshop/core/reports.py:208 homeautoshop/purchasing/views.py:66
+msgid "Amount"
+msgstr ""
+
+#: homeautoshop/core/reports.py:211 templates/core/asset_costs.html:19
+#: templates/purchasing/detail.html:16 templates/purchasing/detail.html:100
+msgid "Total"
+msgstr ""
+
+#: homeautoshop/core/reports.py:219
+#, python-format
+msgid "Produced by %(shop)s on %(date)s. This document lists what was recorded; gaps in it are gaps in the record, not assertions that nothing happened."
+msgstr ""
+
+#: homeautoshop/core/runtime.py:268 templates/core/integrations.html:110
+msgid "Plate lookup"
+msgstr ""
+
+#: homeautoshop/core/runtime.py:269 homeautoshop/core/settings_registry.py:70
+msgid "Outgoing email"
+msgstr ""
+
+#: homeautoshop/core/search.py:173 templates/assets/list.html:5
+msgid "Vehicles & equipment"
+msgstr ""
+
+#: homeautoshop/core/search.py:184 homeautoshop/core/tests_locales.py:194
+#: templates/assets/detail.html:45 templates/work/list.html:2
+#: templates/work/list.html:4
+msgid "Work orders"
+msgstr ""
+
+#: homeautoshop/core/search.py:209 templates/partials/_sections.html:24
+#: templates/people/list.html:3
+msgid "People"
+msgstr ""
+
+#: homeautoshop/core/search.py:220
+msgid "Notes"
+msgstr ""
+
+#: homeautoshop/core/search.py:230
+msgid "Documents"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:54
+msgid "Shop"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:54
+msgid "Naming, locale and the units everything is shown in."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:55 templates/assets/detail.html:17
+#: templates/core/asset_costs.html:2
+msgid "Costs"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:55
+msgid "What counts toward what a vehicle has cost you."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:58 homeautoshop/work/models.py:27
+msgid "Maintenance"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:59
+msgid "How far ahead something counts as due, and whether you are told about it."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:61
+msgid "Photos and documents"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:61
+msgid "Uploads, privacy, and text recognition."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:64
+msgid "Outbound requests"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:65
+msgid "Everything this instance may ask the internet, and the switch that stops all of it."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:67 templates/base.html:54
+#: templates/core/integrations.html:2 templates/core/integrations.html:5
+msgid "Integrations"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:67
+msgid "Other systems this shop talks to."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:71
+msgid "Only used to deliver reminders. Leave the server blank and no email is sent."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:73 templates/base.html:50
+#: templates/core/backups.html:2 templates/core/backups.html:5
+#: templates/core/backups.html:57 templates/core/health.html:34
+#: templates/core/settings.html:24
+msgid "Backup"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:73
+msgid "How often, how many are kept, and when to warn you."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:118
+msgid "Enter a full address, starting with http:// or https://."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:123
+msgid "Use a three-letter ISO 4217 code, such as USD."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:133
+#, python-format
+msgid "%(value)s is not a known timezone. Use a name like America/Chicago."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:161
+msgid "Tesseract language codes are three letters, such as eng or fra."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:165
+msgid "Imperial — miles, gallons, °F"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:165
+msgid "Metric — kilometres, litres, °C"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:168
+msgid "Off"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:169
+msgid "One-time import only"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:170
+msgid "Pull changes on a schedule"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:171
+msgid "Pull changes, and push odometer readings back"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:175
+msgid "Here — HomeAutoShop tracks the oil and the shop rags"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:176
+msgid "Split — each system tracks what it stocks"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:177
+msgid "WrenchLedger — it owns consumables, this shop only uses them"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:191
+msgid "Shop name"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:192
+msgid "Shown in the header, on reports, and in reminder emails."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:196
+msgid "Default language"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:197
+msgid "Each person can still choose their own; this is what a new account starts with."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:208
+msgid "Timezone"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:209
+msgid "What times are displayed in. They are stored in UTC either way."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:216
+msgid "Units"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:217
+msgid "What distances and volumes are shown in. Each person can override it."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:222
+msgid "Reporting currency"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:224
+msgid "Totals across vehicles are shown in this. Individual purchases keep the currency they were made in and the rate at the time."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:233
+msgid "Count tools toward vehicle cost"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:234
+msgid "Off by default: a torque wrench you keep is not a cost of the car you bought it for."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:238
+msgid "Value your own time at"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:239
+msgid "Per hour. Zero hides labor value entirely."
+msgstr "Per hour. Zero hides labour value entirely."
+
+#: homeautoshop/core/settings_registry.py:246
+msgid "Call something due this many days ahead"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:247
+#: homeautoshop/core/settings_registry.py:272
+#: homeautoshop/core/settings_registry.py:493
+msgid "days"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:251
+msgid "…or this far ahead on the odometer"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:252
+msgid "miles or kilometres, matching your units"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:256
+msgid "Assume this much driving per day"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:257
+msgid "Only used for a vehicle with too little history to work out its own rate."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:258
+msgid "miles or kilometres per day"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:262
+msgid "Send reminders"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:264
+msgid "A channel must also be created and enabled. Nothing is ever sent when there is nothing to say — there is no all-clear message."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:270
+msgid "Do not repeat the same reminder for"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:271
+msgid "Daily nagging about something you have decided to live with is how reminders get muted."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:278
+msgid "The walk-around checklist and its photo evidence."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:283
+msgid "Largest file that may be uploaded"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:285
+msgid "MB"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:289
+msgid "Remove location data from photos"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:290
+msgid "A photo of a car on the driveway carries the home address in it."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:294
+msgid "Read text out of documents and receipts"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:296
+msgid "Runs on this machine — nothing is sent anywhere. Turning it off leaves files waiting rather than failed, so switching it back on catches them up."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:302
+msgid "Languages to read"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:304
+msgid "Tesseract codes such as eng fra spa. A language must also be installed in the image — set TESSERACT_LANGS and rebuild. The health page shows which are present."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:313
+msgid "Read at most this many pages of a scanned PDF"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:314
+msgid "A receipt is one page; a service manual is hundreds, and reading all of them helps nobody."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:315
+msgid "pages"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:321
+msgid "Offline Mode"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:323
+msgid "Stops every outbound request at once, whatever else is switched on. Everything in this application keeps working; the parts that ask the internet say so and let you type the answer in."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:330
+msgid "Decode VINs"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:331
+msgid "Asks the NHTSA vPIC database what a VIN means. Free, public, and no key needed."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:335
+msgid "Check for recalls"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:336
+msgid "Asks NHTSA whether a vehicle has open safety campaigns."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:340
+msgid "Service manual links"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:341
+msgid "Links out to a manual library. Nothing is fetched or crawled — these are links."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:345
+msgid "Preferred manual library"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:351
+msgid "Show suggested-product links"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:352
+msgid "Turning this off removes them entirely rather than hiding them."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:356
+msgid "Look up a VIN from a license plate"
+msgstr "Look up a VIN from a licence plate"
+
+#: homeautoshop/core/settings_registry.py:358
+msgid "Off deliberately. There is no free, legal plate-to-VIN service, so every lookup costs money and sends a plate off this machine."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:364
+msgid "Plate lookup address"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:365
+#, python-brace-format
+msgid "Your provider's endpoint. {plate} and {region} are filled in where they appear."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:371
+msgid "Plate lookup key"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:372
+msgid "Sent as a bearer token."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:377
+msgid "Stop after this many lookups a month"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:378
+msgid "Zero means no cap — the difference between a mistake costing a dollar and a month's budget."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:379
+msgid "lookups"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:384
+msgid "What one lookup costs you"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:385
+msgid "Your own estimate, shown before each lookup. No provider publishes a price list."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:392
+msgid "LubeLogger address"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:393
+msgid "Leave blank to disable. A LAN address is fine; it is allowed through automatically."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:399
+msgid "LubeLogger API key"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:400
+msgid "Only if your instance requires one. Viewer scope is enough to pull."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:405
+msgid "What to do with LubeLogger"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:411
+msgid "Pull from LubeLogger every"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:417
+msgid "WrenchLedger API key"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:418
+msgid "Blank disables the integration. Read scopes are enough."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:422
+msgid "Pull tool availability every"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:427
+msgid "Who owns shop consumables"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:428
+msgid "So a quart of oil is not counted in both systems."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:437
+msgid "SMTP server"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:438
+msgid "Blank turns email delivery off. Other reminder channels are unaffected."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:443
+msgid "Port"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:455
+msgid "Stored encrypted, never shown back, and excluded from backups and exports."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:460
+msgid "Use STARTTLS"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:465
+msgid "Send from"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:472
+msgid "Back up every"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:477
+msgid "Keep this many daily backups"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:482
+msgid "…and this many weekly"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:487
+msgid "…and this many monthly"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:492
+msgid "Warn when the last backup is older than"
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:527
+#, python-format
+msgid "The smallest value allowed is %(n)s."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:531
+#, python-format
+msgid "The largest value allowed is %(n)s."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:551
+msgid "Enter a whole number."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:575
+#, python-format
+msgid "Choose one of: %(options)s."
+msgstr ""
+
+#: homeautoshop/core/settings_registry.py:578
+#, python-format
+msgid "%(value)s is not one of the choices offered."
+msgstr ""
+
+#: homeautoshop/core/tests_locales.py:191 templates/purchasing/detail.html:73
+msgid "Not cataloged"
+msgstr "Not catalogued"
+
+#: homeautoshop/core/tests_locales.py:209
+#: homeautoshop/core/tests_locales.py:214 templates/core/labels.html:20
+#, python-format
+msgid "%(counter)s vehicle"
+msgid_plural "%(counter)s vehicles"
+msgstr[0] ""
+msgstr[1] ""
+
+#: homeautoshop/core/views.py:82
+msgid "The connection check failed, so nothing was imported."
+msgstr ""
+
+#: homeautoshop/core/views.py:94
+#, python-format
+msgid "Dry run — nothing was written. %(n)d record(s) would be created."
+msgstr ""
+
+#: homeautoshop/core/views.py:100
+#, python-format
+msgid "Imported %(n)d record(s)."
+msgstr ""
+
+#: homeautoshop/core/views.py:110
+#, python-format
+msgid "The import stopped: %(detail)s"
+msgstr ""
+
+#: homeautoshop/core/views.py:160
+msgid "Nothing to link."
+msgstr ""
+
+#: homeautoshop/core/views.py:176
+msgid "Link removed."
+msgstr ""
+
+#: homeautoshop/core/views.py:176
+msgid "That vehicle was not linked."
+msgstr ""
+
+#: homeautoshop/core/views.py:182
+msgid "That vehicle is not here any more."
+msgstr ""
+
+#: homeautoshop/core/views.py:198
+#, python-format
+msgid "%(name)s is already linked to another LubeLogger vehicle. Unlink that one first."
+msgstr ""
+
+#: homeautoshop/core/views.py:212
+#, python-format
+msgid "Linked to %(name)s. Run the dry run again to see what it brings in."
+msgstr ""
+
+#: homeautoshop/core/views.py:491
+msgid "This device can be notified. Nothing is sent until you say so."
+msgstr ""
+
+#: homeautoshop/core/views.py:492
+msgid "This device will be notified when something is due."
+msgstr ""
+
+#: homeautoshop/core/views.py:494
+msgid "This browser cannot do notifications, or the page is not on HTTPS."
+msgstr ""
+
+#: homeautoshop/core/views.py:496
+msgid "Push is not available on this instance."
+msgstr ""
+
+#: homeautoshop/core/views.py:498
+msgid "Notifications are blocked for this site. Allow them in the browser's site settings — asking again from here will not work."
+msgstr ""
+
+#: homeautoshop/core/views.py:501
+msgid "Not enabled. You can come back to this."
+msgstr ""
+
+#: homeautoshop/core/views.py:502
+msgid "The browser would not subscribe. Try again."
+msgstr ""
+
+#: homeautoshop/core/views.py:549
+msgid "Channel removed."
+msgstr ""
+
+#: homeautoshop/core/views.py:554
+msgid "Enabled."
+msgstr ""
+
+#: homeautoshop/core/views.py:554
+msgid "Disabled."
+msgstr ""
+
+#: homeautoshop/core/views.py:563
+#, python-format
+msgid "Test message from %(shop)s"
+msgstr ""
+
+#: homeautoshop/core/views.py:564
+msgid "If you are reading this, delivery works."
+msgstr ""
+
+#: homeautoshop/core/views.py:569
+msgid "Test sent."
+msgstr ""
+
+#: homeautoshop/core/views.py:573
+#, python-format
+msgid "Test failed: %(err)s"
+msgstr ""
+
+#: homeautoshop/core/views.py:573
+msgid "unknown"
+msgstr ""
+
+#: homeautoshop/core/views.py:625
+msgid "Note on a work order"
+msgstr ""
+
+#: homeautoshop/core/views.py:626
+msgid "Job item status"
+msgstr ""
+
+#: homeautoshop/core/views.py:627
+msgid "Work order status"
+msgstr ""
+
+#: homeautoshop/core/views.py:629
+msgid "today"
+msgstr ""
+
+#: homeautoshop/core/views.py:630
+#, python-format
+msgid "%(n)s days ago"
+msgstr ""
+
+#: homeautoshop/core/views.py:631
+msgid "Nothing waiting. Everything captured here has been sent."
+msgstr ""
+
+#: homeautoshop/core/views.py:632 templates/core/lubelogger.html:109
+#: templates/core/sync_queue.html:26
+msgid "None."
+msgstr ""
+
+#: homeautoshop/core/views.py:633
+msgid "Somebody changed this record while you were offline."
+msgstr ""
+
+#: homeautoshop/core/views.py:634
+msgid "The server would not accept this."
+msgstr ""
+
+#: homeautoshop/core/views.py:635
+msgid "Use mine"
+msgstr ""
+
+#: homeautoshop/core/views.py:636
+msgid "Keep theirs"
+msgstr ""
+
+#: homeautoshop/core/views.py:637
+msgid "Discard"
+msgstr ""
+
+#: homeautoshop/core/views.py:638
+msgid "Throw this away? It has not been sent anywhere."
+msgstr ""
+
+#: homeautoshop/core/views.py:640
+msgid "This replaces the version on the server with yours. Their change is lost."
+msgstr ""
+
+#: homeautoshop/core/views.py:688
+msgid "This browser"
+msgstr ""
+
+#: homeautoshop/core/views.py:738
+msgid "That label points at something that is no longer here. It may have been deleted."
+msgstr ""
+
+#: homeautoshop/core/views.py:761
+msgid "Vehicle tags"
+msgstr ""
+
+#: homeautoshop/core/views.py:763
+msgid "Stick one inside the door jamb or on the windshield. Scanning it opens the vehicle, which is the fastest way to log an odometer reading."
+msgstr ""
+
+#: homeautoshop/core/views.py:769
+msgid "Bin labels"
+msgstr ""
+
+#: homeautoshop/core/views.py:770
+msgid "Scanning one opens what is stored in it."
+msgstr ""
+
+#: homeautoshop/core/views_integrations.py:88
+msgid "Offline Mode is on, so nothing was contacted."
+msgstr ""
+
+#: homeautoshop/core/views_integrations.py:96
+msgid "No WrenchLedger key is set."
+msgstr ""
+
+#: homeautoshop/core/views_integrations.py:100
+#, python-format
+msgid "Connected to a %(tier)s workspace."
+msgstr ""
+
+#: homeautoshop/core/views_integrations.py:100
+msgid "linked"
+msgstr ""
+
+#: homeautoshop/core/views_integrations.py:105
+#, python-format
+msgid "%(note)s That key carries more access than this needs: %(extra)s. A narrower key would be safer."
+msgstr ""
+
+#: homeautoshop/core/views_integrations.py:110
+#: homeautoshop/core/views_integrations.py:127
+msgid "Could not use that connection."
+msgstr ""
+
+#: homeautoshop/core/views_integrations.py:119
+msgid "No LubeLogger URL is set."
+msgstr ""
+
+#: homeautoshop/core/views_integrations.py:124
+#, python-format
+msgid "Reached LubeLogger — %(n)d vehicle(s)."
+msgstr ""
+
+#: homeautoshop/core/views_integrations.py:130
+#: homeautoshop/core/views_integrations.py:169
+msgid "There is no integration by that name."
+msgstr ""
+
+#: homeautoshop/core/views_integrations.py:148
+#: homeautoshop/core/views_integrations.py:162
+#, python-format
+msgid "Sync failed: %(err)s"
+msgstr ""
+
+#: homeautoshop/core/views_integrations.py:152
+#, python-format
+msgid "Pulled %(n)d record(s) since %(since)s."
+msgstr ""
+
+#: homeautoshop/core/views_integrations.py:165
+#, python-format
+msgid "Checked %(n)d tool(s)."
+msgstr ""
+
+#: homeautoshop/core/views_integrations.py:184
+msgid "That will not come back."
+msgstr ""
+
+#: homeautoshop/core/views_integrations.py:226
+msgid "No column headings were found in that file."
+msgstr ""
+
+#: homeautoshop/core/views_integrations.py:231
+#, python-format
+msgid "That file has %(n)d rows; the first %(cap)d are being imported. Split it and run it again for the rest."
+msgstr ""
+
+#: homeautoshop/core/views_integrations.py:247
+msgid "Choose a file first."
+msgstr ""
+
+#: homeautoshop/core/views_integrations.py:277
+#, python-format
+msgid "Imported %(n)d record(s). %(already)d were already here."
+msgstr ""
+
+#: homeautoshop/core/views_settings.py:130
+msgid "Nothing was different, so nothing was saved."
+msgstr ""
+
+#: homeautoshop/core/views_settings.py:134
+msgid "Saved. Some of these need a restart before they take effect."
+msgstr ""
+
+#: homeautoshop/core/views_settings.py:137
+msgid "Saved, and in effect now."
+msgstr ""
+
+#: homeautoshop/core/views_settings.py:167
+msgid "Reloading. Finish this page and the next request will use the new settings."
+msgstr ""
+
+#: homeautoshop/core/views_settings.py:173
+msgid "This instance cannot restart itself — gunicorn was started without a pidfile, or this is the development server. Restart it from the host: docker compose restart app worker"
+msgstr ""
+
+#: homeautoshop/core/views_settings.py:301
+msgid "One is already running. This page will show it when it lands."
+msgstr ""
+
+#: homeautoshop/core/views_settings.py:307
+msgid "Started. It runs in the background — this page shows it when it finishes."
+msgstr ""
+
+#: homeautoshop/core/views_settings.py:309
+msgid "Building the export. It appears below when it is ready."
+msgstr ""
+
+#: homeautoshop/core/views_settings.py:335
+#, python-format
+msgid "%(name)s is not here any more."
+msgstr ""
+
+#: homeautoshop/core/views_settings.py:344
+msgid "That backup has no database file in it."
+msgstr ""
+
+#: homeautoshop/core/views_settings.py:352
+#, python-format
+msgid "Downloaded %(name)s"
+msgstr ""
+
+#: homeautoshop/core/views_settings.py:367
+#, python-format
+msgid "%(name)s was already gone."
+msgstr ""
+
+#: homeautoshop/core/views_settings.py:386
+#, python-format
+msgid "%(name)s could not be deleted: %(why)s"
+msgstr ""
+
+#: homeautoshop/core/views_settings.py:387
+msgid "something still has it open"
+msgstr ""
+
+#: homeautoshop/core/views_settings.py:390
+#, python-format
+msgid "Deleted %(name)s."
+msgstr ""
+
+#: homeautoshop/core/views_setup.py:86
+msgid "What you will sign in with. Changeable later."
+msgstr ""
+
+#: homeautoshop/core/views_setup.py:89
+msgid "Your name"
+msgstr ""
+
+#: homeautoshop/core/views_setup.py:92
+msgid "Shown on work you record. Optional."
+msgstr ""
+
+#: homeautoshop/core/views_setup.py:97
+msgid "Only used for password reset, and only if you set up mail."
+msgstr ""
+
+#: homeautoshop/core/views_setup.py:101
+msgid "Install the starter data"
+msgstr ""
+
+#: homeautoshop/core/views_setup.py:105
+msgid "Maintenance schedules, inspection templates, scan-tool profiles and manual libraries. Nothing about your vehicles — you add those."
+msgstr ""
+
+#: homeautoshop/core/views_setup.py:174
+msgid "Your shop is set up. This is yours now."
+msgstr ""
+
+#: homeautoshop/core/views_setup.py:179
+msgid "The language and timezone need a restart before they take effect: docker compose restart app worker"
+msgstr ""
+
+#: homeautoshop/core/views_setup.py:246
+msgid "Nothing to install"
+msgstr ""
+
+#: homeautoshop/core/views_setup.py:248
+msgid "This instance has a certificate from a public authority, so any browser and any phone will trust it already."
+msgstr ""
+
+#: homeautoshop/core/views_setup.py:255
+msgid "Your own certificate"
+msgstr ""
+
+#: homeautoshop/core/views_setup.py:257
+msgid "You supplied the certificate, so whether a device trusts it depends on who issued it. If you issued it yourself, each device needs your root installed."
+msgstr ""
+
+#: homeautoshop/core/views_setup.py:264
+msgid "Each device needs the root certificate"
+msgstr ""
+
+#: homeautoshop/core/views_setup.py:266
+msgid "The certificate was issued by this instance itself, so every browser will refuse it until the root is installed — including the phone you will use in the garage. Install it once per device."
+msgstr ""
+
+#: homeautoshop/core/webpush.py:121
+msgid "Offline Mode is on, so nothing is pushed."
+msgstr ""
+
+#: homeautoshop/core/webpush.py:126
+msgid "That device has not subscribed."
+msgstr ""
+
+#: homeautoshop/core/webpush.py:129
+#, python-format
+msgid "%(host)s is not a push service this build will talk to."
+msgstr ""
+
+#: homeautoshop/core/webpush.py:136
+msgid "Web push support is not installed."
+msgstr ""
+
+#: homeautoshop/core/webpush.py:159 homeautoshop/core/webpush.py:161
+msgid "That device unsubscribed."
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:35
+msgid "Powertrain"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:36
+msgid "Body"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:37
+msgid "Chassis"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:38
+msgid "Network"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:44 homeautoshop/diagnostics/dtc.py:45
+msgid "Fuel and air metering"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:46
+msgid "Fuel and air metering — injector circuit"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:47
+msgid "Ignition system or misfire"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:48
+msgid "Auxiliary emission controls"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:49
+msgid "Vehicle speed, idle control, auxiliary inputs"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:50
+msgid "Computer output circuit"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:54 homeautoshop/diagnostics/dtc.py:55
+#: homeautoshop/diagnostics/dtc.py:56
+msgid "Hybrid propulsion"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:65
+msgid "Camshaft position — timing over-advanced (bank 1)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:66
+msgid "Camshaft position — timing over-advanced (bank 1 exhaust)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:67
+msgid "Crankshaft / camshaft position correlation (bank 1 sensor A)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:68
+msgid "Crankshaft / camshaft position correlation (bank 1 sensor B)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:69
+msgid "Camshaft position — timing over-advanced (bank 2)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:70
+msgid "Fuel rail / system pressure too low"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:71
+msgid "Fuel rail / system pressure too high"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:72
+msgid "Intake air temperature sensor 2 — range or performance"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:73
+msgid "Mass or volume air flow — range or performance"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:74
+msgid "Mass or volume air flow — circuit low"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:75
+msgid "Mass or volume air flow — circuit high"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:76
+msgid "Manifold absolute pressure — range or performance"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:77
+msgid "Manifold absolute pressure — circuit low"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:78
+msgid "Manifold absolute pressure — circuit high"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:79
+msgid "Intake air temperature — range or performance"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:80
+msgid "Intake air temperature — circuit low"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:81
+msgid "Intake air temperature — circuit high"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:82
+msgid "Engine coolant temperature — range or performance"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:83
+msgid "Engine coolant temperature — circuit low"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:84
+msgid "Engine coolant temperature — circuit high"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:85
+msgid "Throttle position sensor A — range or performance"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:86
+msgid "Throttle position sensor A — circuit low"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:87
+msgid "Throttle position sensor A — circuit high"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:88
+msgid "Coolant temperature insufficient for closed-loop fuel control"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:89
+msgid "Coolant thermostat below regulating temperature"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:90
+msgid "Oxygen sensor circuit (bank 1 sensor 1)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:91
+msgid "Oxygen sensor circuit low (bank 1 sensor 1)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:92
+msgid "Oxygen sensor circuit high (bank 1 sensor 1)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:93
+msgid "Oxygen sensor slow response (bank 1 sensor 1)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:94
+msgid "Oxygen sensor — no activity detected (bank 1 sensor 1)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:95
+msgid "Oxygen sensor heater circuit (bank 1 sensor 1)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:96
+msgid "Oxygen sensor circuit (bank 1 sensor 2)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:97
+msgid "Oxygen sensor circuit low (bank 1 sensor 2)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:98
+msgid "Oxygen sensor circuit high (bank 1 sensor 2)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:99
+msgid "Oxygen sensor slow response (bank 1 sensor 2)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:100
+msgid "Oxygen sensor — no activity detected (bank 1 sensor 2)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:101
+msgid "Oxygen sensor heater circuit (bank 1 sensor 2)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:102
+msgid "System too lean (bank 1)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:103
+msgid "System too rich (bank 1)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:104
+msgid "System too lean (bank 2)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:105
+msgid "System too rich (bank 2)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:106
+msgid "Fuel temperature sensor A — circuit low"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:107
+msgid "Fuel rail pressure sensor circuit"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:109
+msgid "Random or multiple cylinder misfire detected"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:110
+msgid "Crankshaft position — variation not learned"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:111
+msgid "Misfire detected on startup"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:113
+msgid "Knock sensor 1 circuit (bank 1)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:114
+msgid "Knock sensor 1 circuit low (bank 1)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:115
+msgid "Knock sensor 1 circuit high (bank 1)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:116
+msgid "Crankshaft position sensor A circuit"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:117
+msgid "Crankshaft position sensor A — range or performance"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:118
+msgid "Camshaft position sensor A circuit (bank 1)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:119
+msgid "Camshaft position sensor A — range or performance (bank 1)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:120
+msgid "Exhaust gas recirculation flow insufficient"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:121
+msgid "Exhaust gas recirculation flow excessive"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:122
+msgid "Exhaust gas recirculation control circuit"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:123
+msgid "Exhaust gas recirculation — range or performance"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:124
+msgid "Secondary air injection — incorrect flow"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:125
+msgid "Catalyst system efficiency below threshold (bank 1)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:126
+msgid "Catalyst system efficiency below threshold (bank 2)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:127
+msgid "Evaporative emission system"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:128
+msgid "Evaporative emission system — incorrect purge flow"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:129
+msgid "Evaporative emission system — small leak detected"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:130
+msgid "Evaporative emission purge control valve circuit"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:131
+msgid "Evaporative emission vent control circuit"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:132
+msgid "Evaporative emission vent valve circuit"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:133
+msgid "Evaporative emission pressure sensor — range or performance"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:134
+msgid "Evaporative emission system — large leak detected"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:135
+msgid "Evaporative emission system — very small leak detected"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:136
+msgid "Evaporative emission leak — fuel cap loose or off"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:138
+msgid "Vehicle speed sensor A"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:139
+msgid "Vehicle speed sensor A — range or performance"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:140
+msgid "Idle air control system"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:141
+msgid "Idle air control system — RPM lower than expected"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:142
+msgid "Idle air control system — RPM higher than expected"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:143
+msgid "Engine oil pressure sensor — range or performance"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:144
+msgid "System voltage low"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:145
+msgid "System voltage high"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:146
+msgid "Brake switch A circuit"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:148
+msgid "Internal control module — memory checksum error"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:149
+msgid "Internal control module — keep-alive memory error"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:150
+msgid "Internal control module — read-only memory error"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:151
+msgid "Control module processor fault"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:152
+msgid "Generator control circuit"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:153
+msgid "Generator field terminal circuit low"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:154
+msgid "A/C clutch relay control circuit"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:156
+msgid "Transmission control system — fault indicated"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:157
+msgid "Transmission control system — range or performance"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:158
+msgid "Transmission range sensor circuit"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:159
+msgid "Transmission fluid temperature — range or performance"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:160
+msgid "Input / turbine speed sensor circuit"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:161
+msgid "Output speed sensor circuit"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:162
+msgid "Incorrect gear ratio"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:163
+msgid "Torque converter clutch circuit"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:164
+msgid "Torque converter clutch — stuck off or performance"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:165
+msgid "Torque converter clutch — stuck on"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:166
+msgid "Torque converter clutch circuit — electrical"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:167
+msgid "Pressure control solenoid A — electrical"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:168
+msgid "Shift solenoid A — stuck off or performance"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:169
+msgid "Shift solenoid B circuit"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:171
+msgid "Left front wheel speed sensor circuit"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:172
+msgid "Right front wheel speed sensor circuit"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:173
+msgid "Left rear wheel speed sensor circuit"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:174
+msgid "Right rear wheel speed sensor circuit"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:175
+msgid "System disabled information stored"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:177
+msgid "Driver airbag deployment control"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:178
+msgid "Driver seatbelt pretensioner deployment control"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:180
+msgid "High-speed CAN communication bus"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:181
+msgid "Lost communication with engine control module"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:182
+msgid "Lost communication with transmission control module"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:183
+msgid "Lost communication with ABS control module"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:184
+msgid "Lost communication with body control module"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:185
+msgid "Lost communication with instrument panel cluster"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:186
+msgid "Invalid data received from engine control module"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:201
+#, python-format
+msgid "Cylinder %(n)d misfire detected"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:205
+#, python-format
+msgid "Injector circuit — cylinder %(n)d"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:215
+#, python-format
+msgid "Oxygen sensor circuit (bank %(b)d sensor %(s)d)"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:286
+msgid "generic"
+msgstr ""
+
+#: homeautoshop/diagnostics/dtc.py:286
+msgid "manufacturer-specific"
+msgstr ""
+
+#: homeautoshop/diagnostics/engine.py:277
+msgid "ECU identifiers"
+msgstr ""
+
+#: homeautoshop/diagnostics/engine.py:372
+#, python-format
+msgid "%(name)s names a built-in parser that is not in this build."
+msgstr ""
+
+#: homeautoshop/diagnostics/models.py:27
+msgid "PDF report"
+msgstr ""
+
+#: homeautoshop/diagnostics/models.py:28
+msgid "Structured file"
+msgstr ""
+
+#: homeautoshop/diagnostics/models.py:32
+msgid "Photo of a printout"
+msgstr ""
+
+#: homeautoshop/diagnostics/models.py:33
+msgid "ELM327 adapter"
+msgstr ""
+
+#: homeautoshop/diagnostics/models.py:34
+msgid "Typed in"
+msgstr ""
+
+#: homeautoshop/diagnostics/models.py:38
+msgid "Not read yet"
+msgstr ""
+
+#: homeautoshop/diagnostics/models.py:40
+msgid "No profile matched"
+msgstr ""
+
+#: homeautoshop/diagnostics/models.py:41
+msgid "Could not be read"
+msgstr ""
+
+#: homeautoshop/diagnostics/models.py:45
+msgid "Draft"
+msgstr ""
+
+#: homeautoshop/diagnostics/models.py:46
+msgid "Confirmed"
+msgstr ""
+
+#: homeautoshop/diagnostics/models.py:50
+msgid "PDF"
+msgstr ""
+
+#: homeautoshop/diagnostics/models.py:51 templates/core/reports.html:10
+#: templates/core/reports.html:20 templates/core/reports.html:39
+msgid "CSV"
+msgstr ""
+
+#: homeautoshop/diagnostics/models.py:52
+msgid "JSON"
+msgstr ""
+
+#: homeautoshop/diagnostics/models.py:53
+msgid "Plain text"
+msgstr ""
+
+#: homeautoshop/diagnostics/models.py:58
+msgid "Shipped"
+msgstr ""
+
+#: homeautoshop/diagnostics/models.py:59
+msgid "Written here"
+msgstr ""
+
+#: homeautoshop/diagnostics/models.py:91
+msgid "Name of a built-in parser, for formats that regex cannot read."
+msgstr ""
+
+#: homeautoshop/diagnostics/models.py:154
+msgid "The report as uploaded. Kept forever so it can be re-read."
+msgstr ""
+
+#: homeautoshop/diagnostics/models.py:218
+msgid "Permanent"
+msgstr ""
+
+#: homeautoshop/diagnostics/models.py:219
+msgid "History"
+msgstr ""
+
+#: homeautoshop/diagnostics/models.py:223 templates/work/list.html:7
+msgid "Open"
+msgstr ""
+
+#: homeautoshop/diagnostics/models.py:224
+msgid "Addressed"
+msgstr ""
+
+#: homeautoshop/diagnostics/models.py:225
+msgid "Came back"
+msgstr ""
+
+#: homeautoshop/diagnostics/models.py:226
+msgid "Ignored"
+msgstr ""
+
+#: homeautoshop/diagnostics/profiles.py:55
+#, python-format
+msgid "That is not valid YAML: %(detail)s"
+msgstr ""
+
+#: homeautoshop/diagnostics/profiles.py:58
+msgid "A profile is a mapping of keys to values."
+msgstr ""
+
+#: homeautoshop/diagnostics/profiles.py:65
+#, python-format
+msgid "Unrecognized key(s): %(keys)s"
+msgstr ""
+
+#: homeautoshop/diagnostics/profiles.py:69
+msgid "A profile needs a name."
+msgstr ""
+
+#: homeautoshop/diagnostics/profiles.py:74
+#, python-format
+msgid "%(value)s is not a media type this build reads."
+msgstr ""
+
+#: homeautoshop/diagnostics/profiles.py:95
+#, python-format
+msgid "%(where)s has an invalid pattern: %(detail)s"
+msgstr ""
+
+#: homeautoshop/diagnostics/services.py:301
+#, python-format
+msgid "%(code)s — %(what)s"
+msgstr ""
+
+#: homeautoshop/diagnostics/services.py:304
+#, python-format
+msgid "%(code)s read on %(when)s with %(tool)s."
+msgstr ""
+
+#: homeautoshop/diagnostics/services.py:308
+msgid "a scan tool"
+msgstr ""
+
+#: homeautoshop/diagnostics/services.py:315
+#, python-format
+msgid "Diagnose %(code)s"
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:112
+msgid "Choose a report or a photo to read."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:135
+msgid "No profile recognized that report. Map the values by hand and it still counts."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:139
+msgid "Read. Check it over before it joins the history."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:231
+msgid "That scan is already in the history."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:236
+msgid "Check the corrected values before confirming."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:244
+#, python-format
+msgid "%(n)d code(s) came back after being addressed — the fix did not hold."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:247
+msgid "Added to the vehicle's history."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:258
+msgid "Draft discarded. It is in the trash for 30 days."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:297
+#, python-format
+msgid "That profile read VIN %(found)s out of the report, which is not this vehicle."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:303
+msgid "Still no profile matches that report."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:305
+msgid "Re-read as a new draft, so the original stays as it was."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:307
+#, python-format
+msgid "Re-read with %(p)s."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:345
+msgid "Nothing in that mapping looks like a trouble code. Check the column choice."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:357
+msgid "Mapped. Check it over before it joins the history."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:372 templates/diagnostics/asset.html:24
+#: templates/diagnostics/session.html:85
+msgid "Code"
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:373 templates/purchasing/detail.html:77
+msgid "Description"
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:374 templates/diagnostics/session.html:86
+msgid "State"
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:375
+msgid "Module"
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:416
+#, python-format
+msgid "%(tool)s import"
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:417
+msgid "Untitled tool"
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:421
+#, python-format
+msgid "A profile called %(name)s already exists, so none was saved."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:448
+#, python-format
+msgid "Learned from a mapping on %(when)s. Columns: %(cols)s"
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:453
+msgid "Saved as a profile, so the next one of these reads itself."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:475
+msgid "Confirm the scan first — a draft is not history yet."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:485
+#, python-format
+msgid "%(code)s is now on %(number)s."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:499
+msgid "That is not a status a code can have."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:506
+#, python-format
+msgid "%(code)s marked %(status)s."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:525
+msgid "Nothing to record."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:539
+#, python-format
+msgid "Recorded. Every %(make)s in the shop will show that for %(code)s."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:540
+msgid "vehicle"
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:577
+msgid "Ready. Plug the adapter in and press Read codes."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:579
+msgid "This page is not on HTTPS, so the browser will not open a serial port. See the install guide for turning on TLS."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:583
+msgid "This browser has no Web Serial. Chrome or Edge on desktop or Android will do it; Safari and Firefox will not."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:586
+msgid "No adapter was chosen."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:587
+msgid "Connected. Reading…"
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:588
+msgid "stored"
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:589
+msgid "pending"
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:590
+msgid "permanent"
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:591
+msgid "Read complete — no codes found."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:592
+msgid "Read. Keep it and check it over."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:593
+msgid "The adapter stopped answering."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:594
+msgid "Could not save that read."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:595
+msgid "Codes cleared. Readiness monitors are now unset."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:597
+#, python-format
+msgid ""
+"Clear all codes on %(vehicle)s?\n"
+"\n"
+"This also resets the readiness monitors, and a car with unset monitors fails an emissions test until it has been driven enough to set them again."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:682
+msgid "Paste a profile or choose a file."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:688
+#, python-format
+msgid "That profile was refused: %(detail)s"
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:694
+#, python-format
+msgid "%(name)s v%(v)d is already here. Bump the version to import a revision."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:701
+#, python-format
+msgid "Imported %(name)s."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:714
+#, python-format
+msgid "%(name)s is now %(state)s."
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:717
+msgid "in use"
+msgstr ""
+
+#: homeautoshop/diagnostics/views.py:717
+msgid "switched off"
+msgstr ""
+
+#: homeautoshop/inspections/models.py:31
+msgid "Road test"
+msgstr ""
+
+#: homeautoshop/inspections/models.py:32
+msgid "Under hood"
+msgstr ""
+
+#: homeautoshop/inspections/models.py:33
+msgid "Under vehicle"
+msgstr ""
+
+#: homeautoshop/inspections/models.py:34
+msgid "Brakes"
+msgstr ""
+
+#: homeautoshop/inspections/models.py:36
+msgid "Suspension and steering"
+msgstr ""
+
+#: homeautoshop/inspections/models.py:37
+msgid "Lighting and electrical"
+msgstr ""
+
+#: homeautoshop/inspections/models.py:38
+msgid "Body and glass"
+msgstr ""
+
+#: homeautoshop/inspections/models.py:39
+msgid "Interior"
+msgstr ""
+
+#: homeautoshop/inspections/models.py:40
+msgid "Exhaust and emissions"
+msgstr ""
+
+#: homeautoshop/inspections/models.py:50
+msgid "Pass"
+msgstr ""
+
+#: homeautoshop/inspections/models.py:51
+msgid "Attention"
+msgstr ""
+
+#: homeautoshop/inspections/models.py:52
+msgid "Fail"
+msgstr ""
+
+#: homeautoshop/inspections/models.py:53 homeautoshop/mediafiles/models.py:43
+msgid "Not applicable"
+msgstr ""
+
+#: homeautoshop/inspections/models.py:54
+msgid "Not inspected"
+msgstr ""
+
+#: homeautoshop/inspections/models.py:67
+msgid "Not needed"
+msgstr ""
+
+#: homeautoshop/inspections/models.py:68
+msgid "When flagged"
+msgstr ""
+
+#: homeautoshop/inspections/models.py:69
+msgid "Always"
+msgstr ""
+
+#: homeautoshop/inspections/models.py:74 homeautoshop/maintenance/models.py:57
+msgid "Built in"
+msgstr ""
+
+#: homeautoshop/inspections/models.py:75 homeautoshop/maintenance/models.py:58
+msgid "Yours"
+msgstr ""
+
+#: homeautoshop/inspections/models.py:110
+msgid "Pass / attention / fail"
+msgstr ""
+
+#: homeautoshop/inspections/models.py:111
+msgid "A number"
+msgstr ""
+
+#: homeautoshop/inspections/models.py:112
+msgid "Both"
+msgstr ""
+
+#: homeautoshop/inspections/models.py:119
+msgid "What 'good' looks like."
+msgstr ""
+
+#: homeautoshop/inspections/models.py:169 homeautoshop/work/models.py:37
+#: homeautoshop/work/models.py:271 templates/assets/detail.html:65
+#: templates/inspections/detail.html:13 templates/inspections/list.html:18
+msgid "In progress"
+msgstr ""
+
+#: homeautoshop/inspections/models.py:170 homeautoshop/work/models.py:40
+msgid "Complete"
+msgstr ""
+
+#: homeautoshop/inspections/models.py:171 homeautoshop/work/models.py:41
+#: templates/inspections/detail.html:14 templates/inspections/list.html:19
+msgid "Abandoned"
+msgstr ""
+
+#: homeautoshop/inspections/models.py:181
+msgid "The template as it stood. Later edits never rewrite this inspection."
+msgstr ""
+
+#: homeautoshop/inspections/models.py:255
+msgid "What the thresholds computed, kept alongside what the human decided."
+msgstr ""
+
+#: homeautoshop/inspections/models.py:343
+msgid "A measurement cannot be negative."
+msgstr ""
+
+#: homeautoshop/inspections/services.py:152
+#, python-format
+msgid "%(n)d point(s) need a photo before this can be signed off."
+msgstr ""
+
+#: homeautoshop/inspections/services.py:175
+msgid "Only an inspection in progress can be abandoned."
+msgstr ""
+
+#: homeautoshop/inspections/services.py:186
+msgid "That inspection is not abandoned."
+msgstr ""
+
+#: homeautoshop/inspections/services.py:215
+msgid "An inspection has to be in progress to add a check."
+msgstr ""
+
+#: homeautoshop/inspections/services.py:221
+msgid "Give the check a name."
+msgstr ""
+
+#: homeautoshop/inspections/services.py:265
+#, python-format
+msgid "From %(name)s"
+msgstr ""
+
+#: homeautoshop/inspections/services.py:267
+#, python-format
+msgid "Raised by inspection on %(date)s"
+msgstr ""
+
+#: homeautoshop/inspections/services.py:322
+msgid "One reading so far — measure it again to see a trend."
+msgstr ""
+
+#: homeautoshop/inspections/services.py:324
+msgid "No measurable wear between readings yet."
+msgstr ""
+
+#: homeautoshop/inspections/services.py:326
+#, python-format
+msgid "Wearing %(rate)s %(unit)s per %(distance_unit)s"
+msgstr ""
+
+#: homeautoshop/inspections/services.py:330
+#, python-format
+msgid "reaches %(target)s around %(date)s"
+msgstr ""
+
+#: homeautoshop/inspections/views.py:55
+#, python-format
+msgid "Started. %(n)d points to walk."
+msgstr ""
+
+#: homeautoshop/inspections/views.py:124
+#, python-format
+msgid "Signed off — overall %(status)s."
+msgstr ""
+
+#: homeautoshop/inspections/views.py:163
+msgid "That check came from the template. Mark it not applicable instead."
+msgstr ""
+
+#: homeautoshop/inspections/views.py:166
+msgid "Removed."
+msgstr ""
+
+#: homeautoshop/inspections/views.py:181
+msgid "Abandoned. It is still here if you want to pick it up."
+msgstr ""
+
+#: homeautoshop/inspections/views.py:211
+#, python-format
+msgid "Deleted %(name)s. It is in the trash for 30 days if you want it back."
+msgstr ""
+
+#: homeautoshop/inspections/views.py:223
+msgid "Nothing flagged to turn into work."
+msgstr ""
+
+#: homeautoshop/inspections/views.py:226
+#, python-format
+msgid "Created %(n)d job item(s)."
+msgstr ""
+
+#: homeautoshop/maintenance/models.py:25
+msgid "Routine"
+msgstr ""
+
+#: homeautoshop/maintenance/models.py:26 templates/core/dashboard.html:22
+#: templates/inspections/detail.html:91 templates/maintenance/due.html:18
+#: templates/maintenance/schedule.html:25 templates/work/detail.html:12
+msgid "Safety"
+msgstr ""
+
+#: homeautoshop/maintenance/models.py:27
+msgid "Emissions"
+msgstr ""
+
+#: homeautoshop/maintenance/models.py:36
+msgid "Stable key so shipped items can be translated (SPEC §5.6)."
+msgstr ""
+
+#: homeautoshop/maintenance/models.py:110
+msgid "OK"
+msgstr ""
+
+#: homeautoshop/maintenance/models.py:111
+msgid "Due soon"
+msgstr ""
+
+#: homeautoshop/maintenance/models.py:112
+msgid "Overdue"
+msgstr ""
+
+#: homeautoshop/maintenance/models.py:113
+msgid "Snoozed"
+msgstr ""
+
+#: homeautoshop/maintenance/models.py:114
+msgid "Not tracked"
+msgstr ""
+
+#: homeautoshop/maintenance/models.py:185
+msgid "Give this item at least one interval — distance, time, or hours."
+msgstr ""
+
+#: homeautoshop/maintenance/models.py:227
+msgid "Recorded from history rather than from work done here (FR-MAINT-6)."
+msgstr ""
+
+#: homeautoshop/maintenance/models.py:246
+msgid "Tire"
+msgstr ""
+
+#: homeautoshop/maintenance/models.py:247
+msgid "Battery"
+msgstr ""
+
+#: homeautoshop/maintenance/models.py:248
+msgid "Brake pad"
+msgstr ""
+
+#: homeautoshop/maintenance/models.py:249
+msgid "Brake rotor"
+msgstr ""
+
+#: homeautoshop/maintenance/models.py:250
+msgid "Belt"
+msgstr ""
+
+#: homeautoshop/maintenance/models.py:251
+msgid "Filter"
+msgstr ""
+
+#: homeautoshop/maintenance/models.py:252
+msgid "Wiper"
+msgstr ""
+
+#: homeautoshop/maintenance/models.py:253
+msgid "Bulb"
+msgstr ""
+
+#: homeautoshop/maintenance/models.py:257
+msgid "Worn out"
+msgstr ""
+
+#: homeautoshop/maintenance/models.py:259
+msgid "Upgraded"
+msgstr ""
+
+#: homeautoshop/maintenance/models.py:260
+msgid "Seasonal change"
+msgstr ""
+
+#: homeautoshop/maintenance/models.py:265
+msgid "Optional: a component may predate any part record."
+msgstr ""
+
+#: homeautoshop/maintenance/models.py:269
+msgid "LF, RF, LR, RR…"
+msgstr ""
+
+#: homeautoshop/maintenance/models.py:282
+msgid "Tire DOT code: week and year of manufacture."
+msgstr ""
+
+#: homeautoshop/maintenance/services.py:46
+msgid "Estimated — not enough meter history yet."
+msgstr ""
+
+#: homeautoshop/maintenance/services.py:47
+#, python-format
+msgid "From %(n)d days of readings."
+msgstr ""
+
+#: homeautoshop/maintenance/services.py:193
+#, python-format
+msgid "in %(n)s %(unit)s"
+msgstr ""
+
+#: homeautoshop/maintenance/services.py:197
+#, python-format
+msgid "around %(d)s"
+msgstr ""
+
+#: homeautoshop/maintenance/services.py:199
+#, python-format
+msgid "in %(n)d days"
+msgstr ""
+
+#: homeautoshop/maintenance/services.py:200
+msgid "no interval set"
+msgstr ""
+
+#: homeautoshop/maintenance/views.py:107
+#, python-format
+msgid "Added %(n)d item(s) from %(name)s. Every interval is yours to edit."
+msgstr ""
+
+#: homeautoshop/maintenance/views.py:129
+msgid "Added to the schedule."
+msgstr ""
+
+#: homeautoshop/maintenance/views.py:131
+msgid "Pick a service item and give it an interval."
+msgstr ""
+
+#: homeautoshop/maintenance/views.py:145
+msgid "Interval updated."
+msgstr ""
+
+#: homeautoshop/maintenance/views.py:164
+msgid "Recorded. The interval has rolled forward."
+msgstr ""
+
+#: homeautoshop/maintenance/views.py:178
+msgid "No longer tracked on this vehicle."
+msgstr ""
+
+#: homeautoshop/maintenance/views.py:184
+msgid "Tracking again."
+msgstr ""
+
+#: homeautoshop/maintenance/views.py:191
+#, python-format
+msgid "Snoozed for %(n)d days."
+msgstr ""
+
+#: homeautoshop/maintenance/views.py:206
+msgid "Component recorded."
+msgstr ""
+
+#: homeautoshop/maintenance/views.py:208
+msgid "Check the component details."
+msgstr ""
+
+#: homeautoshop/maintenance/views.py:221
+msgid "Removed. Its history stays on the vehicle."
+msgstr ""
+
+#: homeautoshop/mediafiles/models.py:38
+msgid "Document"
+msgstr ""
+
+#: homeautoshop/mediafiles/models.py:39
+msgid "Scan tool report"
+msgstr ""
+
+#: homeautoshop/mediafiles/models.py:40
+msgid "Audio note"
+msgstr ""
+
+#: homeautoshop/mediafiles/models.py:63
+msgid "A photo of a car in a driveway geotags a home address."
+msgstr ""
+
+#: homeautoshop/mediafiles/models.py:159
+msgid "Primary photo"
+msgstr ""
+
+#: homeautoshop/mediafiles/models.py:160 templates/work/detail.html:191
+msgid "Before"
+msgstr ""
+
+#: homeautoshop/mediafiles/models.py:161 templates/work/detail.html:192
+msgid "After"
+msgstr ""
+
+#: homeautoshop/mediafiles/models.py:162 templates/purchasing/detail.html:105
+#: templates/purchasing/detail.html:108 templates/work/detail.html:193
+msgid "Receipt"
+msgstr ""
+
+#: homeautoshop/mediafiles/models.py:163
+msgid "Manual"
+msgstr ""
+
+#: homeautoshop/mediafiles/models.py:164
+msgid "Title"
+msgstr ""
+
+#: homeautoshop/mediafiles/models.py:165 homeautoshop/purchasing/models.py:239
+#: templates/assets/detail.html:150
+msgid "Registration"
+msgstr ""
+
+#: homeautoshop/mediafiles/models.py:166 homeautoshop/purchasing/models.py:241
+msgid "Insurance"
+msgstr ""
+
+#: homeautoshop/parts/models.py:28 homeautoshop/parts/models.py:83
+msgid "OEM"
+msgstr ""
+
+#: homeautoshop/parts/models.py:29
+msgid "OE supplier"
+msgstr ""
+
+#: homeautoshop/parts/models.py:30
+msgid "Aftermarket"
+msgstr ""
+
+#: homeautoshop/parts/models.py:31
+msgid "Remanufactured"
+msgstr ""
+
+#: homeautoshop/parts/models.py:32 templates/diagnostics/profiles.html:17
+#: templates/work/detail.html:260
+msgid "Used"
+msgstr ""
+
+#: homeautoshop/parts/models.py:44
+msgid "each"
+msgstr ""
+
+#: homeautoshop/parts/models.py:44
+msgid "litres"
+msgstr ""
+
+#: homeautoshop/parts/models.py:44
+msgid "kilograms"
+msgstr ""
+
+#: homeautoshop/parts/models.py:44
+msgid "feet"
+msgstr ""
+
+#: homeautoshop/parts/models.py:52
+msgid "Restock below this. Blank means never prompt."
+msgstr ""
+
+#: homeautoshop/parts/models.py:55
+msgid "Viscosity, thread pitch, dimensions."
+msgstr ""
+
+#: homeautoshop/parts/models.py:84 templates/parts/detail.html:92
+msgid "Interchange"
+msgstr ""
+
+#: homeautoshop/parts/models.py:85 templates/parts/detail.html:93
+msgid "Vendor SKU"
+msgstr ""
+
+#: homeautoshop/parts/models.py:86
+msgid "UPC"
+msgstr ""
+
+#: homeautoshop/parts/models.py:110
+msgid "Confirmed — installed on this vehicle"
+msgstr ""
+
+#: homeautoshop/parts/models.py:111
+msgid "Stated by vendor"
+msgstr ""
+
+#: homeautoshop/parts/models.py:112
+msgid "Unverified"
+msgstr ""
+
+#: homeautoshop/parts/models.py:184
+msgid "A location cannot contain itself."
+msgstr ""
+
+#: homeautoshop/parts/models.py:206
+msgid "Brake fluid, RTV and epoxy do expire."
+msgstr ""
+
+#: homeautoshop/parts/models.py:233 homeautoshop/purchasing/models.py:55
+#: templates/purchasing/detail.html:37
+msgid "Received"
+msgstr ""
+
+#: homeautoshop/parts/models.py:234
+msgid "Used on a job"
+msgstr ""
+
+#: homeautoshop/parts/models.py:235
+msgid "Cycle count adjustment"
+msgstr ""
+
+#: homeautoshop/parts/models.py:236
+msgid "Returned to vendor"
+msgstr ""
+
+#: homeautoshop/parts/models.py:237
+msgid "Scrapped"
+msgstr ""
+
+#: homeautoshop/parts/models.py:238
+msgid "Found"
+msgstr ""
+
+#: homeautoshop/parts/models.py:258
+msgid "A cycle count adjustment needs a reason — silent corrections hide problems."
+msgstr ""
+
+#: homeautoshop/parts/models.py:284
+msgid "From the shelf"
+msgstr ""
+
+#: homeautoshop/parts/models.py:285
+msgid "Bought for this job"
+msgstr ""
+
+#: homeautoshop/parts/models.py:286
+msgid "Reused"
+msgstr ""
+
+#: homeautoshop/parts/models.py:287
+msgid "Warranty replacement"
+msgstr ""
+
+#: homeautoshop/parts/services.py:57 homeautoshop/work/models.py:391
+msgid "Quantity must be positive."
+msgstr ""
+
+#: homeautoshop/parts/services.py:92
+#, python-format
+msgid "Only %(have)s of %(part)s on the shelf; %(want)s needed."
+msgstr ""
+
+#: homeautoshop/parts/views.py:31 templates/purchasing/detail.html:84
+msgid "Core charge"
+msgstr ""
+
+#: homeautoshop/parts/views.py:163
+msgid "Added by hand"
+msgstr ""
+
+#: homeautoshop/parts/views.py:166
+msgid "Stock added."
+msgstr ""
+
+#: homeautoshop/parts/views.py:168 homeautoshop/work/views.py:407
+#: homeautoshop/work/views.py:429
+msgid "Check the quantity and try again."
+msgstr ""
+
+#: homeautoshop/parts/views.py:184
+msgid "Counted."
+msgstr ""
+
+#: homeautoshop/parts/views.py:184
+msgid "Adjustment recorded."
+msgstr ""
+
+#: homeautoshop/parts/views.py:213
+msgid "That label points at a location that is no longer here."
+msgstr ""
+
+#: homeautoshop/parts/views.py:266
+msgid "Core marked returned."
+msgstr ""
+
+#: homeautoshop/parts/views.py:276
+msgid "Location added."
+msgstr ""
+
+#: homeautoshop/parts/views.py:293
+msgid "Nothing was scanned."
+msgstr ""
+
+#: homeautoshop/parts/views.py:308
+msgid "More than one part carries that code."
+msgstr ""
+
+#: homeautoshop/parts/views.py:314
+#, python-format
+msgid "Nothing on file for %(code)s yet. Adding it here records the barcode too."
+msgstr ""
+
+#: homeautoshop/people/models.py:24
+msgid "Lives here, as opposed to a friend whose car you work on."
+msgstr ""
+
+#: homeautoshop/purchasing/importers/service.py:68
+#: templates/purchasing/order_import.html:136
+msgid "new part"
+msgstr ""
+
+#: homeautoshop/purchasing/importers/service.py:70
+#, python-format
+msgid "matched %(how)s"
+msgstr ""
+
+#: homeautoshop/purchasing/importers/service.py:71
+msgid "no part"
+msgstr ""
+
+#: homeautoshop/purchasing/importers/service.py:128
+msgid "on brand and part number"
+msgstr ""
+
+#: homeautoshop/purchasing/importers/service.py:132
+msgid "on part number"
+msgstr ""
+
+#: homeautoshop/purchasing/importers/service.py:141
+msgid "on a cross-reference"
+msgstr ""
+
+#: homeautoshop/purchasing/importers/service.py:194
+#, python-format
+msgid "This order is already here and %(n)s of its lines have been received, so nothing was changed."
+msgstr ""
+
+#: homeautoshop/purchasing/importers/service.py:255
+#, python-format
+msgid "From %(vendor)s order %(number)s."
+msgstr ""
+
+#: homeautoshop/purchasing/models.py:27
+msgid "Online"
+msgstr ""
+
+#: homeautoshop/purchasing/models.py:28
+msgid "Local store"
+msgstr ""
+
+#: homeautoshop/purchasing/models.py:29
+msgid "Dealer"
+msgstr ""
+
+#: homeautoshop/purchasing/models.py:30
+msgid "Salvage yard"
+msgstr ""
+
+#: homeautoshop/purchasing/models.py:31
+msgid "Machine shop"
+msgstr ""
+
+#: homeautoshop/purchasing/models.py:32
+msgid "Individual"
+msgstr ""
+
+#: homeautoshop/purchasing/models.py:40
+msgid "Used to warn before the window closes."
+msgstr ""
+
+#: homeautoshop/purchasing/models.py:52
+msgid "Cart"
+msgstr ""
+
+#: homeautoshop/purchasing/models.py:53 templates/purchasing/detail.html:36
+#: templates/purchasing/order_import.html:62 templates/work/detail.html:269
+msgid "Ordered"
+msgstr ""
+
+#: homeautoshop/purchasing/models.py:54
+msgid "Partially received"
+msgstr ""
+
+#: homeautoshop/purchasing/models.py:56 templates/parts/inventory.html:83
+msgid "Returned"
+msgstr ""
+
+#: homeautoshop/purchasing/models.py:60
+msgid "Canceled"
+msgstr "Cancelled"
+
+#: homeautoshop/purchasing/models.py:71
+msgid "Set when this was bought for a specific job; drives the blocked list."
+msgstr ""
+
+#: homeautoshop/purchasing/models.py:187
+msgid "Link this line to a part before receiving it."
+msgstr ""
+
+#: homeautoshop/purchasing/models.py:191
+msgid "Nothing left to receive on this line."
+msgstr ""
+
+#: homeautoshop/purchasing/models.py:193
+msgid "That is more than was ordered."
+msgstr ""
+
+#: homeautoshop/purchasing/models.py:233
+msgid "Shop supplies"
+msgstr ""
+
+#: homeautoshop/purchasing/models.py:234
+msgid "Outsourced labour"
+msgstr ""
+
+#: homeautoshop/purchasing/models.py:235
+msgid "Machine work"
+msgstr ""
+
+#: homeautoshop/purchasing/models.py:236
+msgid "Towing"
+msgstr ""
+
+#: homeautoshop/purchasing/models.py:237
+msgid "Disposal"
+msgstr ""
+
+#: homeautoshop/purchasing/models.py:238
+msgid "Tooling"
+msgstr ""
+
+#: homeautoshop/purchasing/models.py:242
+msgid "Fuel"
+msgstr ""
+
+#: homeautoshop/purchasing/views.py:46 templates/purchasing/detail.html:97
+#: templates/purchasing/order_import.html:69
+msgid "Tax"
+msgstr ""
+
+#: homeautoshop/purchasing/views.py:47 templates/purchasing/detail.html:98
+#: templates/purchasing/order_import.html:68
+msgid "Shipping"
+msgstr ""
+
+#: homeautoshop/purchasing/views.py:48 templates/purchasing/detail.html:99
+msgid "Discount"
+msgstr ""
+
+#: homeautoshop/purchasing/views.py:163
+msgid "Received into stock at landed cost."
+msgstr ""
+
+#: homeautoshop/purchasing/views.py:175
+msgid "Receipt attached; it will be text-searchable shortly."
+msgstr ""
+
+#: homeautoshop/purchasing/views.py:192
+msgid "Vendor added."
+msgstr ""
+
+#: homeautoshop/purchasing/views.py:194
+msgid "A vendor needs a name."
+msgstr ""
+
+#: homeautoshop/purchasing/views.py:209
+msgid "Expense recorded."
+msgstr ""
+
+#: homeautoshop/purchasing/views.py:211
+msgid "Check the amount and category."
+msgstr ""
+
+#: homeautoshop/purchasing/views_import.py:83
+msgid "That preview has expired. Choose the file again."
+msgstr ""
+
+#: homeautoshop/purchasing/views_import.py:88
+msgid "Choose an order confirmation to read."
+msgstr ""
+
+#: homeautoshop/purchasing/views_import.py:108
+msgid "That does not look like a RockAuto order confirmation. Save the confirmation page or email as a PDF and try that."
+msgstr ""
+
+#: homeautoshop/purchasing/views_import.py:116
+#, python-format
+msgid "That file could not be read: %(detail)s"
+msgstr ""
+
+#: homeautoshop/purchasing/views_import.py:126
+msgid "Nothing has been written yet. This is what it would do."
+msgstr ""
+
+#: homeautoshop/purchasing/views_import.py:134
+#, python-format
+msgid "Imported %(lines)s line(s): %(new)s new part(s), %(known)s already here."
+msgstr ""
+
+#: homeautoshop/work/models.py:28
+msgid "Repair"
+msgstr ""
+
+#: homeautoshop/work/models.py:29 homeautoshop/work/models.py:431
+#: templates/work/detail.html:403
+msgid "Diagnosis"
+msgstr ""
+
+#: homeautoshop/work/models.py:30
+msgid "Modification"
+msgstr ""
+
+#: homeautoshop/work/models.py:36 homeautoshop/work/models.py:360
+msgid "Planned"
+msgstr ""
+
+#: homeautoshop/work/models.py:38 templates/core/dashboard.html:58
+msgid "Waiting on parts"
+msgstr ""
+
+#: homeautoshop/work/models.py:39
+msgid "On hold"
+msgstr ""
+
+#: homeautoshop/work/models.py:126
+msgid "1 highest, 5 lowest."
+msgstr ""
+
+#: homeautoshop/work/models.py:129
+msgid "What is wrong, in the reporter's words."
+msgstr ""
+
+#: homeautoshop/work/models.py:130
+msgid "What you found."
+msgstr ""
+
+#: homeautoshop/work/models.py:131
+msgid "What you did about it."
+msgstr ""
+
+#: homeautoshop/work/models.py:149
+msgid "A long project collects child work orders while staying one record."
+msgstr ""
+
+#: homeautoshop/work/models.py:152
+msgid "Required while waiting on parts, so the dashboard can explain itself."
+msgstr ""
+
+#: homeautoshop/work/models.py:219
+#, python-format
+msgid "A work order cannot go from %(a)s to %(b)s."
+msgstr ""
+
+#: homeautoshop/work/models.py:225
+msgid "Say what it is waiting for, so the dashboard can explain the block."
+msgstr ""
+
+#: homeautoshop/work/models.py:235
+msgid "Record the meter reading before completing this work order."
+msgstr ""
+
+#: homeautoshop/work/models.py:270
+msgid "To do"
+msgstr ""
+
+#: homeautoshop/work/models.py:273 templates/core/import.html:94
+msgid "Skipped"
+msgstr ""
+
+#: homeautoshop/work/models.py:289
+msgid "Completing this rolls that maintenance interval forward (FR-WO-7)."
+msgstr ""
+
+#: homeautoshop/work/models.py:361
+msgid "Found once it was apart"
+msgstr ""
+
+#: homeautoshop/work/models.py:372
+msgid "Which line of work needs it. Optional."
+msgstr ""
+
+#: homeautoshop/work/models.py:393
+msgid "That job item belongs to another work order."
+msgstr ""
+
+#: homeautoshop/work/models.py:432 templates/work/detail.html:402
+msgid "Wrenching"
+msgstr ""
+
+#: homeautoshop/work/models.py:433 templates/work/detail.html:404
+msgid "Parts run"
+msgstr ""
+
+#: homeautoshop/work/models.py:434 templates/work/detail.html:406
+msgid "Cleanup"
+msgstr ""
+
+#: homeautoshop/work/models.py:435 templates/work/detail.html:405
+msgid "Research"
+msgstr ""
+
+#: homeautoshop/work/models.py:519
+#, python-format
+msgid "on loan to %(who)s, due %(when)s"
+msgstr ""
+
+#: homeautoshop/work/models.py:523
+#, python-format
+msgid "on loan to %(who)s"
+msgstr ""
+
+#: homeautoshop/work/models.py:525
+#, python-format
+msgid "marked %(state)s"
+msgstr ""
+
+#: homeautoshop/work/models.py:527
+#, python-format
+msgid "calibration due %(when)s"
+msgstr ""
+
+#: homeautoshop/work/views.py:76
+msgid "Not part of a project"
+msgstr ""
+
+#: homeautoshop/work/views.py:79
+msgid "Nothing here yet — set a work order's type to Project and it becomes available as a parent."
+msgstr ""
+
+#: homeautoshop/work/views.py:194
+#, python-format
+msgid "Waiting on %(parts)s."
+msgstr ""
+
+#: homeautoshop/work/views.py:220
+#, python-format
+msgid "Opened %(number)s."
+msgstr ""
+
+#: homeautoshop/work/views.py:262
+#, python-format
+msgid "Recorded on completion of %(n)s"
+msgstr ""
+
+#: homeautoshop/work/views.py:265
+#, python-format
+msgid "Moved to %(s)s."
+msgstr ""
+
+#: homeautoshop/work/views.py:285
+#, python-format
+msgid "Started, but short of %(parts)s. Nothing is stopping you."
+msgstr ""
+
+#: homeautoshop/work/views.py:315
+#, python-format
+msgid "%(n)s work order(s) sit under this one. Move or delete those first, so nothing is left pointing at a record that is gone."
+msgstr ""
+
+#: homeautoshop/work/views.py:333
+#, python-format
+msgid "%(n)s was deleted. It is in the trash for 30 days if you want it back."
+msgstr ""
+
+#: homeautoshop/work/views.py:397
+msgid "Choose a part first."
+msgstr ""
+
+#: homeautoshop/work/views.py:444
+#, python-format
+msgid "Added. %(n)s short — nothing on the shelf is free for this job."
+msgstr ""
+
+#: homeautoshop/work/views.py:448
+msgid "Added to what this job needs."
+msgstr ""
+
+#: homeautoshop/work/views.py:459
+msgid "Removed from what this job needs."
+msgstr ""
+
+#: homeautoshop/work/views.py:489
+msgid "Nothing is missing, so there is nothing to order."
+msgstr ""
+
+#: homeautoshop/work/views.py:494
+msgid "Choose who to order from."
+msgstr ""
+
+#: homeautoshop/work/views.py:518
+#, python-format
+msgid "Drafted %(n)d line(s) for %(vendor)s. Add prices and mark it ordered."
+msgstr ""
+
+#: homeautoshop/work/views.py:550
+#, python-format
+msgid "Recorded. %(n)s came from stock; the rest is marked bought for this job."
+msgstr ""
+
+#: homeautoshop/work/views.py:554
+msgid "Part recorded and drawn from stock."
+msgstr ""
+
+#: homeautoshop/work/views.py:574
+msgid "Time recorded."
+msgstr ""
+
+#: homeautoshop/work/views.py:666
+msgid "More than one tool is called that. Pick one from the list."
+msgstr ""
+
+#: homeautoshop/work/views.py:676
+msgid "Choose a tool first."
+msgstr ""
+
+#: homeautoshop/work/views.py:696
+#, python-format
+msgid "Recorded, but availability could not be checked just now (%(err)s)."
+msgstr ""
+
+#: homeautoshop/work/views.py:701
+#, python-format
+msgid "Tool added to %(item)s."
+msgstr ""
+
+#: homeautoshop/work/views.py:711
+msgid "Tool reference removed."
+msgstr ""
+
+#: templates/accounts/user.html:9 templates/accounts/users.html:28
+msgid "Cannot sign in"
+msgstr ""
+
+#: templates/accounts/user.html:10
+msgid "this is you"
+msgstr ""
+
+#: templates/accounts/user.html:13
+msgid "All accounts"
+msgstr ""
+
+#: templates/accounts/user.html:18
+msgid "The only administrator. This account cannot be demoted or deactivated until somebody else is one, because there would be no way back in."
+msgstr ""
+
+#: templates/accounts/user.html:24
+msgid "Details"
+msgstr ""
+
+#: templates/accounts/user.html:38
+msgid "Set a password"
+msgstr ""
+
+#: templates/accounts/user.html:40
+msgid "Replaces whatever they had. Tell them the new one — nothing is emailed."
+msgstr ""
+
+#: templates/accounts/user.html:47
+msgid "Set it"
+msgstr ""
+
+#: templates/accounts/user.html:52
+msgid "Signing in"
+msgstr ""
+
+#: templates/accounts/user.html:55
+msgid "Deactivating takes away the key and keeps the history. Everything they recorded stays attributed to them, and can be undone by reactivating."
+msgstr ""
+
+#: templates/accounts/user.html:61
+msgid "Stop them signing in"
+msgstr ""
+
+#: templates/accounts/user.html:73
+msgid "Let them sign in again"
+msgstr ""
+
+#: templates/accounts/user.html:77
+msgid "There is no delete. Removing an account would not remove the work it recorded — it would detach their name from it, and nothing brings that back."
+msgstr ""
+
+#: templates/accounts/user_form.html:2 templates/accounts/user_form.html:4
+#: templates/accounts/users.html:6
+msgid "Add someone"
+msgstr ""
+
+#: templates/accounts/user_form.html:6
+msgid "They will sign in with the username and password you set here. Tell them what it is — there is no invitation email, because that would need a mail server to replace a conversation you are already having."
+msgstr ""
+
+#: templates/accounts/users.html:2 templates/accounts/users.html:5
+msgid "People who can sign in"
+msgstr ""
+
+#: templates/accounts/users.html:9
+msgid "An account is how somebody signs in. A person is who they are — the two are linked so that work is attributed to a name, not a login."
+msgstr ""
+
+#: templates/accounts/users.html:16 templates/core/reminders.html:70
+msgid "Name"
+msgstr ""
+
+#: templates/accounts/users.html:18
+msgid "Last signed in"
+msgstr ""
+
+#: templates/accounts/users.html:32
+msgid "Manage"
+msgstr ""
+
+#: templates/accounts/users.html:44
+msgid "Nobody is ever deleted here. Deactivating an account takes away the key and keeps the history — the work they recorded stays attributed to them."
+msgstr ""
+
+#: templates/assets/_vin_feedback.html:6
+msgid "Check digit valid"
+msgstr ""
+
+#: templates/assets/_vin_feedback.html:6
+msgid "Check digit mismatch"
+msgstr ""
+
+#: templates/assets/_vin_feedback.html:10
+msgid "Model year could be"
+msgstr ""
+
+#: templates/assets/_vin_feedback.html:11
+msgid "or"
+msgstr ""
+
+#: templates/assets/_vin_feedback.html:12
+msgid "the code repeats every 30 years."
+msgstr ""
+
+#: templates/assets/detail.html:12 templates/core/backups.html:93
+#: templates/maintenance/schedule.html:2
+msgid "Schedule"
+msgstr ""
+
+#: templates/assets/detail.html:13 templates/assets/specs.html:2
+#: templates/work/detail.html:484
+msgid "Specs"
+msgstr ""
+
+#: templates/assets/detail.html:14 templates/assets/recalls.html:2
+msgid "Recalls"
+msgstr ""
+
+#: templates/assets/detail.html:15 templates/diagnostics/asset.html:2
+msgid "Diagnostics"
+msgstr ""
+
+#: templates/assets/detail.html:16
+msgid "Report"
+msgstr ""
+
+#: templates/assets/detail.html:18 templates/assets/form.html:4
+#: templates/assets/specs.html:49 templates/parts/detail.html:11
+#: templates/parts/form.html:3 templates/people/detail.html:4
+#: templates/people/form.html:3 templates/work/detail.html:20
+#: templates/work/form.html:3
+msgid "Edit"
+msgstr ""
+
+#: templates/assets/detail.html:19 templates/core/dashboard.html:5
+#: templates/work/form.html:3
+msgid "New work order"
+msgstr ""
+
+#: templates/assets/detail.html:27
+msgid "Timeline"
+msgstr ""
+
+#: templates/assets/detail.html:35
+msgid "lower than previous"
+msgstr ""
+
+#: templates/assets/detail.html:39 templates/assets/specs.html:61
+#: templates/core/asset_costs.html:18 templates/core/reports.html:14
+msgid "Nothing recorded yet."
+msgstr ""
+
+#: templates/assets/detail.html:50
+msgid "No work recorded yet."
+msgstr ""
+
+#: templates/assets/detail.html:57 templates/work/list.html:5
+msgid "New"
+msgstr ""
+
+#: templates/assets/detail.html:68
+msgid "None yet."
+msgstr ""
+
+#: templates/assets/detail.html:70 templates/inspections/wear.html:6
+msgid "Measurement trends"
+msgstr ""
+
+#: templates/assets/detail.html:74 templates/work/detail.html:165
+msgid "Photos"
+msgstr ""
+
+#: templates/assets/detail.html:78 templates/work/detail.html:169
+msgid "No photos yet."
+msgstr ""
+
+#: templates/assets/detail.html:93
+msgid "Take a photo of this vehicle"
+msgstr ""
+
+#: templates/assets/detail.html:94 templates/work/detail.html:184
+#: templates/work/detail.html:185
+msgid "Take a photo"
+msgstr ""
+
+#: templates/assets/detail.html:98
+msgid "Choose photos of this vehicle"
+msgstr ""
+
+#: templates/assets/detail.html:99
+msgid "Choose photos"
+msgstr ""
+
+#: templates/assets/detail.html:101
+msgid "Add photos"
+msgstr ""
+
+#: templates/assets/detail.html:118
+msgid "New reading"
+msgstr ""
+
+#: templates/assets/detail.html:122
+msgid "Note (required if lower than last)"
+msgstr ""
+
+#: templates/assets/detail.html:125 templates/assets/recalls.html:64
+msgid "Record"
+msgstr ""
+
+#: templates/assets/detail.html:128
+msgid "This asset has no meter; service intervals are time-based."
+msgstr ""
+
+#: templates/assets/detail.html:133
+msgid "Identity"
+msgstr ""
+
+#: templates/assets/detail.html:140
+msgid "Hide"
+msgstr ""
+
+#: templates/assets/detail.html:143
+msgid "Show"
+msgstr ""
+
+#: templates/assets/detail.html:152
+msgid "Serial"
+msgstr ""
+
+#: templates/assets/detail.html:157
+msgid "Look up VIN"
+msgstr ""
+
+#: templates/assets/detail.html:160 templates/assets/form.html:28
+msgid "Offline mode is on, so no lookup is attempted."
+msgstr ""
+
+#: templates/assets/detail.html:162
+msgid "Decoded"
+msgstr ""
+
+#: templates/assets/detail.html:165
+msgid "Your edits are kept on re-decode:"
+msgstr ""
+
+#: templates/assets/detail.html:173
+msgid "What the VIN says"
+msgstr ""
+
+#: templates/assets/detail.html:175
+msgid "Returned by the lookup and kept on file. Nothing here is editable — it is what the manufacturer registered, which is worth knowing even where it disagrees with the vehicle in front of you."
+msgstr ""
+
+#: templates/assets/detail.html:187
+msgid "Add to the spec sheet"
+msgstr ""
+
+#: templates/assets/detail.html:188
+msgid "＋ spec"
+msgstr ""
+
+#: templates/assets/detail.html:205
+msgid "Owners and drivers"
+msgstr ""
+
+#: templates/assets/detail.html:215
+msgid "End"
+msgstr ""
+
+#: templates/assets/detail.html:219
+msgid "No owner recorded."
+msgstr ""
+
+#: templates/assets/detail.html:228
+msgid "Their role"
+msgstr ""
+
+#: templates/assets/detail.html:240
+#, python-format
+msgid "Add %%(role)s"
+msgstr ""
+
+#: templates/assets/detail.html:240
+msgid "Add owner"
+msgstr ""
+
+#: templates/assets/detail.html:242
+msgid "Add a new person first"
+msgstr ""
+
+#: templates/assets/detail.html:247
+msgid "Service manuals"
+msgstr ""
+
+#: templates/assets/detail.html:249
+msgid "These libraries index by a catalog string that cannot be derived from a VIN, so open the browse link, find the exact variant, then pin that address here once."
+msgstr "These libraries index by a catalogue string that cannot be derived from a VIN, so open the browse link, find the exact variant, then pin that address here once."
+
+#: templates/assets/detail.html:255
+msgid "Paid"
+msgstr ""
+
+#: templates/assets/detail.html:259
+msgid "Open manual"
+msgstr ""
+
+#: templates/assets/detail.html:261
+msgid "Unpin"
+msgstr ""
+
+#: templates/assets/detail.html:266
+msgid "Browse"
+msgstr ""
+
+#: templates/assets/detail.html:270
+msgid "Page address to pin"
+msgstr ""
+
+#: templates/assets/detail.html:271
+msgid "Paste the exact page address"
+msgstr ""
+
+#: templates/assets/detail.html:273
+msgid "Pin it"
+msgstr ""
+
+#: templates/assets/detail.html:279
+msgid "Not for this vehicle"
+msgstr ""
+
+#: templates/assets/detail.html:288
+msgid "Hidden here:"
+msgstr ""
+
+#: templates/assets/form.html:2
+msgid "Add a vehicle"
+msgstr ""
+
+#: templates/assets/form.html:4
+msgid "Add a vehicle or equipment"
+msgstr ""
+
+#: templates/assets/form.html:5
+msgid "Only a nickname is required. A half-known project car is still worth recording."
+msgstr ""
+
+#: templates/assets/form.html:20
+msgid "Scan"
+msgstr ""
+
+#: templates/assets/form.html:23
+msgid "Look up"
+msgstr ""
+
+#: templates/assets/form.html:30
+msgid "Fills in only the boxes you have left empty. Nothing you typed is overwritten."
+msgstr ""
+
+#: templates/assets/list.html:6 templates/core/reminders.html:85
+#: templates/maintenance/schedule.html:91 templates/parts/detail.html:56
+#: templates/parts/detail.html:98 templates/parts/inventory.html:67
+#: templates/people/list.html:4 templates/purchasing/vendors.html:21
+#: templates/work/detail.html:139 templates/work/detail.html:195
+msgid "Add"
+msgstr ""
+
+#: templates/assets/list.html:9 templates/core/dashboard.html:15
+#: templates/work/detail.html:485 templates/work/list.html:8
+msgid "All"
+msgstr ""
+
+#: templates/assets/list.html:11
+msgid "Include sold"
+msgstr ""
+
+#: templates/assets/list.html:24
+msgid "No meter reading yet"
+msgstr ""
+
+#: templates/assets/list.html:29 templates/core/labels.html:42
+#: templates/core/reports.html:25
+msgid "No vehicles yet."
+msgstr ""
+
+#: templates/assets/list.html:30
+msgid "Add the first one"
+msgstr ""
+
+#: templates/assets/plate.html:2 templates/assets/plate.html:5
+#: templates/core/integrations.html:120
+msgid "Look up a plate"
+msgstr ""
+
+#: templates/assets/plate.html:7
+msgid "This costs money per lookup and sends the plate off your network. Both are shown before anything happens."
+msgstr ""
+
+#: templates/assets/plate.html:12
+msgid "Plate lookup is switched off. There is no free, legal plate-to-VIN service, so this needs a commercial provider and an account of your own — see the integrations page."
+msgstr ""
+
+#: templates/assets/plate.html:17
+msgid "This month"
+msgstr ""
+
+#: templates/assets/plate.html:19
+msgid "Provider"
+msgstr ""
+
+#: templates/assets/plate.html:20
+msgid "Lookups so far"
+msgstr ""
+
+#: templates/assets/plate.html:21
+msgid "Limit"
+msgstr ""
+
+#: templates/assets/plate.html:22
+msgid "none set"
+msgstr ""
+
+#: templates/assets/plate.html:24
+msgid "Left"
+msgstr ""
+
+#: templates/assets/plate.html:29
+msgid "With no cap there is nothing to stop a mistake running up a bill. Set PLATE_LOOKUP_MONTHLY_CAP in your .env to put a ceiling on it."
+msgstr ""
+
+#: templates/assets/plate.html:35
+msgid "Look one up"
+msgstr ""
+
+#: templates/assets/plate.html:43
+msgid "State or province"
+msgstr ""
+
+#: templates/assets/plate.html:45
+msgid "Coverage differs by state and province."
+msgstr ""
+
+#: templates/assets/plate.html:52
+#, python-format
+msgid "Send %(plate)s (%(region)s) to the provider?"
+msgstr ""
+
+#: templates/assets/plate.html:55
+msgid "The plate leaves your network. This will be lookup number"
+msgstr ""
+
+#: templates/assets/plate.html:58
+#, python-format
+msgid "at roughly %(cost)s each, by your own estimate."
+msgstr ""
+
+#: templates/assets/plate.html:60
+msgid "this month."
+msgstr ""
+
+#: templates/assets/plate.html:65
+msgid "Yes, look it up"
+msgstr ""
+
+#: templates/assets/plate.html:70
+msgid "Look up by plate"
+msgstr ""
+
+#: templates/assets/plate.html:78
+msgid "What came back"
+msgstr ""
+
+#: templates/assets/plate.html:82
+msgid "Their year, make, model"
+msgstr ""
+
+#: templates/assets/plate.html:85
+msgid "Their confidence"
+msgstr ""
+
+#: templates/assets/plate.html:91
+msgid "That VIN passes its own check digit."
+msgstr ""
+
+#: templates/assets/plate.html:94
+msgid "That VIN fails its check digit. Imports legitimately do, but so does a transcription error."
+msgstr ""
+
+#: templates/assets/plate.html:100
+msgid "The year, make and model above are the provider's and may be wrong. Add the vehicle by its VIN and decode it."
+msgstr ""
+
+#: templates/assets/plate.html:103
+msgid "Add a vehicle with this VIN"
+msgstr ""
+
+#: templates/assets/plate.html:106
+msgid "No VIN came back for that plate."
+msgstr ""
+
+#: templates/assets/recalls.html:5
+msgid "Recall campaigns"
+msgstr ""
+
+#: templates/assets/recalls.html:7 templates/assets/specs.html:6
+#: templates/core/asset_costs.html:7 templates/diagnostics/asset.html:6
+#: templates/inspections/wear.html:7 templates/maintenance/schedule.html:6
+msgid "Back to vehicle"
+msgstr ""
+
+#: templates/assets/recalls.html:11
+msgid "Check NHTSA"
+msgstr ""
+
+#: templates/assets/recalls.html:19
+msgid "What this can and cannot tell you"
+msgstr ""
+
+#: templates/assets/recalls.html:21
+msgid "Campaigns are matched by year, make and model — not by your VIN. Some may not apply to your vehicle."
+msgstr ""
+
+#: templates/assets/recalls.html:22
+msgid "Whether a recall was already performed on this VIN is not available from the free data, so you record that yourself."
+msgstr ""
+
+#: templates/assets/recalls.html:23
+msgid "Coverage is US-market vehicles. An empty list is not proof that a vehicle is clear."
+msgstr ""
+
+#: templates/assets/recalls.html:27
+msgid "Check this VIN with NHTSA"
+msgstr ""
+
+#: templates/assets/recalls.html:28
+msgid "then record what it said below."
+msgstr ""
+
+#: templates/assets/recalls.html:32
+msgid "This vehicle is registered outside the US. Recall data here comes from NHTSA only — Transport Canada and PROFECO are not wired up, so nothing shown here should be taken as complete."
+msgstr ""
+
+#: templates/assets/recalls.html:38
+msgid "Campaigns"
+msgstr ""
+
+#: templates/assets/recalls.html:52
+msgid "Remedy"
+msgstr ""
+
+#: templates/assets/recalls.html:56
+msgid "What you did about it"
+msgstr ""
+
+#: templates/assets/recalls.html:62 templates/inspections/detail.html:115
+#: templates/work/detail.html:408
+msgid "Note"
+msgstr ""
+
+#: templates/assets/recalls.html:63
+msgid "what the dealer said"
+msgstr ""
+
+#: templates/assets/recalls.html:68
+msgid "Nothing checked yet."
+msgstr ""
+
+#: templates/assets/specs.html:10
+msgid "Fill capacities, torque values, tire pressures, bulb sizes. These get looked up far more often than any report gets run — usually mid-job, with the manual three minutes away."
+msgstr ""
+
+#: templates/assets/specs.html:33 templates/assets/specs.html:75
+#: templates/inspections/detail.html:119
+#: templates/partials/_formactions.html:18
+msgid "Save"
+msgstr ""
+
+#: templates/assets/specs.html:41
+msgid "pinned"
+msgstr ""
+
+#: templates/assets/specs.html:42
+msgid "sensitive"
+msgstr ""
+
+#: templates/assets/specs.html:51 templates/core/reminders.html:46
+#: templates/inspections/detail.html:125
+#: templates/maintenance/schedule.html:132
+msgid "Remove"
+msgstr ""
+
+#: templates/assets/specs.html:67
+msgid "Add a spec"
+msgstr ""
+
+#: templates/assets/specs.html:79
+msgid "Keys and access codes are marked sensitive automatically, and are left out of the vehicle report and shared exports."
+msgstr ""
+
+#: templates/assets/specs.html:84
+msgid "Copy from another vehicle"
+msgstr ""
+
+#: templates/assets/specs.html:85
+msgid "Useful when you own two of the same model."
+msgstr ""
+
+#: templates/assets/specs.html:87
+msgid "Vehicle to copy from"
+msgstr ""
+
+#: templates/assets/specs.html:88
+msgid "Copy from…"
+msgstr ""
+
+#: templates/assets/specs.html:91
+msgid "Copy"
+msgstr ""
+
+#: templates/assets/specs.html:96 templates/assets/specs_from_scan.html:2
+msgid "From a scan report"
+msgstr ""
+
+#: templates/assets/specs.html:98
+msgid "A scan-tool PDF carries module part and calibration numbers, read off the vehicle rather than inferred. You will be shown what was found before anything is written."
+msgstr ""
+
+#: templates/assets/specs.html:103
+msgid "Scan-tool report"
+msgstr ""
+
+#: templates/assets/specs.html:104
+msgid "Read the report"
+msgstr ""
+
+#: templates/assets/specs_from_scan.html:5
+msgid "Read from a scan report"
+msgstr ""
+
+#: templates/assets/specs_from_scan.html:8
+msgid "nothing has been written yet"
+msgstr ""
+
+#: templates/assets/specs_from_scan.html:12
+msgid "The report"
+msgstr ""
+
+#: templates/assets/specs_from_scan.html:14
+#: templates/diagnostics/profiles.html:16 templates/work/detail.html:121
+msgid "Tool"
+msgstr ""
+
+#: templates/assets/specs_from_scan.html:17 templates/core/backups.html:49
+msgid "Taken"
+msgstr ""
+
+#: templates/assets/specs_from_scan.html:20
+msgid "VIN on the report"
+msgstr ""
+
+#: templates/assets/specs_from_scan.html:22
+msgid "none"
+msgstr ""
+
+#: templates/assets/specs_from_scan.html:27
+msgid "The VIN could not be compared — either this vehicle has none on file or the report does not carry one. Check the tool and date above name the right vehicle before recording anything."
+msgstr ""
+
+#: templates/assets/specs_from_scan.html:33
+msgid "What would be recorded"
+msgstr ""
+
+#: templates/assets/specs_from_scan.html:35
+msgid "Module identifiers, read off the vehicle rather than inferred from the VIN. These are the numbers you go looking for when matching a reflash or a replacement module. They land under Electrical, with the scan tool recorded as the source."
+msgstr ""
+
+#: templates/assets/specs_from_scan.html:48
+#, python-format
+msgid "Record %(counter)s identifier"
+msgid_plural "Record %(counter)s identifiers"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/assets/specs_from_scan.html:54
+msgid "An identifier already on file is corrected rather than duplicated."
+msgstr ""
+
+#: templates/auth/login.html:2 templates/auth/login.html:17
+msgid "Sign in"
+msgstr ""
+
+#: templates/auth/login.html:6
+msgid "Your shop, your data."
+msgstr ""
+
+#: templates/auth/login.html:8
+msgid "That username or password did not match."
+msgstr ""
+
+#: templates/base.html:15
+msgid "Skip to content"
+msgstr ""
+
+#: templates/base.html:21 templates/base.html:111 templates/core/search.html:2
+#: templates/core/search.html:4 templates/core/search.html:7
+#: templates/core/search.html:9
+msgid "Search"
+msgstr ""
+
+#: templates/base.html:23
+msgid "Search vehicles, work orders, people…"
+msgstr ""
+
+#: templates/base.html:28
+msgid "Main"
+msgstr ""
+
+#: templates/base.html:32
+msgid "Account"
+msgstr ""
+
+#: templates/base.html:34 templates/core/health.html:28
+msgid "Offline mode"
+msgstr ""
+
+#: templates/base.html:43
+msgid "Sections"
+msgstr ""
+
+#: templates/base.html:47
+msgid "Managing this shop"
+msgstr ""
+
+#: templates/base.html:48
+msgid "People and accounts"
+msgstr ""
+
+#: templates/base.html:49 templates/core/health.html:33
+#: templates/core/settings.html:2 templates/core/settings.html:5
+msgid "Settings"
+msgstr ""
+
+#: templates/base.html:51 templates/core/health.html:3
+msgid "Instance health"
+msgstr ""
+
+#: templates/base.html:52 templates/core/reminders.html:2
+#: templates/core/reminders.html:4
+msgid "Reminders"
+msgstr ""
+
+#: templates/base.html:53 templates/diagnostics/queue.html:2
+#: templates/diagnostics/queue.html:7
+msgid "Scans to check"
+msgstr ""
+
+#: templates/base.html:55 templates/core/lubelogger.html:2
+#: templates/core/lubelogger.html:4
+msgid "Import from LubeLogger"
+msgstr ""
+
+#: templates/base.html:56 templates/purchasing/order_import.html:2
+#: templates/purchasing/order_import.html:7
+msgid "Read a parts order"
+msgstr ""
+
+#: templates/base.html:57 templates/core/import.html:2
+#: templates/core/import.html:5
+msgid "Import a spreadsheet"
+msgstr ""
+
+#: templates/base.html:58 templates/core/trash.html:2
+#: templates/core/trash.html:4
+msgid "Trash"
+msgstr ""
+
+#: templates/base.html:59
+msgid "Administration"
+msgstr ""
+
+#: templates/base.html:61 templates/core/sync_queue.html:2
+#: templates/core/sync_queue.html:5
+msgid "Waiting to sync"
+msgstr ""
+
+#: templates/base.html:62
+msgid "API"
+msgstr ""
+
+#: templates/base.html:64
+msgid "Sign out"
+msgstr ""
+
+#: templates/base.html:81
+msgid "Waiting for a restart"
+msgstr ""
+
+#: templates/base.html:83
+msgid "These were changed and are not in effect yet:"
+msgstr ""
+
+#: templates/base.html:89
+msgid "Apply and restart"
+msgstr ""
+
+#: templates/base.html:106
+msgid "Primary"
+msgstr ""
+
+#: templates/base.html:107 templates/core/dashboard.html:2
+#: templates/core/dashboard.html:4
+msgid "Today"
+msgstr ""
+
+#: templates/base.html:109
+msgid "New job"
+msgstr ""
+
+#: templates/base.html:110 templates/maintenance/due.html:2
+#: templates/partials/_sections.html:18
+msgid "Due"
+msgstr ""
+
+#: templates/core/asset_costs.html:6
+msgid "What this vehicle has cost"
+msgstr ""
+
+#: templates/core/asset_costs.html:12
+msgid "Breakdown"
+msgstr ""
+
+#: templates/core/asset_costs.html:23
+#, python-format
+msgid "%(hours)s hours of your own time."
+msgstr ""
+
+#: templates/core/asset_costs.html:24
+msgid "Valued only if a rate is configured, and always an estimate — never a bill."
+msgstr ""
+
+#: templates/core/asset_costs.html:30
+msgid "Cost per distance"
+msgstr ""
+
+#: templates/core/asset_costs.html:34
+msgid "per"
+msgstr ""
+
+#: templates/core/asset_costs.html:37
+msgid "Not yet."
+msgstr ""
+
+#: templates/core/asset_costs.html:41
+msgid "Fuel is not included — this is repair and ownership cost only."
+msgstr ""
+
+#: templates/core/backups.html:9
+msgid "Nothing has ever been backed up. Everything in this shop is on one disk."
+msgstr ""
+
+#: templates/core/backups.html:13
+#, python-format
+msgid "The last backup was %(n)s days ago."
+msgstr ""
+
+#: templates/core/backups.html:17
+#, python-format
+msgid "Last backed up %(n)s days ago."
+msgstr ""
+
+#: templates/core/backups.html:24
+msgid "Back up now"
+msgstr ""
+
+#: templates/core/backups.html:28
+msgid "Build a portable export"
+msgstr ""
+
+#: templates/core/backups.html:33
+msgid "running"
+msgstr ""
+
+#: templates/core/backups.html:34
+#, python-format
+msgid "Started %(since)s. Reload this page to see it land."
+msgstr ""
+
+#: templates/core/backups.html:38
+msgid "A backup is for getting this instance back. An export is a ZIP of plain JSON and every file, readable without this application — that is the point of it."
+msgstr ""
+
+#: templates/core/backups.html:43
+msgid "What is held"
+msgstr ""
+
+#: templates/core/backups.html:49 templates/core/reminders.html:64
+msgid "Kind"
+msgstr ""
+
+#: templates/core/backups.html:50
+msgid "Contents"
+msgstr ""
+
+#: templates/core/backups.html:50
+msgid "Size"
+msgstr ""
+
+#: templates/core/backups.html:57 templates/diagnostics/profiles.html:31
+msgid "Export"
+msgstr ""
+
+#: templates/core/backups.html:61
+msgid "database"
+msgstr ""
+
+#: templates/core/backups.html:61
+msgid "media"
+msgstr ""
+
+#: templates/core/backups.html:63
+msgid "no database in it"
+msgstr ""
+
+#: templates/core/backups.html:66
+msgid "every table, every file"
+msgstr ""
+
+#: templates/core/backups.html:71
+msgid "Download"
+msgstr ""
+
+#: templates/core/backups.html:73 templates/inspections/detail.html:46
+#: templates/work/detail.html:31
+msgid "Delete"
+msgstr ""
+
+#: templates/core/backups.html:82
+msgid "Nothing here yet."
+msgstr ""
+
+#: templates/core/backups.html:85
+#, python-format
+msgid "Held in %(dir)s inside the container, which is a volume — it survives a rebuild and it does not survive the disk. Copy them somewhere else."
+msgstr ""
+
+#: templates/core/backups.html:87
+#, python-format
+msgid "%(free)s free there."
+msgstr ""
+
+#: templates/core/backups.html:95
+msgid "Runs every"
+msgstr ""
+
+#: templates/core/backups.html:96
+#, python-format
+msgid "%(n)s hour"
+msgid_plural "%(n)s hours"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/core/backups.html:97
+msgid "Kept"
+msgstr ""
+
+#: templates/core/backups.html:98
+#, python-format
+msgid "%(d)s daily, %(w)s weekly, %(m)s monthly"
+msgstr ""
+
+#: templates/core/backups.html:100
+msgid "Change the schedule"
+msgstr ""
+
+#: templates/core/backups.html:104
+msgid "Restoring"
+msgstr ""
+
+#: templates/core/backups.html:106
+msgid "Restore stays on the command line. Swapping the database out from underneath a running application is not something a web request should attempt, and a half-finished one leaves an instance that is neither the old state nor the new."
+msgstr ""
+
+#: templates/core/backups.html:110
+msgid "Integration keys are not in the backup, on purpose. After a restore the settings screen lists which ones need entering again."
+msgstr ""
+
+#: templates/core/backups.html:116
+msgid "Recently"
+msgstr ""
+
+#: templates/core/dashboard.html:14
+msgid "Due and overdue"
+msgstr ""
+
+#: templates/core/dashboard.html:41
+msgid "Short of parts"
+msgstr ""
+
+#: templates/core/dashboard.html:46
+#, python-format
+msgid "%(n)s × %(part)s"
+msgstr ""
+
+#: templates/core/dashboard.html:51
+msgid "Nothing here has been marked blocked. This is the arithmetic: what these jobs need, against what is on the shelf and not already spoken for."
+msgstr ""
+
+#: templates/core/dashboard.html:70
+msgid "Open work"
+msgstr ""
+
+#: templates/core/dashboard.html:76
+msgid "Nothing open. Enjoy it."
+msgstr ""
+
+#: templates/core/dashboard.html:83
+msgid "Fleet"
+msgstr ""
+
+#: templates/core/dashboard.html:88
+msgid "All vehicles"
+msgstr ""
+
+#: templates/core/dashboard.html:92
+msgid "Registration due"
+msgstr ""
+
+#: templates/core/health.html:6
+msgid "Database"
+msgstr ""
+
+#: templates/core/health.html:7
+msgid "Media files"
+msgstr ""
+
+#: templates/core/health.html:8
+msgid "Last backup"
+msgstr ""
+
+#: templates/core/health.html:9
+msgid "days ago"
+msgstr ""
+
+#: templates/core/health.html:10 templates/core/integrations.html:34
+#: templates/core/integrations.html:69
+msgid "never"
+msgstr ""
+
+#: templates/core/health.html:11
+msgid "Text recognition"
+msgstr ""
+
+#: templates/core/health.html:13
+msgid "Turned off"
+msgstr ""
+
+#: templates/core/health.html:14
+msgid "Tesseract is not installed"
+msgstr ""
+
+#: templates/core/health.html:15
+msgid "Documents and receipts will not become searchable."
+msgstr ""
+
+#: templates/core/health.html:16
+msgid "Ready"
+msgstr ""
+
+#: templates/core/health.html:19
+#, python-format
+msgid "Not installed in this image: %(names)s"
+msgstr ""
+
+#: templates/core/health.html:20
+msgid "Rebuild after changing TESSERACT_LANGS."
+msgstr ""
+
+#: templates/core/health.html:24
+#, python-format
+msgid "%(n)s file waiting"
+msgid_plural "%(n)s files waiting"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/core/health.html:25
+#, python-format
+msgid "%(n)s unreadable"
+msgid_plural "%(n)s unreadable"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/core/health.html:29
+msgid "Outbound allowlist"
+msgstr ""
+
+#: templates/core/health.html:38
+msgid "Jobs"
+msgstr ""
+
+#: templates/core/health.html:39
+msgid "Queue empty."
+msgstr ""
+
+#: templates/core/import.html:7
+msgid "Bring in the file you already keep, and say which column is which."
+msgstr ""
+
+#: templates/core/import.html:11
+msgid "What is in the file"
+msgstr ""
+
+#: templates/core/import.html:13
+msgid "Type"
+msgstr ""
+
+#: templates/core/import.html:19
+msgid "Change"
+msgstr ""
+
+#: templates/core/import.html:26
+msgid "CSV file"
+msgstr ""
+
+#: templates/core/import.html:29
+msgid "Read the columns"
+msgstr ""
+
+#: templates/core/import.html:32
+msgid "Commas, semicolons or tabs all work."
+msgstr ""
+
+#: templates/core/import.html:41 templates/diagnostics/map.html:19
+msgid "Which column is which"
+msgstr ""
+
+#: templates/core/import.html:43
+#, python-format
+msgid "%(counter)s row read."
+msgid_plural "%(counter)s rows read."
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/core/import.html:44
+msgid "Leave anything you do not have blank."
+msgstr ""
+
+#: templates/core/import.html:50
+msgid "needed"
+msgstr ""
+
+#: templates/core/import.html:53 templates/diagnostics/map.html:25
+msgid "— not in this file —"
+msgstr ""
+
+#: templates/core/import.html:62 templates/diagnostics/map.html:34
+msgid "The first few rows"
+msgstr ""
+
+#: templates/core/import.html:74
+msgid "Show me what would happen"
+msgstr ""
+
+#: templates/core/import.html:76
+msgid "Do it for real"
+msgstr ""
+
+#: templates/core/import.html:85
+msgid "What would happen"
+msgstr ""
+
+#: templates/core/import.html:86
+msgid "What happened"
+msgstr ""
+
+#: templates/core/import.html:89
+msgid "Nothing has been written. This is a rehearsal."
+msgstr ""
+
+#: templates/core/import.html:92
+msgid "New records"
+msgstr ""
+
+#: templates/core/import.html:93
+msgid "Already here"
+msgstr ""
+
+#: templates/core/import.html:98
+msgid "For example"
+msgstr ""
+
+#: templates/core/import.html:103
+msgid "Rows that could not be read"
+msgstr ""
+
+#: templates/core/import.html:105
+msgid "Only the first 25 are listed; a wrong column choice produces one of these per row."
+msgstr ""
+
+#: templates/core/integrations.html:7
+msgid "Every one of these is optional. With all of them switched off, everything else still works."
+msgstr ""
+
+#: templates/core/integrations.html:12
+msgid "Offline Mode is on, so none of these make an outbound call."
+msgstr ""
+
+#: templates/core/integrations.html:17
+msgid "VIN decode — NHTSA"
+msgstr ""
+
+#: templates/core/integrations.html:19
+msgid "Free, no account, no key. On by default; it sends nothing but the VIN you typed."
+msgstr ""
+
+#: templates/core/integrations.html:22 templates/core/integrations.html:115
+#: templates/core/reminders.html:29
+msgid "on"
+msgstr ""
+
+#: templates/core/integrations.html:22 templates/core/reminders.html:30
+#: templates/diagnostics/profiles.html:23
+msgid "off"
+msgstr ""
+
+#: templates/core/integrations.html:26
+msgid "LubeLogger"
+msgstr ""
+
+#: templates/core/integrations.html:30 templates/core/lubelogger.html:63
+msgid "Mode"
+msgstr ""
+
+#: templates/core/integrations.html:32
+msgid "Pulls every"
+msgstr ""
+
+#: templates/core/integrations.html:33
+#, python-format
+msgid "%(counter)s hour"
+msgid_plural "%(counter)s hours"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/core/integrations.html:34
+msgid "Last pull"
+msgstr ""
+
+#: templates/core/integrations.html:36
+msgid "Covered from"
+msgstr ""
+
+#: templates/core/integrations.html:37
+msgid "Records"
+msgstr ""
+
+#: templates/core/integrations.html:43 templates/core/integrations.html:72
+msgid "Test the connection"
+msgstr ""
+
+#: templates/core/integrations.html:47
+msgid "Pull now"
+msgstr ""
+
+#: templates/core/integrations.html:50
+msgid "One-time import"
+msgstr ""
+
+#: templates/core/integrations.html:54
+msgid "Set it to pull on the settings screen to have it fetch on a schedule. For most people the one-time import is enough."
+msgstr ""
+
+#: templates/core/integrations.html:55
+msgid "Integration settings"
+msgstr ""
+
+#: templates/core/integrations.html:59
+msgid "Not configured."
+msgstr ""
+
+#: templates/core/integrations.html:64
+msgid "WrenchLedger — tool availability"
+msgstr ""
+
+#: templates/core/integrations.html:67
+msgid "Shows on a work order whether the tools it needs are actually here — on hand, on loan, or due for calibration. A warning, never a block."
+msgstr ""
+
+#: templates/core/integrations.html:69
+msgid "Last checked:"
+msgstr ""
+
+#: templates/core/integrations.html:75
+msgid "Check tools now"
+msgstr ""
+
+#: templates/core/integrations.html:79
+#, python-format
+msgid "Consumables are tracked by <span class=\"mono\">%(owner)s</span>, so the same quart of oil is not counted in both systems."
+msgstr ""
+
+#: templates/core/integrations.html:82
+msgid "Not connected."
+msgstr ""
+
+#: templates/core/integrations.html:84
+msgid "A key needs exactly these scopes, and no more:"
+msgstr ""
+
+#: templates/core/integrations.html:86
+msgid "Do not add loans:sensitive; nothing here uses borrower contact details."
+msgstr ""
+
+#: templates/core/integrations.html:94
+msgid "Not tracking your tools anywhere?"
+msgstr ""
+
+#: templates/core/integrations.html:96
+msgid "HomeAutoShop deliberately does not track what tools you own, where they live, or who borrowed them — <a href=\"https://wrench-ledger.app?ref=homeautoshop\" rel=\"noopener\">WrenchLedger</a> already does that well, and this connects to it rather than competing with it."
+msgstr ""
+
+#: templates/core/integrations.html:99
+msgid "From the same developer as HomeAutoShop. It is a paid cloud service, not self-hosted — worth knowing before you look."
+msgstr ""
+
+#: templates/core/integrations.html:102
+msgid "Don't show this again"
+msgstr ""
+
+#: templates/core/integrations.html:112
+msgid "There is no free, legal plate-to-VIN service anywhere, so this needs a commercial provider and an account of your own. Nothing is bundled or recommended."
+msgstr ""
+
+#: templates/core/integrations.html:117
+#, python-format
+msgid "Capped at %(cap)s lookups a month."
+msgstr ""
+
+#: templates/core/integrations.html:118
+msgid "No monthly cap set — every press spends money."
+msgstr ""
+
+#: templates/core/integrations.html:122
+msgid "Off. Every lookup costs money and sends the plate off your network."
+msgstr ""
+
+#: templates/core/integrations.html:127
+msgid "What has gone out"
+msgstr ""
+
+#: templates/core/integrations.html:129
+msgid "Every outbound call this instance has made, with what it was for and what came back. Nothing is sent that is not on this list."
+msgstr ""
+
+#: templates/core/integrations.html:133
+msgid "When"
+msgstr ""
+
+#: templates/core/integrations.html:133
+msgid "Where"
+msgstr ""
+
+#: templates/core/integrations.html:134
+msgid "Why"
+msgstr ""
+
+#: templates/core/integrations.html:134
+msgid "Result"
+msgstr ""
+
+#: templates/core/integrations.html:134
+msgid "Who"
+msgstr ""
+
+#: templates/core/integrations.html:149
+msgid "Nothing has left this machine."
+msgstr ""
+
+#: templates/core/labels.html:11
+msgid "Print"
+msgstr ""
+
+#: templates/core/labels.html:15
+msgid "What to label"
+msgstr ""
+
+#: templates/core/labels.html:17
+#, python-format
+msgid "%(counter)s location"
+msgid_plural "%(counter)s locations"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/core/labels.html:25
+msgid "Print on plain paper and cut, or on label stock. Each code is 24 mm square, which reads from about a foot away on a phone."
+msgstr ""
+
+#: templates/core/labels.html:40
+msgid "No storage locations yet. Add one on the inventory screen and it gets a label."
+msgstr ""
+
+#: templates/core/lubelogger.html:7
+msgid "A one-time copy of the history you already have. It is optional and it is not a link — once the records are here, this instance owns them, and nothing stops working if the LubeLogger instance goes away."
+msgstr ""
+
+#: templates/core/lubelogger.html:11
+msgid "Offline mode is on, so nothing can be fetched."
+msgstr ""
+
+#: templates/core/lubelogger.html:16
+msgid "No instance set"
+msgstr ""
+
+#: templates/core/lubelogger.html:18
+msgid "Set these in the instance environment and restart. A read-only key is enough — this only ever reads."
+msgstr ""
+
+#: templates/core/lubelogger.html:22 templates/core/settings.html:69
+msgid "not set"
+msgstr ""
+
+#: templates/core/lubelogger.html:24
+msgid "set"
+msgstr ""
+
+#: templates/core/lubelogger.html:25
+msgid "not set — try anyway"
+msgstr ""
+
+#: templates/core/lubelogger.html:28
+msgid "These live in your .env file. Changing them takes a restart."
+msgstr ""
+
+#: templates/core/lubelogger.html:35
+msgid "Paired vehicles"
+msgstr ""
+
+#: templates/core/lubelogger.html:37
+msgid "Every future run uses these, so nothing has to be matched again. Unlink one if it was paired wrongly — no imported records are removed, but nothing further is attached."
+msgstr ""
+
+#: templates/core/lubelogger.html:49
+msgid "Unlink"
+msgstr ""
+
+#: templates/core/lubelogger.html:60
+msgid "Source"
+msgstr ""
+
+#: templates/core/lubelogger.html:62
+msgid "Instance"
+msgstr ""
+
+#: templates/core/lubelogger.html:68
+msgid "Reachable"
+msgstr ""
+
+#: templates/core/lubelogger.html:69 templates/core/lubelogger.html:71
+#: templates/core/lubelogger.html:73
+msgid "yes"
+msgstr ""
+
+#: templates/core/lubelogger.html:69 templates/core/lubelogger.html:71
+#: templates/core/lubelogger.html:73
+msgid "no"
+msgstr ""
+
+#: templates/core/lubelogger.html:70
+msgid "Key accepted"
+msgstr ""
+
+#: templates/core/lubelogger.html:72
+msgid "Numbers unambiguous"
+msgstr ""
+
+#: templates/core/lubelogger.html:74
+msgid "Vehicles found"
+msgstr ""
+
+#: templates/core/lubelogger.html:79
+msgid "LubeLogger is returning locale-formatted numbers. Importing those turns 1.234,56 into 1.23 — wrong money that looks entirely plausible and is found months later, if ever. Set LUBELOGGER_INVARIANT_API=true on the LubeLogger side first."
+msgstr ""
+
+#: templates/core/lubelogger.html:86
+msgid "Check the connection"
+msgstr ""
+
+#: templates/core/lubelogger.html:88
+msgid "Preview the import"
+msgstr ""
+
+#: templates/core/lubelogger.html:90
+msgid "A preview writes nothing. Always look at one before importing."
+msgstr ""
+
+#: templates/core/lubelogger.html:95
+msgid "Preview — nothing was written"
+msgstr ""
+
+#: templates/core/lubelogger.html:99
+msgid "Would be created"
+msgstr ""
+
+#: templates/core/lubelogger.html:102
+msgid "Nothing new."
+msgstr ""
+
+#: templates/core/lubelogger.html:106
+msgid "Already here, skipped"
+msgstr ""
+
+#: templates/core/lubelogger.html:115
+msgid "Vehicles with no match here"
+msgstr ""
+
+#: templates/core/lubelogger.html:117
+msgid "Matched automatically by VIN, by plate, or by a previous link. A year/make/model resemblance is reported and never merged on its own — a wrong link writes one vehicle's history into another, and there is no clean way back. Say which is which and it stays said."
+msgstr ""
+
+#: templates/core/lubelogger.html:121
+msgid "In LubeLogger"
+msgstr ""
+
+#: templates/core/lubelogger.html:121
+msgid "Is this vehicle"
+msgstr ""
+
+#: templates/core/lubelogger.html:133
+msgid "Vehicle here"
+msgstr ""
+
+#: templates/core/lubelogger.html:135
+msgid "— not this shop's —"
+msgstr ""
+
+#: templates/core/lubelogger.html:140
+msgid "Link"
+msgstr ""
+
+#: templates/core/lubelogger.html:148
+msgid "Two ways out of this list: pair a vehicle that is already here, or tick “Also create the vehicles that have no match here” below to bring it across as a new one. Pairing writes nothing but the pairing — run the preview again to see what it would then bring in."
+msgstr ""
+
+#: templates/core/lubelogger.html:158
+msgid "Errors"
+msgstr ""
+
+#: templates/core/lubelogger.html:163
+msgid "A sample of what would come across"
+msgstr ""
+
+#: templates/core/lubelogger.html:168
+msgid "Import this into your records? Re-running later skips anything already here."
+msgstr ""
+
+#: templates/core/lubelogger.html:173
+msgid "Also create the vehicles that have no match here"
+msgstr ""
+
+#: templates/core/lubelogger.html:177
+msgid "Import for real"
+msgstr ""
+
+#: templates/core/lubelogger.html:181
+msgid "Safe to re-run: every imported record remembers where it came from, so a second run adds nothing twice."
+msgstr ""
+
+#: templates/core/reminders.html:7
+msgid "One digest, not one message per item — and nothing at all when there is nothing to say."
+msgstr ""
+
+#: templates/core/reminders.html:12
+msgid "Reminders are turned off for this instance. Set REMINDERS_ENABLED=true to start sending; channels below can still be set up and tested."
+msgstr ""
+
+#: templates/core/reminders.html:16
+msgid "Offline mode is on, so nothing is delivered anywhere."
+msgstr ""
+
+#: templates/core/reminders.html:22
+msgid "Channels"
+msgstr ""
+
+#: templates/core/reminders.html:34
+msgid "Last sent"
+msgstr ""
+
+#: templates/core/reminders.html:42
+msgid "Send test"
+msgstr ""
+
+#: templates/core/reminders.html:44
+msgid "Disable"
+msgstr ""
+
+#: templates/core/reminders.html:44
+msgid "Enable"
+msgstr ""
+
+#: templates/core/reminders.html:50
+msgid "No channels. Nothing is delivered anywhere."
+msgstr ""
+
+#: templates/core/reminders.html:56
+msgid "Add a channel"
+msgstr ""
+
+#: templates/core/reminders.html:59
+msgid "SMTP is not configured, so email will fail until SMTP_HOST is set. A webhook needs no mail server — it POSTs JSON to whatever you point it at."
+msgstr ""
+
+#: templates/core/reminders.html:71
+msgid "Andy, Home Assistant…"
+msgstr ""
+
+#: templates/core/reminders.html:74
+msgid "Where to send it"
+msgstr ""
+
+#: templates/core/reminders.html:76
+msgid "you@example.com — or https://…/webhook"
+msgstr ""
+
+#: templates/core/reminders.html:79
+msgid "Enabled"
+msgstr ""
+
+#: templates/core/reminders.html:83
+msgid "Include routine items, not just safety and overdue"
+msgstr ""
+
+#: templates/core/reminders.html:88
+msgid "A channel of kind “Phone notification” is not added here — a browser has to subscribe itself, below."
+msgstr ""
+
+#: templates/core/reminders.html:93
+msgid "Notify this phone"
+msgstr ""
+
+#: templates/core/reminders.html:95
+msgid "Web push does not reach your browser directly — it goes through Google, Mozilla or Apple, depending on which browser this is. That is the one place a local-first instance has to talk to a large cloud service, so it is off until you turn it on here, and the message it sends says only that something is due. What is due stays behind the tap."
+msgstr ""
+
+#: templates/core/reminders.html:97 templates/diagnostics/elm327.html:24
+msgid "Checking…"
+msgstr ""
+
+#: templates/core/reminders.html:99
+msgid "Notify this device"
+msgstr ""
+
+#: templates/core/reminders.html:106
+msgid "What would be sent right now"
+msgstr ""
+
+#: templates/core/reminders.html:108
+msgid "Nothing. No message would go out."
+msgstr ""
+
+#: templates/core/reminders.html:119
+#, python-format
+msgid "An item already mentioned is not raised again for %(cooldown_days)s days."
+msgstr ""
+
+#: templates/core/reports.html:2 templates/core/reports.html:4
+#: templates/partials/_sections.html:23
+msgid "Reports"
+msgstr ""
+
+#: templates/core/reports.html:9
+msgid "Spend by month"
+msgstr ""
+
+#: templates/core/reports.html:12
+msgid "Month"
+msgstr ""
+
+#: templates/core/reports.html:12
+msgid "Parts and expenses"
+msgstr ""
+
+#: templates/core/reports.html:19
+msgid "Cost by vehicle"
+msgstr ""
+
+#: templates/core/reports.html:32
+msgid "Inventory value"
+msgstr ""
+
+#: templates/core/reports.html:34
+msgid "At what each lot actually cost."
+msgstr ""
+
+#: templates/core/reports.html:38
+msgid "Under warranty"
+msgstr ""
+
+#: templates/core/reports.html:46
+msgid "Nothing under warranty."
+msgstr ""
+
+#: templates/core/search.html:8
+msgid "Part number, nickname, VIN, a phrase from a note…"
+msgstr ""
+
+#: templates/core/search.html:13
+#, python-format
+msgid "Nothing matched “%(q)s”."
+msgstr ""
+
+#: templates/core/settings.html:9
+msgid "Some integrations need their key entered again."
+msgstr ""
+
+#: templates/core/settings.html:11
+msgid "Keys are deliberately left out of every backup and export, so a restored instance never carries them. Until one is entered, that integration stays switched off rather than retrying and filling the log."
+msgstr ""
+
+#: templates/core/settings.html:19
+msgid "Settings sections"
+msgstr ""
+
+#: templates/core/settings.html:69
+msgid "stored here — type to replace"
+msgstr ""
+
+#: templates/core/settings.html:69
+msgid "set in the .env file — type to override"
+msgstr ""
+
+#: templates/core/settings.html:74
+msgid "Remove the stored key"
+msgstr ""
+
+#: templates/core/settings.html:78
+msgid "This one comes from the environment file. Entering a value here takes over from it; clearing it again means editing that file."
+msgstr ""
+
+#: templates/core/settings.html:124
+msgid "takes effect when the instance restarts"
+msgstr ""
+
+#: templates/core/settings.html:131
+msgid "Discard changes"
+msgstr ""
+
+#: templates/core/settings.html:135
+msgid "Anything not here stays in the environment on purpose: values read before the database exists, and values a wrong answer would lock you out of this screen with."
+msgstr ""
+
+#: templates/core/setup.html:2 templates/core/setup.html:14
+msgid "Set up your shop"
+msgstr ""
+
+#: templates/core/setup.html:16
+msgid "This runs once. Everything here can be changed later in Settings."
+msgstr ""
+
+#: templates/core/setup.html:25
+msgid "Your account"
+msgstr ""
+
+#: templates/core/setup.html:27
+msgid "The first account, and an administrator. You can add other people afterwards."
+msgstr ""
+
+#: templates/core/setup.html:37
+msgid "This shop"
+msgstr ""
+
+#: templates/core/setup.html:39
+msgid "These change how every later screen reads: a distance, a date and a price all depend on them."
+msgstr ""
+
+#: templates/core/setup.html:49
+msgid "Starter data"
+msgstr ""
+
+#: templates/core/setup.html:54
+msgid "Reaching this from the garage"
+msgstr ""
+
+#: templates/core/setup.html:59
+msgid "Copy the root out of the proxy, then install it on each device:"
+msgstr ""
+
+#: templates/core/setup.html:63
+msgid "The full walkthrough, phones included, is in docs/INSTALL.md."
+msgstr ""
+
+#: templates/core/setup.html:69
+msgid "Finish setup"
+msgstr ""
+
+#: templates/core/sync_queue.html:7
+msgid "Everything captured on this device that has not reached the server yet. Each device keeps its own queue — a reading taken on the phone shows on the phone."
+msgstr ""
+
+#: templates/core/sync_queue.html:11
+msgid "Queued"
+msgstr ""
+
+#: templates/core/sync_queue.html:13
+msgid "Reading the queue…"
+msgstr ""
+
+#: templates/core/sync_queue.html:16
+msgid "Try now"
+msgstr ""
+
+#: templates/core/sync_queue.html:21
+msgid "Needs a decision"
+msgstr ""
+
+#: templates/core/sync_queue.html:23
+msgid "Somebody else changed the same record while this device was offline. Nothing is merged automatically and nothing is thrown away — pick which version is right."
+msgstr ""
+
+#: templates/core/trash.html:6
+#, python-format
+msgid "Deleted records are kept for %(retention_days)s days and can be restored. Nothing here is gone yet."
+msgstr ""
+
+#: templates/core/trash.html:16
+msgid "Restore"
+msgstr ""
+
+#: templates/core/trash.html:23
+msgid "Nothing in the trash."
+msgstr ""
+
+#: templates/diagnostics/asset.html:5
+msgid "Scans and trouble codes"
+msgstr ""
+
+#: templates/diagnostics/asset.html:11
+msgid "Codes still open"
+msgstr ""
+
+#: templates/diagnostics/asset.html:14 templates/diagnostics/session.html:75
+msgid "Look these up:"
+msgstr ""
+
+#: templates/diagnostics/asset.html:19 templates/diagnostics/session.html:80
+msgid "Opens that manual's list of trouble codes for this vehicle, worked out from the address you pinned. Nothing checks it first, so a library with no such section will 404."
+msgstr ""
+
+#: templates/diagnostics/asset.html:24
+msgid "What it means"
+msgstr ""
+
+#: templates/diagnostics/asset.html:25
+msgid "Do"
+msgstr ""
+
+#: templates/diagnostics/asset.html:32
+msgid "came back"
+msgstr ""
+
+#: templates/diagnostics/asset.html:42 templates/diagnostics/session.html:113
+msgid "Make a job"
+msgstr ""
+
+#: templates/diagnostics/asset.html:46
+msgid "Live with it"
+msgstr ""
+
+#: templates/diagnostics/asset.html:60
+msgid "Scan history"
+msgstr ""
+
+#: templates/diagnostics/asset.html:65
+msgid "scan"
+msgstr ""
+
+#: templates/diagnostics/asset.html:68
+#, python-format
+msgid "%(counter)s code"
+msgid_plural "%(counter)s codes"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/diagnostics/asset.html:76
+msgid "No scans on file yet."
+msgstr ""
+
+#: templates/diagnostics/asset.html:82
+msgid "Waiting for you to check"
+msgstr ""
+
+#: templates/diagnostics/asset.html:84
+msgid "A scan stays out of the history until somebody has checked it over."
+msgstr ""
+
+#: templates/diagnostics/asset.html:97
+msgid "Read a report"
+msgstr ""
+
+#: templates/diagnostics/asset.html:99
+msgid "A PDF from a scan tool, or a CSV or text export if yours makes one. Use the export where you have one — it reads more reliably."
+msgstr ""
+
+#: templates/diagnostics/asset.html:110
+msgid "A photo works too — a battery or charging-system printout, or anything else that only ever comes out on paper. It is read with text recognition, so check what it found before confirming."
+msgstr ""
+
+#: templates/diagnostics/asset.html:115
+msgid "Report file or photo"
+msgstr ""
+
+#: templates/diagnostics/asset.html:128 templates/diagnostics/asset.html:129
+msgid "Photograph a printout"
+msgstr ""
+
+#: templates/diagnostics/asset.html:131
+msgid "Read it"
+msgstr ""
+
+#: templates/diagnostics/asset.html:137 templates/diagnostics/elm327.html:2
+#: templates/diagnostics/elm327.html:7
+msgid "Read the car directly"
+msgstr ""
+
+#: templates/diagnostics/asset.html:139
+msgid "Read codes straight off the car with an ELM327 adapter. Needs Chrome or Edge."
+msgstr ""
+
+#: templates/diagnostics/asset.html:141
+msgid "Connect an adapter"
+msgstr ""
+
+#: templates/diagnostics/elm327.html:10
+msgid "ELM327 over USB"
+msgstr ""
+
+#: templates/diagnostics/elm327.html:13
+msgid "Back"
+msgstr ""
+
+#: templates/diagnostics/elm327.html:17
+msgid "Needs a Chromium-based browser — Chrome or Edge — over HTTPS. Anything read here lands as a draft for you to check, the same as a PDF report."
+msgstr ""
+
+#: templates/diagnostics/elm327.html:23
+msgid "Adapter"
+msgstr ""
+
+#: templates/diagnostics/elm327.html:26
+msgid "Read codes"
+msgstr ""
+
+#: templates/diagnostics/elm327.html:27
+msgid "Keep what was read"
+msgstr ""
+
+#: templates/diagnostics/elm327.html:29
+msgid "What the adapter said"
+msgstr ""
+
+#: templates/diagnostics/elm327.html:34
+msgid "Clearing codes"
+msgstr ""
+
+#: templates/diagnostics/elm327.html:36
+msgid "Clearing resets the readiness monitors, and a car with unset monitors fails an emissions test on the spot — sometimes for a hundred miles of driving afterwards. Do it after the repair, not before the test."
+msgstr ""
+
+#: templates/diagnostics/elm327.html:38
+msgid "Clear codes on this vehicle"
+msgstr ""
+
+#: templates/diagnostics/elm327.html:44
+msgid "Codes read"
+msgstr ""
+
+#: templates/diagnostics/elm327.html:45
+msgid "Nothing read yet."
+msgstr ""
+
+#: templates/diagnostics/elm327.html:49
+msgid "What this reads"
+msgstr ""
+
+#: templates/diagnostics/elm327.html:51
+msgid "Stored codes — the ones that turned the light on."
+msgstr ""
+
+#: templates/diagnostics/elm327.html:52
+msgid "Pending codes — seen once, not yet confirmed."
+msgstr ""
+
+#: templates/diagnostics/elm327.html:53
+msgid "Permanent codes — cleared by the car, not by a tool."
+msgstr ""
+
+#: templates/diagnostics/elm327.html:56
+msgid "Generic codes come with a standard description. Manufacturer-specific codes show whatever you have written down for that make."
+msgstr ""
+
+#: templates/diagnostics/map.html:2 templates/diagnostics/map.html:5
+msgid "Map a report by hand"
+msgstr ""
+
+#: templates/diagnostics/map.html:8
+msgid "no profile recognized this file"
+msgstr ""
+
+#: templates/diagnostics/map.html:12
+msgid "Tell it which column is which and the scan counts the same as any other. Save the mapping and the next report from that tool reads itself."
+msgstr ""
+
+#: templates/diagnostics/map.html:46
+msgid "Remember this mapping"
+msgstr ""
+
+#: templates/diagnostics/map.html:49
+msgid "Call it"
+msgstr ""
+
+#: templates/diagnostics/map.html:51
+msgid "e.g. Autel MK808 — code export"
+msgstr ""
+
+#: templates/diagnostics/map.html:55
+msgid "Save as a profile for next time"
+msgstr ""
+
+#: templates/diagnostics/map.html:61
+msgid "Type the codes in"
+msgstr ""
+
+#: templates/diagnostics/map.html:63
+msgid "One per line, code first. Anything that is not a recognizable code is skipped."
+msgstr ""
+
+#: templates/diagnostics/map.html:66 templates/diagnostics/queue.html:18
+msgid "Codes"
+msgstr ""
+
+#: templates/diagnostics/map.html:71
+msgid "Read with"
+msgstr ""
+
+#: templates/diagnostics/map.html:78
+msgid "Use this"
+msgstr ""
+
+#: templates/diagnostics/map.html:84
+msgid "What the file actually says"
+msgstr ""
+
+#: templates/diagnostics/map.html:86
+msgid "The text as extracted — which is not always the order it reads on screen."
+msgstr ""
+
+#: templates/diagnostics/profiles.html:2 templates/diagnostics/profiles.html:5
+#: templates/diagnostics/queue.html:10
+msgid "Parser profiles"
+msgstr ""
+
+#: templates/diagnostics/profiles.html:7
+msgid "How a scan tool's report becomes fields. Adding support for a new tool usually means writing one of these."
+msgstr ""
+
+#: templates/diagnostics/profiles.html:13
+msgid "On this instance"
+msgstr ""
+
+#: templates/diagnostics/profiles.html:16
+msgid "Profile"
+msgstr ""
+
+#: templates/diagnostics/profiles.html:17
+msgid "Reads"
+msgstr ""
+
+#: templates/diagnostics/profiles.html:24
+msgid "built-in parser"
+msgstr ""
+
+#: templates/diagnostics/profiles.html:34
+msgid "Switch off"
+msgstr ""
+
+#: templates/diagnostics/profiles.html:34
+msgid "Switch on"
+msgstr ""
+
+#: templates/diagnostics/profiles.html:41
+msgid "None installed."
+msgstr ""
+
+#: templates/diagnostics/profiles.html:50
+msgid "Import a profile"
+msgstr ""
+
+#: templates/diagnostics/profiles.html:52
+msgid "YAML, as exported from another instance. A profile with an invalid pattern is refused, and the message says which field."
+msgstr ""
+
+#: templates/diagnostics/profiles.html:57
+msgid "File"
+msgstr ""
+
+#: templates/diagnostics/profiles.html:61
+msgid "…or paste it"
+msgstr ""
+
+#: templates/diagnostics/profiles.html:64
+msgid "Import"
+msgstr ""
+
+#: templates/diagnostics/profiles.html:69
+msgid "Profiles marked “built-in parser”"
+msgstr ""
+
+#: templates/diagnostics/profiles.html:71
+msgid "A few report formats cannot be described by patterns and are read by a parser inside the application. Those have no rules to edit, but they version and re-parse like any other profile."
+msgstr ""
+
+#: templates/diagnostics/queue.html:8
+msgid "Read by a machine, not yet by a person."
+msgstr ""
+
+#: templates/diagnostics/queue.html:18
+msgid "How"
+msgstr ""
+
+#: templates/diagnostics/queue.html:28
+msgid "unmatched"
+msgstr ""
+
+#: templates/diagnostics/queue.html:31
+msgid "Check it"
+msgstr ""
+
+#: templates/diagnostics/queue.html:37
+msgid "Nothing waiting. Scans appear here after they are read and before they join a vehicle's history."
+msgstr ""
+
+#: templates/diagnostics/session.html:2 templates/diagnostics/session.html:7
+msgid "Review a scan"
+msgstr ""
+
+#: templates/diagnostics/session.html:12
+msgid "not in the history yet"
+msgstr ""
+
+#: templates/diagnostics/session.html:16
+msgid "The original report"
+msgstr ""
+
+#: templates/diagnostics/session.html:22
+msgid "Nothing here is in the vehicle's history yet. Correct anything the tool got wrong, then confirm."
+msgstr ""
+
+#: templates/diagnostics/session.html:29
+msgid "What was read"
+msgstr ""
+
+#: templates/diagnostics/session.html:32
+#, python-format
+msgid "Profile matched this report at %(score)s."
+msgstr ""
+
+#: templates/diagnostics/session.html:38
+msgid "Confidence"
+msgstr ""
+
+#: templates/diagnostics/session.html:56
+msgid "high"
+msgstr ""
+
+#: templates/diagnostics/session.html:57
+msgid "medium"
+msgstr ""
+
+#: templates/diagnostics/session.html:58
+msgid "low — check it"
+msgstr ""
+
+#: templates/diagnostics/session.html:62
+msgid "Nothing was extracted."
+msgstr ""
+
+#: templates/diagnostics/session.html:67
+msgid "Confidence is the parser's own estimate, not a verdict. Anything marked low is worth a second look."
+msgstr ""
+
+#: templates/diagnostics/session.html:72
+msgid "Trouble codes"
+msgstr ""
+
+#: templates/diagnostics/session.html:85
+msgid "Meaning"
+msgstr ""
+
+#: templates/diagnostics/session.html:92
+msgid "maker-specific"
+msgstr ""
+
+#: templates/diagnostics/session.html:97
+msgid "(not a standard definition)"
+msgstr ""
+
+#: templates/diagnostics/session.html:103
+msgid "What this code means on this make"
+msgstr ""
+
+#: templates/diagnostics/session.html:104
+msgid "What does it mean on this make?"
+msgstr ""
+
+#: templates/diagnostics/session.html:105
+msgid "Record it"
+msgstr ""
+
+#: templates/diagnostics/session.html:120
+msgid "No codes in this scan."
+msgstr ""
+
+#: templates/diagnostics/session.html:129
+msgid "Live data"
+msgstr ""
+
+#: templates/diagnostics/session.html:132
+msgid "Reading"
+msgstr ""
+
+#: templates/diagnostics/session.html:133
+msgid "Min"
+msgstr ""
+
+#: templates/diagnostics/session.html:133
+msgid "Max"
+msgstr ""
+
+#: templates/diagnostics/session.html:153
+msgid "Confirm it"
+msgstr ""
+
+#: templates/diagnostics/session.html:163
+msgid "Add to the history"
+msgstr ""
+
+#: templates/diagnostics/session.html:167
+msgid "Discard this draft"
+msgstr ""
+
+#: templates/diagnostics/session.html:173
+msgid "Read it again"
+msgstr ""
+
+#: templates/diagnostics/session.html:175
+msgid "The report is kept as it arrived, so a better profile can re-read it later without you finding the file again. Re-reading a scan that is already in the history creates a new draft and leaves the original alone."
+msgstr ""
+
+#: templates/diagnostics/session.html:179
+msgid "With which profile"
+msgstr ""
+
+#: templates/diagnostics/session.html:181
+msgid "Whichever matches best"
+msgstr ""
+
+#: templates/diagnostics/session.html:190
+msgid "Re-read"
+msgstr ""
+
+#: templates/diagnostics/session.html:193
+msgid "Map the values by hand"
+msgstr ""
+
+#: templates/inspections/detail.html:23
+msgid "Sign off"
+msgstr ""
+
+#: templates/inspections/detail.html:27
+msgid "Stop working on it but keep the record"
+msgstr ""
+
+#: templates/inspections/detail.html:27
+msgid "Abandon"
+msgstr ""
+
+#: templates/inspections/detail.html:31
+msgid "Resume"
+msgstr ""
+
+#: templates/inspections/detail.html:35
+msgid "Turn findings into work"
+msgstr ""
+
+#: templates/inspections/detail.html:42
+msgid "Delete this inspection? It goes to the trash for 30 days."
+msgstr ""
+
+#: templates/inspections/detail.html:53
+msgid "This inspection was abandoned. Nothing recorded on it has been lost — resume it to carry on, or delete it if it is not wanted."
+msgstr ""
+
+#: templates/inspections/detail.html:59
+#, python-format
+msgid "%(counter)s point needs a photo before sign-off."
+msgid_plural "%(counter)s points need a photo before sign-off."
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/inspections/detail.html:65
+msgid "Changed since last time"
+msgstr ""
+
+#: templates/inspections/detail.html:71
+msgid "worse"
+msgstr ""
+
+#: templates/inspections/detail.html:72
+msgid "better"
+msgstr ""
+
+#: templates/inspections/detail.html:92
+msgid "Not fitted to every vehicle"
+msgstr ""
+
+#: templates/inspections/detail.html:92
+msgid "if fitted"
+msgstr ""
+
+#: templates/inspections/detail.html:93
+msgid "yours"
+msgstr ""
+
+#: templates/inspections/detail.html:97
+msgid "You overrode the rule, which said"
+msgstr ""
+
+#: templates/inspections/detail.html:109
+msgid "—"
+msgstr ""
+
+#: templates/inspections/detail.html:116 templates/work/detail.html:409
+msgid "note"
+msgstr ""
+
+#: templates/inspections/detail.html:118
+msgid "Photo of this check"
+msgstr ""
+
+#: templates/inspections/detail.html:146
+msgid "Add a check"
+msgstr ""
+
+#: templates/inspections/detail.html:148
+msgid "For something this checklist does not cover — an accessory, a known weak point, a fluid your drivetrain has and most do not. It is added to this inspection only, and no template changes."
+msgstr ""
+
+#: templates/inspections/detail.html:152
+msgid "What are you checking?"
+msgstr ""
+
+#: templates/inspections/detail.html:154
+msgid "Transfer case fluid"
+msgstr ""
+
+#: templates/inspections/detail.html:157
+msgid "Where is it?"
+msgstr ""
+
+#: templates/inspections/detail.html:165
+msgid "Unit, if you are measuring"
+msgstr ""
+
+#: templates/inspections/detail.html:167
+msgid "mm, psi, V — leave blank for pass/fail"
+msgstr ""
+
+#: templates/inspections/detail.html:170
+msgid "Safety critical"
+msgstr ""
+
+#: templates/inspections/detail.html:173
+msgid "What does good look like?"
+msgstr ""
+
+#: templates/inspections/detail.html:176
+msgid "Add to this inspection"
+msgstr ""
+
+#: templates/inspections/detail.html:182
+msgid "Summary"
+msgstr ""
+
+#: templates/inspections/detail.html:191
+msgid "See measurement trends for this vehicle"
+msgstr ""
+
+#: templates/inspections/list.html:23
+msgid "No inspections yet."
+msgstr ""
+
+#: templates/inspections/list.html:28
+msgid "Start one"
+msgstr ""
+
+#: templates/inspections/list.html:30
+msgid "A pre-purchase inspection works on a vehicle you do not own yet — add it as a prospect first."
+msgstr ""
+
+#: templates/inspections/list.html:34
+msgid "Which vehicle?"
+msgstr ""
+
+#: templates/inspections/list.html:36
+msgid "prospect"
+msgstr ""
+
+#: templates/inspections/list.html:39
+msgid "Inspection template"
+msgstr ""
+
+#: templates/inspections/list.html:42
+msgid "Start inspection"
+msgstr ""
+
+#: templates/inspections/wear.html:2
+msgid "Wear trends"
+msgstr ""
+
+#: templates/inspections/wear.html:11
+msgid "A measurement taken once is a number. Taken twice against the odometer, it is a wear rate — and a wear rate is a due date."
+msgstr ""
+
+#: templates/inspections/wear.html:17
+msgid "Point"
+msgstr ""
+
+#: templates/inspections/wear.html:17
+msgid "Readings"
+msgstr ""
+
+#: templates/inspections/wear.html:18
+msgid "Latest"
+msgstr ""
+
+#: templates/inspections/wear.html:18
+msgid "Trend"
+msgstr ""
+
+#: templates/inspections/wear.html:32
+msgid "No measurements recorded yet. Complete an inspection with measurement points."
+msgstr ""
+
+#: templates/maintenance/due.html:5
+msgid "What needs attention"
+msgstr ""
+
+#: templates/maintenance/due.html:7
+msgid "overdue"
+msgstr ""
+
+#: templates/maintenance/due.html:8
+msgid "due soon"
+msgstr ""
+
+#: templates/maintenance/due.html:27
+msgid "Nothing due. Go enjoy the car."
+msgstr ""
+
+#: templates/maintenance/schedule.html:5
+msgid "Maintenance schedule"
+msgstr ""
+
+#: templates/maintenance/schedule.html:12
+msgid "Scheduled items"
+msgstr ""
+
+#: templates/maintenance/schedule.html:14
+msgid "Whichever comes first — distance, time, or hours — makes it due. Every interval here is yours to edit."
+msgstr ""
+
+#: templates/maintenance/schedule.html:18
+msgid "Every"
+msgstr ""
+
+#: templates/maintenance/schedule.html:19
+msgid "Next"
+msgstr ""
+
+#: templates/maintenance/schedule.html:34
+#, python-format
+msgid "Every, in %(unit)s"
+msgstr ""
+
+#: templates/maintenance/schedule.html:40
+msgid "Every, in months"
+msgstr ""
+
+#: templates/maintenance/schedule.html:41
+msgid "months"
+msgstr ""
+
+#: templates/maintenance/schedule.html:46
+msgid "Every, in engine hours"
+msgstr ""
+
+#: templates/maintenance/schedule.html:49
+msgid "Set"
+msgstr ""
+
+#: templates/maintenance/schedule.html:63
+msgid "Date it was done"
+msgstr ""
+
+#: templates/maintenance/schedule.html:69
+msgid "Track"
+msgstr ""
+
+#: templates/maintenance/schedule.html:71
+msgid "Snooze"
+msgstr ""
+
+#: templates/maintenance/schedule.html:72
+msgid "Ignore"
+msgstr ""
+
+#: templates/maintenance/schedule.html:78
+msgid "Nothing scheduled yet. Apply a template to start."
+msgstr ""
+
+#: templates/maintenance/schedule.html:84
+msgid "Add an item"
+msgstr ""
+
+#: templates/maintenance/schedule.html:98
+msgid "Start from a template"
+msgstr ""
+
+#: templates/maintenance/schedule.html:100
+msgid "Generic intervals, not manufacturer data — a starting point you edit from."
+msgstr ""
+
+#: templates/maintenance/schedule.html:104
+msgid "Schedule template"
+msgstr ""
+
+#: templates/maintenance/schedule.html:107
+msgid "Apply"
+msgstr ""
+
+#: templates/maintenance/schedule.html:109
+msgid "Applying twice never overwrites an interval you changed."
+msgstr ""
+
+#: templates/maintenance/schedule.html:113
+msgid "Installed components"
+msgstr ""
+
+#: templates/maintenance/schedule.html:115
+msgid "How old is this battery? How many miles on these tires? A component is what turns a repeated measurement into a wear rate."
+msgstr ""
+
+#: templates/maintenance/schedule.html:125
+#: templates/maintenance/schedule.html:127
+msgid "DOT age"
+msgstr ""
+
+#: templates/maintenance/schedule.html:135 templates/parts/detail.html:87
+#: templates/work/detail.html:377
+msgid "None recorded."
+msgstr ""
+
+#: templates/maintenance/schedule.html:142
+msgid "Add component"
+msgstr ""
+
+#: templates/partials/_sections.html:19
+msgid "Inspect"
+msgstr ""
+
+#: templates/partials/_sections.html:21 templates/parts/inventory.html:2
+msgid "Shelf"
+msgstr ""
+
+#: templates/partials/_sections.html:22
+msgid "Buying"
+msgstr ""
+
+#: templates/parts/detail.html:8
+msgid "Has core"
+msgstr ""
+
+#: templates/parts/detail.html:18
+msgid "Stock lots"
+msgstr ""
+
+#: templates/parts/detail.html:20
+msgid "Consumption draws the oldest lot first, at what that lot actually cost — not a blended average."
+msgstr ""
+
+#: templates/parts/detail.html:24
+msgid "Acquired"
+msgstr ""
+
+#: templates/parts/detail.html:24
+msgid "Location"
+msgstr ""
+
+#: templates/parts/detail.html:25 templates/purchasing/order_import.html:112
+msgid "Qty"
+msgstr ""
+
+#: templates/parts/detail.html:25
+msgid "Unit cost"
+msgstr ""
+
+#: templates/parts/detail.html:26
+msgid "Count"
+msgstr ""
+
+#: templates/parts/detail.html:31
+msgid "expires"
+msgstr ""
+
+#: templates/parts/detail.html:39
+msgid "Counted quantity"
+msgstr ""
+
+#: templates/parts/detail.html:40
+msgid "Why the count differs"
+msgstr ""
+
+#: templates/parts/detail.html:41
+msgid "reason"
+msgstr ""
+
+#: templates/parts/detail.html:42
+msgid "Adjust"
+msgstr ""
+
+#: templates/parts/detail.html:47
+msgid "Nothing on the shelf."
+msgstr ""
+
+#: templates/parts/detail.html:51
+msgid "Add stock"
+msgstr ""
+
+#: templates/parts/detail.html:61
+msgid "Used on"
+msgstr ""
+
+#: templates/parts/detail.html:71 templates/work/detail.html:352
+msgid "core owed"
+msgstr ""
+
+#: templates/parts/detail.html:72
+msgid "under warranty"
+msgstr ""
+
+#: templates/parts/detail.html:75
+msgid "Not used yet."
+msgstr ""
+
+#: templates/parts/detail.html:82
+msgid "Other numbers"
+msgstr ""
+
+#: templates/parts/detail.html:83
+msgid "The same part has several numbers. All of them should find it."
+msgstr ""
+
+#: templates/parts/detail.html:90
+msgid "Numbering system"
+msgstr ""
+
+#: templates/parts/detail.html:96
+msgid "Cross-reference number"
+msgstr ""
+
+#: templates/parts/detail.html:97
+msgid "number"
+msgstr ""
+
+#: templates/parts/detail.html:103
+msgid "Fits"
+msgstr ""
+
+#: templates/parts/detail.html:108
+msgid "Nothing recorded. Installing this on a vehicle records it as confirmed."
+msgstr ""
+
+#: templates/parts/detail.html:114
+msgid "Bought"
+msgstr ""
+
+#: templates/parts/detail.html:121
+msgid "No purchase history."
+msgstr ""
+
+#: templates/parts/form.html:3
+msgid "Add a part"
+msgstr ""
+
+#: templates/parts/form.html:8
+#, python-format
+msgid "The barcode <span class=\"mono\">%(code)s</span> will be recorded against this part, so the next scan of the same box finds it."
+msgstr ""
+
+#: templates/parts/inventory.html:8
+msgid "What is in this one."
+msgstr ""
+
+#: templates/parts/inventory.html:10
+msgid "The whole shelf"
+msgstr ""
+
+#: templates/parts/inventory.html:12
+msgid "What's on the shelf"
+msgstr ""
+
+#: templates/parts/inventory.html:28
+msgid "Empty."
+msgstr ""
+
+#: templates/parts/inventory.html:32
+msgid "No locations yet. Add one to mirror your shop."
+msgstr ""
+
+#: templates/parts/inventory.html:37
+msgid "Not filed anywhere"
+msgstr ""
+
+#: templates/parts/inventory.html:47
+msgid "Labels"
+msgstr ""
+
+#: templates/parts/inventory.html:48
+msgid "Print bin labels"
+msgstr ""
+
+#: templates/parts/inventory.html:51
+msgid "Every location gets a QR label. Scanning one opens what is stored in it."
+msgstr ""
+
+#: templates/parts/inventory.html:54
+msgid "Scan a label"
+msgstr ""
+
+#: templates/parts/inventory.html:59
+msgid "Add a location"
+msgstr ""
+
+#: templates/parts/inventory.html:61
+msgid "Location name"
+msgstr ""
+
+#: templates/parts/inventory.html:62
+msgid "Shelf B3"
+msgstr ""
+
+#: templates/parts/inventory.html:63
+msgid "Inside which location"
+msgstr ""
+
+#: templates/parts/inventory.html:64
+msgid "Top level"
+msgstr ""
+
+#: templates/parts/inventory.html:75
+msgid "Cores owed back"
+msgstr ""
+
+#: templates/parts/inventory.html:76
+msgid "An uncollected core charge is money already spent."
+msgstr ""
+
+#: templates/parts/inventory.html:93
+msgid "Restock"
+msgstr ""
+
+#: templates/parts/inventory.html:101
+msgid "Expiring"
+msgstr ""
+
+#: templates/parts/inventory.html:102
+msgid "Brake fluid, sealants and epoxy do expire."
+msgstr ""
+
+#: templates/parts/list.html:5
+msgid "Add part"
+msgstr ""
+
+#: templates/parts/list.html:8
+msgid "Find a part"
+msgstr ""
+
+#: templates/parts/list.html:10
+msgid "Name, brand, part number, interchange, UPC…"
+msgstr ""
+
+#: templates/parts/list.html:11
+msgid "Find"
+msgstr ""
+
+#: templates/parts/list.html:15
+msgid "Scan a barcode"
+msgstr ""
+
+#: templates/parts/list.html:21
+msgid "Below minimum"
+msgstr ""
+
+#: templates/parts/list.html:40
+msgid "Nothing matched."
+msgstr ""
+
+#: templates/parts/list.html:40
+msgid "No parts yet."
+msgstr ""
+
+#: templates/people/detail.html:11
+msgid "None currently."
+msgstr ""
+
+#: templates/people/detail.html:14
+msgid "Formerly"
+msgstr ""
+
+#: templates/people/detail.html:19 templates/people/list.html:8
+msgid "Contact"
+msgstr ""
+
+#: templates/people/detail.html:22
+msgid "Phone"
+msgstr ""
+
+#: templates/people/form.html:3
+msgid "Add a person"
+msgstr ""
+
+#: templates/people/list.html:8
+msgid "Household"
+msgstr ""
+
+#: templates/people/list.html:10
+msgid "No people yet."
+msgstr ""
+
+#: templates/purchasing/detail.html:23
+#, python-format
+msgid "Returnable until %(date)s."
+msgstr ""
+
+#: templates/purchasing/detail.html:30
+#: templates/purchasing/order_import.html:106
+msgid "Lines"
+msgstr ""
+
+#: templates/purchasing/detail.html:32
+msgid "Receiving creates stock at landed cost — tax and shipping are spread across lines in proportion to value."
+msgstr ""
+
+#: templates/purchasing/detail.html:37
+msgid "Unit"
+msgstr ""
+
+#: templates/purchasing/detail.html:38 templates/purchasing/detail.html:58
+msgid "Receive"
+msgstr ""
+
+#: templates/purchasing/detail.html:44
+msgid "Link a part before receiving."
+msgstr ""
+
+#: templates/purchasing/detail.html:53
+msgid "How many received"
+msgstr ""
+
+#: templates/purchasing/detail.html:54
+msgid "Put it where"
+msgstr ""
+
+#: templates/purchasing/detail.html:55
+msgid "Unfiled"
+msgstr ""
+
+#: templates/purchasing/detail.html:63
+msgid "No lines yet."
+msgstr ""
+
+#: templates/purchasing/detail.html:68
+msgid "Add a line"
+msgstr ""
+
+#: templates/purchasing/detail.html:71
+#: templates/purchasing/order_import.html:110 templates/work/detail.html:227
+msgid "Part"
+msgstr ""
+
+#: templates/purchasing/detail.html:79
+msgid "Quantity"
+msgstr ""
+
+#: templates/purchasing/detail.html:81
+msgid "Unit price"
+msgstr ""
+
+#: templates/purchasing/detail.html:87
+msgid "Add line"
+msgstr ""
+
+#: templates/purchasing/detail.html:94
+msgid "Totals"
+msgstr ""
+
+#: templates/purchasing/detail.html:96
+msgid "Subtotal"
+msgstr ""
+
+#: templates/purchasing/detail.html:109
+msgid "No receipt attached."
+msgstr ""
+
+#: templates/purchasing/detail.html:125
+msgid "Photograph the receipt"
+msgstr ""
+
+#: templates/purchasing/detail.html:126
+msgid "Photograph it"
+msgstr ""
+
+#: templates/purchasing/detail.html:129
+msgid "Receipts"
+msgstr ""
+
+#: templates/purchasing/detail.html:130
+msgid "Attach"
+msgstr ""
+
+#: templates/purchasing/detail.html:132
+msgid "Receipts are OCR'd in the background so they become searchable."
+msgstr ""
+
+#: templates/purchasing/form.html:3 templates/purchasing/list.html:8
+msgid "New order"
+msgstr ""
+
+#: templates/purchasing/form.html:13
+msgid "Create"
+msgstr ""
+
+#: templates/purchasing/list.html:2 templates/purchasing/list.html:4
+msgid "Purchases"
+msgstr ""
+
+#: templates/purchasing/list.html:6 templates/purchasing/vendors.html:3
+msgid "Vendors"
+msgstr ""
+
+#: templates/purchasing/list.html:7
+msgid "Read an order file"
+msgstr ""
+
+#: templates/purchasing/list.html:13
+msgid "Return window closing"
+msgstr ""
+
+#: templates/purchasing/list.html:16
+msgid "by"
+msgstr ""
+
+#: templates/purchasing/list.html:27
+msgid "line(s)"
+msgstr ""
+
+#: templates/purchasing/list.html:30
+msgid "No purchases yet."
+msgstr ""
+
+#: templates/purchasing/order_import.html:8
+msgid "One PDF becomes a purchase, its lines, and the parts in your catalog."
+msgstr "One PDF becomes a purchase, its lines, and the parts in your catalogue."
+
+#: templates/purchasing/order_import.html:10
+msgid "All purchases"
+msgstr ""
+
+#: templates/purchasing/order_import.html:16
+msgid "The file"
+msgstr ""
+
+#: templates/purchasing/order_import.html:18
+msgid "A RockAuto order confirmation, saved as a PDF — from the confirmation page or from the email. It carries the brand, the manufacturer part number, the part type, the price, the core charge and the quantity for every line, grouped under the vehicle each was looked up against."
+msgstr ""
+
+#: templates/purchasing/order_import.html:22
+msgid "Order confirmation"
+msgstr ""
+
+#: templates/purchasing/order_import.html:26
+msgid "See what it would do"
+msgstr ""
+
+#: templates/purchasing/order_import.html:27
+msgid "Read it in"
+msgstr ""
+
+#: templates/purchasing/order_import.html:31
+msgid "Reading the same order twice does not make a second purchase — it updates the one already here, unless some of it has been received, in which case it leaves it alone."
+msgstr ""
+
+#: templates/purchasing/order_import.html:40
+msgid "What it would do"
+msgstr ""
+
+#: templates/purchasing/order_import.html:40
+msgid "What it did"
+msgstr ""
+
+#: templates/purchasing/order_import.html:53
+msgid "Read this in"
+msgstr ""
+
+#: templates/purchasing/order_import.html:56
+#, python-format
+msgid "from %(name)s, already read"
+msgstr ""
+
+#: templates/purchasing/order_import.html:61
+msgid "Order"
+msgstr ""
+
+#: templates/purchasing/order_import.html:63
+msgid "Paid with"
+msgstr ""
+
+#: templates/purchasing/order_import.html:65
+#, python-format
+msgid "%(new)s new, %(known)s already here"
+msgstr ""
+
+#: templates/purchasing/order_import.html:66
+msgid "Fitment recorded"
+msgstr ""
+
+#: templates/purchasing/order_import.html:67
+msgid "Parts subtotal"
+msgstr ""
+
+#: templates/purchasing/order_import.html:73
+msgid "Order total"
+msgstr ""
+
+#: templates/purchasing/order_import.html:77
+msgid "This order was already read in once."
+msgstr ""
+
+#: templates/purchasing/order_import.html:86
+msgid "Vehicles named on the order"
+msgstr ""
+
+#: templates/purchasing/order_import.html:94
+msgid "— not one of your vehicles, recorded as fitment only"
+msgstr ""
+
+#: templates/purchasing/order_import.html:100
+msgid "Fitment from an order is the vendor's claim, not an installation anybody watched. It is stored as \"stated by vendor\" and becomes confirmed when the part is actually fitted on a work order."
+msgstr ""
+
+#: templates/purchasing/order_import.html:110
+msgid "What it is"
+msgstr ""
+
+#: templates/purchasing/order_import.html:111
+msgid "Each"
+msgstr ""
+
+#: templates/purchasing/order_import.html:111
+msgid "Core"
+msgstr ""
+
+#: templates/purchasing/order_import.html:120
+msgid "inside a kit"
+msgstr ""
+
+#: templates/purchasing/order_import.html:147
+msgid "A kit's contents are listed here and added to the catalog, so you can find them again on their own — but they carry no money, because the kit they came in was already charged for."
+msgstr "A kit's contents are listed here and added to the catalogue, so you can find them again on their own — but they carry no money, because the kit they came in was already charged for."
+
+#: templates/purchasing/vendors.html:10
+msgid "day returns"
+msgstr ""
+
+#: templates/purchasing/vendors.html:12
+msgid "No vendors yet."
+msgstr ""
+
+#: templates/purchasing/vendors.html:16
+msgid "Add a vendor"
+msgstr ""
+
+#: templates/work/detail.html:17
+msgid "Cost so far"
+msgstr ""
+
+#: templates/work/detail.html:29
+#, python-format
+msgid "Delete %(n)s? It goes to the trash for 30 days."
+msgstr ""
+
+#: templates/work/detail.html:37
+msgid "Waiting on"
+msgstr ""
+
+#: templates/work/detail.html:45
+msgid "Complaint"
+msgstr ""
+
+#: templates/work/detail.html:47
+msgid "Cause"
+msgstr ""
+
+#: templates/work/detail.html:49
+msgid "Correction"
+msgstr ""
+
+#: templates/work/detail.html:58
+#, python-format
+msgid "%(counter)s tool needs attention"
+msgid_plural "%(counter)s tools need attention"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/work/detail.html:66
+msgid "last checked over a day ago"
+msgstr ""
+
+#: templates/work/detail.html:72
+msgid "Nothing here stops you starting."
+msgstr ""
+
+#: templates/work/detail.html:79
+msgid "Job items"
+msgstr ""
+
+#: templates/work/detail.html:86
+msgid "Toggle"
+msgstr ""
+
+#: templates/work/detail.html:100
+msgid "on hand"
+msgstr ""
+
+#: templates/work/detail.html:104
+msgid "remove"
+msgstr ""
+
+#: templates/work/detail.html:124
+msgid "Search tools by name"
+msgstr ""
+
+#: templates/work/detail.html:125
+msgid "Add tool"
+msgstr ""
+
+#: templates/work/detail.html:134
+msgid "No items yet."
+msgstr ""
+
+#: templates/work/detail.html:138
+msgid "Add a job item"
+msgstr ""
+
+#: templates/work/detail.html:144 templates/work/detail.html:410
+msgid "Log"
+msgstr ""
+
+#: templates/work/detail.html:146
+msgid "What just happened"
+msgstr ""
+
+#: templates/work/detail.html:147
+msgid "What just happened?"
+msgstr ""
+
+#: templates/work/detail.html:149
+msgid "Add note"
+msgstr ""
+
+#: templates/work/detail.html:150
+msgid "Notes are append-only — they are the record of the job."
+msgstr ""
+
+#: templates/work/detail.html:160
+msgid "Nothing logged yet."
+msgstr ""
+
+#: templates/work/detail.html:188
+msgid "Photos of this job"
+msgstr ""
+
+#: templates/work/detail.html:189
+msgid "What these photos show"
+msgstr ""
+
+#: templates/work/detail.html:190
+msgid "General"
+msgstr ""
+
+#: templates/work/detail.html:212
+msgid "Parts needed"
+msgstr ""
+
+#: templates/work/detail.html:215
+msgid "Everything is here"
+msgstr ""
+
+#: templates/work/detail.html:218
+#, python-format
+msgid "%(counter)s part short"
+msgid_plural "%(counter)s parts short"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/work/detail.html:228
+msgid "Needed"
+msgstr ""
+
+#: templates/work/detail.html:229
+msgid "On the shelf"
+msgstr ""
+
+#: templates/work/detail.html:230
+msgid "Free for this job"
+msgstr ""
+
+#: templates/work/detail.html:231
+msgid "On order"
+msgstr ""
+
+#: templates/work/detail.html:240
+msgid "the whole job"
+msgstr ""
+
+#: templates/work/detail.html:246
+msgid "Remove from what this job needs"
+msgstr ""
+
+#: templates/work/detail.html:253
+#, python-format
+msgid "%(n)s already used"
+msgstr ""
+
+#: templates/work/detail.html:256
+#, python-format
+msgid "%(n)s claimed by other jobs"
+msgstr ""
+
+#: templates/work/detail.html:266
+msgid "Take it"
+msgstr ""
+
+#: templates/work/detail.html:271
+#, python-format
+msgid "%(n)s to buy"
+msgstr ""
+
+#: templates/work/detail.html:275
+msgid "on a draft order"
+msgstr ""
+
+#: templates/work/detail.html:284
+msgid "Nothing here stops you starting — you may be about to drive to the parts store, or starting the half of the job that does not need it."
+msgstr ""
+
+#: templates/work/detail.html:300
+msgid "Waiting on these"
+msgstr ""
+
+#: templates/work/detail.html:307
+msgid "Order the missing parts from"
+msgstr ""
+
+#: templates/work/detail.html:308
+msgid "Order from…"
+msgstr ""
+
+#: templates/work/detail.html:311
+msgid "Order what is missing"
+msgstr ""
+
+#: templates/work/detail.html:314
+msgid "Add a vendor to order from"
+msgstr ""
+
+#: templates/work/detail.html:320
+msgid "Nothing listed yet. Listing what this job will need is how you find out on Wednesday instead of on Saturday."
+msgstr ""
+
+#: templates/work/detail.html:328
+msgid "Part this job needs"
+msgstr ""
+
+#: templates/work/detail.html:329 templates/work/detail.html:361
+msgid "Choose a part…"
+msgstr ""
+
+#: templates/work/detail.html:332
+msgid "For which job item"
+msgstr ""
+
+#: templates/work/detail.html:333
+msgid "The whole job"
+msgstr ""
+
+#: templates/work/detail.html:337 templates/work/detail.html:365
+msgid "How many"
+msgstr ""
+
+#: templates/work/detail.html:338
+msgid "Need it"
+msgstr ""
+
+#: templates/work/detail.html:343
+msgid "Parts used"
+msgstr ""
+
+#: templates/work/detail.html:345
+msgid "What actually went on the car. Taking a part from the list above records it here."
+msgstr ""
+
+#: templates/work/detail.html:355
+msgid "No parts recorded."
+msgstr ""
+
+#: templates/work/detail.html:360
+msgid "Part used"
+msgstr ""
+
+#: templates/work/detail.html:366
+msgid "Use"
+msgstr ""
+
+#: templates/work/detail.html:371
+msgid "Other costs"
+msgstr ""
+
+#: templates/work/detail.html:384
+msgid "Add cost"
+msgstr ""
+
+#: templates/work/detail.html:389
+msgid "Time"
+msgstr ""
+
+#: templates/work/detail.html:395
+msgid "No time logged."
+msgstr ""
+
+#: templates/work/detail.html:400
+msgid "Hours"
+msgstr ""
+
+#: templates/work/detail.html:401
+msgid "Kind of time"
+msgstr ""
+
+#: templates/work/detail.html:417
+msgid "Cost"
+msgstr ""
+
+#: templates/work/detail.html:421
+msgid "Nothing yet."
+msgstr ""
+
+#: templates/work/detail.html:442
+msgid "Move it to"
+msgstr ""
+
+#: templates/work/detail.html:452
+msgid "Meter at completion"
+msgstr ""
+
+#: templates/work/detail.html:453 templates/work/detail.html:460
+msgid "required"
+msgstr ""
+
+#: templates/work/detail.html:459
+msgid "What it is waiting for"
+msgstr ""
+
+#: templates/work/detail.html:463
+msgid "Update status"
+msgstr ""
+
+#: templates/work/detail.html:466
+msgid "No transitions available."
+msgstr ""
+
+#: templates/work/detail.html:475
+msgid "In"
+msgstr ""
+
+#: templates/work/detail.html:476
+msgid "Out"
+msgstr ""
+
+#: templates/work/detail.html:477
+msgid "Requested by"
+msgstr ""
+
+#: templates/work/detail.html:491
+msgid "Pin a spec to see it here while you work."
+msgstr ""
+
+#: templates/work/detail.html:503
+msgid "Tools"
+msgstr ""
+
+#: templates/work/detail.html:505
+msgid "HomeAutoShop does not track what tools you own or who borrowed them — that is <a href=\"https://wrench-ledger.app?ref=homeautoshop\" rel=\"noopener\">WrenchLedger</a>'s job. Connecting the two puts \"the breaker bar is at Dave's\" on this page before you start."
+msgstr ""
+
+#: templates/work/detail.html:508
+msgid "Same developer as this. Paid cloud service, not self-hosted."
+msgstr ""
+
+#: templates/work/detail.html:516
+msgid "Manuals"
+msgstr ""
+
+#: templates/work/list.html:22
+msgid "Nothing here."
+msgstr ""

@@ -30,6 +30,29 @@
 </section>
 {% endif %}
 
+{% if short_of_parts %}
+{% comment %}
+  Distinct from "Waiting on parts" below it, and listed first because it is
+  the one nobody has noticed yet: that list is jobs somebody has *marked* as
+  blocked, this is jobs the arithmetic says cannot finish. A job already
+  marked appears only in the list below, so nothing is on this screen twice.
+{% endcomment %}
+<section class="card warn-card">
+  <h2>{% translate "Short of parts" %}</h2>
+  <ul class="list">
+    {% for wo, readiness in short_of_parts %}
+      <li><a href="{% url 'work_order_detail' wo.pk %}"><strong>{{ wo.number }}</strong> — {{ wo.title }}</a>
+        <div class="small muted">{{ wo.asset.nickname }} · {{ wo.get_status_display }} ·
+          {% for line in readiness.shortfalls %}{% blocktranslate with n=line.short|floatformat:"-3" part=line.part %}{{ n }} × {{ part }}{% endblocktranslate %}{% if not forloop.last %}, {% endif %}{% endfor %}
+        </div></li>
+    {% endfor %}
+  </ul>
+  <p class="small muted">
+    {% translate "Nothing here has been marked blocked. This is the arithmetic: what these jobs need, against what is on the shelf and not already spoken for." %}
+  </p>
+</section>
+{% endif %}
+
 {% if blocked %}
 <section class="card">
   <h2>{% translate "Waiting on parts" %}</h2>

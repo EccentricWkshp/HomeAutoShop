@@ -18,12 +18,13 @@ for "moving their consumers to a lazily-read accessor", and `conf.OFFLINE_MODE`
 is that: one token different at the call site, evaluated at the moment it is
 asked.
 
-**Freshness.** Values are cached for a second at a time, per process. Reading
-the table on every one of the dozen-odd checks in a page render would be a
-dozen queries for something that changes a few times a year — and a second is
-well inside the time it takes to walk to the workshop after throwing the
-Offline Mode switch. Writes clear the cache in the writing process at once, so
-the screen that saved a change never shows the old value back.
+**Freshness.** Values are cached per process, and `ConfigMiddleware` drops
+that cache at the start of every request — so a page render asks the table
+once instead of a dozen times, and never serves a value that was true a moment
+ago. Outside a request, in the worker and in management commands, the cache
+ages out after `CACHE_SECONDS` instead; nothing there is watching a screen.
+Writes clear it in the writing process at once, so the page that saved a
+change never shows the old value back.
 """
 
 from __future__ import annotations
@@ -39,6 +40,10 @@ from urllib.parse import urlparse
 
 from django.conf import settings as django_settings
 from django.core.exceptions import ValidationError
+from django.dispatch import receiver
+# Public Django surface, not a test-only import: it fires whenever a settings
+# value moves at runtime, which is exactly when a cached one stops being true.
+from django.test.signals import setting_changed
 from django.utils.translation import gettext_lazy as _
 
 from .settings_registry import BY_KEY, RESTART_KEYS, SECRET_KEYS, coerce
@@ -91,6 +96,21 @@ def _overlay() -> dict[str, Any]:
 def invalidate() -> None:
     global _cache_at
     _cache_at = 0.0
+
+
+@receiver(setting_changed)
+def _drop_cache_when_settings_move(**kwargs) -> None:
+    """Follow `override_settings`, which is otherwise silently ignored here.
+
+    The overlay is the database half of `current()`, and it is cached for a
+    second. That is the right trade in production and a trap under test: a
+    case that says `override_settings(SHOP_NAME=...)` and then reads
+    `conf.SHOP_NAME` gets whatever the previous case left warm, because the
+    rollback that discarded the row cannot reach a dictionary in memory.
+
+    Django's own caches subscribe to this signal for the same reason.
+    """
+    invalidate()
 
 
 def current(key: str) -> Any:

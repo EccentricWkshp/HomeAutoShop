@@ -1,0 +1,20 @@
+{% load i18n %}
+{% comment %}
+One form field: label, widget, help, errors. Takes `field`, optionally `full`.
+
+A checkbox puts its label after the control and inside it, because a tick with
+its name to the left reads as a caption rather than as a thing you can click —
+and the whole label becomes the target, which matters most on a phone.
+{% endcomment %}
+<div class="field{% if full %} full{% endif %}">
+  {% if field.field.widget.input_type == "checkbox" %}
+    <label for="{{ field.id_for_label }}" class="check">
+      {{ field }}<span>{{ field.label }}</span>
+    </label>
+  {% else %}
+    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+    {{ field }}
+  {% endif %}
+  {% if field.help_text %}<p class="helptext">{{ field.help_text }}</p>{% endif %}
+  {% for error in field.errors %}<p class="msg error">{{ error }}</p>{% endfor %}
+</div>

@@ -75,26 +75,45 @@ docker compose logs -f app
 
 ## 4. Create the first account
 
+Open the site in a browser. An instance with no accounts sends you straight to
+**Set up your shop**, which asks for four things and takes about a minute:
+
+- the administrator account — username, password, and optionally your name
+- the shop name, units, currency, timezone and language
+- whether to install the starter data (maintenance schedules, inspection
+  templates, scan-tool profiles, manual libraries — nothing about your
+  vehicles)
+
+It also tells you what has to happen before the phone in the garage will trust
+this site, which depends on your `TLS_MODE` and is the step people miss.
+
+The page exists **only while there are no accounts**. The moment the first one
+is created it redirects to sign-in for good, so it cannot be used a second time
+to mint an owner. There is no flag to reset and nothing to turn off.
+
+Everyone else you add from **Administration → Users**.
+
+<details>
+<summary>Making the first account from a terminal instead</summary>
+
+You do not need this, and it is here for a headless install or a recovery:
+
 ```bash
 docker compose exec app python manage.py createsuperuser
 ```
 
-It prompts for a username, an email and a password. This is the only account
-that exists, so keep the password somewhere real.
-
-One wrinkle worth knowing: `createsuperuser` is Django's, and knows nothing
-about this application's roles, so it leaves `role = member` while setting the
-superuser flag. Everything works — authorization short-circuits on the
-superuser flag — but the two disagree, and clearing the flag later would
-quietly demote the account. To make them agree:
+`createsuperuser` is Django's and knows nothing about this application's
+roles, so it leaves `role = member` while setting the superuser flag.
+Everything works — authorization short-circuits on the superuser flag — but the
+two disagree, and clearing the flag later would quietly demote the account. The
+setup page sets both; doing it this way, reconcile them yourself:
 
 ```bash
 docker compose exec app python manage.py shell -c \
   "from homeautoshop.accounts.models import User; User.objects.filter(username='YOU').update(role='admin')"
 ```
 
-Everyone else you add from **Administration → Users** in the UI, where the role
-field is the one that counts.
+</details>
 
 ## 5. Reach it from a browser
 
@@ -512,4 +531,5 @@ when these drift, which is what makes it worth checking deliberately.
 ### You have no account
 
 You have not run step 4, or the database volume was recreated since you did.
-Run `createsuperuser` again.
+Open the site: with the accounts table empty, **Set up your shop** comes back
+on its own and you can make the account again there.

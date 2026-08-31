@@ -218,6 +218,8 @@ def lubelogger_link(request):
 @login_required
 def dashboard(request):
     """Answers 'what needs attention?' in one screen, ordered by urgency."""
+    from homeautoshop.work.parts_readiness import blocked_by_parts
+
     open_orders = WorkOrder.objects.open().select_related("asset")
     blocked = open_orders.filter(status=WorkOrderStatus.WAITING_ON_PARTS)
     today = timezone.localdate()
@@ -247,6 +249,12 @@ def dashboard(request):
     )
 
     due = due_dashboard(limit=10)
+    already_marked = set(blocked.values_list('pk', flat=True))
+    short_of_parts = [
+        (work_order, readiness)
+        for work_order, readiness in blocked_by_parts()
+        if work_order.pk not in already_marked
+    ]
     return render(
         request,
         "core/dashboard.html",
@@ -257,6 +265,10 @@ def dashboard(request):
             "open_orders": open_orders[:12],
             "open_count": open_orders.count(),
             "blocked": blocked,
+            # Jobs the arithmetic says cannot finish, minus the ones
+            # somebody has already marked — so no job is on the screen
+            # twice, and the more specific statement wins.
+            "short_of_parts": short_of_parts,
             "expiring": expiring,
             "alerts": alerts,
             "recent_assets": Asset.objects.fleet().order_by("-updated_at")[:6],

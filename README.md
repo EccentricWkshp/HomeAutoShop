@@ -71,20 +71,21 @@ remember which brand of caliper they used.
 | **Instance settings in the UI, with the `.env` file as the fallback** | ✅ |
 | **Backup, export and download from the UI — restore stays a command** | ✅ |
 
-843 tests, all passing — on SQLite and on Postgres 18.
+932 tests, all passing — on SQLite and on Postgres 18.
 
 ## Quick start
 
 ```bash
 cp .env.example .env      # edit SECRET_KEY and the passwords
 docker compose up -d
-docker compose exec app python manage.py createsuperuser
 ```
 
-**That third line is not optional.** A new instance ships with no accounts, on
-purpose — there is no default login to forget to change. Until you create one
-you will reach the sign-in page and have nothing to sign in with. The same
-applies any time you start from an empty database volume.
+Then open the site. **A new instance ships with no accounts, on purpose** —
+there is no default login to forget to change — so it sends you to a setup
+page that makes the first one, names the shop, sets units and timezone, and
+tells you how to get another device to trust the certificate. It runs once and
+is unreachable afterwards. The same page comes back any time you start from an
+empty database volume.
 
 Then add your own hostname and trust the certificate — full walkthrough in
 [docs/INSTALL.md](docs/INSTALL.md), including how to reach the instance from

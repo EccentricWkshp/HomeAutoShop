@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Add someone" %}{% endblock %}
+{% block content %}
+<h1>{% translate "Add someone" %}</h1>
+<p class="muted">
+  {% translate "They will sign in with the username and password you set here. Tell them what it is — there is no invitation email, because that would need a mail server to replace a conversation you are already having." %}
+</p>
+
+<form method="post" class="stack" style="max-width:36rem">{% csrf_token %}
+  {% for error in form.non_field_errors %}<p class="msg error">{{ error }}</p>{% endfor %}
+  <section class="card">
+    <div class="formgrid">
+      {% for field in form %}
+        {% include "partials/_field.html" with field=field %}
+      {% endfor %}
+    </div>
+  </section>
+  {% url 'user_list' as cancel_to %}
+  {% include "partials/_formactions.html" with cancel_url=cancel_to %}
+</form>
+{% endblock %}

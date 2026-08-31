@@ -4,11 +4,13 @@ from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
+from homeautoshop.accounts import views as accounts
 from homeautoshop.api.urls import api
 from homeautoshop.assets import views as assets
 from homeautoshop.core import views as core
 from homeautoshop.core import views_integrations as integrations
 from homeautoshop.core import views_settings as instance_settings
+from homeautoshop.core import views_setup
 from homeautoshop.diagnostics import views as diagnostics
 from homeautoshop.mediafiles import views as mediafiles
 from homeautoshop.inspections import views as inspections
@@ -23,10 +25,24 @@ urlpatterns = [
     # Auth
     path(
         "login/",
-        auth_views.LoginView.as_view(template_name="auth/login.html", redirect_authenticated_user=True),
+        # Not Django's LoginView directly: on an instance that has never had an
+        # account, this sends the first arrival to the setup page instead of
+        # presenting a form nobody can possibly pass (FR-ADM-1).
+        views_setup.FirstRunView.as_view(
+            template_name="auth/login.html", redirect_authenticated_user=True
+        ),
         name="login",
     ),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
+    # Who may sign in (FR-ADM-2). No delete route exists on purpose: see
+    # the module docstring in homeautoshop/accounts/views.py.
+    path("users/", accounts.user_list, name="user_list"),
+    path("users/new/", accounts.user_create, name="user_create"),
+    path("users/<uuid:pk>/", accounts.user_detail, name="user_detail"),
+    path("users/<uuid:pk>/signin/", accounts.user_set_active, name="user_set_active"),
+    path("users/<uuid:pk>/password/", accounts.user_set_password, name="user_set_password"),
+    # Reachable only while the accounts table is empty; see views_setup.
+    path("setup/", views_setup.setup, name="setup"),
     # Dashboard and search
     path("", core.dashboard, name="dashboard"),
     path("search/", core.search_view, name="search"),
@@ -112,6 +128,19 @@ urlpatterns = [
     path("work-orders/<uuid:pk>/items/<uuid:item_id>/toggle/", work.job_item_toggle, name="job_item_toggle"),
     path("work-orders/<uuid:pk>/photos/", work.work_order_photo, name="work_order_photo"),
     path("work-orders/<uuid:pk>/parts/", work.part_use, name="work_order_part_use"),
+    # Needing a part and using one are different acts: the first is a claim
+    # made while the job can still be planned around, the second moves stock.
+    path("work-orders/<uuid:pk>/parts/needed/", work.part_require, name="work_order_part_require"),
+    path(
+        "work-orders/<uuid:pk>/parts/needed/<uuid:requirement_id>/remove/",
+        work.part_unrequire,
+        name="work_order_part_unrequire",
+    ),
+    path(
+        "work-orders/<uuid:pk>/parts/needed/order/",
+        work.part_order_shortfall,
+        name="work_order_order_shortfall",
+    ),
     path("work-orders/<uuid:pk>/time/", work.time_add, name="work_order_time_add"),
     path("work-orders/<uuid:pk>/items/<uuid:item_id>/tools/", work.job_item_tool_add,
          name="job_item_tool_add"),

@@ -68,13 +68,17 @@ def blocked_work_orders(limit: int = 20):
     Sits beside `waiting_on_parts` (FR-REP-1) because it is the same kind of
     fact: work you cannot start yet, and the reason why.
     """
-    from .models import JobItemTool, WorkOrder
+    from .models import OPEN_STATUSES, JobItemTool, WorkOrder
 
     if not enabled():
         return []
 
     candidates = (
-        WorkOrder.objects.filter(status__in=("open", "in_progress", "waiting_on_parts"))
+        # `OPEN_STATUSES`, not a hand-written list: this said `"open"`,
+        # which is not a work-order status at all, so the query quietly
+        # skipped every `planned` and `on_hold` job — which is most of the
+        # ones you would want warned about before Saturday.
+        WorkOrder.objects.filter(status__in=OPEN_STATUSES)
         .filter(job_items__tools__isnull=False)
         .distinct()[:limit]
     )

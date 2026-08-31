@@ -34,6 +34,7 @@
 ```
 
 - **Any open state can return to `planned`.** Not in the diagram above and it should have been: starting a job by accident is not a rare event in a home shop, and without this the only way back was to complete the work order and reopen it — pushing a false completion through the record, and firing every service completion attached to it, to undo a mis-tap.
+- **`planned` can go straight to `waiting_on_parts`.** Also not in the diagram, and for the same reason as the rule above it: listing the parts a job needs exists so that a shortfall is found while the job is still being planned, and without this edge the only way to record one was to start the job first — a false statement about the shop, written to get around the graph.
 - `waiting_on_parts` **requires** a linked purchase or a note explaining the block; this state drives the dashboard's blocked list (FR-REP-1).
 - **A work order can be deleted from any state**, which is a separate question from the graph. The graph governs the work; it has nothing to say about a record that should not exist. Deletion is the ordinary soft delete — 30-day trash, restorable (P-5) — and is refused only while other work orders name it as their parent.
 - `complete` requires `odometer_out` (FR-WO-9) and triggers `service_completion` for every linked job item (FR-MAINT-5).

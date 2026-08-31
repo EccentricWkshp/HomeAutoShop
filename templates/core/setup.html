@@ -1,0 +1,73 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Set up your shop" %}{% endblock %}
+{% block content %}
+{% comment %}
+  One page, not four steps. Every answer here is short and none of them
+  depends on an earlier one, so a wizard that hid four questions behind three
+  Next buttons would only add places to get stuck. It is also the last chance
+  to say the thing about certificates before somebody walks out to the garage
+  with a phone that will refuse to connect.
+{% endcomment %}
+<div class="stack" style="max-width:42rem;margin:2rem auto">
+
+  <div>
+    <h1>{% translate "Set up your shop" %}</h1>
+    <p class="muted">
+      {% translate "This runs once. Everything here can be changed later in Settings." %}
+    </p>
+  </div>
+
+  {% for error in form.non_field_errors %}<p class="msg error">{{ error }}</p>{% endfor %}
+
+  <form method="post" class="stack">{% csrf_token %}
+
+    <section class="card">
+      <h2>{% translate "Your account" %}</h2>
+      <p class="small muted">
+        {% translate "The first account, and an administrator. You can add other people afterwards." %}
+      </p>
+      <div class="formgrid">
+        {% for field in account_fields %}
+          {% include "partials/_field.html" with field=field %}
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "This shop" %}</h2>
+      <p class="small muted">
+        {% translate "These change how every later screen reads: a distance, a date and a price all depend on them." %}
+      </p>
+      <div class="formgrid">
+        {% for field in shop_fields %}
+          {% include "partials/_field.html" with field=field %}
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Starter data" %}</h2>
+      {% include "partials/_field.html" with field=form.install_starter_data %}
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Reaching this from the garage" %}</h2>
+      <p><strong>{{ trust.heading }}</strong></p>
+      <p class="small muted">{{ trust.detail }}</p>
+      {% if trust.command %}
+        <p class="small muted">
+          {% translate "Copy the root out of the proxy, then install it on each device:" %}
+        </p>
+        <div class="tablewrap"><pre class="mono small"><code>{{ trust.command }}</code></pre></div>
+        <p class="small muted">
+          {% translate "The full walkthrough, phones included, is in docs/INSTALL.md." %}
+        </p>
+      {% endif %}
+    </section>
+
+    <div class="row">
+      <button class="primary" type="submit">{% translate "Finish setup" %}</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

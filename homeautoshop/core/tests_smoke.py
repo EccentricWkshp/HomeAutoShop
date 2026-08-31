@@ -162,6 +162,8 @@ class EveryPageRendersTests(TestCase):
             by_name["pk"] = str(self.part.pk)
         elif name in {"person_detail", "person_edit"}:
             by_name["pk"] = str(self.person.pk)
+        elif name in {"user_detail", "user_set_active", "user_set_password"}:
+            by_name["pk"] = str(self.admin.pk)
         elif name in {
             "purchase_detail", "purchase_line_add", "purchase_line_receive",
             "purchase_receipt_upload",

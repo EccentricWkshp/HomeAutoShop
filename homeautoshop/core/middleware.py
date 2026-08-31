@@ -43,7 +43,17 @@ class ConfigMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        from .runtime import ensure_overlay
+        from .runtime import ensure_overlay, invalidate
 
+        # Start each request from the database rather than from whatever the
+        # last one left cached. The cache exists to stop a page render asking
+        # the same question a dozen times, and one read per request does that
+        # just as well — while removing a second-long window in which a
+        # setting that was just saved is still reported as its old value.
+        #
+        # It also makes the cache follow a transaction rollback, which under
+        # test it otherwise cannot: a case that saves a setting used to leave
+        # the value visible to the next case, whose database no longer had it.
+        invalidate()
         ensure_overlay()
         return self.get_response(request)

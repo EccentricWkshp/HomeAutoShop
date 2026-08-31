@@ -1,0 +1,82 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ person.username }}{% endblock %}
+{% block content %}
+<div class="spread">
+  <div>
+    <h1>{{ person.username }}</h1>
+    <p class="muted">
+      {{ person.get_role_display }}
+      {% if not person.is_active %}· <span class="pill">{% translate "Cannot sign in" %}</span>{% endif %}
+      {% if is_you %}· {% translate "this is you" %}{% endif %}
+    </p>
+  </div>
+  <a class="btn" href="{% url 'user_list' %}">{% translate "All accounts" %}</a>
+</div>
+
+{% if is_last_admin %}
+  <p class="msg info">
+    {% translate "The only administrator. This account cannot be demoted or deactivated until somebody else is one, because there would be no way back in." %}
+  </p>
+{% endif %}
+
+<div class="cols two">
+  <section class="card">
+    <h2>{% translate "Details" %}</h2>
+    <form method="post" class="stack">{% csrf_token %}
+      <div class="formgrid">
+        {% for field in form %}
+          {% include "partials/_field.html" with field=field %}
+        {% endfor %}
+      </div>
+      {% url 'user_detail' person.pk as cancel_to %}
+      {% include "partials/_formactions.html" with cancel_url=cancel_to %}
+    </form>
+  </section>
+
+  <aside class="stack">
+    <section class="card">
+      <h2>{% translate "Set a password" %}</h2>
+      <p class="small muted">
+        {% translate "Replaces whatever they had. Tell them the new one — nothing is emailed." %}
+      </p>
+      <form method="post" action="{% url 'user_set_password' person.pk %}" class="stack">
+        {% csrf_token %}
+        {% for field in password_form %}
+          {% include "partials/_field.html" with field=field %}
+        {% endfor %}
+        <div class="row"><button type="submit">{% translate "Set it" %}</button></div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>{% translate "Signing in" %}</h2>
+      {% if person.is_active %}
+        <p class="small muted">
+          {% translate "Deactivating takes away the key and keeps the history. Everything they recorded stays attributed to them, and can be undone by reactivating." %}
+        </p>
+        <form method="post" action="{% url 'user_set_active' person.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="active" value="0">
+          <button type="submit" {% if is_last_admin or is_you %}disabled{% endif %}>
+            {% translate "Stop them signing in" %}
+          </button>
+        </form>
+        {% if is_you %}
+          <p class="small muted">
+            {% translate "You cannot deactivate your own account. Ask another administrator." %}
+          </p>
+        {% endif %}
+      {% else %}
+        <form method="post" action="{% url 'user_set_active' person.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="active" value="1">
+          <button class="primary" type="submit">{% translate "Let them sign in again" %}</button>
+        </form>
+      {% endif %}
+      <p class="small muted" style="margin-top:.75rem">
+        {% translate "There is no delete. Removing an account would not remove the work it recorded — it would detach their name from it, and nothing brings that back." %}
+      </p>
+    </section>
+  </aside>
+</div>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "People who can sign in" %}{% endblock %}
+{% block content %}
+<div class="spread">
+  <h1>{% translate "People who can sign in" %}</h1>
+  <a class="btn primary" href="{% url 'user_create' %}">{% translate "Add someone" %}</a>
+</div>
+<p class="muted">
+  {% translate "An account is how somebody signs in. A person is who they are — the two are linked so that work is attributed to a name, not a login." %}
+</p>
+
+<section class="card">
+  <div class="tablewrap"><table>
+    <tr>
+      <th>{% translate "Username" %}</th>
+      <th>{% translate "Name" %}</th>
+      <th>{% translate "Role" %}</th>
+      <th>{% translate "Last signed in" %}</th>
+      <th></th>
+    </tr>
+    {% for person in people %}
+      <tr{% if not person.is_active %} class="muted"{% endif %}>
+        <td><a href="{% url 'user_detail' person.pk %}">{{ person.username }}</a></td>
+        <td>{{ person.display_name }}</td>
+        <td>
+          {{ person.get_role_display }}
+          {% if not person.is_active %}
+            <span class="pill">{% translate "Cannot sign in" %}</span>
+          {% endif %}
+        </td>
+        <td class="small muted">{{ person.last_login|default:"—" }}</td>
+        <td class="small"><a href="{% url 'user_detail' person.pk %}">{% translate "Manage" %}</a></td>
+      </tr>
+    {% endfor %}
+  </table></div>
+</section>
+
+{% comment %}
+  Said on the screen and enforced in the view. Deleting a user would not
+  delete their work — every reference is SET_NULL — it would quietly detach
+  their name from it, which is worse, and there is no undo for it.
+{% endcomment %}
+<p class="small muted">
+  {% translate "Nobody is ever deleted here. Deactivating an account takes away the key and keeps the history — the work they recorded stays attributed to them." %}
+</p>
+{% endblock %}

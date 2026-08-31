@@ -284,10 +284,16 @@ def _send_push(channel: NotificationChannel, subject: str, digest: Digest) -> No
         channel,
         title=str(_("Something is due")),
         body=str(
+            # One name for one number. The plural form used to say `%(d)d`,
+            # which meant the two forms disagreed about what to interpolate:
+            # harmless here because both were passed, and fatal to any
+            # translation of it — gettext refuses a plural whose forms do not
+            # take the same arguments, so this string was untranslatable and
+            # nobody knew until somebody translated the catalogue.
             ngettext(
-                "%(n)d item needs attention.", "%(d)d items need attention.", len(digest.alerts)
+                "%(n)d item needs attention.", "%(n)d items need attention.", len(digest.alerts)
             )
-            % {"n": len(digest.alerts), "d": len(digest.alerts)}
+            % {"n": len(digest.alerts)}
         ),
         url="/due/",
     )

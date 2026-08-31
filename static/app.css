@@ -233,6 +233,10 @@ th, td { text-align: left; padding: .5rem; border-bottom: 1px solid var(--line);
    and must not be squeezed to nothing when the field takes the space. */
 .nowrap { white-space: nowrap; flex: 0 0 auto; }
 
+/* A one-button form sitting inside a sentence, which is what a POST
+   looks like when the action has to be a form and not a link. */
+.inline { display: inline; }
+
 /* ---------- Phase 4 additions (SPEC §5.4, §8.3, §8.7, §9.5) ---------- */
 
 /* Screen-reader-only text. Used for labels on inputs whose purpose is obvious

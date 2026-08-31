@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import logging
+from decimal import Decimal, InvalidOperation
 
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -21,13 +23,15 @@ from homeautoshop.core.costs import work_order_cost
 from homeautoshop.mediafiles.services import ingest
 from homeautoshop.parts.models import Part
 from homeautoshop.parts.services import consume
+from homeautoshop.purchasing.models import Vendor
 from homeautoshop.purchasing.views import ExpenseForm
 
-from . import readiness
+from . import parts_readiness, readiness
 from .models import (
     REQUIREMENTS,
     JobItem,
     JobItemTool,
+    PartRequirement,
     ShopTool,
     TimeEntry,
     WorkOrder,
@@ -126,6 +130,7 @@ def work_order_detail(request, pk):
         pk=pk,
     )
     done, total = wo.job_item_progress
+    parts_needed = parts_readiness.for_work_order(wo)
     return render(
         request,
         "work/detail.html",
@@ -140,6 +145,9 @@ def work_order_detail(request, pk):
             "next_statuses": [
                 (s, dict(WorkOrderStatus.choices)[s]) for s in _allowed_next(wo)
             ],
+            # The bare codes too: a template asking whether a move is legal
+            # should not have to stringify a list of pairs to find out.
+            "allowed_statuses": list(_allowed_next(wo)),
             # Which target needs which field, handed to the browser so the form
             # can say so before it is submitted rather than after. The check
             # itself stays in `transition_to`; this is only the sign on it.
@@ -154,6 +162,13 @@ def work_order_detail(request, pk):
             "service_links": wo.asset.service_info_links.select_related("provider"),
             "pinned_specs": wo.asset.specs.filter(is_pinned=True, is_sensitive=False)[:12],
             "part_usages": wo.part_usages.select_related("part", "stock_lot"),
+            # What it still needs, against what it can actually have.
+            "parts_needed": parts_needed,
+            # Prefilled rather than left to be typed, because a block that
+            # names the missing parts is the whole content of the note the
+            # status already requires.
+            "parts_blocked_reason": _shortfall_sentence(parts_needed),
+            "vendors": Vendor.objects.order_by("name")[:100],
             "expenses": wo.expenses.select_related("vendor"),
             "time_entries": wo.time_entries.select_related("user"),
             "rollup": work_order_cost(wo),
@@ -166,6 +181,18 @@ def work_order_detail(request, pk):
             "job_item_tools": JobItemTool.objects.filter(job_item__work_order=wo)
             .select_related("tool", "job_item"),
         },
+    )
+
+
+
+def _shortfall_sentence(parts_needed) -> str:
+    """What is missing, as a sentence somebody would have written themselves."""
+    shortfalls = parts_needed.shortfalls
+    if not shortfalls:
+        return ""
+    return str(
+        _("Waiting on %(parts)s.")
+        % {"parts": ", ".join(f"{_trim(line.short)} × {line.part}" for line in shortfalls)}
     )
 
 
@@ -236,7 +263,28 @@ def work_order_transition(request, pk):
                 user=request.user,
             )
         messages.success(request, _("Moved to %(s)s.") % {"s": wo.get_status_display()})
+        _warn_about_parts(request, wo, target)
     return redirect("work_order_detail", pk=wo.pk)
+
+
+def _warn_about_parts(request, wo, target: str) -> None:
+    """Starting work short of a part is allowed, and worth saying out loud.
+
+    A warning rather than a refusal, for the same reason the tool check is
+    (SPEC §8.7): the box may be in the truck, the store may be ten minutes
+    away, and half the job may not need it. What is not defensible is letting
+    somebody start and find out with the wheel already off.
+    """
+    if target != WorkOrderStatus.IN_PROGRESS:
+        return
+    shortfalls = parts_readiness.for_work_order(wo).shortfalls
+    if not shortfalls:
+        return
+    messages.warning(
+        request,
+        _("Started, but short of %(parts)s. Nothing is stopping you.")
+        % {"parts": ", ".join(str(line.part) for line in shortfalls[:4])},
+    )
 
 
 @require_POST
@@ -332,6 +380,145 @@ def work_order_photo(request, pk):
     if files:
         messages.success(request, _("Added %(n)d photo(s).") % {"n": len(files)})
     return redirect("work_order_detail", pk=wo.pk)
+
+
+@require_POST
+@login_required
+def part_require(request, pk):
+    """Say this job is going to need a part (FR-WO-11).
+
+    Deliberately not the same action as using one. `part_use` draws stock and
+    is a fact about the past; this is a claim on the future, and the whole
+    reason it exists is to be answerable *before* the wheel is off.
+    """
+    wo = get_object_or_404(WorkOrder, pk=pk)
+    part = Part.objects.filter(pk=request.POST.get("part") or None).first()
+    if part is None:
+        messages.error(request, _("Choose a part first."))
+        return redirect("work_order_detail", pk=wo.pk)
+
+    job_item = JobItem.objects.filter(
+        pk=request.POST.get("job_item") or None, work_order=wo
+    ).first()
+
+    try:
+        qty = Decimal(str(request.POST.get("qty") or 1))
+    except (InvalidOperation, TypeError):
+        messages.error(request, _("Check the quantity and try again."))
+        return redirect("work_order_detail", pk=wo.pk)
+
+    # The same part named twice for the same line of work is one requirement
+    # for more of it, not two rows saying the same thing.
+    existing = PartRequirement.objects.filter(
+        work_order=wo, part=part, job_item=job_item
+    ).first()
+    requirement = existing or PartRequirement(
+        work_order=wo,
+        part=part,
+        job_item=job_item,
+        qty=Decimal(0),
+        origin=PartRequirement.origin_for(wo),
+        created_by=request.user if getattr(request.user, "pk", None) else None,
+    )
+    requirement.qty = Decimal(str(requirement.qty)) + qty
+    requirement.note = (request.POST.get("note") or requirement.note or "").strip()[:200]
+
+    try:
+        requirement.full_clean(exclude=["created_by"])
+    except ValidationError as exc:
+        messages.error(request, " ".join(exc.messages) or _("Check the quantity and try again."))
+        return redirect("work_order_detail", pk=wo.pk)
+    requirement.save()
+
+    line = next(
+        (
+            candidate
+            for candidate in parts_readiness.for_work_order(wo).lines
+            if candidate.part.pk == part.pk
+        ),
+        None,
+    )
+    if line is not None and not line.is_ready:
+        messages.warning(
+            request,
+            _("Added. %(n)s short — nothing on the shelf is free for this job.")
+            % {"n": _trim(line.short)},
+        )
+    else:
+        messages.success(request, _("Added to what this job needs."))
+    return redirect("work_order_detail", pk=wo.pk)
+
+
+@require_POST
+@login_required
+def part_unrequire(request, pk, requirement_id):
+    """Decide the job does not need it after all."""
+    wo = get_object_or_404(WorkOrder, pk=pk)
+    requirement = get_object_or_404(PartRequirement, pk=requirement_id, work_order=wo)
+    requirement.delete()
+    messages.success(request, _("Removed from what this job needs."))
+    return redirect("work_order_detail", pk=wo.pk)
+
+
+def _trim(value) -> str:
+    """`2` rather than `2.000`, which is how a person writes a count."""
+    quantised = Decimal(str(value)).normalize()
+    return f"{quantised:f}"
+
+
+@require_POST
+@login_required
+def part_order_shortfall(request, pk):
+    """Draft an order for everything this job is missing (FR-WO-2).
+
+    Created as a **cart**, not an order: this application has not asked
+    anybody for anything, and saying it had would clear the shortfall on the
+    strength of a list. It also lands with no prices, because nobody knows
+    them yet — which is what the purchase screen is for, and where this
+    redirects to.
+
+    A vendor is required because `Purchase` requires one, and that is right:
+    an order with nobody to send it to is a shopping list, and the shop
+    already has one of those.
+    """
+    from homeautoshop.purchasing.models import Purchase, PurchaseLine, PurchaseStatus, Vendor
+
+    wo = get_object_or_404(WorkOrder, pk=pk)
+    shortfalls = parts_readiness.for_work_order(wo).shortfalls
+    if not shortfalls:
+        messages.info(request, _("Nothing is missing, so there is nothing to order."))
+        return redirect("work_order_detail", pk=wo.pk)
+
+    vendor = Vendor.objects.filter(pk=request.POST.get("vendor") or None).first()
+    if vendor is None:
+        messages.error(request, _("Choose who to order from."))
+        return redirect("work_order_detail", pk=wo.pk)
+
+    with transaction.atomic():
+        purchase = Purchase.objects.create(
+            vendor=vendor,
+            work_order=wo,
+            status=PurchaseStatus.CART,
+            created_by=request.user if getattr(request.user, "pk", None) else None,
+        )
+        PurchaseLine.objects.bulk_create(
+            [
+                PurchaseLine(
+                    purchase=purchase,
+                    part=line.part,
+                    description_as_ordered=str(line.part)[:200],
+                    qty_ordered=line.short,
+                )
+                for line in shortfalls
+            ]
+        )
+
+    messages.success(
+        request,
+        _("Drafted %(n)d line(s) for %(vendor)s. Add prices and mark it ordered.")
+        % {"n": len(shortfalls), "vendor": vendor.name},
+    )
+    return redirect("purchase_detail", pk=purchase.pk)
 
 
 @require_POST

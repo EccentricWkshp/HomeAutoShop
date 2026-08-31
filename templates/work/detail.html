@@ -192,8 +192,152 @@
       </form>
     </section>
 
+    {% comment %}
+      Planning happens here. "Parts used" below is a record of the past —
+      written when stock moves — and it cannot answer the question somebody
+      actually has on Wednesday, which is whether Saturday is going to work.
+      So this sits above it, and while the job is still planned it leads.
+
+      `free` is the number that matters and the one nobody keeps in their
+      head: on the shelf, minus what other open jobs have already claimed.
+      Two brake jobs and one box of pads is the case this exists for.
+    {% endcomment %}
+    <section class="card{% if parts_needed.shortfalls %} warn-card{% endif %}">
+      <div class="spread">
+        <h2>{% translate "Parts needed" %}</h2>
+        {% if parts_needed %}
+          {% if parts_needed.is_ready %}
+            <span class="pill ok">{% translate "Everything is here" %}</span>
+          {% else %}
+            <span class="pill danger">
+              {% blocktranslate count counter=parts_needed.shortfalls|length %}{{ counter }} part short{% plural %}{{ counter }} parts short{% endblocktranslate %}
+            </span>
+          {% endif %}
+        {% endif %}
+      </div>
+
+      {% if parts_needed %}
+        <div class="tablewrap"><table class="small">
+          <tr>
+            <th>{% translate "Part" %}</th>
+            <th>{% translate "Needed" %}</th>
+            <th>{% translate "On the shelf" %}</th>
+            <th>{% translate "Free for this job" %}</th>
+            <th>{% translate "On order" %}</th>
+            <th></th>
+          </tr>
+          {% for line in parts_needed.lines %}
+            <tr>
+              <td>
+                <a href="{% url 'part_detail' line.part.pk %}">{{ line.part }}</a>
+                <div class="muted">
+                  {% for requirement in line.requirements %}
+                    {% if requirement.job_item %}{{ requirement.job_item.title }}{% else %}{% translate "the whole job" %}{% endif %}
+                    · {{ requirement.get_origin_display|lower }}{% if requirement.note %} · {{ requirement.note }}{% endif %}
+                    <form method="post" class="inline"
+                          action="{% url 'work_order_part_unrequire' wo.pk requirement.pk %}">
+                      {% csrf_token %}
+                      <button class="linkish small" type="submit"
+                              aria-label="{% translate 'Remove from what this job needs' %}">×</button>
+                    </form>
+                    {% if not forloop.last %}<br>{% endif %}
+                  {% endfor %}
+                </div>
+              </td>
+              <td class="mono">{{ line.outstanding|floatformat:"-3" }}{% if line.used %}
+                <div class="muted">{% blocktranslate with n=line.used|floatformat:"-3" %}{{ n }} already used{% endblocktranslate %}</div>{% endif %}</td>
+              <td class="mono">{{ line.on_hand|floatformat:"-3" }}</td>
+              <td class="mono">{{ line.free|floatformat:"-3" }}{% if line.committed_elsewhere %}
+                <div class="muted">{% blocktranslate with n=line.committed_elsewhere|floatformat:"-3" %}{{ n }} claimed by other jobs{% endblocktranslate %}</div>{% endif %}</td>
+              <td class="mono">{{ line.on_order|floatformat:"-3"|default:"—" }}</td>
+              <td>
+                {% if line.state == "used" %}
+                  <span class="pill ok">{% translate "Used" %}</span>
+                {% elif line.state == "on_hand" %}
+                  <form method="post" action="{% url 'work_order_part_use' wo.pk %}" class="inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="part" value="{{ line.part.pk }}">
+                    <input type="hidden" name="qty" value="{{ line.outstanding }}">
+                    <button type="submit">{% translate "Take it" %}</button>
+                  </form>
+                {% elif line.state == "on_order" %}
+                  <span class="pill">{% translate "Ordered" %}</span>
+                {% else %}
+                  <span class="pill danger">{% blocktranslate with n=line.short|floatformat:"-3" %}{{ n }} to buy{% endblocktranslate %}</span>
+                {% endif %}
+                {% for draft in line.drafts %}
+                  <div class="small muted">
+                    <a href="{% url 'purchase_detail' draft.pk %}">{% translate "on a draft order" %}</a>
+                  </div>
+                {% endfor %}
+              </td>
+            </tr>
+          {% endfor %}
+        </table></div>
+        {% if parts_needed.shortfalls %}
+          <p class="small muted">
+            {% translate "Nothing here stops you starting — you may be about to drive to the parts store, or starting the half of the job that does not need it." %}
+          </p>
+          {% comment %}
+            The two things anybody actually does about a shortfall, put where
+            the shortfall is rather than on a status form further down the
+            page. Both are one press: the note the blocked status requires is
+            already written, and the order already knows what is missing and
+            how many.
+          {% endcomment %}
+          <div class="row" style="margin-top:.5rem">
+            {% if "waiting_on_parts" in allowed_statuses %}
+              <form method="post" action="{% url 'work_order_transition' wo.pk %}" class="inline">
+                {% csrf_token %}
+                <input type="hidden" name="status" value="waiting_on_parts">
+                <input type="hidden" name="blocked_reason" value="{{ parts_blocked_reason }}">
+                <button type="submit">{% translate "Waiting on these" %}</button>
+              </form>
+            {% endif %}
+            {% if vendors %}
+              <form method="post" action="{% url 'work_order_order_shortfall' wo.pk %}" class="row">
+                {% csrf_token %}
+                <select name="vendor" class="select" required
+                        aria-label="{% translate 'Order the missing parts from' %}">
+                  <option value="">{% translate "Order from…" %}</option>
+                  {% for vendor in vendors %}<option value="{{ vendor.pk }}">{{ vendor.name }}</option>{% endfor %}
+                </select>
+                <button class="nowrap" type="submit">{% translate "Order what is missing" %}</button>
+              </form>
+            {% else %}
+              <a class="btn" href="{% url 'vendor_create' %}">{% translate "Add a vendor to order from" %}</a>
+            {% endif %}
+          </div>
+        {% endif %}
+      {% else %}
+        <p class="muted small">
+          {% translate "Nothing listed yet. Listing what this job will need is how you find out on Wednesday instead of on Saturday." %}
+        </p>
+      {% endif %}
+
+      <form method="post" action="{% url 'work_order_part_require' wo.pk %}" class="row"
+            style="margin-top:.5rem">
+        {% csrf_token %}
+        <select name="part" class="select" required style="flex:1"
+                aria-label="{% translate 'Part this job needs' %}">
+          <option value="">{% translate "Choose a part…" %}</option>
+          {% for part in parts %}<option value="{{ part.pk }}">{{ part }} ({{ part.on_hand|floatformat:"-3" }})</option>{% endfor %}
+        </select>
+        <select name="job_item" class="select" aria-label="{% translate 'For which job item' %}">
+          <option value="">{% translate "The whole job" %}</option>
+          {% for item in job_items %}<option value="{{ item.pk }}">{{ item.title }}</option>{% endfor %}
+        </select>
+        <input type="number" step="0.001" name="qty" value="1" style="width:5rem" inputmode="decimal"
+               aria-label="{% translate 'How many' %}">
+        <button type="submit">{% translate "Need it" %}</button>
+      </form>
+    </section>
+
     <section class="card">
       <h2>{% translate "Parts used" %}</h2>
+      <p class="small muted">
+        {% translate "What actually went on the car. Taking a part from the list above records it here." %}
+      </p>
       <ul class="list small">
         {% for usage in part_usages %}
           <li class="spread">

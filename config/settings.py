@@ -55,6 +55,11 @@ CREDENTIAL_KEY = env("CREDENTIAL_KEY", "")
 GUNICORN_PIDFILE = env("GUNICORN_PIDFILE", "/tmp/gunicorn.pid")
 DEBUG = env_bool("DEBUG", False)
 SHOP_NAME = env("SHOP_NAME", "Home Shop")
+# Read so the first-run page can say what has to happen before another
+# device will trust this site. Both already reach the app through the
+# shared `.env`; only the proxy was being told about them.
+TLS_MODE = env("TLS_MODE", "internal")
+SITE_ADDRESS = env("SITE_ADDRESS", "")
 BASE_URL = env("BASE_URL", "http://localhost:8000")
 
 ALLOWED_HOSTS = [h.strip() for h in env("ALLOWED_HOSTS", "*").split(",") if h.strip()]

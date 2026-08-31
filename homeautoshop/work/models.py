@@ -59,7 +59,17 @@ OPEN_STATUSES = (
 # service completions attached to it, to undo a mis-tap. Going back is cheaper
 # to allow than that is to explain.
 TRANSITIONS: dict[str, tuple[str, ...]] = {
-    WorkOrderStatus.PLANNED: (WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.ABANDONED),
+    # `planned` can go straight to `waiting_on_parts`, which the diagram in
+    # REFERENCE.md did not allow and should have. Finding out you are short
+    # is the *point* of listing parts while a job is still being planned;
+    # without this edge the only way to record it was to start the job
+    # first, which is a false statement about the shop written to work
+    # around the graph — the same defect the un-start edge was added for.
+    WorkOrderStatus.PLANNED: (
+        WorkOrderStatus.IN_PROGRESS,
+        WorkOrderStatus.WAITING_ON_PARTS,
+        WorkOrderStatus.ABANDONED,
+    ),
     WorkOrderStatus.IN_PROGRESS: (
         WorkOrderStatus.PLANNED,
         WorkOrderStatus.WAITING_ON_PARTS,
@@ -322,6 +332,74 @@ class JobItem(RevisionedModel):
 
             close_codes_for(self)
         return None
+
+
+class PartRequirement(RevisionedModel):
+    """A part this job needs — as opposed to one it has already used.
+
+    Planning a job is mostly answering one question: *can I start this on
+    Saturday, or am I waiting on a box?* Until now the only record of a part
+    was `PartUsage`, which is written when the part is **consumed** — so the
+    answer existed only after the wheel was already off. This is the other
+    half: what the job is going to want, recorded while there is still time to
+    order it.
+
+    `origin` is stamped from the work order's status at the moment the row is
+    created, and never recomputed. A part named while the job was still
+    `planned` was foreseen; one named after work started was found once it was
+    apart. Those are different facts about the same shop, and keeping them
+    apart is what makes "I always forget the caliper bolts" visible later.
+
+    Nothing here moves stock. Reserving by decrementing `qty_on_hand` would
+    make a part that is merely spoken for look consumed, and the ledger is the
+    only thing allowed to move that number (FR-INV-1). A claim is a row here,
+    and availability is worked out by subtraction — see `parts_readiness`.
+    """
+
+    class Origin(models.TextChoices):
+        PLANNED = "planned", _("Planned")
+        DISCOVERED = "discovered", _("Found once it was apart")
+
+    work_order = models.ForeignKey(
+        WorkOrder, on_delete=models.CASCADE, related_name="part_requirements"
+    )
+    job_item = models.ForeignKey(
+        JobItem,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="part_requirements",
+        help_text=_("Which line of work needs it. Optional."),
+    )
+    part = models.ForeignKey(
+        "parts.Part", on_delete=models.PROTECT, related_name="requirements"
+    )
+    qty = models.DecimalField(max_digits=12, decimal_places=3, default=1)
+    origin = models.CharField(max_length=12, choices=Origin.choices, default=Origin.PLANNED)
+    note = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        indexes = [models.Index(fields=["work_order"]), models.Index(fields=["part"])]
+
+    def __str__(self) -> str:
+        return f"{self.qty} × {self.part}"
+
+    def clean(self):
+        super().clean()
+        if self.qty is not None and self.qty <= 0:
+            raise ValidationError({"qty": _("Quantity must be positive.")})
+        if self.job_item_id and self.job_item.work_order_id != self.work_order_id:
+            raise ValidationError({"job_item": _("That job item belongs to another work order.")})
+
+    @classmethod
+    def origin_for(cls, work_order) -> str:
+        """Foreseen, or found once it was apart — decided by the clock, not by hand."""
+        return (
+            cls.Origin.PLANNED
+            if work_order.status == WorkOrderStatus.PLANNED
+            else cls.Origin.DISCOVERED
+        )
 
 
 class WorkOrderNote(AppendOnlyModel):
