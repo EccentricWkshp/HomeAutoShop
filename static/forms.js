@@ -198,6 +198,32 @@
     });
   }
 
+  /* --------------------------------------------------- quantity that suits the part
+   * A quantity box beside a part picker cannot know, in the markup, whether it
+   * is about gaskets or about litres of coolant. It defaults to whole ones —
+   * right for nearly everything a shop counts, and the reason it does not offer
+   * to record 0.003 of a gasket — and the chosen part relaxes it where the part
+   * is genuinely measured out. Storage is three decimal places either way; this
+   * only decides what the spinner does and what the browser will accept.
+   */
+  function wireQuantitySteps(root) {
+    root.querySelectorAll("input[data-step-from]").forEach(function (input) {
+      var select = document.getElementById(input.getAttribute("data-step-from"));
+      if (!select) return;
+      var floor = input.getAttribute("min");
+      var apply = function () {
+        var option = select.options[select.selectedIndex];
+        var step = (option && option.getAttribute("data-step")) || "1";
+        input.step = step;
+        // Only where the markup set one: a receiving box with no floor should
+        // not acquire one here.
+        if (floor !== null) input.min = step;
+      };
+      apply();
+      on(select, "change", apply);
+    });
+  }
+
   /* ------------------------------------------------------ confirm before losing
    * Only where something disappears from view. A confirmation on everything
    * teaches people to dismiss confirmations.
@@ -217,6 +243,7 @@
     wireLabelledButtons(document);
     wireStatusForm(document);
     wireToolPickers(document);
+    wireQuantitySteps(document);
     wireConfirms(document);
   }
 

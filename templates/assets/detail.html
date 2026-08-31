@@ -25,21 +25,20 @@
   <div class="stack">
 
     <section class="card">
-      <h2>{% translate "Timeline" %}</h2>
-      <ul class="timeline">
-        {% for event in timeline %}
-          <li>
-            <time datetime="{{ event.when|date:'c' }}">{{ event.when|date:"Y-m-d" }}</time>
-            <div>
-              {% if event.url %}<a href="{{ event.url }}">{{ event.title }}</a>{% else %}{{ event.title }}{% endif %}
-              {% if event.number %}<span class="mono small muted">{{ event.number }}</span>{% endif %}
-              <div class="small muted">{{ event.detail }}{% if event.flag %} <span class="pill warn">⚠ {% translate "lower than previous" %}</span>{% endif %}</div>
-            </div>
-          </li>
-        {% empty %}
-          <li class="empty">{% translate "Nothing recorded yet." %}</li>
-        {% endfor %}
-      </ul>
+      {% comment %}
+        Recent, not everything. This card used to be the whole history and it
+        ran the length of the page: photographs are one row each and there are
+        far more of them than anything else, so the meter, the identity panel
+        and the open work all sat below a scroll of them. A day's photographs
+        are one row here, and the full story has its own page.
+      {% endcomment %}
+      <div class="spread">
+        <h2>{% translate "Recent activity" %}</h2>
+        {% if history_is_longer %}
+          <a class="small" href="{% url 'asset_timeline' asset.pk %}">{% translate "Full history" %} →</a>
+        {% endif %}
+      </div>
+      {% include "partials/_timeline.html" with timeline=timeline %}
     </section>
 
     <section class="card">

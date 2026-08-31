@@ -7,7 +7,22 @@
   <div><h1>{{ part.name }}</h1>
     <p class="muted">{{ part.manufacturer }} {{ part.part_number }}
       <span class="pill">{{ part.get_part_type_display }}</span>
-      {% if part.has_core %}<span class="pill warn">{% translate "Has core" %}</span>{% endif %}</p></div>
+      {% if part.has_core %}<span class="pill warn">{% translate "Has core" %}</span>{% endif %}</p>
+    {% if part.known_cost %}
+      {% comment %}
+      What "leave the price blank and it uses the part's own" resolves to, said
+      out loud. Where it came from matters: a stated price is somebody's answer,
+      a lot's is what one actually cost last time, and the two are worth telling
+      apart before anybody relies on either.
+      {% endcomment %}
+      <p class="small muted">
+        {% if part.typical_cost_minor is not None %}
+          {% blocktranslate with price=part.known_cost %}Usual price {{ price }}{% endblocktranslate %}
+        {% else %}
+          {% blocktranslate with price=part.known_cost %}{{ price }} last time, from the shelf{% endblocktranslate %}
+        {% endif %}
+      </p>
+    {% endif %}</div>
   <div class="row">
     <span class="pill {% if part.is_low %}warn{% endif %}">{{ part.on_hand }} {{ part.unit }}</span>
     <a class="btn" href="{% url 'part_edit' part.pk %}">{% translate "Edit" %}</a>
@@ -29,20 +44,51 @@
         </tr>
         {% for lot in lots %}
         <tr>
-          <td>{{ lot.acquired_on }}
+          <td><a href="{% url 'lot_edit' part.pk lot.pk %}">{{ lot.acquired_on }}</a>
             {% if lot.expires_on %}<div class="small muted">{% translate "expires" %} {{ lot.expires_on }}</div>{% endif %}</td>
           <td>{{ lot.location.path|default:"—" }}</td>
           <td class="mono">{{ lot.qty_on_hand }}</td>
-          <td class="mono">{{ lot.unit_cost|default:"—" }}</td>
+          {% comment %}
+          A lot with no cost is not a cosmetic gap: everything drawn from it
+          costs nothing, so the job is cheaper than it was and the shelf is
+          worth less than it is. Say so where the number should have been.
+          {% endcomment %}
+          <td class="mono">
+            {% if lot.unit_cost_minor is None %}
+              <a href="{% url 'lot_edit' part.pk lot.pk %}">{% translate "no cost —" %}</a>
+            {% else %}{{ lot.unit_cost }}{% endif %}
+          </td>
           <td>
             {# A count writes an adjustment with a reason; it never overwrites. #}
             <form method="post" action="{% url 'lot_count' part.pk lot.pk %}" class="row">{% csrf_token %}
-              <input type="number" step="0.001" name="counted" value="{{ lot.qty_on_hand }}" style="width:6rem"
+              <input type="number" step="{{ part.qty_step }}" name="counted" value="{{ lot.qty_on_hand }}" style="width:6rem"
                      aria-label="{% translate 'Counted quantity' %}">
               <input name="note" style="width:8rem" aria-label="{% translate 'Why the count differs' %}"
                      placeholder="{% translate 'reason' %}">
               <button type="submit" class="small">{% translate "Adjust" %}</button>
             </form>
+            <a class="small" href="{% url 'lot_edit' part.pk lot.pk %}">{% translate "Cost, location, dates" %}</a>
+            {% if kit_items and lot.qty_on_hand > 0 %}
+              {% comment %}
+                The box comes off the shelf and its contents go on it. Both
+                halves are one event in the ledger, and the kit's cost is split
+                across the parts by their shares, so consuming the drier later
+                costs a share of $436.54 rather than nothing.
+              {% endcomment %}
+              <form method="post" action="{% url 'lot_open_kit' part.pk lot.pk %}" class="row">{% csrf_token %}
+                <input type="number" step="1" min="1" max="{{ lot.qty_on_hand|floatformat:0 }}"
+                       name="quantity" value="1" style="width:4.5rem"
+                       aria-label="{% translate 'How many kits to open' %}">
+                <button type="submit" class="small">{% translate "Open this kit" %}</button>
+              </form>
+            {% endif %}
+            {% if lot.released_lots.exists %}
+              <form method="post" action="{% url 'lot_close_kit' part.pk lot.pk %}"
+                    data-confirm="{% translate 'Put the contents back in the box? Only possible while none of them have been used.' %}">
+                {% csrf_token %}
+                <button type="submit" class="linkish small danger">{% translate "Put it back together" %}</button>
+              </form>
+            {% endif %}
           </td>
         </tr>
         {% empty %}
@@ -65,8 +111,19 @@
         {% for usage in usages %}
           <li class="spread">
             <div>
-              <a href="{% url 'work_order_detail' usage.work_order.pk %}">{{ usage.work_order.number }}</a>
-              — {{ usage.work_order.asset.nickname }}
+              {% if usage.work_order %}
+                <a href="{% url 'work_order_detail' usage.work_order.pk %}">{{ usage.work_order.number }}</a>
+                — {{ usage.work_order.asset.nickname }}
+              {% elif usage.asset %}
+                <a href="{% url 'asset_detail' usage.asset.pk %}">{{ usage.asset.nickname }}</a>
+                <span class="muted">{% translate "· no job recorded" %}</span>
+              {% else %}
+                {% comment %}
+                Everything that is known about this one, which is that it went.
+                Saying so plainly beats a row that looks like a rendering fault.
+                {% endcomment %}
+                <span class="muted">{% translate "Used — nothing else recorded" %}</span>
+              {% endif %}
               <div class="muted">{{ usage.installed_at }} · {{ usage.get_source_display }}</div>
             </div>
             <div>{{ usage.qty }}
@@ -76,6 +133,41 @@
           </li>
         {% empty %}<li class="muted">{% translate "Not used yet." %}</li>{% endfor %}
       </ul>
+
+      {% if part.on_hand > 0 %}
+        <h2 style="margin-top:1rem">{% translate "Use one" %}</h2>
+        <p class="small muted">
+          {% translate "For a part you fitted without a job here. Takes it off the shelf, oldest first, at what that one cost. Everything but the quantity is optional." %}
+        </p>
+        <form method="post" action="{% url 'part_use' part.pk %}" class="formgrid">{% csrf_token %}
+          <div class="field">
+            <label for="id_use_qty">{% translate "How many" %}</label>
+            <input type="number" step="{{ part.qty_step }}" min="{{ part.qty_step }}" name="qty" value="1"
+                   id="id_use_qty" inputmode="decimal" class="input">
+          </div>
+          <div class="field">
+            <label for="id_use_asset">{% translate "On which vehicle" %}</label>
+            <select name="asset" id="id_use_asset" class="select">
+              <option value="">{% translate "— not recorded —" %}</option>
+              {% for vehicle in vehicles %}
+                <option value="{{ vehicle.pk }}">{{ vehicle }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="id_use_date">{% translate "When" %}</label>
+            <input type="date" name="installed_at" id="id_use_date" class="input">
+          </div>
+          <div class="field">
+            <label for="id_use_note">{% translate "Note" %}</label>
+            <input name="note" id="id_use_note" class="input"
+                   placeholder="{% translate 'optional' %}">
+          </div>
+          <div class="field full">
+            <button type="submit">{% translate "Record it as used" %}</button>
+          </div>
+        </form>
+      {% endif %}
     </section>
   </div>
 
@@ -98,6 +190,118 @@
         <input name="value" required style="flex:1" aria-label="{% translate 'Cross-reference number' %}"
                placeholder="{% translate 'number' %}">
         <button type="submit">{% translate "Add" %}</button>
+      </form>
+    </section>
+
+    {% comment %}
+      The answer to "do I already have one of these?" when the one you have is
+      inside a box with three other things. Without it a compressor kit on the
+      shelf reads as zero driers on the drier's own page, and the drier gets
+      ordered again — which is the failure this whole mechanism exists to stop.
+      Deliberately not counted as stock: it is not on a shelf, it is in a box.
+    {% endcomment %}
+    {% if in_kits %}
+      <section class="card">
+        <h2>{% translate "Inside a kit you have" %}</h2>
+        <ul class="list small">
+          {% for row in in_kits %}
+            <li class="spread">
+              <a href="{% url 'part_detail' row.kit.pk %}">{{ row.kit }}</a>
+              <span class="pill">{{ row.quantity|floatformat:"-3" }} {{ part.unit }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+        <p class="small muted">
+          {% translate "Not on the shelf and not counted as stock — open the kit to put these on it. Worth a look before ordering another." %}
+        </p>
+      </section>
+    {% endif %}
+
+    {% if kit_items %}
+      <section class="card">
+        <h2>{% translate "Contains" %}</h2>
+        <ul class="list small">
+          {% for item in kit_items %}
+            <li class="spread">
+              <div>
+                <a href="{% url 'part_detail' item.part.pk %}">{{ item.part }}</a>
+                <div class="muted">
+                  {% if item.unit_value %}
+                    {% blocktranslate with n=item.quantity|floatformat:"-3" price=item.unit_value percent=item.share_percent %}{{ n }} in the box at {{ price }} · {{ percent }}% of the kit's cost{% endblocktranslate %}
+                  {% else %}
+                    {% blocktranslate with n=item.quantity|floatformat:"-3" percent=item.share_percent %}{{ n }} in the box · no price yet · {{ percent }}% of the kit's cost{% endblocktranslate %}
+                  {% endif %}
+                </div>
+              </div>
+              <form method="post" action="{% url 'kit_item_remove' part.pk item.pk %}">{% csrf_token %}
+                <button class="linkish small danger" type="submit">{% translate "Remove" %}</button>
+              </form>
+            </li>
+          {% endfor %}
+        </ul>
+        {% if kit_split_is_priced %}
+          <p class="small muted">
+            {% translate "The kit's cost is divided in proportion to these prices when the box is opened." %}
+          </p>
+        {% else %}
+          <p class="small muted">
+            {% comment %}
+            Four rows all reading 25% look deliberate, and without this they are
+            indistinguishable from a split somebody chose. Say which it is, and
+            say what fixes it.
+            {% endcomment %}
+            {% translate "Split evenly, because at least one of these has no price. Give every part a price — here, or on the part itself — and the kit's cost follows them instead." %}
+          </p>
+        {% endif %}
+      </section>
+    {% endif %}
+
+    <section class="card">
+      <h2>{% if kit_items %}{% translate "Add to this kit" %}{% else %}{% translate "Make this a kit" %}{% endif %}</h2>
+      <p class="small muted">
+        {% translate "A kit holds the stock while its box is closed. Recording what is inside means those parts can be found before one gets ordered twice, and lets the box be opened into them." %}
+      </p>
+      {% comment %}
+      These three were a select and two identical number boxes labelled only to
+      a screen reader, so the only way to learn what the second one did was to
+      submit it and read the row it produced. Stacked and captioned: the column
+      is narrow, and a row of five-rem boxes wraps into this shape anyway —
+      without the captions.
+
+      The third box asked for a *weight* and expected somebody to work out that
+      a compressor is a 70 against an O-ring's 1. It asks for the price now,
+      which is a number people have.
+      {% endcomment %}
+      <form method="post" action="{% url 'kit_item_add' part.pk %}" class="stack">{% csrf_token %}
+        <div class="field">
+          <label for="id_kit_part">{% translate "Part inside this kit" %}</label>
+          <select name="part" id="id_kit_part" class="select" required>
+            {% for candidate in other_parts %}
+              <option value="{{ candidate.pk }}" data-step="{{ candidate.qty_step }}">{{ candidate }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="id_kit_quantity">{% translate "How many are in the box" %}</label>
+          {% comment %}
+          Whole ones until the part chosen above says otherwise: a box holds
+          three condensers, never 2.5 of one. `data-step-from` relaxes it for a
+          component measured by volume or length, and without that script the
+          box is as strict as the overwhelmingly common case deserves.
+          {% endcomment %}
+          <input type="number" step="1" min="1" name="quantity" value="1"
+                 id="id_kit_quantity" inputmode="decimal" style="width:7rem"
+                 data-step-from="id_kit_part">
+        </div>
+        <div class="field">
+          <label for="id_kit_value">{% translate "Price each" %}</label>
+          <input type="text" name="value" id="id_kit_value" inputmode="decimal"
+                 autocomplete="off" placeholder="{% translate '$0.00' %}" style="width:7rem">
+          <p class="helptext">
+            {% translate "Leave blank to use whatever the part itself costs. Prices are all this needs — the kit's cost is divided in proportion to them, so nobody has to work out a percentage." %}
+          </p>
+        </div>
+        <div><button type="submit">{% translate "Add" %}</button></div>
       </form>
     </section>
 

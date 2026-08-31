@@ -319,17 +319,19 @@
       <form method="post" action="{% url 'work_order_part_require' wo.pk %}" class="row"
             style="margin-top:.5rem">
         {% csrf_token %}
-        <select name="part" class="select" required style="flex:1"
+        <select name="part" id="id_needed_part" class="select" required style="flex:1"
                 aria-label="{% translate 'Part this job needs' %}">
           <option value="">{% translate "Choose a part…" %}</option>
-          {% for part in parts %}<option value="{{ part.pk }}">{{ part }} ({{ part.on_hand|floatformat:"-3" }})</option>{% endfor %}
+          {% for part in parts %}
+            <option value="{{ part.pk }}" data-step="{{ part.qty_step }}">{{ part }} ({{ part.on_hand|floatformat:"-3" }})</option>
+          {% endfor %}
         </select>
         <select name="job_item" class="select" aria-label="{% translate 'For which job item' %}">
           <option value="">{% translate "The whole job" %}</option>
           {% for item in job_items %}<option value="{{ item.pk }}">{{ item.title }}</option>{% endfor %}
         </select>
-        <input type="number" step="0.001" name="qty" value="1" style="width:5rem" inputmode="decimal"
-               aria-label="{% translate 'How many' %}">
+        <input type="number" step="1" name="qty" value="1" style="width:5rem" inputmode="decimal"
+               data-step-from="id_needed_part" aria-label="{% translate 'How many' %}">
         <button type="submit">{% translate "Need it" %}</button>
       </form>
     </section>
@@ -352,12 +354,15 @@
       {# One flow whether it comes off the shelf or was bought for the job. #}
       <form method="post" action="{% url 'work_order_part_use' wo.pk %}" class="row" style="margin-top:.5rem">
         {% csrf_token %}
-        <select name="part" class="select" required style="flex:1" aria-label="{% translate 'Part used' %}">
+        <select name="part" id="id_used_part" class="select" required style="flex:1"
+                aria-label="{% translate 'Part used' %}">
           <option value="">{% translate "Choose a part…" %}</option>
-          {% for part in parts %}<option value="{{ part.pk }}">{{ part }} ({{ part.on_hand }})</option>{% endfor %}
+          {% for part in parts %}
+            <option value="{{ part.pk }}" data-step="{{ part.qty_step }}">{{ part }} ({{ part.on_hand }})</option>
+          {% endfor %}
         </select>
-        <input type="number" step="0.001" name="qty" value="1" style="width:5rem" inputmode="decimal"
-               aria-label="{% translate 'How many' %}">
+        <input type="number" step="1" name="qty" value="1" style="width:5rem" inputmode="decimal"
+               data-step-from="id_used_part" aria-label="{% translate 'How many' %}">
         <button type="submit">{% translate "Use" %}</button>
       </form>
     </section>

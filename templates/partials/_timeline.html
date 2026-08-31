@@ -1,0 +1,44 @@
+{% load i18n %}
+{% comment %}
+The vehicle's story, in date order. Takes `timeline`.
+
+Rendered in two places that want it at two sizes — a summary on the vehicle
+page, the whole thing on its own — and written once so the two cannot drift
+into looking like different features.
+
+A grouped day of photographs comes through as an entry with `children`, and is
+drawn as a `<details>`: native, so it needs no script, opens with a keyboard,
+and is announced as expandable without anything being written here to make it
+so. The alternative was a button and a class toggle, which is three of those
+four properties and some JavaScript.
+{% endcomment %}
+<ul class="timeline">
+  {% for event in timeline %}
+    <li>
+      <time datetime="{{ event.when|date:'c' }}">{{ event.when|date:"Y-m-d" }}</time>
+      {% if event.children %}
+        <details class="grouped">
+          <summary>{{ event.title }}</summary>
+          <ul class="list small">
+            {% for child in event.children %}
+              <li>
+                {% if child.url %}<a href="{{ child.url }}">{{ child.title }}</a>
+                {% else %}{{ child.title }}{% endif %}
+                {% if child.detail %}<span class="muted"> · {{ child.detail }}</span>{% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        </details>
+      {% else %}
+        <div>
+          {% if event.url %}<a href="{{ event.url }}">{{ event.title }}</a>
+          {% else %}{{ event.title }}{% endif %}
+          {% if event.number %}<span class="mono small muted">{{ event.number }}</span>{% endif %}
+          <div class="small muted">{{ event.detail }}{% if event.flag %} <span class="pill warn">⚠ {% translate "lower than previous" %}</span>{% endif %}</div>
+        </div>
+      {% endif %}
+    </li>
+  {% empty %}
+    <li class="empty">{% translate "Nothing recorded yet." %}</li>
+  {% endfor %}
+</ul>

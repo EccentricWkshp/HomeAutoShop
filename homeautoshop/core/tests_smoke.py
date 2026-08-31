@@ -26,7 +26,7 @@ from homeautoshop.diagnostics.models import DiagnosticSession, ParserProfile
 from homeautoshop.diagnostics.profiles import seed as seed_profiles
 from homeautoshop.inspections.models import Inspection
 from homeautoshop.maintenance.models import AssetServiceItem, ServiceDefinition
-from homeautoshop.parts.models import Part, PartFitment
+from homeautoshop.parts.models import Part, PartFitment, StockLot
 from homeautoshop.people.models import Person
 from homeautoshop.purchasing.models import Purchase, Vendor
 from django.core.files.base import ContentFile
@@ -72,6 +72,7 @@ class EveryPageRendersTests(TestCase):
         cls.wo = WorkOrder.objects.create(asset=cls.asset, title="Front brakes")
         cls.item = JobItem.objects.create(work_order=cls.wo, title="Pads")
         cls.part = Part.objects.create(name="Brake pads", part_number="D1234")
+        cls.lot = StockLot.objects.create(part=cls.part, qty_on_hand=1)
         cls.fitment = PartFitment.objects.create(
             part=cls.part, make="Ford", model="F-150", year_from=2010, year_to=2014
         )
@@ -163,10 +164,12 @@ class EveryPageRendersTests(TestCase):
             by_name["pk"] = str(self.wo.pk)
         elif name in {
             "part_detail", "part_edit", "crossref_add", "lot_add", "lot_count",
+            "lot_edit", "lot_delete", "lot_open_kit", "lot_close_kit", "part_use",
             "fitment_add", "fitment_edit", "fitment_delete",
         }:
             by_name["pk"] = str(self.part.pk)
             by_name["fitment_id"] = str(self.fitment.pk)
+            by_name["lot_id"] = str(self.lot.pk)
         elif name in {"person_detail", "person_edit"}:
             by_name["pk"] = str(self.person.pk)
         elif name in {"user_detail", "user_set_active", "user_set_password"}:

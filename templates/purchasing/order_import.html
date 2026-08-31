@@ -63,6 +63,9 @@
           <tr><th>{% translate "Parts" %}</th>
               <td>{% blocktranslate with new=report.parts_created known=report.parts_matched %}{{ new }} new, {{ known }} already here{% endblocktranslate %}</td></tr>
           <tr><th>{% translate "Fitment recorded" %}</th><td>{{ report.fitments_recorded }}</td></tr>
+          {% if report.kit_items_recorded %}
+            <tr><th>{% translate "Kit contents recorded" %}</th><td>{{ report.kit_items_recorded }}</td></tr>
+          {% endif %}
           <tr><th>{% translate "Parts subtotal" %}</th><td class="mono">{{ report.order.subtotal }}</td></tr>
           <tr><th>{% translate "Shipping" %}</th><td class="mono">{{ report.order.shipping }}</td></tr>
           <tr><th>{% translate "Tax" %}</th><td class="mono">{{ report.order.tax }}</td></tr>
@@ -115,7 +118,9 @@
                 <tr{% if not outcome.charged %} class="muted"{% endif %}>
                   <th class="mono small">{{ outcome.line.brand }} {{ outcome.line.part_number }}</th>
                   <td class="small">{{ outcome.line.description }}
-                    {% if not outcome.charged %}
+                    {% if outcome.inside_kit %}
+                      <span class="pill">{% blocktranslate with kit=outcome.inside_kit %}inside {{ kit }}{% endblocktranslate %}</span>
+                    {% elif not outcome.charged %}
                       <span class="pill">{% translate "inside a kit" %}</span>
                     {% endif %}
                   </td>
@@ -142,7 +147,7 @@
           </table>
         </div>
         <p class="small muted">
-          {% blocktranslate %}A kit's contents are listed here and added to the catalog, so you can find them again on their own — but they carry no money, because the kit they came in was already charged for.{% endblocktranslate %}
+          {% blocktranslate %}A kit's contents are listed here and added to the catalog, so you can find them again on their own — but they carry no money, because the kit they came in was already charged for. They are recorded as being inside their kit, and the price the vendor prints against each one becomes its share of the kit's cost when the box is opened.{% endblocktranslate %}
         </p>
       </section>
     {% endif %}

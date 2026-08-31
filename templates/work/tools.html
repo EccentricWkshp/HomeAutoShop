@@ -1,0 +1,104 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Tools" %} — {{ shop_name }}{% endblock %}
+{% block content %}
+<div class="spread">
+  <div>
+    <h1>{% translate "Tools" %}</h1>
+    <p class="muted">{% translate "What this shop knows it has" %}</p>
+  </div>
+</div>
+
+<p class="muted small">
+  {% translate "HomeAutoShop does not keep a tool inventory — WrenchLedger does. This is the shadow copy it keeps for answering \"can I do this job today?\", plus anything named by hand on a work order." %}
+</p>
+
+<section class="card">
+  <form method="get" class="row" role="search">
+    <label class="visually-hidden" for="toolq">{% translate "Search tools" %}</label>
+    <input id="toolq" type="search" name="q" value="{{ query }}" style="flex:1"
+           placeholder="{% translate 'Name, brand, or id…' %}">
+    <button class="primary nowrap" type="submit">{% translate "Find" %}</button>
+  </form>
+  {% if query and not tools_enabled %}
+    <p class="small muted">
+      {% translate "Only what is cached here is searched: WrenchLedger is not configured, or Offline Mode is on." %}
+    </p>
+  {% elif query and not remote_ok %}
+    <p class="msg warning">
+      {% translate "WrenchLedger did not answer, so this is only what is already known here." %}
+    </p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>{% if query %}{% translate "Known here" %}{% else %}{% translate "Every tool known here" %}{% endif %}</h2>
+  <div class="tablewrap"><table>
+    <thead><tr>
+      <th>{% translate "Tool" %}</th><th>{% translate "Where it is" %}</th>
+      <th>{% translate "Source" %}</th><th></th>
+    </tr></thead>
+    <tbody>
+      {% for tool in tools %}
+        <tr>
+          <td>
+            <a href="{{ tool.url }}" target="_blank" rel="noopener"
+               aria-label="{% blocktranslate with name=tool %}{{ name }} in WrenchLedger (opens in a new tab){% endblocktranslate %}">{{ tool }}</a>
+            {% if tool.brand or tool.model %}
+              <div class="small muted">{{ tool.brand }} {{ tool.model }}</div>
+            {% endif %}
+          </td>
+          <td class="small">
+            {% for issue in tool.issues %}
+              <span class="pill warn">{{ issue }}</span>
+            {% empty %}
+              {% if tool.is_local %}<span class="muted">—</span>
+              {% else %}<span class="pill ok">{% translate "available" %}</span>{% endif %}
+            {% endfor %}
+          </td>
+          <td class="small">
+            {% if tool.is_local %}
+              {# Named on a job, never matched, so nothing knows where it is. #}
+              <span class="pill">{% translate "added here" %}</span>
+            {% else %}
+              <span class="muted">{% translate "WrenchLedger" %}</span>
+              {% if tool.checked_at %}<div class="muted">{% translate "checked" %} {{ tool.checked_at|date:"Y-m-d" }}</div>{% endif %}
+            {% endif %}
+          </td>
+          <td>
+            {% if tool.is_local %}
+              <form method="post" action="{% url 'tool_delete' tool.pk %}"
+                    data-confirm="{% blocktranslate with name=tool %}Forget {{ name }}? Any job item pointing at it loses the reference.{% endblocktranslate %}">
+                {% csrf_token %}
+                <button class="linkish small danger" type="submit">{% translate "Forget" %}</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4" class="muted">
+          {% if query %}{% translate "Nothing here by that name." %}
+          {% else %}{% translate "Nothing yet. Tools arrive here when you name one on a job, or from a WrenchLedger sync." %}{% endif %}
+        </td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+
+{% if remote_rows %}
+  <section class="card">
+    <h2>{% translate "In WrenchLedger" %}</h2>
+    <p class="small muted">
+      {% translate "Found in WrenchLedger and not cached here yet. Naming one on a job order caches it." %}
+    </p>
+    <ul class="list small">
+      {% for row in remote_rows %}
+        <li>
+          <a href="https://www.wrench-ledger.app/tools/{{ row.id }}" target="_blank" rel="noopener"
+             aria-label="{% blocktranslate with name=row.name %}{{ name }} in WrenchLedger (opens in a new tab){% endblocktranslate %}">{{ row.name }}</a>
+          {% if row.detail %}<span class="muted"> · {{ row.detail }}</span>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endif %}
+{% endblock %}

@@ -26,16 +26,96 @@
 </section>
 {% endif %}
 
+{% comment %}
+A kit's contents sit under it rather than beside it, because that is where they
+are. Flat, the compressor kit and its three components read as four unrelated
+parts and the three show zero on hand — which is the reading that gets a drier
+ordered while one is already in the box.
+
+While searching they stay at the top level and say which kit they are in
+instead: a search for "condenser" that hides the condenser under a kit named
+nothing like it has answered the wrong question.
+{% endcomment %}
 <section class="card">
   <ul class="list">
     {% for part in parts %}
       <li class="spread">
         <div>
           <a href="{% url 'part_detail' part.pk %}"><strong>{{ part.name }}</strong></a>
+          {% if part.kit_contents %}
+            <span class="pill">{% blocktranslate count n=part.kit_contents|length %}kit of {{ n }} part{% plural %}kit of {{ n }} parts{% endblocktranslate %}</span>
+          {% endif %}
           <div class="small muted">{{ part.manufacturer }} {{ part.part_number }} · {{ part.get_part_type_display }}</div>
+          {% if part.boxed_in %}
+            <div class="small muted">
+              {% for kit in part.boxed_in %}
+                {% blocktranslate with name=kit %}in {{ name }}{% endblocktranslate %}{% if not forloop.last %} · {% endif %}
+              {% endfor %}
+            </div>
+          {% endif %}
+          {% comment %}
+          What the row used to make somebody open the part to find out. Labelled
+          rather than run together: a bare "$175.26 · 2004 Suzuki Aerio · Shelf
+          A" is four facts in a row that each have to be identified by shape.
+          Anything unknown is left out rather than printed as a dash — a row of
+          empty labels is noise, and the gap is legible on its own.
+          {% endcomment %}
+          <dl class="factline small">
+            {% if part.known_cost %}
+              <div><dt>{% translate "Price" %}</dt><dd class="mono">{{ part.known_cost }}</dd></div>
+            {% endif %}
+            {% if part.fits_named %}
+              <div><dt>{% translate "Fits" %}</dt>
+                <dd>{% for vehicle in part.fits_named %}{{ vehicle }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if part.fits_more %}{% blocktranslate count n=part.fits_more %} +{{ n }} more{% plural %} +{{ n }} more{% endblocktranslate %}{% endif %}</dd>
+              </div>
+            {% endif %}
+            {% if part.last_bought %}
+              <div><dt>{% translate "Bought" %}</dt>
+                <dd>
+                  <a href="{% url 'purchase_detail' part.last_bought.purchase.pk %}">{{ part.last_bought.purchase.ordered_on|default:_("undated") }}</a>
+                  {% if part.last_bought.unit_price_minor is not None %}
+                    <span class="mono">{{ part.last_bought.unit_price }}</span>
+                  {% endif %}
+                  {% if part.last_bought.purchase.vendor %}
+                    <span class="muted">{{ part.last_bought.purchase.vendor.name }}</span>
+                  {% endif %}
+                </dd>
+              </div>
+            {% endif %}
+            {% if part.where %}
+              <div><dt>{% translate "Where" %}</dt>
+                <dd>{% for place in part.where %}{{ place }}{% if not forloop.last %}, {% endif %}{% endfor %}</dd>
+              </div>
+            {% endif %}
+          </dl>
         </div>
-        <span class="pill {% if part.is_low %}warn{% endif %}">{{ part.on_hand }} {{ part.unit }}</span>
+        <span class="pill {% if part.is_short %}warn{% endif %}">{{ part.shelf_qty|floatformat:"-3" }} {{ part.unit }}</span>
       </li>
+      {% if part.kit_contents %}
+        <li class="contents">
+          <ul class="list small">
+            {% for item in part.kit_contents %}
+              <li class="spread">
+                <div>
+                  <a href="{% url 'part_detail' item.part.pk %}">{{ item.part.name }}</a>
+                  <div class="muted">
+                    {% blocktranslate with n=item.quantity|floatformat:"-3" %}{{ n }} in the box{% endblocktranslate %}
+                    {% if item.part.manufacturer or item.part.part_number %}
+                      · {{ item.part.manufacturer }} {{ item.part.part_number }}
+                    {% endif %}
+                  </div>
+                </div>
+                {% comment %}
+                Its own stock, not the kit's. A component with none of its own
+                is the normal case and reads correctly as zero here, because
+                the row above it already says how many boxes there are.
+                {% endcomment %}
+                <span class="pill">{{ item.part.on_hand }} {{ item.part.unit }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        </li>
+      {% endif %}
     {% empty %}
       <li class="empty">{% if q %}{% translate "Nothing matched." %}{% else %}{% translate "No parts yet." %}{% endif %}</li>
     {% endfor %}

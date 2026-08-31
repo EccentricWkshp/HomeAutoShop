@@ -1,0 +1,66 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Stock lot" %} — {{ part.name }}{% endblock %}
+{% block content %}
+{% url 'part_detail' part.pk as back_url %}
+{% include "partials/_back.html" with url=back_url label=part.name %}
+<h1>{% translate "Edit this stock lot" %}</h1>
+<p class="muted">
+  {% blocktranslate with name=part acquired=lot.acquired_on %}{{ name }}, added {{ acquired }}{% endblocktranslate %}
+</p>
+
+<form method="post" class="card">{% csrf_token %}
+  {% if form.non_field_errors %}{{ form.non_field_errors }}{% endif %}
+  <div class="formgrid">
+    {% for field in form %}
+      <div class="field">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}
+        {% if field.help_text %}<p class="helptext">{{ field.help_text }}</p>{% endif %}{{ field.errors }}
+      </div>
+    {% endfor %}
+  </div>
+  {% comment %}
+  Said here rather than left as an absent field. Somebody arriving to fix a
+  quantity needs to know where the quantity lives, and "there is no box for it"
+  reads as an oversight instead of as the design.
+  {% endcomment %}
+  <p class="small muted">
+    {% blocktranslate with n=lot.qty_on_hand unit=part.unit %}There are {{ n }} {{ unit }} in this lot. That number comes from the movements recorded against it and is not typed — counting it on the part's page is what changes it, and the count is recorded with your reason.{% endblocktranslate %}
+  </p>
+  {% include "partials/_formactions.html" with cancel_url=back_url %}
+</form>
+
+<section class="card">
+  <h2>{% translate "Movements" %}</h2>
+  <p class="small muted">
+    {% translate "Everything that has happened to this lot, in order. This is where the quantity comes from." %}
+  </p>
+  <ul class="list small">
+    {% for move in lot.transactions.all %}
+      <li class="spread">
+        <div>{{ move.get_reason_display }}
+          {% if move.work_order %}
+            <div class="muted"><a href="{% url 'work_order_detail' move.work_order.pk %}">{{ move.work_order.number }}</a></div>
+          {% elif move.note %}
+            <div class="muted">{{ move.note }}</div>
+          {% endif %}
+        </div>
+        <div class="mono">{{ move.delta|floatformat:"-3" }}
+          <div class="muted small">{{ move.created_at|date:"Y-m-d" }}</div>
+        </div>
+      </li>
+    {% empty %}<li class="muted">{% translate "Nothing recorded." %}</li>{% endfor %}
+  </ul>
+</section>
+
+<section class="card">
+  <h2>{% translate "Remove this lot" %}</h2>
+  <p class="small muted">
+    {% translate "For a lot that should never have been recorded. Only possible while nothing has been drawn from it — once something has, the draw is what a job cost, and removing the lot underneath it would rewrite that. Count it to zero instead." %}
+  </p>
+  <form method="post" action="{% url 'lot_delete' part.pk lot.pk %}"
+        data-confirm="{% blocktranslate with n=lot.qty_on_hand %}Remove this lot and the {{ n }} it holds?{% endblocktranslate %}">
+    {% csrf_token %}
+    <button class="danger" type="submit">{% translate "Remove this lot" %}</button>
+  </form>
+</section>
+{% endblock %}

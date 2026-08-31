@@ -232,7 +232,9 @@ def active_warranties():
     """Parts still under warranty — data already collected, never surfaced (C-3)."""
     from homeautoshop.parts.models import PartUsage
 
-    rows = PartUsage.objects.select_related("part", "work_order", "work_order__asset").filter(
+    rows = PartUsage.objects.select_related(
+        "part", "work_order", "work_order__asset", "asset"
+    ).filter(
         warranty_months__isnull=False
     )
     return sorted(

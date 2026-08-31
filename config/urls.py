@@ -150,8 +150,15 @@ urlpatterns = [
     path("work-orders/<uuid:pk>/tools/<uuid:reference_id>/remove/", work.job_item_tool_remove,
          name="job_item_tool_remove"),
     # Tool lookup for a job item, so nobody has to remember a WrenchLedger id.
+    # A tool named on a job used to be unreachable afterwards: no list, no way
+    # to correct it, no way to remove it, and no way to ask what the shop owns.
+    path("tools/", work.tool_list, name="tool_list"),
+    path("tools/<uuid:pk>/delete/", work.tool_delete, name="tool_delete"),
     path("tools/search/", work.tool_search, name="tool_search"),
     path("work-orders/<uuid:pk>/expenses/", purchasing.expense_add, name="work_order_expense_add"),
+    # The vehicle page carries a summary of this; the full story lives here,
+    # where nothing on the screen is competing with it.
+    path("vehicles/<uuid:pk>/history/", assets.asset_timeline, name="asset_timeline"),
     path("vehicles/<uuid:pk>/specs/", assets.asset_specs, name="asset_specs"),
     path("vehicles/<uuid:pk>/specs/add/", assets.spec_add, name="spec_add"),
     path("vehicles/<uuid:pk>/specs/from-decode/", assets.spec_from_decode,
@@ -234,6 +241,20 @@ urlpatterns = [
          name="fitment_delete"),
     path("parts/<uuid:pk>/stock/", parts.lot_add, name="lot_add"),
     path("parts/<uuid:pk>/stock/<uuid:lot_id>/count/", parts.lot_count, name="lot_count"),
+    # Everything a lot knows except how many there are: that is the ledger's,
+    # and counting is the way to change it.
+    path("parts/<uuid:pk>/stock/<uuid:lot_id>/edit/", parts.lot_edit, name="lot_edit"),
+    path("parts/<uuid:pk>/stock/<uuid:lot_id>/delete/", parts.lot_delete, name="lot_delete"),
+    # Off the shelf with no job behind it: most of what a home garage has fitted
+    # was never a work order here.
+    path("parts/<uuid:pk>/use/", parts.part_use, name="part_use"),
+    # A kit is a part with other parts recorded inside it. It holds the stock
+    # while the box is closed; opening it is what puts the contents on a shelf.
+    path("parts/<uuid:pk>/contents/", parts.kit_item_add, name="kit_item_add"),
+    path("parts/<uuid:pk>/contents/<uuid:item_id>/remove/", parts.kit_item_remove,
+         name="kit_item_remove"),
+    path("parts/<uuid:pk>/stock/<uuid:lot_id>/open/", parts.lot_open_kit, name="lot_open_kit"),
+    path("parts/<uuid:pk>/stock/<uuid:lot_id>/close/", parts.lot_close_kit, name="lot_close_kit"),
     path("inventory/", parts.inventory, name="inventory"),
     path("inventory/locations/", parts.location_create, name="location_create"),
     path("inventory/cores/<uuid:usage_id>/returned/", parts.core_returned, name="core_returned"),

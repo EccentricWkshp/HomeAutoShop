@@ -21,11 +21,13 @@ from unittest import mock
 
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from homeautoshop.accounts.models import Role, User
 from homeautoshop.assets.models import Asset
 from homeautoshop.work.models import (
     JobItem,
+    JobItemTool,
     ShopTool,
     WorkOrder,
     WorkOrderStatus,
@@ -229,6 +231,72 @@ class DeleteTests(Base):
     def test_the_button_asks_first(self):
         page = self.client.get(reverse("work_order_detail", args=[self.wo.pk]))
         self.assertContains(page, "data-confirm")
+
+
+class ToolScreenTests(Base):
+    """A tool named on a job used to be unreachable afterwards (FR-WL-8).
+
+    Reported as two things that are one thing: the WrenchLedger catalogue was
+    searchable only from inside a job item, and a tool added there by hand could
+    never be listed, corrected or removed again.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.synced = ShopTool.objects.create(
+            tool_id="wl_9912", name="Vacuum pump", brand="Robinair",
+            checked_at=timezone.now(),
+        )
+        self.typed = ShopTool.objects.create(tool_id="my old pump", name="My old pump")
+
+    def page(self, **params):
+        return self.client.get(reverse("tool_list"), params)
+
+    def test_the_screen_lists_what_the_shop_knows(self):
+        page = self.page()
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Vacuum pump")
+        self.assertContains(page, "My old pump")
+
+    def test_a_hand_added_tool_says_that_is_what_it_is(self):
+        """Otherwise its blank availability column looks like a bug."""
+        self.assertTrue(self.typed.is_local)
+        self.assertFalse(self.synced.is_local)
+        self.assertContains(self.page(), "added here")
+
+    def test_searching_narrows_the_list(self):
+        page = self.page(q="vacuum")
+        self.assertContains(page, "Vacuum pump")
+        self.assertNotContains(page, "My old pump")
+
+    def test_a_hand_added_tool_can_be_forgotten(self):
+        JobItemTool.objects.create(
+            job_item=JobItem.objects.create(work_order=self.wo, title="A/C"),
+            tool=self.typed,
+        )
+
+        self.client.post(reverse("tool_delete", args=[self.typed.pk]), follow=True)
+
+        self.assertFalse(ShopTool.objects.filter(pk=self.typed.pk).exists())
+        self.assertEqual(
+            JobItemTool.objects.filter(tool=self.typed).count(),
+            0,
+            "a job item was left pointing at a tool nobody can look up",
+        )
+
+    def test_a_wrenchledger_tool_is_not_deletable_here(self):
+        """Deleting the shadow achieves nothing: the next sync brings it back."""
+        response = self.client.post(
+            reverse("tool_delete", args=[self.synced.pk]), follow=True
+        )
+        self.assertTrue(ShopTool.objects.filter(pk=self.synced.pk).exists())
+        self.assertContains(response, "Remove it there")
+
+    def test_the_screen_is_reachable_from_the_menu(self):
+        """It was not, which is most of why none of this existed."""
+        self.assertContains(
+            self.client.get(reverse("dashboard")), reverse("tool_list")
+        )
 
 
 class ToolLookupTests(Base):

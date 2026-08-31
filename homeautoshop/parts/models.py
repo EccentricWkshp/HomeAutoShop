@@ -46,6 +46,14 @@ class Part(RevisionedModel):
     is_consumable = models.BooleanField(default=False)
     has_core = models.BooleanField(default=False)
     core_value_minor, core_value_currency = money_columns("core_value", null=True)
+    #: What one of these costs, as a fact about the part rather than about any
+    #: particular one on the shelf. A stock lot records what a specific batch
+    #: was actually paid for; this is the figure you would quote from memory,
+    #: and it is what makes a kit's cost divisible without anybody working out
+    #: proportions by hand (FR-INV-9).
+    typical_cost_minor, typical_cost_currency = money_columns(
+        "typical_cost", null=True, verbose_name=_("usual price")
+    )
     hazmat_class = models.CharField(max_length=32, blank=True)
     min_quantity = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True,
@@ -55,6 +63,7 @@ class Part(RevisionedModel):
     spec = models.JSONField(default=dict, blank=True, help_text=_("Viscosity, thread pitch, dimensions."))
 
     core_value = money("core_value")
+    typical_cost = money("typical_cost")
 
     class Meta:
         ordering = ["name"]
@@ -72,8 +81,93 @@ class Part(RevisionedModel):
     def is_low(self) -> bool:
         return self.min_quantity is not None and self.on_hand < self.min_quantity
 
+    @property
+    def is_countable(self) -> bool:
+        """Whether this part comes in whole ones."""
+        return self.unit == "each"
+
+    @property
+    def qty_step(self) -> str:
+        """The smallest sensible amount of this part, for a quantity box.
+
+        Storage stays at three decimal places whatever this says, because oil
+        and hose genuinely come in fractions. What it fixes is the spinner: a
+        gasket set stepping by a thousandth is arrows nobody can use and an
+        offer to record 0.003 of a gasket. A string rather than a `Decimal`, so
+        localisation cannot turn the attribute into `0,001`.
+        """
+        return "1" if self.is_countable else "0.001"
+
     def all_numbers(self) -> list[str]:
         return [self.part_number, *self.cross_refs.values_list("value", flat=True)]
+
+    @property
+    def known_cost_minor(self) -> int | None:
+        """What this part costs, from the best source that has an answer.
+
+        The stated price first, because somebody typed it on purpose. Then the
+        newest lot, which is what one actually cost the last time one arrived.
+        Then the newest purchase line, which covers a part bought but never
+        stocked. `None` when nothing anywhere knows — a real answer, and the
+        one that stops a kit's cost being divided by a number nobody supplied.
+
+        Sorted in Python rather than by the database on purpose: `.all()` uses a
+        prefetch when there is one, and `.order_by()` would throw it away and
+        re-query — which on a list of two hundred parts is two hundred queries
+        for a figure already in memory.
+        """
+        if self.typical_cost_minor is not None:
+            return self.typical_cost_minor
+        lots = [
+            lot for lot in self.stock_lots.all() if lot.unit_cost_minor is not None
+        ]
+        if lots:
+            newest = max(lots, key=lambda lot: (lot.acquired_on, lot.created_at))
+            return newest.unit_cost_minor
+        lines = [
+            line
+            for line in self.purchase_lines.all()
+            if line.unit_price_minor is not None
+        ]
+        if lines:
+            return max(lines, key=lambda line: line.created_at).unit_price_minor
+        return None
+
+    @property
+    def known_cost(self):
+        from homeautoshop.core.measurements import Money
+
+        amount = self.known_cost_minor
+        if amount is None:
+            return None
+        return Money(amount, self.typical_cost_currency or "USD")
+
+    @property
+    def is_kit(self) -> bool:
+        """Whether anything is recorded as being inside this."""
+        return self.kit_items.exists()
+
+    def available_in_kits(self) -> list[dict]:
+        """Kits on the shelf that contain this part, and how many it would yield.
+
+        The reason the kit machinery exists at all. A compressor kit sitting in
+        a box reads as zero compressors, zero driers and zero O-rings on every
+        screen that matters — so the drier gets ordered again, and arrives next
+        to the one already in the box. Nothing here is stock: it is an answer to
+        "before you buy this, look in that box".
+        """
+        found = []
+        for item in self.in_kits.select_related("kit"):
+            on_hand = item.kit.on_hand
+            if on_hand > 0:
+                found.append(
+                    {
+                        "kit": item.kit,
+                        "kits_on_hand": on_hand,
+                        "quantity": Decimal(str(item.quantity)) * on_hand,
+                    }
+                )
+        return found
 
 
 class PartCrossRef(BaseModel):
@@ -101,6 +195,104 @@ class PartCrossRef(BaseModel):
 
     def __str__(self) -> str:
         return f"{self.get_system_display()}: {self.value}"
+
+
+class PartKitItem(BaseModel):
+    """One part inside a kit, and how many of it (FR-INV-9).
+
+    A kit is not its own kind of record — it is a `Part` that other parts are
+    recorded as being inside. That keeps a kit buyable, stockable, countable and
+    searchable by every mechanism that already exists, and means "is this a
+    kit?" is a question about relationships rather than a flag somebody has to
+    remember to set.
+
+    The kit is what is on the shelf while the box is closed, and that is the
+    honest answer: an unopened box is one thing you can pick up, not four things
+    you would have to open it to reach. `Part.available_in_kits` is how the four
+    stay findable in the meantime, and `open_kit` is what turns the box into
+    them for real.
+    """
+
+    kit = models.ForeignKey(Part, on_delete=models.CASCADE, related_name="kit_items")
+    part = models.ForeignKey(Part, on_delete=models.CASCADE, related_name="in_kits")
+    quantity = models.DecimalField(max_digits=12, decimal_places=3, default=1)
+    #: What one of these is worth inside this kit, in money. Blank means "use
+    #: whatever the part itself says it costs", which is the usual case and the
+    #: reason this is nullable rather than defaulted.
+    #:
+    #: This was a relative weight, and a weight is a number nobody can supply
+    #: without a calculator: told that a compressor is a 70 and an O-ring a 1,
+    #: the operator's actual question is "what do I put here?" and the honest
+    #: answer was "work out the proportion yourself". Prices are the thing
+    #: people already know, the vendor prints them on the order, and the
+    #: proportions fall out of them.
+    value_minor, value_currency = money_columns(
+        "value", null=True, verbose_name=_("price each")
+    )
+    notes = models.CharField(max_length=200, blank=True)
+
+    value = money("value")
+
+    class Meta:
+        ordering = ["part__name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["kit", "part"],
+                name="unique_kit_item",
+                condition=models.Q(deleted_at__isnull=True),
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.quantity:g} × {self.part}"
+
+    @property
+    def unit_value_minor(self) -> int | None:
+        """The price of one, stated here or taken from the part."""
+        if self.value_minor is not None:
+            return self.value_minor
+        return self.part.known_cost_minor
+
+    @property
+    def unit_value(self):
+        from homeautoshop.core.measurements import Money
+
+        amount = self.unit_value_minor
+        return None if amount is None else Money(amount, self.value_currency or "USD")
+
+    @property
+    def line_value_minor(self) -> int | None:
+        """The price of everything this row puts in the box.
+
+        Six O-rings at a dollar are worth six dollars against a compressor's
+        hundred and seventy-five, and the split has to know that — the weight
+        this replaced ignored quantity entirely.
+        """
+        each = self.unit_value_minor
+        if each is None:
+            return None
+        return int(Decimal(each) * Decimal(str(self.quantity)))
+
+    def clean(self):
+        super().clean()
+        if self.kit_id == self.part_id:
+            raise ValidationError({"part": _("A kit cannot contain itself.")})
+        if Decimal(str(self.quantity or 0)) <= 0:
+            raise ValidationError({"quantity": _("A kit holds at least one of each part.")})
+        # A kit may contain a kit, so the loop has to be walked rather than
+        # guessed at — the same shape as Location's parent check, and for the
+        # same reason: a cycle here is an infinite recursion at open time.
+        seen, frontier = set(), [self.kit_id]
+        while frontier:
+            current = frontier.pop()
+            if current in seen:
+                continue
+            seen.add(current)
+            frontier.extend(
+                PartKitItem.objects.filter(part_id=current).values_list("kit_id", flat=True)
+            )
+        if self.part_id in seen:
+            raise ValidationError({"part": _("That would put this kit inside itself.")})
 
 
 class PartFitment(BaseModel):
@@ -229,6 +421,12 @@ class StockLot(BaseModel):
     purchase_line = models.ForeignKey(
         "purchasing.PurchaseLine", null=True, blank=True, on_delete=models.SET_NULL, related_name="lots"
     )
+    #: The kit lot this came out of, when it came out of one. Carried so that
+    #: opening a kit by mistake is undoable without a second table recording
+    #: which lots belonged to which opening — the lots say so themselves.
+    from_kit_lot = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.SET_NULL, related_name="released_lots"
+    )
     acquired_on = models.DateField(default=timezone.localdate)
     expires_on = models.DateField(
         null=True, blank=True, help_text=_("Brake fluid, RTV and epoxy do expire.")
@@ -271,6 +469,13 @@ class StockTransaction(AppendOnlyModel):
         #: written wrong. Filing a correction as a count would put a discrepancy
         #: in the record that nobody ever counted.
         UNRECEIVE = "unreceive", _("Receipt reversed")
+        #: One event, two signs. Opening a kit takes the box off the shelf and
+        #: puts its contents on it, and both halves are the same fact — so they
+        #: share a reason and the delta says which side of it a row is. Reading
+        #: the ledger, a matched `-1 kit` and `+1 drier` under "Kit opened" is
+        #: the event; two different reasons would be two events to reconcile.
+        KIT_OPENED = "kit_opened", _("Kit opened")
+        KIT_CLOSED = "kit_closed", _("Kit put back together")
 
     stock_lot = models.ForeignKey(StockLot, on_delete=models.CASCADE, related_name="transactions")
     delta = models.DecimalField(max_digits=12, decimal_places=3)
@@ -324,8 +529,19 @@ class PartUsage(BaseModel):
     job_item = models.ForeignKey(
         "work.JobItem", null=True, blank=True, on_delete=models.CASCADE, related_name="part_usages"
     )
+    #: Nullable, because plenty of what a home shop has fitted was never a job
+    #: here. "I put that fuel pump in, I bought it in June" is a true and useful
+    #: statement, and requiring a work order to record it means either inventing
+    #: one or — far more likely — leaving the part on the shelf for ever.
     work_order = models.ForeignKey(
-        "work.WorkOrder", on_delete=models.CASCADE, related_name="part_usages"
+        "work.WorkOrder", null=True, blank=True,
+        on_delete=models.CASCADE, related_name="part_usages",
+    )
+    #: Which vehicle, when there is no work order to ask. Usually the one thing
+    #: somebody does remember, and it is what makes the fitment record itself.
+    asset = models.ForeignKey(
+        "assets.Asset", null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="part_usages",
     )
     part = models.ForeignKey(Part, on_delete=models.PROTECT, related_name="usages")
     qty = models.DecimalField(max_digits=12, decimal_places=3, default=1)
@@ -347,6 +563,13 @@ class PartUsage(BaseModel):
 
     def __str__(self) -> str:
         return f"{self.qty} × {self.part}"
+
+    @property
+    def vehicle(self):
+        """The vehicle this went on, from the job or from the row itself."""
+        if self.work_order_id is not None:
+            return self.work_order.asset
+        return self.asset
 
     @property
     def line_total_minor(self) -> int:

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from datetime import date
+from decimal import Decimal
+
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -12,13 +15,19 @@ from django.urls import reverse
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
 
+from homeautoshop.assets.models import Asset
 from homeautoshop.core.costs import inventory_value
-from homeautoshop.core.moneyform import MoneyFormMixin
+from homeautoshop.core.moneyform import MoneyFormMixin, parse_amount
+from homeautoshop.purchasing.models import PurchaseLine
 
 from .models import (
-    Location, Part, PartCrossRef, PartFitment, PartUsage, StockLot, StockTransaction,
+    Location, Part, PartCrossRef, PartFitment, PartKitItem, PartUsage, StockLot,
+    StockTransaction,
 )
-from .services import consume, cycle_count, expiring_lots, find, outstanding_cores, restock_list
+from .services import (
+    close_kit, consume, cycle_count, expiring_lots, find, kit_weights, open_kit,
+    outstanding_cores, restock_list, split_kit_cost,
+)
 
 
 class PartForm(MoneyFormMixin, forms.ModelForm):
@@ -26,11 +35,20 @@ class PartForm(MoneyFormMixin, forms.ModelForm):
         model = Part
         fields = [
             "name", "category", "manufacturer", "part_number", "part_type",
-            "unit", "is_consumable", "has_core", "core_value_minor",
-            "min_quantity", "notes",
+            "unit", "typical_cost_minor", "is_consumable", "has_core",
+            "core_value_minor", "min_quantity", "notes",
         ]
         widgets = {"notes": forms.Textarea(attrs={"rows": 2})}
-        labels = {"core_value_minor": _("Core charge")}
+        labels = {
+            "core_value_minor": _("Core charge"),
+            "typical_cost_minor": _("Usual price"),
+        }
+        help_texts = {
+            "typical_cost_minor": _(
+                "What one costs. Optional, and used to divide a kit's price "
+                "across what is inside it."
+            ),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -54,10 +72,48 @@ class LotForm(MoneyFormMixin, forms.ModelForm):
             "expires_on": forms.DateInput(attrs={"type": "date"}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, part=None, **kwargs):
         super().__init__(*args, **kwargs)
         for name, field in self.fields.items():
             field.required = name == "quantity"
+            css = "select" if isinstance(field.widget, forms.Select) else "input"
+            field.widget.attrs.setdefault("class", css)
+        # Gaskets arrive in whole ones; coolant does not. Validation is
+        # unchanged — three decimal places either way — this is the spinner.
+        self.fields["quantity"].widget.attrs["step"] = (
+            part.qty_step if part is not None else "0.001"
+        )
+
+
+class LotEditForm(MoneyFormMixin, forms.ModelForm):
+    """Correcting a lot that was recorded with something missing.
+
+    Everything a lot knows *except* how many there are. Quantity is a projection
+    of the ledger (FR-INV-1) and stays one — a box here that overwrote it would
+    be the exact silent correction the ledger exists to prevent, so counting is
+    the cycle-count form and this is everything else.
+    """
+
+    class Meta:
+        model = StockLot
+        fields = ["location", "unit_cost_minor", "acquired_on", "expires_on"]
+        widgets = {
+            "acquired_on": forms.DateInput(attrs={"type": "date"}),
+            "expires_on": forms.DateInput(attrs={"type": "date"}),
+        }
+        labels = {"unit_cost_minor": _("Unit cost")}
+        help_texts = {
+            "unit_cost_minor": _(
+                "What one of these cost. Leaving it blank makes everything drawn "
+                "from this lot cost nothing."
+            ),
+            "acquired_on": _("Consumption draws the oldest lot first, by this date."),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name, field in self.fields.items():
+            field.required = False
             css = "select" if isinstance(field.widget, forms.Select) else "input"
             field.widget.attrs.setdefault("class", css)
 
@@ -169,14 +225,181 @@ def fitment_delete(request, pk, fitment_id):
     return redirect("part_detail", pk=part.pk)
 
 
+@require_POST
+@login_required
+def kit_item_add(request, pk):
+    """Record a part as being inside this kit (FR-INV-9)."""
+    kit = get_object_or_404(Part, pk=pk)
+    item = PartKitItem(
+        kit=kit,
+        part_id=request.POST.get("part") or None,
+        quantity=request.POST.get("quantity") or 1,
+    )
+    typed = (request.POST.get("value") or "").strip()
+    try:
+        # Blank is not zero here: it means "whatever the part costs", which is
+        # the answer most of the time and the reason the box may be left alone.
+        if typed:
+            item.value_minor = parse_amount(typed, item.value_currency or "USD")
+        item.full_clean(exclude=["created_by"])
+    except ValidationError as exc:
+        detail = getattr(exc, "message_dict", None)
+        messages.error(
+            request,
+            " ".join(m for msgs in detail.values() for m in msgs)
+            if detail
+            else " ".join(exc.messages),
+        )
+    else:
+        item.save()
+        messages.success(request, _("Added %(part)s to this kit.") % {"part": item.part})
+    return redirect("part_detail", pk=kit.pk)
+
+
+@require_POST
+@login_required
+def kit_item_remove(request, pk, item_id):
+    kit = get_object_or_404(Part, pk=pk)
+    item = get_object_or_404(PartKitItem, pk=item_id, kit=kit)
+    part = item.part
+    item.delete()
+    messages.success(request, _("Removed %(part)s from this kit.") % {"part": part})
+    return redirect("part_detail", pk=kit.pk)
+
+
+@require_POST
+@login_required
+def lot_open_kit(request, pk, lot_id):
+    """Open a boxed kit into the parts inside it."""
+    part = get_object_or_404(Part, pk=pk)
+    lot = get_object_or_404(StockLot, pk=lot_id, part=part)
+    try:
+        released = open_kit(lot, request.POST.get("quantity") or 1, user=request.user)
+    except ValidationError as exc:
+        messages.error(request, " ".join(exc.messages))
+    else:
+        messages.success(
+            request,
+            _("Opened. %(n)s part(s) are now on the shelf at their share of the kit's cost.")
+            % {"n": len(released)},
+        )
+    return redirect("part_detail", pk=part.pk)
+
+
+@require_POST
+@login_required
+def lot_close_kit(request, pk, lot_id):
+    """Undo an opening, while everything that came out is still untouched."""
+    part = get_object_or_404(Part, pk=pk)
+    lot = get_object_or_404(StockLot, pk=lot_id, part=part)
+    try:
+        kits = close_kit(lot, user=request.user)
+    except ValidationError as exc:
+        messages.error(request, " ".join(exc.messages))
+    else:
+        messages.success(request, _("Back in the box: %(n)s kit(s).") % {"n": kits})
+    return redirect("part_detail", pk=part.pk)
+
+
 @login_required
 def part_list(request):
+    """The catalogue, with kit contents shown as contents.
+
+    Flat, a compressor kit and the three parts inside it are four peers, and
+    nothing on the screen says the last three are in the first one's box. So a
+    kit carries its contents beneath it and they are not repeated at the top
+    level — the shape of the shelf, rather than of the table.
+
+    **Except while searching**, where they stay flat and carry a label naming
+    the kit instead. Somebody searching for "condenser" wants the condenser;
+    filing it under a kit whose name does not match the search would hide the
+    only row they asked for.
+    """
     query = request.GET.get("q", "")
-    parts = find(query) if query else list(Part.objects.all()[:200])
+    found = find(query) if query else list(Part.objects.all()[:200])
+
+    # Everything each row shows, in four queries rather than six per part. The
+    # list previously answered "how many on hand?" with an aggregate per part
+    # and then asked again for `is_low`; adding price, fitment and purchase
+    # history on top of that would have been a page of five hundred queries.
+    parts = list(
+        Part.objects.filter(pk__in=[part.pk for part in found]).prefetch_related(
+            Prefetch(
+                "fitments", queryset=PartFitment.objects.select_related("asset")
+            ),
+            Prefetch(
+                "stock_lots", queryset=StockLot.objects.select_related("location")
+            ),
+            Prefetch(
+                "purchase_lines",
+                queryset=PurchaseLine.objects.select_related(
+                    "purchase", "purchase__vendor"
+                ),
+            ),
+        )
+    )
+
+    inside: dict = {}
+    within: dict = {}
+    for item in PartKitItem.objects.select_related("kit", "part"):
+        inside.setdefault(item.kit_id, []).append(item)
+        within.setdefault(item.part_id, []).append(item.kit)
+
+    shown = {part.pk for part in parts}
+    rows = []
+    for part in parts:
+        part.kit_contents = inside.get(part.pk, [])
+        part.boxed_in = within.get(part.pk, [])
+        _summarise(part)
+        # Nested under its kit rather than listed twice — but only when that kit
+        # is actually on this page to nest under.
+        if part.boxed_in and not query:
+            if any(kit.pk in shown for kit in part.boxed_in):
+                continue
+        rows.append(part)
+
     return render(
         request,
         "parts/list.html",
-        {"parts": parts, "q": query, "low": restock_list()},
+        {"parts": rows, "q": query, "low": restock_list()},
+    )
+
+
+#: How many vehicles a row names before it stops naming them. Three fits the
+#: line; the rest become a count, which is still an answer.
+FITS_SHOWN = 3
+
+
+def _summarise(part) -> None:
+    """Attach what a list row shows, all of it from data already fetched.
+
+    Reading a `@property` here would be the wrong instinct: `on_hand` and
+    `known_cost` each issue their own query, and on two hundred rows that is the
+    difference between a page and a stall. Everything below walks the prefetched
+    lists instead.
+    """
+    lots = list(part.stock_lots.all())
+    part.shelf_qty = sum((lot.qty_on_hand for lot in lots), Decimal(0))
+    part.is_short = (
+        part.min_quantity is not None and part.shelf_qty < part.min_quantity
+    )
+    part.where = sorted(
+        {lot.location.path for lot in lots if lot.qty_on_hand > 0 and lot.location}
+    )
+
+    fitments = [
+        fitment
+        for fitment in part.fitments.all()
+        if fitment.confidence != PartFitment.Confidence.DOES_NOT_FIT
+    ]
+    part.fits_named = [fitment.vehicle for fitment in fitments[:FITS_SHOWN]]
+    part.fits_more = max(len(fitments) - FITS_SHOWN, 0)
+
+    lines = [line for line in part.purchase_lines.all() if line.purchase_id]
+    part.last_bought = (
+        max(lines, key=lambda line: (line.purchase.ordered_on or date.min, line.created_at))
+        if lines
+        else None
     )
 
 
@@ -190,15 +413,35 @@ def part_detail(request, pk):
         ),
         pk=pk,
     )
+    # Each row shows the price it is carrying and the percentage that works out
+    # to — through the same allocator the cents go through, so the percentages
+    # on the screen add up to 100 for the same reason the money adds up to the
+    # kit's price. `priced` is what lets the card say *why* the split is even
+    # when it is, rather than leaving somebody to deduce it from four 25s.
+    kit_items = list(part.kit_items.select_related("part"))
+    weights, priced = kit_weights(kit_items)
+    for item, percent in zip(kit_items, split_kit_cost(100, weights)):
+        item.share_percent = percent
     return render(
         request,
         "parts/detail.html",
         {
             "part": part,
             "lots": part.stock_lots.all(),
-            "usages": part.usages.select_related("work_order", "work_order__asset")[:25],
+            "kit_items": kit_items,
+            "kit_split_is_priced": priced,
+            # The answer to "do I already have one of these?" when the one you
+            # have is inside a box with three other things.
+            "in_kits": part.available_in_kits(),
+            "other_parts": Part.objects.exclude(pk=part.pk)[:500],
+            "usages": part.usages.select_related(
+                "work_order", "work_order__asset", "asset"
+            )[:25],
             "purchase_lines": part.purchase_lines.select_related("purchase", "purchase__vendor")[:25],
-            "lot_form": LotForm(),
+            "lot_form": LotForm(part=part),
+            # For "I fitted this, there was no job" — the vehicle is usually the
+            # one thing that is remembered.
+            "vehicles": Asset.objects.all(),
         },
     )
 
@@ -275,6 +518,119 @@ def lot_add(request, pk):
         messages.success(request, _("Stock added."))
     else:
         messages.error(request, _("Check the quantity and try again."))
+    return redirect("part_detail", pk=part.pk)
+
+
+@login_required
+def lot_edit(request, pk, lot_id):
+    """Fix what a lot was recorded with (FR-INV-11).
+
+    Stock could be added but never corrected, so a lot entered without a cost
+    or a location stayed that way — and a lot with no cost is not a cosmetic
+    problem: everything drawn from it costs nothing, so the job it goes on is
+    cheaper than it was and the shelf is worth less than it is.
+    """
+    part = get_object_or_404(Part, pk=pk)
+    lot = get_object_or_404(StockLot, pk=lot_id, part=part)
+    form = LotEditForm(request.POST or None, instance=lot)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, _("Saved."))
+        return redirect("part_detail", pk=part.pk)
+    return render(
+        request, "parts/lot_form.html", {"part": part, "lot": lot, "form": form}
+    )
+
+
+@require_POST
+@login_required
+def lot_delete(request, pk, lot_id):
+    """Remove a lot that should not have been recorded at all.
+
+    Only while it is untouched. Once anything has been drawn from a lot, the
+    draw is what a job cost and what a vehicle's history says it cost, and
+    deleting the lot underneath it rewrites both — so the three ways a lot can
+    be entangled are each refused by name, each naming the tool that does fit:
+
+    * **drawn from** — count it instead, which records the discrepancy rather
+      than hiding it;
+    * **received against a purchase** — un-receive the line, which puts the
+      order back where it was;
+    * **opened out of a kit** — put the kit back together, which is the same
+      event in reverse.
+    """
+    part = get_object_or_404(Part, pk=pk)
+    lot = get_object_or_404(StockLot, pk=lot_id, part=part)
+
+    if lot.usages.exists() or lot.transactions.filter(delta__lt=0).exists():
+        messages.error(
+            request,
+            _(
+                "Something has already come out of this lot, so removing it "
+                "would change what a job cost. Count it to zero instead."
+            ),
+        )
+    elif lot.purchase_line_id is not None:
+        messages.error(
+            request,
+            _(
+                "This arrived against a purchase. Un-receive it on the order, "
+                "so the order goes back to expecting it."
+            ),
+        )
+    elif lot.from_kit_lot_id is not None:
+        messages.error(
+            request,
+            _("This came out of a kit. Put the kit back together instead."),
+        )
+    else:
+        lot.delete()
+        messages.success(request, _("Lot removed."))
+    return redirect("part_detail", pk=part.pk)
+
+
+@require_POST
+@login_required
+def part_use(request, pk):
+    """Take a part off the shelf without a job to hang it on (FR-INV-10).
+
+    Every other way out of stock wanted a work order first, and a home shop is
+    full of parts whose story is "I fitted that, I bought it in June and I do
+    not remember the rest". The alternatives were inventing a work order — which
+    puts a fiction in the vehicle's history — or leaving the part on the shelf
+    for ever, where it silently inflates what the shop thinks it owns.
+
+    Everything except the quantity is optional, and the quantity defaults to
+    one. A vehicle and a date are recorded when offered, because they are
+    usually the parts somebody does remember; nothing is required to know them.
+    """
+    part = get_object_or_404(Part, pk=pk)
+    asset = None
+    if request.POST.get("asset"):
+        from homeautoshop.assets.models import Asset
+
+        asset = Asset.objects.filter(pk=request.POST["asset"]).first()
+
+    try:
+        result = consume(
+            part,
+            request.POST.get("qty") or 1,
+            asset=asset,
+            installed_at=request.POST.get("installed_at") or None,
+            note=(request.POST.get("note") or "").strip(),
+            user=request.user,
+        )
+    except ValidationError as exc:
+        messages.error(request, " ".join(exc.messages))
+    else:
+        taken = sum(usage.qty for usage in result.usages)
+        messages.success(
+            request,
+            _("Recorded: %(n)s used.") % {"n": taken}
+            if asset is None
+            else _("Recorded: %(n)s used on %(vehicle)s.")
+            % {"n": taken, "vehicle": asset},
+        )
     return redirect("part_detail", pk=part.pk)
 
 

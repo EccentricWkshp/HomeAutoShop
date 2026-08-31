@@ -32,12 +32,16 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass, field
+from decimal import Decimal
 
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils.translation import gettext as _
 
 from homeautoshop.core.models import ExternalRef
-from homeautoshop.parts.models import Part, PartCrossRef, PartFitment, PartType
+from homeautoshop.parts.models import (
+    Part, PartCrossRef, PartFitment, PartKitItem, PartType,
+)
 from homeautoshop.purchasing.models import Purchase, PurchaseLine, Vendor
 
 from . import rockauto
@@ -61,6 +65,8 @@ class LineOutcome:
     matched_on: str = ""
     fitment_for: str = ""
     charged: bool = True
+    #: The kit this line was recorded as being inside, when it is a component.
+    inside_kit: Part | None = None
 
     @property
     def status(self) -> str:
@@ -81,6 +87,7 @@ class ImportReport:
     parts_created: int = 0
     parts_matched: int = 0
     fitments_recorded: int = 0
+    kit_items_recorded: int = 0
     vehicles_matched: dict = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
 
@@ -114,6 +121,73 @@ def _find_asset(details: dict):
         if exact.exists():
             candidates = exact
     return candidates.first()
+
+
+def _record_kit_item(kit: Part, part: Part, line, kit_quantity: Decimal) -> bool:
+    """Record a `[Kit Component]` line as a part inside the kit above it.
+
+    The confirmation states both halves of what a kit needs and neither was
+    being kept: which parts are in the box, and — in the `Price EA` column that
+    is printed even though the line is not charged — what the vendor says each
+    one is worth. Three components at $8.46, $175.26 and $175.07 add up to the
+    kit's own $358.79, so those prices are the cost split (FR-INV-9) already
+    made by the only party who knows it. Anything else is somebody guessing at
+    a number the document was holding all along.
+
+    The price is recorded twice on purpose, because it answers two questions.
+    On the kit row it is what the vendor charged for that component *in this
+    box*, which is what the cost split uses. On the part it is the only price
+    that part has anywhere — a component line is never charged, so it produces
+    no purchase line — and without it the part would show no price at all on
+    its own page.
+
+    What survives the split is the ratio rather than the amount: a kit's landed
+    cost carries tax and shipping these figures do not, so the components add up
+    to the kit's list price and not to what it actually cost to get here.
+
+    Quantities on this document are counts of what ships, so two of a kit prints
+    two of each component; per-box is that divided by the kit's own quantity.
+    """
+    if kit.pk == part.pk:
+        return False
+
+    # The part's own price, learned wherever it was still unknown — the same
+    # rule as the core charge below: fill a blank, never overwrite an answer
+    # somebody already gave.
+    if line.unit_price_minor and part.typical_cost_minor is None:
+        part.typical_cost_minor = line.unit_price_minor
+        part.typical_cost_currency = "USD"
+        part.save(update_fields=["typical_cost_minor", "typical_cost_currency", "updated_at"])
+
+    # `all_objects`: a component the operator has removed from the kit stays
+    # removed, for the same reason a fitment they deleted stays deleted.
+    if PartKitItem.all_objects.filter(kit=kit, part=part).exists():
+        return False
+
+    per_box = Decimal(str(line.quantity or 1))
+    if kit_quantity and kit_quantity > 0:
+        per_box = (per_box / kit_quantity).quantize(Decimal("0.001"))
+    if per_box <= 0:
+        return False
+
+    item = PartKitItem(
+        kit=kit,
+        part=part,
+        quantity=per_box,
+        # Left blank when the column was blank, so the row falls back to the
+        # part's own price rather than claiming the vendor said zero.
+        value_minor=line.unit_price_minor or None,
+        value_currency="USD",
+        notes=_("From the vendor's kit listing."),
+    )
+    try:
+        item.clean()
+    except ValidationError:
+        # A cycle, which a kit listing should never contain. Skip the row rather
+        # than refuse the whole import over one line of somebody's receipt.
+        return False
+    item.save()
+    return True
 
 
 def _find_part(line: rockauto.OrderLine) -> tuple[Part | None, str]:
@@ -202,6 +276,10 @@ def run(order: rockauto.ParsedOrder, *, dry_run: bool = True, user=None) -> Impo
         purchase.lines.all().delete()
 
     seen_vehicles: dict[str, object] = {}
+    # A `[Kit Component]` line says which kit it belongs to only by sitting
+    # under it, so the last charged line is the box these fall into.
+    kit_part: Part | None = None
+    kit_quantity = Decimal(1)
 
     for line in order.lines:
         outcome = LineOutcome(line=line, charged=not line.is_kit_component)
@@ -269,6 +347,14 @@ def run(order: rockauto.ParsedOrder, *, dry_run: bool = True, user=None) -> Impo
                     )
                     report.fitments_recorded += 1
                 outcome.fitment_for = line.vehicle
+
+        if line.is_kit_component:
+            if kit_part is not None:
+                outcome.inside_kit = kit_part
+                if _record_kit_item(kit_part, part, line, kit_quantity):
+                    report.kit_items_recorded += 1
+        else:
+            kit_part, kit_quantity = part, Decimal(str(line.quantity or 1))
 
         if outcome.charged:
             PurchaseLine.objects.create(

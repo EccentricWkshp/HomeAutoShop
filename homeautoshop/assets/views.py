@@ -13,6 +13,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext as _
+from django.utils.translation import ngettext
 from django.views.decorators.http import require_GET, require_POST
 
 from homeautoshop.accounts.models import require
@@ -136,12 +137,19 @@ def asset_detail(request, pk):
     shown = [(p, links.get(p.pk)) for p in providers if not getattr(links.get(p.pk), "is_hidden", False)]
     hidden = [p for p in providers if getattr(links.get(p.pk), "is_hidden", False)]
 
+    story = _group_photos(_timeline(asset))
+    recent = story[:RECENT_EVENTS]
+
     return render(
         request,
         "assets/detail.html",
         {
             "asset": asset,
-            "timeline": _timeline(asset),
+            # A summary, not the history. What the page is *for* is the meter,
+            # the identity and the work — and those were below a scroll of
+            # photographs before this was cut down.
+            "timeline": recent,
+            "history_is_longer": len(story) > RECENT_EVENTS,
             "readings": readings,
             "work_orders": work_orders,
             "photos": photos,
@@ -157,6 +165,53 @@ def asset_detail(request, pk):
             "ownership_form": OwnershipForm(),
         },
     )
+
+
+#: How much of the story fits on the vehicle's own page before it stops being a
+#: summary and becomes the page. Everything else is one link away.
+RECENT_EVENTS = 8
+
+
+def _group_photos(events: list[dict]) -> list[dict]:
+    """Collapse a day's photographs into a single entry.
+
+    A photo is one row and a work order is one row, and they are not the same
+    size of event. Five shots of the same caliper pushed the meter reading, the
+    job they belong to and the whole identity panel below the fold — the vehicle
+    page became a photo roll with a service history somewhere underneath it.
+
+    By day rather than by run, because "the thirty-first, four photos" is how
+    somebody remembers taking them; and a day with one photograph stays one
+    photograph, because a group of one is a worse label than the thing itself.
+    """
+    photos: dict = {}
+    merged = [event for event in events if event["kind"] != "media"]
+
+    for event in events:
+        if event["kind"] != "media":
+            continue
+        when = event["when"]
+        day = (timezone.localtime(when) if timezone.is_aware(when) else when).date()
+        photos.setdefault(day, []).append(event)
+
+    for group in photos.values():
+        if len(group) == 1:
+            merged.append(group[0])
+            continue
+        merged.append(
+            {
+                # The newest moment in it, so the group sorts where its most
+                # recent photograph would have.
+                "when": max(event["when"] for event in group),
+                "kind": "media_group",
+                "title": ngettext("%(n)s photo", "%(n)s photos", len(group))
+                % {"n": len(group)},
+                "detail": "",
+                "url": "",
+                "children": sorted(group, key=lambda e: e["when"], reverse=True),
+            }
+        )
+    return sorted(merged, key=lambda event: event["when"], reverse=True)
 
 
 def _timeline(asset: Asset) -> list[dict]:
@@ -487,6 +542,25 @@ class SpecForm(forms.ModelForm):
             if not isinstance(field.widget, forms.CheckboxInput):
                 css = "select" if isinstance(field.widget, forms.Select) else "input"
                 field.widget.attrs.setdefault("class", css)
+
+
+@login_required
+def asset_timeline(request, pk):
+    """The whole story, ungrouped (FR-VEH-10).
+
+    The vehicle's own page carries a summary of this, and the summary is the
+    right thing there: somebody opening a vehicle wants the meter, the identity
+    and the open work, not a scroll of photographs. But the history is the
+    reason the records exist, so it gets a page where nothing competes with it —
+    and here every photograph is its own row again, because on a page about the
+    history, "four photos" is the answer to a question nobody asked.
+    """
+    asset = get_object_or_404(Asset, pk=pk)
+    return render(
+        request,
+        "assets/timeline.html",
+        {"asset": asset, "timeline": _timeline(asset)},
+    )
 
 
 @login_required

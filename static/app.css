@@ -228,10 +228,34 @@ label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: .
 .list > li { padding: .75rem 0; border-bottom: 1px solid var(--line); }
 .list > li:last-child { border-bottom: 0; }
 .list a { text-decoration: none; }
+/* What is inside the row above. Indented against a rule rather than merely
+   padded, so the relationship survives a narrow screen where the indent alone
+   would be a couple of ambiguous pixels. */
+.list > li.contents {
+  padding: 0 0 .75rem 1rem;
+  margin-left: .25rem;
+  border-left: 2px solid var(--line);
+}
+.list > li.contents > .list > li { padding: .4rem 0; border-bottom: 0; }
+
+/* Labelled facts on one line, wrapping to as many as the width allows. Each
+   pair stays together, so "Price" never ends a line with its amount on the
+   next one. */
+.factline { display: flex; flex-wrap: wrap; gap: .15rem .9rem; margin: .3rem 0 0; }
+.factline > div { display: flex; gap: .3rem; min-width: 0; }
+.factline dt { color: var(--muted); }
+.factline dt::after { content: ":"; }
+.factline dd { margin: 0; }
 
 .timeline { list-style: none; padding: 0; margin: 0; }
 .timeline li { display: grid; grid-template-columns: 5.5rem 1fr; gap: .75rem; padding: .6rem 0; border-bottom: 1px solid var(--line); }
 .timeline time { color: var(--muted); font-size: .8rem; }
+/* A day's photographs, folded into one row. The summary is the row; opening it
+   lists them. `list-style` is reset because a marker plus the disclosure
+   triangle is two things pointing at the same line. */
+.timeline .grouped > summary { cursor: pointer; }
+.timeline .grouped ul { list-style: none; padding: .35rem 0 0; margin: 0; }
+.timeline .grouped li { display: block; padding: .15rem 0; border: 0; }
 
 .thumbs { display: flex; gap: .5rem; flex-wrap: wrap; }
 .thumbs img { width: 104px; height: 104px; object-fit: cover; border-radius: var(--radius); border: 1px solid var(--line); }

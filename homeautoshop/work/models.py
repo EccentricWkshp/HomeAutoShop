@@ -508,6 +508,18 @@ class ShopTool(BaseModel):
         return f"https://www.wrench-ledger.app/tools/{self.tool_id}"
 
     @property
+    def is_local(self) -> bool:
+        """Named here by hand, and never confirmed against WrenchLedger.
+
+        A tool typed into a job item is recorded under the typed text, because
+        WrenchLedger is optional and must never be load-bearing (FR-WL-7). The
+        result is a row that looks like every other one and is not backed by
+        anything, which is worth saying on screen rather than leaving somebody
+        to wonder why availability is blank on exactly one tool.
+        """
+        return self.checked_at is None
+
+    @property
     def issues(self) -> list[str]:
         """Reasons this tool might not be usable today. Warnings, never blocks."""
         from django.utils import timezone as _tz

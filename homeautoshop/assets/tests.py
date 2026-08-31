@@ -9,6 +9,7 @@ from django.urls import reverse
 
 from homeautoshop.accounts.models import User
 from homeautoshop.core.outbound import OutboundBlocked, OutboundFailed
+from homeautoshop.work.models import WorkOrder
 
 from . import vin as vinlib
 from .models import Asset, AssetKind, ServiceInfoProvider, UsageReading
@@ -225,6 +226,100 @@ class AssetViewTests(TestCase):
     def test_anonymous_is_redirected_to_login(self):
         self.client.logout()
         self.assertEqual(self.client.get(reverse("asset_list")).status_code, 302)
+
+
+class TimelineTests(TestCase):
+    """FR-VEH-10 — the story, at two sizes.
+
+    Reported as the vehicle page being a scroll of photographs with the meter
+    and the identity panel somewhere below it: a photograph is one row and a
+    work order is one row, and there are far more photographs.
+    """
+
+    def setUp(self):
+        from homeautoshop.mediafiles.testing import local_storage
+
+        import shutil
+        import tempfile
+        from pathlib import Path
+
+        self.tmp = Path(tempfile.mkdtemp())
+        self.storage = local_storage(self.tmp)
+        self.storage.enable()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.addCleanup(self.storage.disable)
+
+        self.user = User.objects.create_user("andy", password="correct-horse-battery")
+        self.client.force_login(self.user)
+        self.asset = Asset.objects.create(nickname="Red truck")
+
+    def add_photos(self, n: int) -> None:
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        from homeautoshop.mediafiles.services import ingest
+
+        for i in range(n):
+            ingest(
+                SimpleUploadedFile(f"shot{i}.jpg", f"jpeg-{i}".encode(), content_type="image/jpeg"),
+                entity=self.asset,
+            )
+
+    def story(self) -> list:
+        from .views import _group_photos, _timeline
+
+        return _group_photos(_timeline(self.asset))
+
+    def test_a_days_photographs_become_one_entry(self):
+        self.add_photos(4)
+        story = self.story()
+        self.assertEqual(len(story), 1, "four photographs took four rows")
+        self.assertEqual(story[0]["kind"], "media_group")
+        self.assertIn("4", story[0]["title"])
+        self.assertEqual(len(story[0]["children"]), 4)
+
+    def test_a_single_photograph_is_not_called_a_group_of_one(self):
+        self.add_photos(1)
+        story = self.story()
+        self.assertEqual(story[0]["kind"], "media")
+
+    def test_work_orders_keep_their_own_row(self):
+        """Grouping is about photographs, not about shortening the history."""
+        self.add_photos(3)
+        WorkOrder.objects.create(asset=self.asset, title="Front brakes")
+
+        kinds = [event["kind"] for event in self.story()]
+
+        self.assertIn("work_order", kinds)
+        self.assertIn("media_group", kinds)
+        self.assertEqual(len(kinds), 2)
+
+    def test_the_vehicle_page_shows_a_summary_and_offers_the_rest(self):
+        from .views import RECENT_EVENTS
+
+        for i in range(RECENT_EVENTS + 3):
+            WorkOrder.objects.create(asset=self.asset, title=f"Job {i}")
+
+        page = self.client.get(reverse("asset_detail", args=[self.asset.pk]))
+
+        self.assertEqual(len(page.context["timeline"]), RECENT_EVENTS)
+        self.assertTrue(page.context["history_is_longer"])
+        self.assertContains(page, reverse("asset_timeline", args=[self.asset.pk]))
+
+    def test_a_short_history_does_not_offer_a_link_to_more_of_it(self):
+        WorkOrder.objects.create(asset=self.asset, title="Only job")
+        page = self.client.get(reverse("asset_detail", args=[self.asset.pk]))
+        self.assertFalse(page.context["history_is_longer"])
+        self.assertNotContains(page, reverse("asset_timeline", args=[self.asset.pk]))
+
+    def test_the_history_page_groups_nothing(self):
+        """On a page about the history, "four photos" answers nothing."""
+        self.add_photos(4)
+
+        page = self.client.get(reverse("asset_timeline", args=[self.asset.pk]))
+
+        self.assertEqual(page.status_code, 200)
+        self.assertEqual(len(page.context["timeline"]), 4)
+        self.assertNotIn("media_group", [e["kind"] for e in page.context["timeline"]])
 
 
 class RecallServiceQuirkTests(TestCase):

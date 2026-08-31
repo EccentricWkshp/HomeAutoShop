@@ -40,7 +40,7 @@
       <ul class="list small">
         {% for usage in warranties %}
           <li class="spread">
-            <div>{{ usage.part }}<div class="muted">{{ usage.work_order.asset.nickname }}</div></div>
+            <div>{{ usage.part }}<div class="muted">{{ usage.vehicle.nickname }}</div></div>
             <span class="pill ok">{{ usage.warranty_expires_on }}</span>
           </li>
         {% empty %}<li class="muted">{% translate "Nothing under warranty." %}</li>{% endfor %}

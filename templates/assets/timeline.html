@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ asset.nickname }} — {% translate "History" %}{% endblock %}
+{% block content %}
+{% url 'asset_detail' asset.pk as back_url %}
+{% include "partials/_back.html" with url=back_url label=asset.nickname %}
+<div class="spread">
+  <div>
+    <h1>{{ asset.nickname }}</h1>
+    <p class="muted">{% translate "Everything recorded, newest first" %}</p>
+  </div>
+</div>
+
+<p class="muted small">
+  {% translate "Work orders, meter readings and every photograph, in one order. The vehicle's own page shows a summary of this with each day's photographs collapsed; here nothing is grouped." %}
+</p>
+
+<section class="card">
+  {% include "partials/_timeline.html" with timeline=timeline %}
+</section>
+{% endblock %}

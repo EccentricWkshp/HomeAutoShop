@@ -606,11 +606,22 @@ def tool_search(request):
     query = (request.GET.get("q") or "").strip()
     if len(query) < 2:
         return JsonResponse({"results": [], "remote": False})
+    found, remote_ok = search_tools(query)
+    return JsonResponse({"results": found, "remote": remote_ok})
 
+
+def search_tools(query: str, *, local_limit: int = 10, remote_limit: int = 15) -> tuple[list[dict], bool]:
+    """Both catalogues, merged, local first.
+
+    Shared by the autocomplete on a job item and by the tools screen, because
+    two searches over the same two sources are two chances to answer the same
+    question differently — and the difference would show up as a tool somebody
+    can find in one place and not the other.
+    """
     found: dict[str, dict] = {}
     for tool in ShopTool.objects.filter(
         Q(name__icontains=query) | Q(tool_id__icontains=query) | Q(brand__icontains=query)
-    )[:10]:
+    )[:local_limit]:
         found[tool.tool_id] = {
             "id": tool.tool_id,
             "name": tool.name or tool.tool_id,
@@ -623,7 +634,7 @@ def tool_search(request):
         try:
             from homeautoshop.core.integrations.wrenchledger import WrenchLedgerClient
 
-            for row in WrenchLedgerClient().search_tools(query)[:15]:
+            for row in WrenchLedgerClient().search_tools(query)[:remote_limit]:
                 tool_id = str(row.get("id") or row.get("tool_id") or "").strip()
                 if not tool_id or tool_id in found:
                     continue
@@ -639,7 +650,74 @@ def tool_search(request):
         except Exception as exc:  # noqa: BLE001 - the local half still stands
             log.info("tool search could not reach WrenchLedger: %s", exc)
 
-    return JsonResponse({"results": list(found.values())[:20], "remote": remote_ok})
+    return list(found.values())[:local_limit + remote_limit], remote_ok
+
+
+@login_required
+def tool_list(request):
+    """Every tool this shop knows about, and a way to search for more.
+
+    Until now the only way to reach a tool was the autocomplete inside a job
+    item: you could name one on a job, and after that it was unreachable —
+    there was no screen listing what had been named, no way to correct a typo,
+    and no way to remove the one somebody added while trying the feature out.
+    Searching WrenchLedger was possible only in the same place, so "do I own a
+    vacuum pump?" had no answer anywhere in the application.
+
+    HomeAutoShop still does not *track* tools — WrenchLedger does (NG-8). This
+    lists the shadow copy and hands the rest off to the real thing.
+    """
+    query = (request.GET.get("q") or "").strip()
+    remote_ok = False
+    remote_rows: list[dict] = []
+
+    known = ShopTool.objects.all()
+    if query:
+        known = known.filter(
+            Q(name__icontains=query) | Q(tool_id__icontains=query) | Q(brand__icontains=query)
+        )
+        merged, remote_ok = search_tools(query)
+        held = {tool.tool_id for tool in known}
+        remote_rows = [row for row in merged if row["id"] not in held]
+
+    return render(
+        request,
+        "work/tools.html",
+        {
+            "query": query,
+            "tools": known,
+            "remote_rows": remote_rows,
+            "remote_ok": remote_ok,
+            "tools_enabled": readiness.enabled(),
+        },
+    )
+
+
+@require_POST
+@login_required
+def tool_delete(request, pk):
+    """Forget a tool this shop named.
+
+    Only one it named: a tool that came from WrenchLedger is WrenchLedger's,
+    and deleting the local shadow would achieve nothing except making it come
+    back at the next sync. The references on job items go with it, because a
+    reference to a tool nobody can look up is worse than no reference — but
+    they are soft, like everything else, so the trash still has them.
+    """
+    tool = get_object_or_404(ShopTool, pk=pk)
+    if not tool.is_local:
+        messages.error(
+            request,
+            _("%(tool)s comes from WrenchLedger. Remove it there; the next sync follows.")
+            % {"tool": tool},
+        )
+        return redirect("tool_list")
+
+    name = str(tool)
+    JobItemTool.objects.filter(tool=tool).delete()
+    tool.delete()
+    messages.success(request, _("Forgot %(tool)s.") % {"tool": name})
+    return redirect("tool_list")
 
 
 @require_POST

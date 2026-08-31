@@ -29,7 +29,7 @@ from django.test import TestCase
 
 from homeautoshop.assets.models import Asset
 from homeautoshop.core.models import ExternalRef
-from homeautoshop.parts.models import Part, PartCrossRef, PartFitment
+from homeautoshop.parts.models import Part, PartCrossRef, PartFitment, PartKitItem
 from homeautoshop.purchasing.importers import capture, rockauto, service
 from homeautoshop.purchasing.models import Purchase
 
@@ -322,6 +322,88 @@ class ImportTests(TestCase):
     def test_a_core_charge_on_the_invoice_teaches_the_part_it_has_one(self):
         service.run(load("197262834"), dry_run=False)
         self.assertTrue(Part.objects.get(part_number="18FR2451").has_core)
+
+    def test_the_kit_ends_up_knowing_what_is_inside_it(self):
+        """FR-INV-9. The confirmation lists the three components under the kit,
+        and until now that grouping was read and thrown away — leaving three
+        loose parts and a box with no stated contents, which is the state that
+        gets a drier ordered twice."""
+        report = service.run(load("357640871"), dry_run=False)
+        kit = Part.objects.get(part_number="9642644B")
+
+        self.assertEqual(report.kit_items_recorded, 3)
+        self.assertEqual(
+            sorted(item.part.part_number for item in kit.kit_items.all()),
+            ["3411375", "4696C", "6511690"],
+        )
+        self.assertTrue(kit.is_kit)
+
+    def test_the_price_column_becomes_the_cost_split(self):
+        """The vendor prints `Price EA` against each component even though the
+        line is not charged, and those three prices add up to the kit's own —
+        so the split is stated on the document and does not need guessing at."""
+        service.run(load("357640871"), dry_run=False)
+        kit = Part.objects.get(part_number="9642644B")
+        shares = {
+            item.part.part_number: item.value_minor for item in kit.kit_items.all()
+        }
+
+        self.assertEqual(shares["3411375"], 846)
+        self.assertEqual(shares["6511690"], 17526)
+        self.assertEqual(shares["4696C"], 17507)
+        # Which is the kit's own price, hence a true ratio rather than a guess.
+        self.assertEqual(sum(shares.values()), 35879)
+
+    def test_a_component_learns_its_own_price_too(self):
+        """A component line is never charged, so it produces no purchase line —
+        this is the only place that part's price appears anywhere."""
+        service.run(load("357640871"), dry_run=False)
+        self.assertEqual(
+            Part.objects.get(part_number="6511690").known_cost_minor, 17526
+        )
+
+    def test_a_price_somebody_already_stated_is_not_overwritten(self):
+        Part.objects.create(
+            name="A/C Compressor", manufacturer="GPD", part_number="6511690",
+            typical_cost_minor=9900,
+        )
+
+        service.run(load("357640871"), dry_run=False)
+
+        self.assertEqual(
+            Part.objects.get(part_number="6511690").typical_cost_minor, 9900
+        )
+
+    def test_a_component_taken_out_of_the_kit_stays_out(self):
+        """Same rule as fitment: re-importing the order must not undo somebody
+        deciding the vendor's listing was wrong about the box."""
+        service.run(load("357640871"), dry_run=False)
+        kit = Part.objects.get(part_number="9642644B")
+        kit.kit_items.get(part__part_number="4696C").delete()
+
+        service.run(load("357640871"), dry_run=False)
+
+        self.assertEqual(kit.kit_items.count(), 2)
+
+    def test_re_importing_does_not_stack_the_contents_up(self):
+        service.run(load("357640871"), dry_run=False)
+        service.run(load("357640871"), dry_run=False)
+        self.assertEqual(Part.objects.get(part_number="9642644B").kit_items.count(), 3)
+
+    def test_a_dry_run_records_no_contents_either(self):
+        report = service.run(load("357640871"), dry_run=True)
+        self.assertEqual(report.kit_items_recorded, 3)
+        self.assertEqual(PartKitItem.objects.count(), 0)
+
+    def test_the_review_screen_names_the_kit_a_component_landed_in(self):
+        report = service.run(load("357640871"), dry_run=True)
+        inside = {
+            outcome.line.part_number: outcome.inside_kit
+            for outcome in report.outcomes
+            if outcome.inside_kit is not None
+        }
+        self.assertEqual(set(inside), {"3411375", "6511690", "4696C"})
+        self.assertTrue(all(kit.part_number == "9642644B" for kit in inside.values()))
 
 
 class ScreenTests(TestCase):
