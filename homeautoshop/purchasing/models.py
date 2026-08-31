@@ -140,6 +140,14 @@ class Purchase(RevisionedModel):
             self.received_on = self.received_on or timezone.localdate()
         elif partial:
             self.status = PurchaseStatus.PARTIAL
+        else:
+            # Back down, which this used to have no way of doing: receiving
+            # only ever ratcheted the status upward, so a receipt taken back
+            # left a purchase reading "Received" with nothing received on it,
+            # and a return window counting down from a date that no longer
+            # meant anything.
+            self.status = PurchaseStatus.ORDERED
+            self.received_on = None
         self.save()
 
 
@@ -214,6 +222,64 @@ class PurchaseLine(BaseModel):
         self.save()
         self.purchase.recompute_status()
         return lot
+
+    @transaction.atomic
+    def unreceive(self, qty=None, *, user=None):
+        """Take back a receipt that should not have been recorded.
+
+        Nothing is deleted. `StockTransaction` is the append-only ledger that
+        `qty_on_hand` is projected from (FR-INV-1), so undoing a receipt means
+        writing the opposite movement, not erasing the first one — a shelf that
+        disagrees with the book has to be explainable, and an erased row
+        explains nothing.
+
+        **It refuses rather than going negative.** Stock received and then used
+        on a job is gone: the parts are in a car. Reversing the paperwork would
+        leave a lot holding minus two of something, every cost rollup drawing
+        from it wrong, and no record of which of the two facts was the mistake.
+        So the reversal is capped at what is still on the shelf from this line's
+        own lots, and asks for a return or a scrap instead when that is short.
+        """
+        from homeautoshop.parts.models import StockTransaction
+
+        received = Decimal(str(self.qty_received))
+        qty = Decimal(str(qty if qty is not None else received))
+        if qty <= 0:
+            raise ValidationError(_("Nothing to take back on this line."))
+        if qty > received:
+            raise ValidationError(_("That is more than was received."))
+
+        # Newest lot first: the last receipt is overwhelmingly the one being
+        # corrected, and taking it from the oldest would leave the shelf's FIFO
+        # order describing a receipt that no longer exists.
+        lots = list(self.lots.order_by("-acquired_on", "-created_at"))
+        available = sum((Decimal(str(lot.qty_on_hand)) for lot in lots), Decimal(0))
+        if available < qty:
+            raise ValidationError(
+                _(
+                    "Only %(n)s of these are still on the shelf; the rest have been used or "
+                    "moved. Record a return to the vendor or a scrap instead."
+                )
+                % {"n": available}
+            )
+
+        remaining = qty
+        for lot in lots:
+            if remaining <= 0:
+                break
+            take = min(remaining, Decimal(str(lot.qty_on_hand)))
+            if take <= 0:
+                continue
+            StockTransaction.record(
+                lot, -take, StockTransaction.Reason.UNRECEIVE,
+                note=str(self.purchase), user=user,
+            )
+            remaining -= take
+
+        self.qty_received = received - qty
+        self.save()
+        self.purchase.recompute_status()
+        return qty
 
     def _overhead_per_unit(self) -> Decimal:
         """This line's share of tax and shipping, per unit."""

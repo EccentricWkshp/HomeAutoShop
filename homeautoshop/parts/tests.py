@@ -12,7 +12,9 @@ from django.utils import timezone
 
 from homeautoshop.assets.models import Asset
 from homeautoshop.core import costs
-from homeautoshop.purchasing.models import Expense, Purchase, PurchaseLine, Vendor
+from homeautoshop.purchasing.models import (
+    Expense, Purchase, PurchaseLine, PurchaseStatus, Vendor,
+)
 from homeautoshop.work.models import JobItem, TimeEntry, WorkOrder
 
 from .models import Location, Part, PartCrossRef, PartFitment, PartUsage, StockLot, StockTransaction
@@ -375,6 +377,117 @@ class ReceivingTests(TestCase):
         self.purchase.save()
         self.assertEqual(self.purchase.subtotal_minor, 20000)
         self.assertEqual(self.purchase.total_minor, 20000 + 800 + 1000 - 500)
+
+
+class UnreceivingTests(TestCase):
+    """Taking back a receipt recorded by mistake (FR-PUR-2, FR-INV-1).
+
+    Receiving is one tap on a screen where every line has one, and the quantity
+    is filled in for you — so it is easy to do to the wrong line, and until now
+    it was a one-way door.
+    """
+
+    def setUp(self):
+        self.part = Part.objects.create(name="Filter", part_number="PH1")
+        self.asset = Asset.objects.create(nickname="Truck")
+        self.vendor = Vendor.objects.create(name="RockAuto")
+        self.purchase = Purchase.objects.create(vendor=self.vendor)
+        self.line = PurchaseLine.objects.create(
+            purchase=self.purchase, part=self.part, qty_ordered=4, unit_price_minor=1000
+        )
+
+    def test_the_stock_goes_back_out(self):
+        self.line.receive(4)
+        self.assertEqual(self.part.on_hand, Decimal(4))
+
+        self.line.unreceive()
+
+        self.assertEqual(self.part.on_hand, Decimal(0))
+        self.line.refresh_from_db()
+        self.assertEqual(self.line.qty_received, Decimal(0))
+
+    def test_the_receipt_is_not_erased_but_answered(self):
+        """FR-INV-1 — `qty_on_hand` is a projection of an append-only ledger.
+
+        A shelf that disagrees with the book has to be explainable, and an
+        erased row explains nothing.
+        """
+        self.line.receive(4)
+        self.line.unreceive()
+
+        reasons = list(
+            StockTransaction.objects.filter(stock_lot__part=self.part)
+            .order_by("created_at")
+            .values_list("reason", flat=True)
+        )
+        self.assertEqual(
+            reasons,
+            [StockTransaction.Reason.RECEIVE, StockTransaction.Reason.UNRECEIVE],
+        )
+
+    def test_a_correction_is_not_filed_as_a_cycle_count(self):
+        """Two different facts. Only one of them is about the shelf."""
+        self.line.receive(1)
+        self.line.unreceive()
+        self.assertFalse(
+            StockTransaction.objects.filter(reason=StockTransaction.Reason.ADJUST).exists()
+        )
+
+    def test_part_of_a_receipt_may_be_taken_back(self):
+        self.line.receive(4)
+        self.line.unreceive(1)
+        self.line.refresh_from_db()
+        self.assertEqual(self.line.qty_received, Decimal(3))
+        self.assertEqual(self.part.on_hand, Decimal(3))
+
+    def test_stock_already_used_on_a_job_is_refused(self):
+        """The parts are in a car. Only the paperwork is still in question."""
+        self.line.receive(4)
+        wo = WorkOrder.objects.create(asset=self.asset, title="Service")
+        consume(self.part, 3, work_order=wo)
+
+        with self.assertRaises(ValidationError):
+            self.line.unreceive()
+
+        self.line.refresh_from_db()
+        self.assertEqual(self.line.qty_received, Decimal(4), "the line was changed anyway")
+        self.assertEqual(self.part.on_hand, Decimal(1), "stock went negative")
+
+    def test_what_is_still_on_the_shelf_can_still_be_taken_back(self):
+        self.line.receive(4)
+        wo = WorkOrder.objects.create(asset=self.asset, title="Service")
+        consume(self.part, 3, work_order=wo)
+
+        self.line.unreceive(1)
+
+        self.assertEqual(self.part.on_hand, Decimal(0))
+
+    def test_more_than_was_received_is_refused(self):
+        self.line.receive(1)
+        with self.assertRaises(ValidationError):
+            self.line.unreceive(2)
+
+    def test_the_purchase_stops_claiming_to_be_received(self):
+        """The status only ever ratcheted upward, so this had nowhere to go."""
+        self.line.receive(4)
+        self.purchase.refresh_from_db()
+        self.assertEqual(self.purchase.status, PurchaseStatus.RECEIVED)
+        self.assertIsNotNone(self.purchase.received_on)
+
+        self.line.unreceive()
+
+        self.purchase.refresh_from_db()
+        self.assertEqual(self.purchase.status, PurchaseStatus.ORDERED)
+        self.assertIsNone(
+            self.purchase.received_on,
+            "a return window was counting down from a date that no longer means anything",
+        )
+
+    def test_taking_back_part_of_it_leaves_the_purchase_partial(self):
+        self.line.receive(4)
+        self.line.unreceive(1)
+        self.purchase.refresh_from_db()
+        self.assertEqual(self.purchase.status, PurchaseStatus.PARTIAL)
 
 
 class CoreTrackingTests(TestCase):

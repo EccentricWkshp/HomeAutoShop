@@ -340,6 +340,9 @@ TRASHABLE = {
     "work_order": ("homeautoshop.work.models", "WorkOrder"),
     "person": ("homeautoshop.people.models", "Person"),
     "inspection": ("homeautoshop.inspections.models", "Inspection"),
+    # Deletable only while nothing on it has been received, so a restored one
+    # never has to reattach itself to stock that moved on without it.
+    "purchase": ("homeautoshop.purchasing.models", "Purchase"),
 }
 
 

@@ -13,9 +13,22 @@
       {% endif %}
     </p>
   </div>
-  <div>
-    <div class="small muted">{% translate "Total" %}</div>
-    <div class="mono" style="font-size:1.4rem">{{ purchase.total }}</div>
+  <div class="row">
+    <div>
+      <div class="small muted">{% translate "Total" %}</div>
+      <div class="mono" style="font-size:1.4rem">{{ purchase.total }}</div>
+    </div>
+    {% comment %}
+      Offered whatever the status, and refused by the view while any of it is
+      received — a purchase is where a stock lot's cost came from, so deleting
+      one out from under stock still on the shelf leaves that stock claiming a
+      landed cost nothing can explain. The message says to un-receive first.
+    {% endcomment %}
+    <form method="post" action="{% url 'purchase_delete' purchase.pk %}"
+          data-confirm="{% blocktranslate with v=purchase.vendor %}Delete this {{ v }} purchase? It goes to the trash for 30 days.{% endblocktranslate %}">
+      {% csrf_token %}
+      <button class="btn danger" type="submit">{% translate "Delete" %}</button>
+    </form>
   </div>
 </div>
 
@@ -59,6 +72,19 @@
                 <button type="submit" class="small primary">{% translate "Receive" %}</button>
               </form>
             {% else %}<span class="pill ok">✓</span>{% endif %}
+            {% if line.qty_received > 0 %}
+              {% comment %}
+              Receiving is one tap and the quantity is filled in for you, so it
+              is easy to do to the wrong line. This takes it back out, writing
+              the correction into the ledger rather than erasing the receipt —
+              and refuses if the parts have since gone onto a car, because then
+              the stock really did leave and only the paperwork is in question.
+              {% endcomment %}
+              <form method="post" action="{% url 'purchase_line_unreceive' purchase.pk line.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="linkish small danger">{% translate "Undo receiving" %}</button>
+              </form>
+            {% endif %}
           </td>
         </tr>
         {% empty %}<tr><td colspan="5" class="muted">{% translate "No lines yet." %}</td></tr>{% endfor %}
@@ -106,7 +132,7 @@
       <h2>{% translate "Receipt" %}</h2>
       <div class="thumbs">
         {% for link in receipts %}
-          {% include "partials/_thumb.html" with media=link.media alt=link.caption|default:_("Receipt") %}
+          {% include "partials/_thumb.html" with link=link media=link.media alt=link.caption|default:_("Receipt") %}
         {% empty %}<p class="muted small">{% translate "No receipt attached." %}</p>{% endfor %}
       </div>
       <form method="post" action="{% url 'purchase_receipt_upload' purchase.pk %}"

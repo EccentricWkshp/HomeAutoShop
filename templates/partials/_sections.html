@@ -19,6 +19,13 @@
 <a href="{% url 'inspection_list' %}">{% translate "Inspect" %}</a>
 <a href="{% url 'part_list' %}">{% translate "Parts" %}</a>
 <a href="{% url 'inventory' %}">{% translate "Shelf" %}</a>
-<a href="{% url 'purchase_list' %}">{% translate "Buying" %}</a>
+{% comment %}
+  "Purchases", not "Buying". The page it opens is headed "Purchases" and the
+  crumb back to it says "Purchases", and a section called one thing in the menu
+  and another everywhere else is a section you cannot find your way back to —
+  which is exactly how it was reported. It is also the only gerund in a list of
+  nouns.
+{% endcomment %}
+<a href="{% url 'purchase_list' %}">{% translate "Purchases" %}</a>
 <a href="{% url 'reports' %}">{% translate "Reports" %}</a>
 <a href="{% url 'person_list' %}">{% translate "People" %}</a>

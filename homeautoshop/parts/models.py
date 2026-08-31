@@ -264,6 +264,13 @@ class StockTransaction(AppendOnlyModel):
         RETURN = "return", _("Returned to vendor")
         SCRAP = "scrap", _("Scrapped")
         FOUND = "found", _("Found")
+        #: A receipt that should not have been recorded, taken back out. Its
+        #: own reason rather than an `adjust`, because the two are different
+        #: facts and only one of them is about the shelf: a cycle count says
+        #: the shelf disagreed with the book, and this says the book was
+        #: written wrong. Filing a correction as a count would put a discrepancy
+        #: in the record that nobody ever counted.
+        UNRECEIVE = "unreceive", _("Receipt reversed")
 
     stock_lot = models.ForeignKey(StockLot, on_delete=models.CASCADE, related_name="transactions")
     delta = models.DecimalField(max_digits=12, decimal_places=3)

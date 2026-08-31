@@ -25,6 +25,7 @@ still a working link to what it shows. That is the whole arrangement: the
 lightbox is an enhancement of a link that already went somewhere useful.
 {% endcomment %}
 {% firstof alt media.original_filename as label %}
+<div class="tile">
 <a class="thumb{% if small %} small{% endif %}" href="{{ media.url_for }}"
    {% if media.opens_in_lightbox %}
      data-lightbox="{{ media.lightbox_url }}" data-lightbox-caption="{{ label }}"
@@ -42,3 +43,19 @@ lightbox is an enhancement of a link that already went somewhere useful.
     <span class="doc" aria-hidden="true">{{ media.extension_label }}</span>
   {% endif %}
 </a>
+{% comment %}
+Only when the caller hands over the `link`, because removing is a fact about
+the attachment and not about the file: the same receipt hangs off a purchase
+and a work order, and taking it off one must leave the other alone. A screen
+that shows `media` without its `link` has nothing to offer here and says so by
+offering nothing.
+{% endcomment %}
+{% if link %}
+  <form method="post" action="{% url 'media_unlink' link.pk %}"
+        data-confirm="{% blocktranslate %}Remove {{ label }} from this record?{% endblocktranslate %}">
+    {% csrf_token %}
+    <button class="linkish small danger" type="submit"
+            aria-label="{% blocktranslate %}Remove {{ label }}{% endblocktranslate %}">{% translate "Remove" %}</button>
+  </form>
+{% endif %}
+</div>

@@ -537,6 +537,8 @@ Small powered equipment is in scope (OQ-15). It reuses the asset, work order, pa
 | FR-PUR-5 | Surface a return-window warning based on the vendor's window and the receive date. |
 | FR-PUR-6 | Link a purchase to a work order and show it as the blocker on a `waiting_on_parts` job. |
 | FR-PUR-7 | Record returns and refunds as first-class events that correct both stock and cost. |
+| FR-PUR-8 | **Receiving is undoable.** A receipt taken back writes the opposite movement into the ledger rather than erasing the original (FR-INV-1), under its own `unreceive` reason — a correction is not a cycle count. It is refused when the stock has since been used, because then the parts really did leave and only the paperwork is in doubt; a return or a scrap is the honest record. The purchase's status follows back down, which it previously could not do. |
+| FR-PUR-9 | A purchase is deletable to the 30-day trash (FR-ADM-7) **only while nothing on it is received**, because a stock lot's landed cost points at it. The refusal names what to do first. |
 
 ### 7.6 Costs, receipts, time — `FR-COST`, `FR-TIME`
 
@@ -610,6 +612,7 @@ It also covers a scenario nothing else in this spec does: **inspecting a vehicle
 | FR-DOC-8 | Serve media only to authenticated users, via short-lived presigned URLs; **the bucket is never public**. |
 | FR-DOC-9 | Strip GPS EXIF on upload by default, with a per-instance setting to retain it. |
 | FR-DOC-10 | A photograph enlarges over the record it belongs to, keeping that record's scroll position; a document opens in its own tab, where the browser's own viewer can page and search it. Which one a file gets is decided by the file, not by the screen. Both are links to the file first: with scripting blocked every attachment still opens. |
+| FR-DOC-11 | An attachment can be taken off the record it is on. **Detaching, not deleting** — a link is not ownership, and one receipt legitimately hangs off both a purchase and a work order (§6.2), so removing it from one leaves the other intact. The file itself goes only with its last link, because past that point no screen can reach it. Both halves are soft, so both are recoverable from the trash. |
 | FR-SPEC-1 | Record arbitrary grouped key/value specs per vehicle with units, conditions, and a source. |
 | FR-SPEC-2 | Link a spec to the page of the document it came from *(SHOULD)*. |
 | FR-SPEC-3 | Copy a full spec sheet from one vehicle to another (same model, second car). |

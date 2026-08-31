@@ -45,9 +45,11 @@ import mimetypes
 from pathlib import Path
 
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import FileResponse, Http404, HttpResponseRedirect
-from django.views.decorators.http import require_GET
+from django.utils.translation import gettext as _
+from django.views.decorators.http import require_GET, require_POST
 
 from .models import Media
 
@@ -153,3 +155,50 @@ def media_file(request, pk, variant: str = "original"):
     # for it: a shared cache holding it would serve it to somebody signed out.
     response["Cache-Control"] = "private, max-age=3600"
     return response
+
+
+# Where a detached file's screen lives, by the entity type the link records.
+# Explicit rather than derived, for the same reason the trash registry is: a
+# lookup that guesses a URL name from a model name works until somebody renames
+# one, and then it fails at the moment somebody is trying to undo a mistake.
+UNLINK_RETURNS = {
+    "Asset": "asset_detail",
+    "WorkOrder": "work_order_detail",
+    "Purchase": "purchase_detail",
+    "Inspection": "inspection_detail",
+}
+
+
+@require_POST
+@login_required
+def media_unlink(request, link_id):
+    """Take a photo or document off the record it is attached to.
+
+    Detaching, not deleting — the two are different because a link is not
+    ownership. One receipt legitimately hangs off both a purchase and a work
+    order (SPEC §6.2), so removing it from one must leave the other intact.
+
+    The file itself goes only when the last link to it does. Otherwise it is
+    unreachable: no screen lists media that is attached to nothing, so a file
+    kept "just in case" after its last link is one nobody can ever open again.
+    Both halves are soft, so both are in the trash for 30 days.
+    """
+    from django.shortcuts import get_object_or_404, redirect
+    from django.urls import reverse
+
+    from .models import MediaLink
+
+    link = get_object_or_404(MediaLink, pk=link_id)
+    media, entity_type, entity_id = link.media, link.entity_type, link.entity_id
+    link.delete()
+
+    if not MediaLink.objects.filter(media=media).exists():
+        media.delete()
+
+    messages.success(request, _("Removed."))
+    route = UNLINK_RETURNS.get(entity_type)
+    if route:
+        return redirect(reverse(route, args=[entity_id]))
+    # A link to something with no detail page of its own. The dashboard is a
+    # dead end rather than a 500, and says so by simply being somewhere.
+    return redirect("dashboard")

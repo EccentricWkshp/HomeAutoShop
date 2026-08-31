@@ -133,7 +133,7 @@
           {% endif %}
           {% with photo=photos|default_if_none:'' %}{% endwith %}
           {% for pk, link in photos.items %}
-            {% if pk == result.pk %}{% include "partials/_thumb.html" with media=link.media alt=result.label small=1 %}{% endif %}
+            {% if pk == result.pk %}{% include "partials/_thumb.html" with link=link media=link.media alt=result.label small=1 %}{% endif %}
           {% endfor %}
         </div>
       </li>

@@ -177,6 +177,140 @@ class MoneyFlowTests(TestCase):
         self.assertIsNotNone(usage.core_returned_on)
 
 
+class UndoingThingsTests(TestCase):
+    """Every one-tap action on these screens can be taken back.
+
+    Reported as three gaps that are one gap: receiving, a purchase, and an
+    attached file were all one-way doors, and the first of them is a button
+    sitting on every line with the quantity already filled in.
+    """
+
+    def setUp(self):
+        # An admin, because one of these reads the trash screen and the trash
+        # is behind `trash.manage`.
+        self.user = User.objects.create_user(
+            "andy", password="correct-horse-battery", role="admin"
+        )
+        self.client.force_login(self.user)
+        self.asset = Asset.objects.create(nickname="Red truck")
+        self.vendor = Vendor.objects.create(name="RockAuto")
+        self.part = Part.objects.create(name="Brake pads")
+        self.purchase = Purchase.objects.create(vendor=self.vendor)
+        self.line = PurchaseLine.objects.create(
+            purchase=self.purchase, part=self.part, qty_ordered=2, unit_price_minor=10000
+        )
+
+    # -- un-receiving ----------------------------------------------------
+
+    def test_undoing_a_receipt_through_the_ui(self):
+        self.client.post(reverse("purchase_line_receive", args=[self.purchase.pk, self.line.pk]))
+        self.assertEqual(self.part.on_hand, 2)
+
+        response = self.client.post(
+            reverse("purchase_line_unreceive", args=[self.purchase.pk, self.line.pk]),
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.part.on_hand, 0)
+
+    def test_the_button_is_only_offered_once_something_is_received(self):
+        page = self.client.get(reverse("purchase_detail", args=[self.purchase.pk]))
+        self.assertNotContains(page, "unreceive")
+
+        self.client.post(reverse("purchase_line_receive", args=[self.purchase.pk, self.line.pk]))
+        page = self.client.get(reverse("purchase_detail", args=[self.purchase.pk]))
+        self.assertContains(page, "unreceive")
+
+    # -- deleting a purchase ---------------------------------------------
+
+    def test_a_purchase_can_be_deleted(self):
+        response = self.client.post(
+            reverse("purchase_delete", args=[self.purchase.pk]), follow=True
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Purchase.objects.filter(pk=self.purchase.pk).exists())
+
+    def test_and_is_in_the_trash_rather_than_gone(self):
+        self.client.post(reverse("purchase_delete", args=[self.purchase.pk]))
+        self.assertTrue(Purchase.all_objects.filter(pk=self.purchase.pk).exists())
+        self.assertContains(self.client.get(reverse("trash")), "RockAuto")
+
+    def test_deleting_one_holding_stock_is_refused(self):
+        """A stock lot's landed cost points here. Deleting it orphans that cost."""
+        self.client.post(reverse("purchase_line_receive", args=[self.purchase.pk, self.line.pk]))
+
+        response = self.client.post(
+            reverse("purchase_delete", args=[self.purchase.pk]), follow=True
+        )
+
+        self.assertTrue(Purchase.objects.filter(pk=self.purchase.pk).exists())
+        self.assertContains(response, "already received")
+
+    def test_and_becomes_possible_once_the_stock_is_taken_back(self):
+        """The two undo actions compose, which is the point of having both."""
+        self.client.post(reverse("purchase_line_receive", args=[self.purchase.pk, self.line.pk]))
+        self.client.post(reverse("purchase_line_unreceive", args=[self.purchase.pk, self.line.pk]))
+
+        self.client.post(reverse("purchase_delete", args=[self.purchase.pk]))
+
+        self.assertFalse(Purchase.objects.filter(pk=self.purchase.pk).exists())
+
+    # -- removing an attachment ------------------------------------------
+
+    def attach(self, entity, role):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        from homeautoshop.mediafiles.services import ingest
+
+        media, _created = ingest(
+            SimpleUploadedFile("receipt.pdf", b"%PDF-1.4 x", content_type="application/pdf"),
+            entity=entity,
+            role=role,
+        )
+        return media
+
+    def test_a_file_can_be_taken_off_a_record(self):
+        from homeautoshop.mediafiles.models import MediaLink
+
+        media = self.attach(self.purchase, MediaLink.Role.RECEIPT)
+        link = MediaLink.for_entity(self.purchase).get()
+
+        response = self.client.post(reverse("media_unlink", args=[link.pk]), follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(MediaLink.for_entity(self.purchase).count(), 0)
+
+    def test_the_file_goes_with_its_last_link(self):
+        """Kept beyond that, it is a file no screen can ever show again."""
+        from homeautoshop.mediafiles.models import Media, MediaLink
+
+        media = self.attach(self.purchase, MediaLink.Role.RECEIPT)
+        link = MediaLink.for_entity(self.purchase).get()
+
+        self.client.post(reverse("media_unlink", args=[link.pk]))
+
+        self.assertFalse(Media.objects.filter(pk=media.pk).exists())
+        self.assertTrue(Media.all_objects.filter(pk=media.pk).exists(), "it was destroyed")
+
+    def test_a_file_attached_twice_survives_losing_one_link(self):
+        """SPEC §6.2 — one receipt belongs to both a purchase and a job."""
+        from homeautoshop.mediafiles.models import Media, MediaLink
+
+        wo = WorkOrder.objects.create(asset=self.asset, title="Brakes")
+        media = self.attach(self.purchase, MediaLink.Role.RECEIPT)
+        MediaLink.objects.create(
+            media=media, entity_type="WorkOrder", entity_id=wo.pk,
+            role=MediaLink.Role.RECEIPT,
+        )
+        link = MediaLink.for_entity(self.purchase).get()
+
+        self.client.post(reverse("media_unlink", args=[link.pk]))
+
+        self.assertTrue(Media.objects.filter(pk=media.pk).exists())
+        self.assertEqual(MediaLink.for_entity(wo).count(), 1)
+
+
 class ReportViewTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user("andy", password="correct-horse-battery")

@@ -294,6 +294,55 @@ class TemplateCommentTests(TestCase):
         self.assertIn("{#", Template("A{# one\ntwo #}B").render(Context({})))
 
 
+class SectionNamingTests(TestCase):
+    """A section is called one thing, in the menu and on the page it opens.
+
+    Reported as the only route back to the purchase list being "the non-obvious
+    route of going back through the buying link in the menu" — non-obvious
+    because the menu said *Buying*, the page said *Purchases*, and nothing on
+    screen connected the two words. Someone retracing their steps scans the menu
+    for the name of the place they were, and it was not there.
+
+    The rule is deliberately loose: the menu's word has to appear *somewhere* in
+    the heading, not equal it. "Vehicles" opening a page headed "Vehicles &
+    equipment" is findable; "Buying" opening one headed "Purchases" is not.
+
+    Read out of the menu itself rather than listed here, so a tenth section is
+    covered the day it is added.
+    """
+
+    def setUp(self):
+        self.client.force_login(
+            User.objects.create_user(username="boss", password="x" * 16, role="admin")
+        )
+
+    def sections(self) -> list[tuple[str, str]]:
+        import re
+
+        from django.template.loader import render_to_string
+
+        nav = render_to_string("partials/_sections.html")
+        return re.findall(r'<a href="([^"]+)">([^<]+)</a>', nav)
+
+    def test_the_menu_is_not_empty(self):
+        """Or the test below passes by checking nothing."""
+        self.assertGreaterEqual(len(self.sections()), 9)
+
+    def test_every_section_page_answers_to_its_menu_name(self):
+        import re
+
+        from django.utils.html import strip_tags
+
+        wrong = []
+        for href, label in self.sections():
+            page = self.client.get(href).content.decode()
+            found = re.search(r"<h1[^>]*>(.*?)</h1>", page, re.S)
+            heading = strip_tags(found.group(1)).strip() if found else "(no heading)"
+            if label.strip().lower() not in heading.lower():
+                wrong.append(f"menu says {label.strip()!r}, page says {heading!r}")
+        self.assertEqual(wrong, [], "; ".join(wrong))
+
+
 class WayBackTests(TestCase):
     """Every page about one record offers a route to what it belongs to.
 

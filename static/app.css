@@ -247,6 +247,10 @@ label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: .
   font-size: .8rem; font-weight: 600; letter-spacing: .06em;
 }
 .thumb.small img, .thumb.small .doc { width: 56px; height: 56px; font-size: .65rem; }
+/* One attachment and whatever can be done to it, stacked so the control sits
+   under the picture rather than beside it — beside would set the tiles apart
+   by the width of a word and stop the gallery reading as a row. */
+.tile { display: inline-flex; flex-direction: column; align-items: center; gap: .15rem; }
 
 /* ---------- lightbox ----------
    A photograph enlarged over the record it belongs to. Leaving the page to

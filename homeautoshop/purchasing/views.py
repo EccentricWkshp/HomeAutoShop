@@ -166,6 +166,63 @@ def purchase_line_receive(request, pk, line_id):
 
 @require_POST
 @login_required
+def purchase_line_unreceive(request, pk, line_id):
+    """Take back a receipt recorded by mistake (FR-PUR-2).
+
+    Marked received is a one-way door without this, and it is an easy button to
+    hit: the line already knows the quantity, so receiving is a single tap on a
+    screen where every line has one.
+    """
+    purchase = get_object_or_404(Purchase, pk=pk)
+    line = get_object_or_404(PurchaseLine, pk=line_id, purchase=purchase)
+    try:
+        taken = line.unreceive(request.POST.get("qty") or None, user=request.user)
+    except ValidationError as exc:
+        messages.error(request, " ".join(exc.messages))
+    else:
+        messages.success(
+            request,
+            _("Took %(n)s back out of stock. The ledger records the correction.")
+            % {"n": taken},
+        )
+    return redirect("purchase_detail", pk=purchase.pk)
+
+
+@require_POST
+@login_required
+def purchase_delete(request, pk):
+    """Remove a purchase, once it is not holding anything up.
+
+    Refused while any of it is received, and the refusal is the useful part.
+    A purchase is where a stock lot's cost came from; deleting one out from
+    under stock that is on the shelf leaves parts whose landed cost points at
+    nothing, and every cost rollup that reads through them quietly wrong. The
+    message says what to do instead, and un-receiving is one button away.
+    """
+    purchase = get_object_or_404(Purchase, pk=pk)
+    received = [line for line in purchase.lines.all() if line.qty_received > 0]
+    if received:
+        messages.error(
+            request,
+            _(
+                "This purchase has %(n)s line(s) already received. Take those back out "
+                "of stock first — deleting it now would leave the stock they created "
+                "with no record of what it cost."
+            )
+            % {"n": len(received)},
+        )
+        return redirect("purchase_detail", pk=purchase.pk)
+
+    purchase.delete()
+    messages.success(
+        request,
+        _("Deleted. It is in the trash for 30 days if that was a mistake."),
+    )
+    return redirect("purchase_list")
+
+
+@require_POST
+@login_required
 def purchase_receipt_upload(request, pk):
     purchase = get_object_or_404(Purchase, pk=pk)
     files = request.FILES.getlist("files")

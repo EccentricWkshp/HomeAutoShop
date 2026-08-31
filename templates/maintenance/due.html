@@ -2,7 +2,11 @@
 {% block title %}{% translate "Due" %} — {{ shop_name }}{% endblock %}
 {% block content %}
 <div class="spread">
-  <h1>{% translate "What needs attention" %}</h1>
+  {# "Due" is what the menu calls this, so it is what the page leads with. #}
+  <div>
+    <h1>{% translate "Due" %}</h1>
+    <p class="muted">{% translate "What needs attention" %}</p>
+  </div>
   <div class="row">
     {% if overdue %}<span class="pill danger">⚠ {{ overdue }} {% translate "overdue" %}</span>{% endif %}
     {% if due_soon %}<span class="pill warn">{{ due_soon }} {% translate "due soon" %}</span>{% endif %}

@@ -79,6 +79,9 @@ urlpatterns = [
     # Uploaded files are served by the application, not linked straight to the
     # object store: a presigned URL names a host only the containers can
     # resolve, and is readable by anyone who copies it. See mediafiles/views.py.
+    # Detaching a file from one record, which is not the same as deleting it:
+    # a receipt hangs off both a purchase and a work order.
+    path("files/links/<uuid:link_id>/remove/", mediafiles.media_unlink, name="media_unlink"),
     path("files/<uuid:pk>/", mediafiles.media_file, name="media_file"),
     path("files/<uuid:pk>/<str:variant>/", mediafiles.media_file, name="media_file_variant"),
     path("trash/", core.trash, name="trash"),
@@ -247,6 +250,13 @@ urlpatterns = [
         purchasing.purchase_line_receive,
         name="purchase_line_receive",
     ),
+    # Receiving is one tap on a screen full of lines, so it needs an undo.
+    path(
+        "purchases/<uuid:pk>/lines/<uuid:line_id>/unreceive/",
+        purchasing.purchase_line_unreceive,
+        name="purchase_line_unreceive",
+    ),
+    path("purchases/<uuid:pk>/delete/", purchasing.purchase_delete, name="purchase_delete"),
     path("purchases/<uuid:pk>/receipts/", purchasing.purchase_receipt_upload, name="purchase_receipt_upload"),
     path("vendors/", purchasing.vendor_list, name="vendor_list"),
     path("vendors/new/", purchasing.vendor_create, name="vendor_create"),
