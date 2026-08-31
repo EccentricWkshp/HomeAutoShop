@@ -9,11 +9,31 @@ the ordinary case, since a receipt is usually a PDF. Rather than fix the same
 line four times and leave the fifth screen to repeat it, the decision about
 what a file looks like lives here.
 
-The link always points at the file itself, so a document is still one tap away
-whether or not there is a picture of it.
+A click means two different things and the difference is the file, not the
+screen, so it is decided here too:
+
+* **A photograph enlarges in place.** `lightbox.js` intercepts the click and
+  opens it over the page, which keeps the record it belongs to behind it —
+  leaving the page to look at a photo and pressing Back was the old behaviour
+  and it lost your place on a long work order every time.
+* **A document opens in a new tab.** A PDF receipt is read, scrolled and
+  searched; that is a job for the browser's own viewer, and it wants its own
+  tab so the work order is still there when it is closed.
+
+The `href` is the file either way, so with JavaScript blocked every tile is
+still a working link to what it shows. That is the whole arrangement: the
+lightbox is an enhancement of a link that already went somewhere useful.
 {% endcomment %}
+{% firstof alt media.original_filename as label %}
 <a class="thumb{% if small %} small{% endif %}" href="{{ media.url_for }}"
-   aria-label="{{ alt|default:media.original_filename }}"
+   {% if media.opens_in_lightbox %}
+     data-lightbox="{{ media.lightbox_url }}" data-lightbox-caption="{{ label }}"
+     aria-label="{{ label }}"
+   {% else %}
+     {# Named as a new tab: moving the page without saying so disorients. #}
+     target="_blank" rel="noopener"
+     aria-label="{% blocktranslate %}{{ label }} (opens in a new tab){% endblocktranslate %}"
+   {% endif %}
    title="{{ media.original_filename }}">
   {% if media.display_url %}
     {# Decorative: the link above it already carries the label. #}

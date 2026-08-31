@@ -120,6 +120,37 @@ class Media(AppendOnlyModel):
         return self.url_for("original")
 
     @property
+    def lightbox_url(self) -> str:
+        """The version to enlarge in place, or empty for a file to open instead.
+
+        The preview in preference to the original, and the difference is not
+        small: originals off a phone are several megabytes each, previews are
+        1600px on the long edge, and a lightbox that stalls on a garage's Wi-Fi
+        is one nobody waits for. The original stays one click away inside it.
+
+        A HEIC gets a URL here even though no browser will draw the original,
+        because the preview `derive()` wrote is a JPEG. Empty until that job has
+        run, which is the honest answer: there is nothing to enlarge yet.
+        """
+        if not self.file:
+            return ""
+        if self.preview:
+            return self.url_for("preview")
+        return self.url_for("original") if self.mime in BROWSER_IMAGE_MIMES else ""
+
+    @property
+    def opens_in_lightbox(self) -> bool:
+        """Whether clicking this should enlarge it rather than open the file.
+
+        Deliberately keyed on `is_image` rather than on having a picture to
+        show. A PDF receipt has a picture — `derive()` renders its first page —
+        and enlarging that page is the wrong answer to the click: somebody
+        opening a receipt wants the document, scrollable and searchable, not a
+        photograph of its first page with the other three unreachable.
+        """
+        return self.is_image and bool(self.lightbox_url)
+
+    @property
     def extension_label(self) -> str:
         """A short badge for a file with no picture: `PDF`, `CSV`, `FILE`."""
         suffix = pathlib.Path(self.original_filename).suffix.lstrip(".")

@@ -238,25 +238,36 @@ def run(order: rockauto.ParsedOrder, *, dry_run: bool = True, user=None) -> Impo
                 seen_vehicles[line.vehicle] = _find_asset(details)
             asset = seen_vehicles[line.vehicle]
             if details:
-                # Not `_, made = ...`: gettext is bound to `_` in this module,
-                # so a throwaway of that name makes it a local and every
-                # translated string above it raises UnboundLocalError.
-                _fitment, made = PartFitment.objects.get_or_create(
+                # `all_objects`, so a fitment somebody has already dealt with is
+                # not recorded a second time. Re-importing the same order was
+                # undoing the operator's own work twice over: a fitment they
+                # deleted came back, because a soft-deleted row is invisible to
+                # the default manager and `get_or_create` therefore made a new
+                # one. Deciding a vendor's claim is wrong should survive the
+                # next import of the order that made it.
+                existing = PartFitment.all_objects.filter(
                     part=part,
                     asset=asset,
                     make=details["make"],
                     model=details["model"],
                     year_from=details["year"],
                     year_to=details["year"],
-                    defaults={
-                        "engine_code": details["engine"],
+                ).first()
+                if existing is None:
+                    PartFitment.objects.create(
+                        part=part,
+                        asset=asset,
+                        make=details["make"],
+                        model=details["model"],
+                        year_from=details["year"],
+                        year_to=details["year"],
+                        engine_code=details["engine"],
                         # The vendor's claim, not an installation somebody saw.
-                        "confidence": PartFitment.Confidence.VENDOR,
-                        "notes": _("From %(vendor)s order %(number)s.")
+                        confidence=PartFitment.Confidence.VENDOR,
+                        notes=_("From %(vendor)s order %(number)s.")
                         % {"vendor": rockauto.VENDOR_NAME, "number": order.order_number},
-                    },
-                )
-                report.fitments_recorded += int(made)
+                    )
+                    report.fitments_recorded += 1
                 outcome.fitment_for = line.vehicle
 
         if outcome.charged:

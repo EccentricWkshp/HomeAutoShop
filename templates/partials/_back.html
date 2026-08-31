@@ -1,0 +1,25 @@
+{% load i18n %}
+{% comment %}
+The way back to whatever this page hangs off. Takes `url` and `label`.
+
+It exists because a record had no route to its own list. Opening a purchase
+from a work order and then wanting the other purchases meant the browser's Back
+button, or the section menu — which is three taps and a guess at which section
+a purchase lives under. On a phone, where the top bar collapses into that menu,
+it was worse.
+
+Above the heading rather than in the button row beside it, and that placement
+is the decision worth stating. Six screens already carried a "Back to vehicle"
+button, sitting among Edit, Schedule, Specs and Recalls — a way *out* dressed
+as one more thing to *do*, and on the vehicle page it was the eighth button in
+a row of eight. Leaving is not an action of the same kind as editing, so it
+does not go in the same place.
+
+Usage, in the two lines a template needs:
+
+    {% url 'part_list' as back_url %}
+    {% include "partials/_back.html" with url=back_url label=_("Parts") %}
+{% endcomment %}
+<nav class="crumb" aria-label="{% translate 'Breadcrumb' %}">
+  <a href="{{ url }}"><span aria-hidden="true">←</span> {{ label }}</a>
+</nav>

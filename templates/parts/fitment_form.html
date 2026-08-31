@@ -1,0 +1,24 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Fitment" %} — {{ part.name }}{% endblock %}
+{% block content %}
+{% url 'part_detail' part.pk as back_url %}
+{% include "partials/_back.html" with url=back_url label=part.name %}
+<h1>{% if fitment %}{% translate "Edit a fitment" %}{% else %}{% translate "Add a fitment" %}{% endif %}</h1>
+<p class="muted">{{ part }}</p>
+
+<form method="post" class="card">{% csrf_token %}
+  {% if form.non_field_errors %}{{ form.non_field_errors }}{% endif %}
+  <div class="formgrid">
+    {% for field in form %}
+      <div class="field {% if field.name == 'notes' or field.name == 'asset' %}full{% endif %}">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}
+        {% if field.help_text %}<p class="helptext">{{ field.help_text }}</p>{% endif %}{{ field.errors }}
+      </div>
+    {% endfor %}
+  </div>
+  <p class="small muted">
+    {% translate "A part you install on a vehicle is recorded as confirmed automatically. This screen is for the rest: a vendor's claim, something you worked out, or one you have since disproved." %}
+  </p>
+  {% include "partials/_formactions.html" with cancel_url=back_url %}
+</form>
+{% endblock %}

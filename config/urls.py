@@ -222,6 +222,13 @@ urlpatterns = [
     path("parts/<uuid:pk>/", parts.part_detail, name="part_detail"),
     path("parts/<uuid:pk>/edit/", parts.part_edit, name="part_edit"),
     path("parts/<uuid:pk>/crossrefs/", parts.crossref_add, name="crossref_add"),
+    # A fitment is a claim about a vehicle, and claims turn out to be wrong —
+    # so it is editable, and "does not fit" is one of the things it can say.
+    path("parts/<uuid:pk>/fitments/new/", parts.fitment_add, name="fitment_add"),
+    path("parts/<uuid:pk>/fitments/<uuid:fitment_id>/edit/", parts.fitment_edit,
+         name="fitment_edit"),
+    path("parts/<uuid:pk>/fitments/<uuid:fitment_id>/delete/", parts.fitment_delete,
+         name="fitment_delete"),
     path("parts/<uuid:pk>/stock/", parts.lot_add, name="lot_add"),
     path("parts/<uuid:pk>/stock/<uuid:lot_id>/count/", parts.lot_count, name="lot_count"),
     path("inventory/", parts.inventory, name="inventory"),

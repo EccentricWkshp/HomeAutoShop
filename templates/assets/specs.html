@@ -1,9 +1,10 @@
 {% extends "base.html" %}{% load i18n %}
 {% block title %}{{ asset.nickname }} — {% translate "Specs" %}{% endblock %}
 {% block content %}
+{% url 'asset_detail' asset.pk as back_url %}
+{% include "partials/_back.html" with url=back_url label=asset.nickname %}
 <div class="spread">
   <div><h1>{{ asset.nickname }}</h1><p class="muted">{% translate "Reference specifications" %}</p></div>
-  <a class="btn" href="{% url 'asset_detail' asset.pk %}">{% translate "Back to vehicle" %}</a>
 </div>
 
 <p class="muted small">

@@ -15,7 +15,9 @@ from django.views.decorators.http import require_POST
 from homeautoshop.core.costs import inventory_value
 from homeautoshop.core.moneyform import MoneyFormMixin
 
-from .models import Location, Part, PartCrossRef, PartUsage, StockLot, StockTransaction
+from .models import (
+    Location, Part, PartCrossRef, PartFitment, PartUsage, StockLot, StockTransaction,
+)
 from .services import consume, cycle_count, expiring_lots, find, outstanding_cores, restock_list
 
 
@@ -58,6 +60,113 @@ class LotForm(MoneyFormMixin, forms.ModelForm):
             field.required = name == "quantity"
             css = "select" if isinstance(field.widget, forms.Select) else "input"
             field.widget.attrs.setdefault("class", css)
+
+
+class FitmentForm(forms.ModelForm):
+    """What a part fits, and how much the claim is worth.
+
+    A fitment names a vehicle — either one of yours or a description of a class
+    of them — and never a part beyond the one it hangs off. `part` is therefore
+    not a field here: it comes from the URL, and offering it would let somebody
+    file a fitment against the part they are not looking at.
+    """
+
+    class Meta:
+        model = PartFitment
+        fields = [
+            "asset", "make", "model", "year_from", "year_to",
+            "engine_code", "position", "confidence", "notes",
+        ]
+        widgets = {"notes": forms.Textarea(attrs={"rows": 2})}
+        labels = {
+            "asset": _("One of your vehicles"),
+            "make": _("or make"),
+            "year_from": _("Years from"),
+            "year_to": _("to"),
+            "engine_code": _("Engine"),
+        }
+        help_texts = {
+            "asset": _("Pick a vehicle, or leave blank and describe one below."),
+            "position": _("Front, rear, left — when the part is side-specific."),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["asset"].required = False
+        self.fields["asset"].empty_label = _("— not one of my vehicles —")
+        for name, field in self.fields.items():
+            field.required = name == "confidence"
+            css = "select" if isinstance(field.widget, forms.Select) else "input"
+            if isinstance(field.widget, forms.Textarea):
+                css = "input textarea"
+            field.widget.attrs.setdefault("class", css)
+
+    def clean(self):
+        data = super().clean()
+        # A fitment that names no vehicle fits everything, which is the one
+        # thing it must never be taken to mean.
+        if not data.get("asset") and not (data.get("make") or data.get("model")):
+            raise ValidationError(
+                _("Say which vehicle: pick one of yours, or give at least a make or model.")
+            )
+        first, last = data.get("year_from"), data.get("year_to")
+        if first and last and first > last:
+            raise ValidationError(_("The first year is after the last one."))
+        return data
+
+
+def _fitment_page(request, part, fitment, form):
+    return render(
+        request,
+        "parts/fitment_form.html",
+        {"part": part, "fitment": fitment, "form": form},
+    )
+
+
+@login_required
+def fitment_add(request, pk):
+    part = get_object_or_404(Part, pk=pk)
+    form = FitmentForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        fitment = form.save(commit=False)
+        fitment.part = part
+        fitment.save()
+        messages.success(
+            request, _("Recorded: %(what)s.") % {"what": fitment.vehicle}
+        )
+        return redirect("part_detail", pk=part.pk)
+    return _fitment_page(request, part, None, form)
+
+
+@login_required
+def fitment_edit(request, pk, fitment_id):
+    part = get_object_or_404(Part, pk=pk)
+    fitment = get_object_or_404(PartFitment, pk=fitment_id, part=part)
+    form = FitmentForm(request.POST or None, instance=fitment)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, _("Saved."))
+        return redirect("part_detail", pk=part.pk)
+    return _fitment_page(request, part, fitment, form)
+
+
+@require_POST
+@login_required
+def fitment_delete(request, pk, fitment_id):
+    """Remove a fitment outright.
+
+    Worth knowing before reaching for it: if the claim came from a vendor's
+    order and turned out to be wrong, editing it to **Does not fit** is the
+    better answer. A deleted one says nothing, and nothing is what the vendor's
+    claim will overwrite the next time somebody looks the part up. A recorded
+    failure is the shop's own knowledge and it stays.
+    """
+    part = get_object_or_404(Part, pk=pk)
+    fitment = get_object_or_404(PartFitment, pk=fitment_id, part=part)
+    vehicle = fitment.vehicle
+    fitment.delete()
+    messages.success(request, _("Removed %(what)s.") % {"what": vehicle})
+    return redirect("part_detail", pk=part.pk)
 
 
 @login_required

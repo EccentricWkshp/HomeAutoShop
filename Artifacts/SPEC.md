@@ -515,7 +515,8 @@ Small powered equipment is in scope (OQ-15). It reuses the asset, work order, pa
 | FR-PART-1 | Search parts by name, manufacturer, any cross-reference number, or UPC — one search box, all identifiers. |
 | FR-PART-2 | Record unlimited cross-references per part. |
 | FR-PART-3 | Record fitment against a specific vehicle or a make/model/year range, and **auto-record `confirmed_installed` fitment when a part is consumed on a vehicle**. |
-| FR-PART-4 | Answer "what fits this vehicle?" from the fitment table, ranked with confirmed-installed first. |
+| FR-PART-4 | Answer "what fits this vehicle?" from the fitment table, ranked with confirmed-installed first. A part with a `does_not_fit` fitment for that vehicle is **excluded, not demoted** — being offered a part you have already held against the car and rejected is how it gets ordered twice. |
+| FR-PART-6 | Fitments are editable and removable, and one of the things a fitment can say is **`does_not_fit` — tried it**. A vendor's claim is re-recorded every time its order is imported, so deleting a disproved one is undone by the next import; recording the failure is the shop's own knowledge and outranks the claim. An import never overwrites or resurrects a fitment that has been edited or removed. |
 | FR-PART-5 | Show, for any part, complete purchase history with vendor and price trend. |
 | FR-INV-1 | Track quantity on hand per part per location via the append-only transaction ledger. |
 | FR-INV-2 | Support hierarchical locations with printable QR labels; scanning a label opens that location's contents. |
@@ -608,6 +609,7 @@ It also covers a scenario nothing else in this spec does: **inspecting a vehicle
 | FR-DOC-7 | Tag photos as `before`/`after` on a job item and display them paired. |
 | FR-DOC-8 | Serve media only to authenticated users, via short-lived presigned URLs; **the bucket is never public**. |
 | FR-DOC-9 | Strip GPS EXIF on upload by default, with a per-instance setting to retain it. |
+| FR-DOC-10 | A photograph enlarges over the record it belongs to, keeping that record's scroll position; a document opens in its own tab, where the browser's own viewer can page and search it. Which one a file gets is decided by the file, not by the screen. Both are links to the file first: with scripting blocked every attachment still opens. |
 | FR-SPEC-1 | Record arbitrary grouped key/value specs per vehicle with units, conditions, and a source. |
 | FR-SPEC-2 | Link a spec to the page of the document it came from *(SHOULD)*. |
 | FR-SPEC-3 | Copy a full spec sheet from one vehicle to another (same model, second car). |

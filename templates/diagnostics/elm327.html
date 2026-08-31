@@ -1,7 +1,8 @@
 {% extends "base.html" %}{% load i18n static %}
 {% block title %}{% translate "Read the car directly" %} — {{ asset.nickname }}{% endblock %}
 {% block content %}
-
+{% url 'asset_diagnostics' asset.pk as back_url %}
+{% include "partials/_back.html" with url=back_url label=_("Scans and trouble codes") %}
 <div class="spread">
   <div>
     <h1>{% translate "Read the car directly" %}</h1>
@@ -10,7 +11,6 @@
       · {% translate "ELM327 over USB" %}
     </p>
   </div>
-  <a class="btn" href="{% url 'asset_diagnostics' asset.pk %}">{% translate "Back" %}</a>
 </div>
 
 <p class="msg info">

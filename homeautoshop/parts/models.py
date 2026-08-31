@@ -108,6 +108,13 @@ class PartFitment(BaseModel):
 
     class Confidence(models.TextChoices):
         CONFIRMED = "confirmed_installed", _("Confirmed — installed on this vehicle")
+        #: Kept rather than deleted, and the distinction earns its row. A
+        #: vendor's claim that a part fits is re-recorded every time that order
+        #: is imported again, so deleting a disproved one is undone by the next
+        #: import. This says *we tried it and it did not fit*, which outranks
+        #: the claim and survives it. It is also the more useful fact: knowing
+        #: a part does not fit is what stops it being ordered twice.
+        DOES_NOT_FIT = "does_not_fit", _("Does not fit — tried it")
         VENDOR = "stated_by_vendor", _("Stated by vendor")
         UNVERIFIED = "unverified", _("Unverified")
 
@@ -130,11 +137,32 @@ class PartFitment(BaseModel):
         # Confirmed-installed first: the shop's own history outranks a claim.
         ordering = ["confidence", "make", "model"]
 
-    def __str__(self) -> str:
+    @property
+    def vehicle(self) -> str:
+        """The vehicle half on its own: one of your assets, or a description.
+
+        A fitment names two things, and which of them is worth printing depends
+        entirely on where you are standing. On the part's own page the part is
+        already the heading, so `__str__` there rendered every row as "GPD A/C
+        Compressor & Component Kit 9642644B fits Suzuki Aerio 2004–2004" — the
+        page title, the word "fits", and then the four words anybody came for.
+        Read quickly it looks like the part fits *itself* and a vehicle.
+        """
         if self.asset_id:
-            return f"{self.part} fits {self.asset}"
+            return str(self.asset)
         span = f"{self.year_from or ''}–{self.year_to or ''}".strip("–")
-        return f"{self.part} fits {self.make} {self.model} {span}".strip()
+        if self.year_from and self.year_from == self.year_to:
+            # "2004–2004" is a range of one, written the long way.
+            span = str(self.year_from)
+        return " ".join(bit for bit in (self.make, self.model, span) if bit)
+
+    @property
+    def qualifiers(self) -> str:
+        """Engine and position, when the fitment is narrower than the model."""
+        return " · ".join(bit for bit in (self.engine_code, self.position) if bit)
+
+    def __str__(self) -> str:
+        return f"{self.part} fits {self.vehicle}".strip()
 
     def matches(self, asset) -> bool:
         if self.asset_id:

@@ -26,7 +26,7 @@ from homeautoshop.diagnostics.models import DiagnosticSession, ParserProfile
 from homeautoshop.diagnostics.profiles import seed as seed_profiles
 from homeautoshop.inspections.models import Inspection
 from homeautoshop.maintenance.models import AssetServiceItem, ServiceDefinition
-from homeautoshop.parts.models import Part
+from homeautoshop.parts.models import Part, PartFitment
 from homeautoshop.people.models import Person
 from homeautoshop.purchasing.models import Purchase, Vendor
 from django.core.files.base import ContentFile
@@ -72,6 +72,9 @@ class EveryPageRendersTests(TestCase):
         cls.wo = WorkOrder.objects.create(asset=cls.asset, title="Front brakes")
         cls.item = JobItem.objects.create(work_order=cls.wo, title="Pads")
         cls.part = Part.objects.create(name="Brake pads", part_number="D1234")
+        cls.fitment = PartFitment.objects.create(
+            part=cls.part, make="Ford", model="F-150", year_from=2010, year_to=2014
+        )
         cls.vendor = Vendor.objects.create(name="RockAuto")
         cls.purchase = Purchase.objects.create(vendor=cls.vendor)
         cls.spec = AssetSpec.objects.create(
@@ -158,8 +161,12 @@ class EveryPageRendersTests(TestCase):
             "job_item_tool_remove",
         }:
             by_name["pk"] = str(self.wo.pk)
-        elif name in {"part_detail", "part_edit", "crossref_add", "lot_add", "lot_count"}:
+        elif name in {
+            "part_detail", "part_edit", "crossref_add", "lot_add", "lot_count",
+            "fitment_add", "fitment_edit", "fitment_delete",
+        }:
             by_name["pk"] = str(self.part.pk)
+            by_name["fitment_id"] = str(self.fitment.pk)
         elif name in {"person_detail", "person_edit"}:
             by_name["pk"] = str(self.person.pk)
         elif name in {"user_detail", "user_set_active", "user_set_password"}:
@@ -285,3 +292,72 @@ class TemplateCommentTests(TestCase):
 
         self.assertEqual(Template("A{# one line #}B").render(Context({})), "AB")
         self.assertIn("{#", Template("A{# one\ntwo #}B").render(Context({})))
+
+
+class WayBackTests(TestCase):
+    """Every page about one record offers a route to what it belongs to.
+
+    The report was a purchase: opened from a work order, and then the only ways
+    to the other purchases were the browser's Back button or the section menu,
+    where the list is filed under a different word than the page uses. That is
+    not a fault of one template — it is a fault of not having decided that a
+    detail page owes the reader an exit.
+
+    A source-level check rather than a rendered one, because rendering eight
+    kinds of record needs eight fixtures and the thing being defended is that
+    nobody adds a ninth detail page without one.
+    """
+
+    #: Pages about a single record. Each hangs off a list or a parent, and each
+    #: has to say which.
+    DETAIL_TEMPLATES = (
+        "accounts/user.html",
+        "assets/detail.html",
+        "assets/recalls.html",
+        "assets/specs.html",
+        "core/asset_costs.html",
+        "diagnostics/asset.html",
+        "diagnostics/elm327.html",
+        "diagnostics/session.html",
+        "inspections/detail.html",
+        "inspections/wear.html",
+        "maintenance/schedule.html",
+        "parts/detail.html",
+        "people/detail.html",
+        "purchasing/detail.html",
+        "work/detail.html",
+    )
+
+    def test_every_detail_page_offers_a_way_back(self):
+        from pathlib import Path
+
+        from django.conf import settings
+
+        root = Path(settings.BASE_DIR) / "templates"
+        missing = [
+            name
+            for name in self.DETAIL_TEMPLATES
+            if "partials/_back.html" not in (root / name).read_text(encoding="utf-8")
+        ]
+        self.assertEqual(missing, [], "no way back from: " + ", ".join(missing))
+
+    def test_the_way_back_is_not_also_a_button(self):
+        """One idiom, not two.
+
+        Six of these carried a "Back to vehicle" button in the row beside Edit
+        and Schedule — a way out dressed as one more thing to do, and on the
+        vehicle page it was the eighth button of eight. The crumb replaced them,
+        and this fails if one grows back.
+        """
+        from pathlib import Path
+
+        from django.conf import settings
+
+        root = Path(settings.BASE_DIR) / "templates"
+        offenders = [
+            path.name
+            for path in sorted(root.rglob("*.html"))
+            if 'class="btn"' in path.read_text(encoding="utf-8")
+            and "Back to vehicle" in path.read_text(encoding="utf-8")
+        ]
+        self.assertEqual(offenders, [])

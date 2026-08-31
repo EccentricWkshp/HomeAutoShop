@@ -1,5 +1,7 @@
 {% extends "base.html" %}{% load i18n %}
 {% block content %}
+{% url 'person_list' as back_url %}
+{% include "partials/_back.html" with url=back_url label=_("People") %}
 <div class="spread"><h1>{{ person.display_name }}</h1>
   <a class="btn" href="{% url 'person_edit' person.pk %}">{% translate "Edit" %}</a></div>
 <div class="cols two">

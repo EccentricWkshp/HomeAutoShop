@@ -7,6 +7,7 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.test import TestCase, override_settings
+from django.urls import reverse
 from django.utils import timezone
 
 from homeautoshop.assets.models import Asset
@@ -125,6 +126,164 @@ class FifoTests(TestCase):
         )
         consume(self.part, 1, work_order=self.wo)
         self.assertEqual(fits(self.asset)[0], self.part)
+
+    def test_a_part_you_tried_and_could_not_fit_is_not_offered_again(self):
+        """The report: a vendor said it fits, the bench said otherwise.
+
+        Not merely ranked below the others — gone. Being offered a part you
+        have already held up against the car and rejected is how it gets
+        ordered a second time, which is the cost this state exists to avoid.
+        """
+        PartFitment.objects.create(
+            part=self.part, make="Ford", model="F-150", year_from=2000, year_to=2010,
+            confidence=PartFitment.Confidence.VENDOR,
+        )
+        self.assertIn(self.part, fits(self.asset))
+
+        PartFitment.objects.create(
+            part=self.part, asset=self.asset,
+            confidence=PartFitment.Confidence.DOES_NOT_FIT,
+        )
+        self.assertNotIn(self.part, fits(self.asset))
+
+    def test_one_disproved_fitment_does_not_hide_the_part_from_other_vehicles(self):
+        """It did not fit *that* car. Everything else is unaffected."""
+        other = Asset.objects.create(nickname="Van", make="Ford", model="F-150", year=2005)
+        PartFitment.objects.create(
+            part=self.part, make="Ford", model="F-150", year_from=2000, year_to=2010,
+            confidence=PartFitment.Confidence.VENDOR,
+        )
+        PartFitment.objects.create(
+            part=self.part, asset=self.asset,
+            confidence=PartFitment.Confidence.DOES_NOT_FIT,
+        )
+        self.assertNotIn(self.part, fits(self.asset))
+        self.assertIn(self.part, fits(other))
+
+
+class FitmentScreenTests(TestCase):
+    """Reading, correcting and removing a fitment (FR-PART-3/4).
+
+    Reported together, because they are one complaint: the card said something
+    that read as nonsense and there was no way to argue with it.
+    """
+
+    def setUp(self):
+        from homeautoshop.accounts.models import Role, User
+
+        self.user = User.objects.create_user(
+            username="andy", password="x" * 16, role=Role.ADMIN
+        )
+        self.client.force_login(self.user)
+        self.asset = Asset.objects.create(
+            nickname="Aero", make="Suzuki", model="Aerio", year=2004
+        )
+        self.part = Part.objects.create(
+            name="A/C Compressor & Component Kit", manufacturer="GPD",
+            part_number="9642644B",
+        )
+        self.fitment = PartFitment.objects.create(
+            part=self.part, make="Suzuki", model="Aerio", year_from=2004, year_to=2004,
+            confidence=PartFitment.Confidence.VENDOR,
+        )
+
+    def page(self) -> str:
+        return self.client.get(
+            reverse("part_detail", args=[self.part.pk])
+        ).content.decode()
+
+    def test_the_card_names_the_vehicle_and_not_the_part_again(self):
+        """The bug as reported: "this part fits this part plus a vehicle"."""
+        page = self.page()
+        self.assertIn("Suzuki Aerio 2004", page)
+        self.assertNotIn("fits Suzuki", page)
+        # The part's name belongs to the heading, not to every row beneath it.
+        self.assertEqual(page.count("A/C Compressor &amp; Component Kit 9642644B"), 0)
+
+    def test_a_year_range_of_one_is_written_as_one_year(self):
+        self.assertEqual(self.fitment.vehicle, "Suzuki Aerio 2004")
+
+    def test_a_fitment_against_one_of_your_vehicles_names_that_vehicle(self):
+        mine = PartFitment.objects.create(
+            part=self.part, asset=self.asset,
+            confidence=PartFitment.Confidence.CONFIRMED,
+        )
+        self.assertEqual(mine.vehicle, str(self.asset))
+
+    def test_a_fitment_can_be_corrected(self):
+        response = self.client.post(
+            reverse("fitment_edit", args=[self.part.pk, self.fitment.pk]),
+            {
+                "make": "Suzuki", "model": "Aerio",
+                "year_from": 2004, "year_to": 2007,
+                "confidence": PartFitment.Confidence.VENDOR,
+                "engine_code": "", "position": "", "notes": "",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.fitment.refresh_from_db()
+        self.assertEqual(self.fitment.year_to, 2007)
+
+    def test_a_fitment_can_be_marked_as_one_that_did_not_fit(self):
+        """The case that prompted this: discovered on the bench, not on paper."""
+        self.client.post(
+            reverse("fitment_edit", args=[self.part.pk, self.fitment.pk]),
+            {
+                "make": "Suzuki", "model": "Aerio",
+                "year_from": 2004, "year_to": 2004,
+                "confidence": PartFitment.Confidence.DOES_NOT_FIT,
+                "engine_code": "", "position": "",
+                "notes": "Pulley offset is wrong.",
+            },
+        )
+        self.fitment.refresh_from_db()
+        self.assertEqual(self.fitment.confidence, PartFitment.Confidence.DOES_NOT_FIT)
+        self.assertIn("Pulley offset is wrong.", self.page())
+
+    def test_a_fitment_can_be_removed(self):
+        self.client.post(reverse("fitment_delete", args=[self.part.pk, self.fitment.pk]))
+        self.assertFalse(PartFitment.objects.filter(pk=self.fitment.pk).exists())
+        # Soft, like everything else here.
+        self.assertTrue(PartFitment.all_objects.filter(pk=self.fitment.pk).exists())
+
+    def test_a_fitment_may_be_added_by_hand(self):
+        self.client.post(
+            reverse("fitment_add", args=[self.part.pk]),
+            {
+                "asset": str(self.asset.pk),
+                "make": "", "model": "", "year_from": "", "year_to": "",
+                "confidence": PartFitment.Confidence.CONFIRMED,
+                "engine_code": "", "position": "", "notes": "",
+            },
+        )
+        self.assertTrue(self.part.fitments.filter(asset=self.asset).exists())
+
+    def test_a_fitment_that_names_no_vehicle_is_refused(self):
+        """One with no vehicle in it would read as fitting everything."""
+        response = self.client.post(
+            reverse("fitment_add", args=[self.part.pk]),
+            {
+                "asset": "", "make": "", "model": "",
+                "year_from": "", "year_to": "",
+                "confidence": PartFitment.Confidence.UNVERIFIED,
+                "engine_code": "", "position": "", "notes": "",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.part.fitments.count(), 1)
+
+    def test_years_the_wrong_way_round_are_refused(self):
+        response = self.client.post(
+            reverse("fitment_add", args=[self.part.pk]),
+            {
+                "asset": "", "make": "Suzuki", "model": "Aerio",
+                "year_from": 2010, "year_to": 2004,
+                "confidence": PartFitment.Confidence.UNVERIFIED,
+                "engine_code": "", "position": "", "notes": "",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.part.fitments.count(), 1)
 
 
 class PartLookupTests(TestCase):

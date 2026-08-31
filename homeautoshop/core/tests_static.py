@@ -32,6 +32,22 @@ class StaticFileServingTests(TestCase):
         """WhiteNoise must not answer for files that are not there."""
         self.assertEqual(self.client.get("/static/nope.css").status_code, 404)
 
+    def test_the_hidden_attribute_still_hides(self):
+        """A rule this page's scripts depend on, and that is easy to delete.
+
+        `[hidden] { display: none }` comes from the browser and loses to any
+        author rule that sets `display` on the same element. Two of ours do, so
+        without an explicit override the top bar's sync indicator — rendered
+        `hidden` and toggled by `offline.js` — sat there saying "Up to date"
+        regardless. Asserted against the served file rather than the source,
+        because a stylesheet nothing serves is the other failure this module is
+        about.
+        """
+        response = self.client.get("/static/app.css")
+        # WhiteNoise streams, so there is no `.content` to read.
+        css = b"".join(response.streaming_content).decode()
+        self.assertIn("[hidden] { display: none !important; }", css)
+
     def test_every_page_reference_resolves(self):
         """A rendered page must not point at a stylesheet that 404s."""
         user = User.objects.create_user(username="static-check", password="x" * 16)

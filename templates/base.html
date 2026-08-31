@@ -115,6 +115,32 @@
 <script src="{% static 'scanner.js' %}" defer></script>
 {# Form behaviour only — every form it touches works correctly without it. #}
 <script src="{% static 'forms.js' %}" defer></script>
+
+{% comment %}
+One viewer for the whole page, filled in as it is opened. Empty and never
+shown unless `lightbox.js` runs and the browser has `<dialog>`; without either,
+every thumbnail is still a link straight to its file, which is what it was
+before the lightbox existed.
+{% endcomment %}
+<dialog id="lightbox" class="lightbox" aria-label="{% translate 'Photo' %}">
+  {% comment %}
+  No `<img>` here: the script makes one the first time the viewer opens. An
+  empty, sourceless image on every page of the application — the label sheet
+  included, where thirty QR codes are deliberately inline SVG and nothing is
+  fetched — is a thing to explain on every page for the sake of the few that
+  use it.
+  {% endcomment %}
+  <figure>
+    <figcaption id="lightbox-caption"></figcaption>
+  </figure>
+  <div class="lightbox-bar">
+    <button type="button" id="lightbox-prev" class="iconbtn" aria-label="{% translate 'Previous photo' %}"><span aria-hidden="true">‹</span></button>
+    <a id="lightbox-full" class="btn small" target="_blank" rel="noopener">{% translate "Full size" %}</a>
+    <button type="button" id="lightbox-next" class="iconbtn" aria-label="{% translate 'Next photo' %}"><span aria-hidden="true">›</span></button>
+    <button type="button" id="lightbox-close" class="iconbtn" aria-label="{% translate 'Close' %}"><span aria-hidden="true">✕</span></button>
+  </div>
+</dialog>
+<script src="{% static 'lightbox.js' %}" defer></script>
 {% endif %}
 </body>
 </html>

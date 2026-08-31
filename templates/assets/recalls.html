@@ -1,10 +1,11 @@
 {% extends "base.html" %}{% load i18n %}
 {% block title %}{{ asset.nickname }} — {% translate "Recalls" %}{% endblock %}
 {% block content %}
+{% url 'asset_detail' asset.pk as back_url %}
+{% include "partials/_back.html" with url=back_url label=asset.nickname %}
 <div class="spread">
   <div><h1>{{ asset.nickname }}</h1><p class="muted">{% translate "Recall campaigns" %}</p></div>
   <div class="row">
-    <a class="btn" href="{% url 'asset_detail' asset.pk %}">{% translate "Back to vehicle" %}</a>
     {% if region_supported %}
       <form method="post" action="{% url 'recall_check' asset.pk %}">{% csrf_token %}
         <button class="primary" type="submit" {% if offline_mode %}disabled{% endif %}>

@@ -139,14 +139,23 @@ def fits(asset) -> list[Part]:
         )
     )
     seen: dict = {}
+    disproved: set = set()
     for fitment in candidates:
         if fitment.asset_id != asset.pk and not fitment.matches(asset):
+            continue
+        if fitment.confidence == PartFitment.Confidence.DOES_NOT_FIT:
+            # Somebody held this part up against this vehicle and it was wrong.
+            # That outranks any number of vendor claims for the same part, so
+            # the part leaves the list rather than merely losing its place in
+            # it — the whole value of recording the failure is not being
+            # offered the part again.
+            disproved.add(fitment.part_id)
             continue
         current = seen.get(fitment.part_id)
         if current is None or fitment.confidence == PartFitment.Confidence.CONFIRMED:
             seen[fitment.part_id] = fitment
     ordered = sorted(
-        seen.values(),
+        (fitment for part_id, fitment in seen.items() if part_id not in disproved),
         key=lambda f: (f.confidence != PartFitment.Confidence.CONFIRMED, str(f.part)),
     )
     return [f.part for f in ordered]

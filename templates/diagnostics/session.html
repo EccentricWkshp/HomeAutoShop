@@ -1,7 +1,8 @@
 {% extends "base.html" %}{% load i18n %}
 {% block title %}{% translate "Review a scan" %} — {{ session.asset.nickname }}{% endblock %}
 {% block content %}
-
+{% url 'diagnostic_queue' as back_url %}
+{% include "partials/_back.html" with url=back_url label=_("Scans to check") %}
 <div class="spread">
   <div>
     <h1>{% translate "Review a scan" %}</h1>
@@ -13,7 +14,17 @@
     </p>
   </div>
   {% if session.raw_media %}
-    <a class="btn" href="{{ session.raw_media.url_for }}">{% translate "The original report" %}</a>
+    {% comment %}
+    A new tab, like every other document: the report is read alongside the
+    codes it produced, and leaving this screen to look at it means coming back
+    and finding the list again.
+
+    The accessible name says so and the visible text stays short. It begins
+    with that visible text, so the two read as one name rather than two.
+    {% endcomment %}
+    <a class="btn" href="{{ session.raw_media.url_for }}" target="_blank" rel="noopener"
+       aria-label="{% translate 'The original report (opens in a new tab)' %}">
+      {% translate "The original report" %}</a>
   {% endif %}
 </div>
 

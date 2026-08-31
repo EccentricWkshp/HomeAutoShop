@@ -1,6 +1,8 @@
 {% extends "base.html" %}{% load i18n %}
 {% block title %}{{ part.name }} — {{ shop_name }}{% endblock %}
 {% block content %}
+{% url 'part_list' as back_url %}
+{% include "partials/_back.html" with url=back_url label=_("Parts") %}
 <div class="spread">
   <div><h1>{{ part.name }}</h1>
     <p class="muted">{{ part.manufacturer }} {{ part.part_number }}
@@ -101,13 +103,38 @@
 
     <section class="card">
       <h2>{% translate "Fits" %}</h2>
+      {% comment %}
+      The vehicle only. This used to print `{{ fitment }}`, which names the part
+      as well — so on the part's own page every row repeated the heading before
+      saying anything, and read as though the part fitted itself.
+      {% endcomment %}
       <ul class="list small">
         {% for fitment in part.fitments.all %}
-          <li>{{ fitment }}<div class="muted">{{ fitment.get_confidence_display }}</div></li>
+          <li class="spread">
+            <div>
+              <strong{% if fitment.confidence == 'does_not_fit' %} class="struck"{% endif %}>{{ fitment.vehicle }}</strong>
+              {% if fitment.qualifiers %}<span class="muted"> · {{ fitment.qualifiers }}</span>{% endif %}
+              <div class="muted">
+                {% if fitment.confidence == 'does_not_fit' %}
+                  <span class="pill danger">{{ fitment.get_confidence_display }}</span>
+                {% else %}
+                  {{ fitment.get_confidence_display }}
+                {% endif %}
+              </div>
+              {% if fitment.notes %}<div class="muted">{{ fitment.notes }}</div>{% endif %}
+            </div>
+            <div class="row">
+              <a class="linkish small" href="{% url 'fitment_edit' part.pk fitment.pk %}">{% translate "Edit" %}</a>
+              <form method="post" action="{% url 'fitment_delete' part.pk fitment.pk %}">{% csrf_token %}
+                <button class="linkish small danger" type="submit">{% translate "Remove" %}</button>
+              </form>
+            </div>
+          </li>
         {% empty %}
           <li class="muted">{% translate "Nothing recorded. Installing this on a vehicle records it as confirmed." %}</li>
         {% endfor %}
       </ul>
+      <a class="btn small" href="{% url 'fitment_add' part.pk %}">{% translate "Add a fitment" %}</a>
     </section>
 
     <section class="card">

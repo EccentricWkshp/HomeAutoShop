@@ -30,6 +30,15 @@
 
 * { box-sizing: border-box; }
 
+/* The `hidden` attribute has to win, and by default it does not: the browser
+   supplies `[hidden] { display: none }` and *any* author rule setting `display`
+   on the same element beats it. Two rules below do — `.pill` and `button` —
+   which is why the sync indicator in the top bar announced "Up to date" on
+   every page whether or not it was meant to be showing, and why a one-photo
+   gallery would still have offered Next and Previous. Anything toggled with
+   `element.hidden` in a script depends on this line. */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   background: var(--bg);
@@ -145,6 +154,24 @@ body { overflow-wrap: break-word; }
 .row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
 .spread { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
 
+/* The way back, above the heading. Quiet until it is wanted: this competes
+   with the page title for the first thing read, so it is small and muted — but
+   the tap target is not, because the hand reaching for it is in a glove. */
+.crumb { margin: 0 0 .5rem; font-size: .9rem; }
+.crumb a {
+  display: inline-flex; align-items: center; gap: .35rem;
+  min-height: var(--tap); color: var(--muted); text-decoration: none;
+  /* Negative on the left so the text lines up with the heading below it while
+     the target still extends past it in every direction. */
+  padding: .25rem .5rem; margin-left: -.5rem;
+}
+.crumb a:hover, .crumb a:focus-visible { color: var(--accent); }
+
+/* Struck through rather than removed: a fitment that turned out to be wrong is
+   knowledge, and the row has to still be readable to say so. Never the only
+   signal — the pill beside it names the state in words. */
+.struck { text-decoration: line-through; color: var(--muted); }
+
 /* ---------- controls ---------- */
 
 input, select, textarea, button, .btn {
@@ -220,6 +247,59 @@ label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: .
   font-size: .8rem; font-weight: 600; letter-spacing: .06em;
 }
 .thumb.small img, .thumb.small .doc { width: 56px; height: 56px; font-size: .65rem; }
+
+/* ---------- lightbox ----------
+   A photograph enlarged over the record it belongs to. Leaving the page to
+   look at a photo and pressing Back lost your place on a long work order every
+   time; this keeps the page underneath, so closing returns to the same scroll
+   position. Documents are not shown here — they open in their own tab, where
+   the browser's PDF viewer can do its job. */
+.lightbox {
+  /* The dialog is the frame rather than the picture: it fills the viewport so
+     that everything around the photo is backdrop, and a click anywhere in that
+     space closes. A dialog shrink-wrapped to the image leaves a few pixels of
+     margin to aim at, which on a phone is no target at all. */
+  width: 100%; max-width: 100%; height: 100%; max-height: 100%;
+  margin: 0; padding: 0; border: 0; background: transparent;
+  overflow: hidden; overscroll-behavior: contain;
+}
+.lightbox::backdrop { background: rgb(0 0 0 / .82); }
+.lightbox figure {
+  margin: 0; height: 100%; padding: 1rem;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: .75rem;
+  /* Clear of the bar below, which is pinned rather than in flow so that the
+     photo is centred in the viewport and not in what is left of it. */
+  padding-bottom: calc(var(--tap) + 2.5rem);
+}
+.lightbox img {
+  max-width: 100%; max-height: 100%;
+  /* Never upscaled: a 900px photo on a 4K screen should stay 900px rather than
+     become a soft, stretched version of itself. */
+  object-fit: contain;
+  border-radius: var(--radius); background: var(--surface);
+}
+/* A chip rather than text laid straight on the picture: a caption over a dark
+   photo and the same caption over a white one are the same colour, and only
+   one of them can be read. */
+.lightbox figcaption {
+  max-width: 60ch; text-align: center; font-size: .9rem;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: .35rem .75rem;
+}
+.lightbox figcaption:empty { display: none; }
+.lightbox-bar {
+  position: absolute; inset-inline: 0; bottom: 0;
+  display: flex; align-items: center; justify-content: center; gap: .5rem;
+  padding: .75rem; padding-bottom: calc(.75rem + env(safe-area-inset-bottom));
+}
+.lightbox .iconbtn {
+  min-width: var(--tap); min-height: var(--tap);
+  padding: .6rem; font-size: 1.3rem; line-height: 1;
+  background: var(--surface);
+}
+.lightbox .btn { background: var(--surface); }
 
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: .5rem; border-bottom: 1px solid var(--line); }

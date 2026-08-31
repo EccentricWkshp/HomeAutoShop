@@ -194,6 +194,144 @@ class ReceiptOnThePageTests(LocalMediaMixin, TestCase):
         self.assertNotIn("minor units", self.page())
 
 
+class OpeningAnAttachmentTests(LocalMediaMixin, TestCase):
+    """What a click on a tile does.
+
+    Two behaviours, and which one you get is a property of the file rather than
+    of the screen it is on — so it is decided once, on the model, and every
+    screen that includes `_thumb.html` inherits the answer.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.user = User.objects.create_user(username="andy", password="x" * 16, role=Role.ADMIN)
+        self.client.force_login(self.user)
+        self.purchase = Purchase.objects.create(vendor=Vendor.objects.create(name="RockAuto"))
+
+    def attach(self, name: str, data: bytes, content_type: str) -> Media:
+        media, _ = ingest(
+            SimpleUploadedFile(name, data, content_type=content_type),
+            entity=self.purchase,
+            role=MediaLink.Role.RECEIPT,
+        )
+        return media
+
+    def page(self) -> str:
+        return self.client.get(
+            reverse("purchase_detail", args=[self.purchase.pk])
+        ).content.decode()
+
+    def tile(self, media: Media) -> str:
+        """The opening `<a>` tag for one attachment.
+
+        Claims are made against this rather than against the whole page, so a
+        test about a receipt cannot be satisfied — or broken — by an unrelated
+        link somewhere else on the screen.
+        """
+        import re
+
+        match = re.search(r'<a\b[^>]*href="%s"[^>]*>' % re.escape(media.url_for()), self.page())
+        self.assertIsNotNone(match, "the attachment has no tile on the page")
+        return match.group(0)
+
+    # -- the decision ----------------------------------------------------
+
+    def test_a_photograph_enlarges_in_place(self):
+        media = self.attach("bushing.png", a_png(), "image/png")
+        derive(media)
+        media.refresh_from_db()
+        self.assertTrue(media.opens_in_lightbox)
+
+    def test_a_pdf_opens_as_a_document_even_though_it_has_a_picture(self):
+        """The distinction worth defending.
+
+        A receipt gains a rendered first page, so it *has* an image to show —
+        and enlarging that image is the wrong answer to the click, because the
+        other three pages and every word of text are then unreachable.
+        """
+        try:
+            pdf = a_pdf()
+        except ImportError:  # pragma: no cover - reportlab is a dev dependency
+            self.skipTest("reportlab is not installed")
+        media = self.attach("receipt.pdf", pdf, "application/pdf")
+        derive(media)
+        media.refresh_from_db()
+        self.assertTrue(media.display_url, "the fixture has no rendered page to be wrong about")
+        self.assertFalse(media.opens_in_lightbox)
+
+    def test_a_file_that_could_never_have_a_picture_is_a_document(self):
+        media = self.attach("notes.csv", b"a,b\n1,2\n", "text/csv")
+        self.assertFalse(media.opens_in_lightbox)
+
+    # -- what gets loaded ------------------------------------------------
+
+    def test_the_lightbox_loads_the_preview_not_the_original(self):
+        """Originals off a phone are megabytes; the preview is 1600px."""
+        media = self.attach("bushing.png", a_png(), "image/png")
+        derive(media)
+        media.refresh_from_db()
+        self.assertEqual(media.lightbox_url, media.url_for("preview"))
+
+    def test_a_photo_whose_derivation_has_not_run_yet_still_enlarges(self):
+        """Derivation is a queued job, so a photo uploaded a second ago has none."""
+        media = self.attach("bushing.png", a_png(), "image/png")
+        self.assertFalse(media.preview)
+        self.assertEqual(media.lightbox_url, media.url_for("original"))
+
+    def test_an_undrawable_photo_waits_for_its_preview(self):
+        """HEIC is a real photograph and one no browser will draw.
+
+        Enlarging the original would be a broken image inside the viewer, which
+        is worse than the link it replaced — so there is nothing to open until
+        `derive()` has written a JPEG.
+        """
+        media = Media(kind=Media.Kind.PHOTO, mime="image/heic")
+        media.file.save("photo.heic", SimpleUploadedFile("photo.heic", b"x"), save=False)
+        media.save()
+        self.assertEqual(media.lightbox_url, "")
+        self.assertFalse(media.opens_in_lightbox)
+
+    # -- what the page renders -------------------------------------------
+
+    def test_a_photo_tile_is_marked_for_the_viewer_and_stays_in_this_tab(self):
+        media = self.attach("bushing.png", a_png(), "image/png")
+        derive(media)
+        media.refresh_from_db()
+        tile = self.tile(media)
+        self.assertIn(f'data-lightbox="{media.lightbox_url}"', tile)
+        self.assertNotIn("target=", tile)
+
+    def test_a_document_tile_opens_a_new_tab_and_says_so(self):
+        media = self.attach("receipt.pdf", b"%PDF-1.4 not renderable", "application/pdf")
+        tile = self.tile(media)
+        self.assertIn('target="_blank"', tile)
+        # Without this the new tab can reach back at the page that opened it.
+        self.assertIn('rel="noopener"', tile)
+        self.assertNotIn("data-lightbox", tile)
+        # A link that moves the page without saying so is disorienting for
+        # anybody who cannot watch it happen.
+        self.assertIn("opens in a new tab", tile)
+
+    def test_every_tile_is_a_working_link_with_no_script_involved(self):
+        """The lightbox is an enhancement of a link that already went somewhere.
+
+        Both branches are asserted together because the failure mode is one
+        branch quietly becoming a `<span>` with a click handler, which is fine
+        until the script is blocked or has not loaded yet.
+        """
+        photo = self.attach("bushing.png", a_png(), "image/png")
+        document = self.attach("receipt.pdf", b"%PDF-1.4 not renderable", "application/pdf")
+        page = self.page()
+        for media in (photo, document):
+            self.assertIn(f'href="{media.url_for()}"', page)
+
+    def test_the_page_carries_exactly_one_viewer(self):
+        """One per page, reused; not one per photo."""
+        self.attach("bushing.png", a_png(), "image/png")
+        self.attach("clip.png", a_png(colour=(20, 90, 160)), "image/png")
+        self.assertEqual(self.page().count('id="lightbox"'), 1)
+
+
 class BackfillTests(LocalMediaMixin, TestCase):
     def test_the_command_queues_files_that_have_no_preview(self):
         from django.core.management import call_command

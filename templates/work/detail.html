@@ -1,7 +1,8 @@
 {% extends "base.html" %}{% load i18n %}
 {% block title %}{{ wo.number }} — {{ shop_name }}{% endblock %}
 {% block content %}
-
+{% url 'work_order_list' as back_url %}
+{% include "partials/_back.html" with url=back_url label=_("Work orders") %}
 <div class="spread">
   <div>
     <h1><span class="mono muted">{{ wo.number }}</span> {{ wo.title }}</h1>

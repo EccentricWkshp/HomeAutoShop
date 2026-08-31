@@ -261,6 +261,38 @@ class ImportTests(TestCase):
         service.run(self.order, dry_run=False)
         self.assertEqual(PartFitment.objects.filter(asset__isnull=True).count(), 4)
 
+    def test_a_fitment_you_removed_is_not_brought_back_by_a_second_import(self):
+        """Correcting a vendor's claim has to outlast the claim.
+
+        `get_or_create` could not see a soft-deleted row, so re-importing the
+        same order made a fresh copy of a fitment the operator had already
+        thrown away — the import quietly undoing their work, and looking
+        idempotent while it did it.
+        """
+        service.run(self.order, dry_run=False)
+        fitment = PartFitment.objects.filter(part__part_number="RK621296").get()
+        fitment.delete()
+
+        service.run(load("179986706"), dry_run=False)
+
+        self.assertFalse(
+            PartFitment.objects.filter(part__part_number="RK621296").exists(),
+            "the import resurrected a fitment that had been removed",
+        )
+
+    def test_a_fitment_marked_as_not_fitting_survives_a_second_import(self):
+        """The stronger case: the shop's own finding beats the vendor's claim."""
+        service.run(self.order, dry_run=False)
+        fitment = PartFitment.objects.filter(part__part_number="RK621296").get()
+        fitment.confidence = PartFitment.Confidence.DOES_NOT_FIT
+        fitment.save()
+
+        service.run(load("179986706"), dry_run=False)
+
+        rows = PartFitment.objects.filter(part__part_number="RK621296")
+        self.assertEqual(rows.count(), 1, "the claim was recorded a second time")
+        self.assertEqual(rows.get().confidence, PartFitment.Confidence.DOES_NOT_FIT)
+
     def test_reading_the_same_order_twice_does_not_make_two_purchases(self):
         """§6.2 — `external_ref` is what makes an import idempotent."""
         service.run(self.order, dry_run=False)

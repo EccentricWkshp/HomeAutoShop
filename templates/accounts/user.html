@@ -1,6 +1,8 @@
 {% extends "base.html" %}{% load i18n %}
 {% block title %}{{ person.username }}{% endblock %}
 {% block content %}
+{% url 'user_list' as back_url %}
+{% include "partials/_back.html" with url=back_url label=_("People who can sign in") %}
 <div class="spread">
   <div>
     <h1>{{ person.username }}</h1>

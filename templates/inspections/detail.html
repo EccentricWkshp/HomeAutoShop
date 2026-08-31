@@ -1,7 +1,8 @@
 {% extends "base.html" %}{% load i18n %}
 {% block title %}{{ inspection.template_name }} — {{ inspection.asset.nickname }}{% endblock %}
 {% block content %}
-
+{% url 'inspection_list' as back_url %}
+{% include "partials/_back.html" with url=back_url label=_("Inspections") %}
 <div class="spread">
   <div>
     <h1>{{ inspection.template_name }}</h1>

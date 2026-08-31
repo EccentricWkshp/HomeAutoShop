@@ -1,7 +1,8 @@
 {% extends "base.html" %}{% load i18n %}
 {% block title %}{{ purchase.vendor }} — {{ shop_name }}{% endblock %}
 {% block content %}
-
+{% url 'purchase_list' as back_url %}
+{% include "partials/_back.html" with url=back_url label=_("Purchases") %}
 <div class="spread">
   <div>
     <h1>{{ purchase.vendor }} <span class="mono muted">{{ purchase.order_number }}</span></h1>
