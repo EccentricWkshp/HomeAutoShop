@@ -12,6 +12,21 @@
   {% translate "HomeAutoShop does not keep a tool inventory — WrenchLedger does. This is the shadow copy it keeps for answering \"can I do this job today?\", plus anything named by hand on a work order." %}
 </p>
 
+{% comment %}
+Said before the search box rather than after an empty result. A search over four
+cached tools and a search over four hundred fail identically from the outside,
+and only one of them is a search problem — so the size of the copy is stated
+where somebody about to distrust the search can see it.
+{% endcomment %}
+{% if tools_enabled %}
+  <p class="small muted">
+    {% blocktranslate with n=cached_from_wrenchledger when=last_sync|default:_("never") %}{{ n }} tools copied from WrenchLedger, last read {{ when }}.{% endblocktranslate %}
+    {% if user.is_admin %}
+      {% blocktranslate %}If a tool you own is missing, <a href="/integrations/">read every tool again</a> — an ordinary check only asks for what changed.{% endblocktranslate %}
+    {% endif %}
+  </p>
+{% endif %}
+
 <section class="card">
   <form method="get" class="row" role="search">
     <label class="visually-hidden" for="toolq">{% translate "Search tools" %}</label>
@@ -19,15 +34,13 @@
            placeholder="{% translate 'Name, brand, or id…' %}">
     <button class="primary nowrap" type="submit">{% translate "Find" %}</button>
   </form>
-  {% if query and not tools_enabled %}
-    <p class="small muted">
-      {% translate "Only what is cached here is searched: WrenchLedger is not configured, or Offline Mode is on." %}
-    </p>
-  {% elif query and not remote_ok %}
-    <p class="msg warning">
-      {% translate "WrenchLedger did not answer, so this is only what is already known here." %}
-    </p>
-  {% endif %}
+  {% comment %}
+  No "WrenchLedger did not answer" warning any more. It was shown on every
+  search, because the search asked with a parameter the API rejects — so the
+  one message on this screen was both permanent and false. The search is local
+  now, and how complete the copy is gets stated above, where it is useful
+  before a search rather than as an alarm after one.
+  {% endcomment %}
 </section>
 
 <section class="card">
@@ -84,21 +97,5 @@
   </table></div>
 </section>
 
-{% if remote_rows %}
-  <section class="card">
-    <h2>{% translate "In WrenchLedger" %}</h2>
-    <p class="small muted">
-      {% translate "Found in WrenchLedger and not cached here yet. Naming one on a job order caches it." %}
-    </p>
-    <ul class="list small">
-      {% for row in remote_rows %}
-        <li>
-          <a href="https://www.wrench-ledger.app/tools/{{ row.id }}" target="_blank" rel="noopener"
-             aria-label="{% blocktranslate with name=row.name %}{{ name }} in WrenchLedger (opens in a new tab){% endblocktranslate %}">{{ row.name }}</a>
-          {% if row.detail %}<span class="muted"> · {{ row.detail }}</span>{% endif %}
-        </li>
-      {% endfor %}
-    </ul>
-  </section>
-{% endif %}
+
 {% endblock %}

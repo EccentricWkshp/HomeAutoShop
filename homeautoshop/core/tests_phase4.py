@@ -19,7 +19,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from homeautoshop.accounts.models import User
+from homeautoshop.accounts.models import Role, User
 from homeautoshop.assets.models import Asset, UsageReading
 from homeautoshop.core import csvimport, schedule
 from homeautoshop.core.integrations import sync as lubelogger_sync
@@ -346,15 +346,40 @@ class WrenchLedgerSyncTests(TestCase):
         tool, _created = ShopTool.objects.get_or_create(tool_id=tool_id)
         JobItemTool.objects.create(job_item=item, tool=tool)
 
+    #: A real WrenchLedger id, because the schedule poll now checks the shape.
+    WL_ID = "0231e52e-34ca-45d3-a31d-aaae0d93b694"
+
     def test_a_calibration_due_today_is_an_issue(self):
-        self._referenced("t1")
+        self._referenced(self.WL_ID)
         wl.sync(
             client=self.FakeClient(
-                tools=[{"id": "t1", "name": "Torque wrench", "updated_at": "2026-05-01T00:00:00Z"}],
+                tools=[{"id": self.WL_ID, "name": "Torque wrench",
+                        "updated_at": "2026-05-01T00:00:00Z"}],
                 schedules=[{"kind": "calibration", "next_due_on": "2020-01-01"}],
             )
         )
-        self.assertTrue(ShopTool.objects.get(tool_id="t1").issues)
+        self.assertTrue(ShopTool.objects.get(tool_id=self.WL_ID).issues)
+
+    def test_a_tool_wrenchledger_never_heard_of_is_not_asked_about(self):
+        """A tool named on a job that the picker could not match is stored under
+        the typed text — `Vacuum pump` became a tool id, and every sync then
+        asked for `/tools/Vacuum pump/schedules`, three times in one instance's
+        audit log and never once successfully."""
+        self._referenced("Vacuum pump")
+        client = self.FakeClient(schedules=[{"kind": "calibration", "next_due_on": "2020-01-01"}])
+        client.asked = []
+        original = client.schedules_for
+
+        def watched(tool_id):
+            client.asked.append(tool_id)
+            return original(tool_id)
+
+        client.schedules_for = watched
+
+        wl.sync(client=client)
+
+        self.assertEqual(client.asked, [])
+        self.assertIsNone(ShopTool.objects.get(tool_id="Vacuum pump").calibration_due_on)
 
     def test_schedules_are_not_fetched_for_a_tool_no_job_references(self):
         """Per tool, and only the referenced ones — WrenchLedger has no
@@ -994,3 +1019,181 @@ class WebPushTests(TestCase):
         page = self.client.get(reverse("reminders"))
         self.assertNotIn("webpush", [value for value, _label in page.context["kinds"]])
         self.assertContains(page, "Notify this device")
+
+
+class ToolDrainTests(TestCase):
+    """Reading the whole tool list, whatever shape the envelope is.
+
+    Reported as: most tools cannot be found by name, and the few that can look
+    arbitrary. Three assumptions in this client had never met the real API —
+    every test above mocks the client itself — and each one produces exactly
+    that symptom.
+    """
+
+    def client_returning(self, pages):
+        """A client whose `get` replays `pages` in order."""
+        client = wl.WrenchLedgerClient(api_key="wlk_test")
+        calls = []
+
+        def get(path, **params):
+            calls.append((path, params))
+            return pages[min(len(calls) - 1, len(pages) - 1)]
+
+        client.get = get
+        client.calls = calls
+        return client
+
+    def test_a_cursor_under_meta_is_still_a_cursor(self):
+        """The rows were looked for in four places and the cursor in one. An
+        envelope that pages under `meta` therefore looked like a finished drain
+        after page one."""
+        client = self.client_returning(
+            [
+                {"data": [{"id": "t1", "updated_at": "2026-01-02"}],
+                 "meta": {"next_cursor": "c2"}},
+                {"data": [{"id": "t2", "updated_at": "2026-01-01"}], "meta": {}},
+            ]
+        )
+
+        rows, watermark = client.tools_changed_since(None)
+
+        self.assertEqual([row["id"] for row in rows], ["t1", "t2"])
+        self.assertEqual(watermark, "2026-01-02")
+
+    def test_every_cursor_spelling_this_api_might_use(self):
+        for envelope in (
+            {"next_cursor": "c"}, {"nextCursor": "c"}, {"cursor": "c"},
+            {"next": "c"}, {"meta": {"cursor": "c"}}, {"pagination": {"next": "c"}},
+            {"links": {"next": "c"}},
+        ):
+            with self.subTest(envelope=envelope):
+                self.assertEqual(wl._cursor({"data": [], **envelope}), "c")
+
+    def test_a_full_page_with_no_cursor_leaves_the_watermark_alone(self):
+        """The silent one. A page we could not continue used to advance the
+        watermark to its newest row, and `updated_after` is strictly greater —
+        so every older tool was skipped for good, by one run, invisibly."""
+        page = [
+            {"id": f"t{n}", "updated_at": "2026-01-%02d" % (n % 28 + 1)}
+            for n in range(wl.PAGE_SIZE)
+        ]
+        client = self.client_returning([{"data": page}])
+
+        rows, watermark = client.tools_changed_since("2025-01-01")
+
+        self.assertEqual(len(rows), wl.PAGE_SIZE)
+        self.assertEqual(watermark, "2025-01-01", "the watermark moved past unread tools")
+
+    def test_a_short_page_with_no_cursor_is_a_finished_drain(self):
+        client = self.client_returning([{"data": [{"id": "t1", "updated_at": "2026-02-02"}]}])
+        rows, watermark = client.tools_changed_since(None)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(watermark, "2026-02-02")
+
+    def test_the_drain_asks_for_a_page_size_of_its_own(self):
+        """Otherwise 'a full page' is whatever the server felt like sending, and
+        the check above cannot be made."""
+        client = self.client_returning([{"data": []}])
+        client.tools_changed_since(None)
+        self.assertEqual(client.calls[0][1]["limit"], wl.PAGE_SIZE)
+
+    def test_the_drain_says_where_the_cursor_was(self):
+        """A truncated drain looks exactly like a short one, so where the token
+        lives is worth a line the day the envelope changes again."""
+        client = self.client_returning(
+            [
+                {"data": [{"id": "t1"}], "meta": {"next_cursor": "c2"}},
+                {"data": [{"id": "t2"}]},
+            ]
+        )
+
+        with self.assertLogs("homeautoshop.core.integrations.wrenchledger", "INFO") as logged:
+            client.tools_changed_since(None)
+
+        self.assertTrue(any("meta.next_cursor" in line for line in logged.output))
+
+    def test_it_says_so_only_once_however_many_pages(self):
+        client = self.client_returning(
+            [
+                {"data": [{"id": "t1"}], "next_cursor": "c2"},
+                {"data": [{"id": "t2"}], "next_cursor": "c3"},
+                {"data": [{"id": "t3"}]},
+            ]
+        )
+
+        with self.assertLogs("homeautoshop.core.integrations.wrenchledger", "INFO") as logged:
+            client.tools_changed_since(None)
+
+        paging = [line for line in logged.output if "pages /tools by" in line]
+        self.assertEqual(len(paging), 1)
+
+    def test_a_match_may_be_on_the_brand_or_the_model(self):
+        row = {"id": "t1", "name": "Pump", "brand": "Robinair", "model": "15600"}
+        self.assertTrue(wl.matches(row, "robinair"))
+        self.assertTrue(wl.matches(row, "15600"))
+        self.assertFalse(wl.matches(row, "snap-on"))
+
+    def test_nothing_matches_an_empty_query(self):
+        self.assertFalse(wl.matches({"name": "Anything"}, "  "))
+
+
+@override_settings(WRENCHLEDGER_API_KEY="wlk_live_test")
+class RebuildTests(TestCase):
+    """Repairing a cache an earlier truncated run left with holes."""
+
+    class FakeClient:
+        base_url = wl.DEFAULT_BASE
+
+        def __init__(self):
+            self.asked_for = []
+
+        def open_loans(self):
+            return []
+
+        def tools_changed_since(self, watermark):
+            self.asked_for.append(watermark)
+            if watermark is None:
+                return [
+                    {"id": "t1", "name": "Vacuum pump", "updated_at": "2026-01-01"},
+                    {"id": "t2", "name": "Torque wrench", "updated_at": "2026-02-01"},
+                ], "2026-02-01"
+            return [], watermark
+
+        def schedules_for(self, tool_id):
+            return []
+
+    def test_an_ordinary_run_asks_only_for_what_changed(self):
+        from homeautoshop.core.models import Setting
+
+        Setting.put(wl.WATERMARK_KEY, "2026-02-01")
+        client = self.FakeClient()
+
+        wl.sync(client=client)
+
+        self.assertEqual(client.asked_for, ["2026-02-01"])
+        self.assertEqual(ShopTool.objects.count(), 0)
+
+    def test_a_rebuild_forgets_the_watermark_and_reads_everything(self):
+        """A delta poll is only as complete as every run before it, so fixing
+        the code that truncated does not fix the rows it skipped."""
+        from homeautoshop.core.models import Setting
+
+        Setting.put(wl.WATERMARK_KEY, "2026-02-01")
+        client = self.FakeClient()
+
+        wl.sync(client=client, rebuild=True)
+
+        self.assertEqual(client.asked_for, [None])
+        self.assertEqual(
+            sorted(ShopTool.objects.values_list("name", flat=True)),
+            ["Torque wrench", "Vacuum pump"],
+        )
+
+    def test_the_screen_offers_it(self):
+        user = User.objects.create_user(
+            username="andy", password="x" * 16, role=Role.ADMIN
+        )
+        self.client.force_login(user)
+        response = self.client.get(reverse("integrations"))
+        self.assertContains(response, "Read every tool again")
+        self.assertContains(response, "Tools known here")

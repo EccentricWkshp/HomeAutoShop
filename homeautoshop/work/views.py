@@ -743,51 +743,41 @@ def tool_search(request):
     query = (request.GET.get("q") or "").strip()
     if len(query) < 2:
         return JsonResponse({"results": [], "remote": False})
-    found, remote_ok = search_tools(query)
-    return JsonResponse({"results": found, "remote": remote_ok})
+    return JsonResponse({"results": search_tools(query), "remote": False})
 
 
-def search_tools(query: str, *, local_limit: int = 10, remote_limit: int = 15) -> tuple[list[dict], bool]:
-    """Both catalogues, merged, local first.
+def search_tools(query: str, *, limit: int = 25) -> list[dict]:
+    """The shop's copy of the tool catalogue, searched here.
 
     Shared by the autocomplete on a job item and by the tools screen, because
-    two searches over the same two sources are two chances to answer the same
+    two searches over the same source are two chances to answer the same
     question differently — and the difference would show up as a tool somebody
     can find in one place and not the other.
+
+    **This used to ask WrenchLedger as well, and that half never once worked.**
+    It sent `GET /tools?q=…`; the API rejects the parameter, so every search
+    made a doomed request, swallowed an HTTP 400 and reported "WrenchLedger did
+    not answer" — which was alarming and untrue. What made the shortfall look
+    like a search problem was the *cache* being three quarters empty, and that
+    was the drain's bug, fixed where it lived.
+
+    So this is local, and being local is a feature: it is instant, it works
+    with the WAN unplugged (P-1), and the sync is what keeps it honest.
     """
-    found: dict[str, dict] = {}
-    for tool in ShopTool.objects.filter(
-        Q(name__icontains=query) | Q(tool_id__icontains=query) | Q(brand__icontains=query)
-    )[:local_limit]:
-        found[tool.tool_id] = {
+    return [
+        {
             "id": tool.tool_id,
             "name": tool.name or tool.tool_id,
             "detail": " ".join(x for x in (tool.brand, tool.model) if x),
             "known": True,
         }
-
-    remote_ok = False
-    if readiness.enabled():
-        try:
-            from homeautoshop.core.integrations.wrenchledger import WrenchLedgerClient
-
-            for row in WrenchLedgerClient().search_tools(query)[:remote_limit]:
-                tool_id = str(row.get("id") or row.get("tool_id") or "").strip()
-                if not tool_id or tool_id in found:
-                    continue
-                found[tool_id] = {
-                    "id": tool_id,
-                    "name": str(row.get("name") or tool_id),
-                    "detail": " ".join(
-                        str(x) for x in (row.get("brand"), row.get("model")) if x
-                    ),
-                    "known": False,
-                }
-            remote_ok = True
-        except Exception as exc:  # noqa: BLE001 - the local half still stands
-            log.info("tool search could not reach WrenchLedger: %s", exc)
-
-    return list(found.values())[:local_limit + remote_limit], remote_ok
+        for tool in ShopTool.objects.filter(
+            Q(name__icontains=query)
+            | Q(tool_id__icontains=query)
+            | Q(brand__icontains=query)
+            | Q(model__icontains=query)
+        )[:limit]
+    ]
 
 
 @login_required
@@ -805,17 +795,18 @@ def tool_list(request):
     lists the shadow copy and hands the rest off to the real thing.
     """
     query = (request.GET.get("q") or "").strip()
-    remote_ok = False
-    remote_rows: list[dict] = []
 
     known = ShopTool.objects.all()
     if query:
         known = known.filter(
-            Q(name__icontains=query) | Q(tool_id__icontains=query) | Q(brand__icontains=query)
+            Q(name__icontains=query)
+            | Q(tool_id__icontains=query)
+            | Q(brand__icontains=query)
+            | Q(model__icontains=query)
         )
-        merged, remote_ok = search_tools(query)
-        held = {tool.tool_id for tool in known}
-        remote_rows = [row for row in merged if row["id"] not in held]
+
+    from homeautoshop.core.integrations import wrenchledger
+    from homeautoshop.core.models import Setting
 
     return render(
         request,
@@ -823,9 +814,16 @@ def tool_list(request):
         {
             "query": query,
             "tools": known,
-            "remote_rows": remote_rows,
-            "remote_ok": remote_ok,
             "tools_enabled": readiness.enabled(),
+            # How complete this copy is, and when it was last filled. A search
+            # over four cached rows and a search over four hundred fail the
+            # same way from the outside, and only one of them is a search
+            # problem — so the screen says which it is looking at.
+            "cached": ShopTool.objects.count(),
+            "cached_from_wrenchledger": ShopTool.objects.filter(
+                checked_at__isnull=False
+            ).count(),
+            "last_sync": Setting.get(wrenchledger.LAST_SYNC_KEY),
         },
     )
 

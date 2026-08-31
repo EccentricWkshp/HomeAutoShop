@@ -34,8 +34,9 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from datetime import date
+from uuid import UUID
 
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 from django.conf import settings
 from django.utils import timezone
@@ -217,32 +218,101 @@ class WrenchLedgerClient:
         request-time watermark silently skips anything written between the
         query running and the response landing. A page left undrained must not
         advance it either, or those changes are lost for good.
+
+        That last sentence used to be true only of the explicit page bound. The
+        far more likely way to leave a drain unfinished was to *not recognise*
+        the cursor: this read `next_cursor` at the top level and nothing else,
+        while `_rows` already accepted four different places for the rows. An
+        envelope that nests its cursor under `meta` therefore looked exactly
+        like a finished drain — one page read, the watermark advanced to that
+        page's newest row, and every tool with an older stamp skipped for good
+        because the next request asks for strictly *newer* than that.
+
+        So two changes. The cursor is looked for as tolerantly as the rows are,
+        and **a full page with no cursor does not advance the watermark** — it
+        is the signature of a continuation token we failed to find, and staying
+        put costs one repeated page while guessing costs the whole tail.
         """
         rows: list[dict] = []
         cursor = None
         seen = watermark
-        for _page in range(20):  # a bound, not a limit anyone should hit
-            data = self.get("/tools", updated_after=watermark, cursor=cursor)
+        pages = 0
+        for _page in range(40):  # a bound, not a limit anyone should hit
+            data = self.get(
+                "/tools", updated_after=watermark, cursor=cursor, limit=PAGE_SIZE
+            )
             page = _rows(data)
             rows.extend(page)
+            pages += 1
             for row in page:
                 stamp = str(row.get("updated_at") or "")
                 if stamp and (seen is None or stamp > seen):
                     seen = stamp
-            cursor = (data or {}).get("next_cursor") if isinstance(data, dict) else None
+            cursor, where = _find_cursor(data)
+            if cursor and pages == 1:
+                # Once per drain, naming the key. The failure this replaced was
+                # invisible precisely because a truncated drain looks exactly
+                # like a short one, so where the token lives is worth a line in
+                # the log the day the envelope changes again.
+                log.info("wrenchledger pages /tools by %r", where)
             if not cursor:
+                if len(page) >= PAGE_SIZE:
+                    log.warning(
+                        "wrenchledger returned a full page of %s tools with no cursor "
+                        "this client recognises; leaving the watermark alone",
+                        len(page),
+                    )
+                    return rows, watermark
                 return rows, seen
         # Bailed out mid-drain: report what was read but leave the watermark
         # where it was, so the next run starts from the same place.
-        log.warning("wrenchledger tool delta did not drain in 20 pages")
+        log.warning("wrenchledger tool delta did not drain in 40 pages")
         return rows, watermark
+
+    def all_tools(self) -> list[dict]:
+        """Every tool in the workspace, by the documented drain.
+
+        The search below rests on a `q` parameter this integration has never
+        confirmed exists; this rests on `updated_after` and cursor paging, both
+        of which are documented and both of which the sync already depends on.
+        It is what makes the local cache complete, and a complete local cache is
+        what makes "do I own a vacuum pump?" answerable without asking anybody.
+        """
+        rows, _seen = self.tools_changed_since(None)
+        return rows
 
     def schedules_for(self, tool_id: str) -> list[dict]:
         """Tier 3 — calibration and service dates, per referenced tool only."""
-        return _rows(self.get(f"/tools/{tool_id}/schedules"))
+        # Quoted, because an id is not guaranteed to be URL-safe just because
+        # it usually is: `/tools/Vacuum pump/schedules` went out unencoded and
+        # failed at the socket rather than at the server.
+        return _rows(self.get(f"/tools/{quote(str(tool_id), safe='')}/schedules"))
 
-    def search_tools(self, query: str) -> list[dict]:
-        return _rows(self.get("/tools", q=query, limit=20))
+    # There is no `search_tools` here any more, and its absence is the point.
+    #
+    # It sent `GET /tools?q=…`, a parameter this integration never verified and
+    # which **the API rejects**: 137 such calls in one instance's audit log,
+    # every one of them HTTP 400, not one success. So the remote half of tool
+    # search never worked — while the failure was swallowed and reported as
+    # "WrenchLedger did not answer", which is both alarming and untrue. It
+    # answered immediately and said the request was malformed.
+    #
+    # Searching is now purely local, over the cache the drain above fills. That
+    # is the documented path, it is the one that works, and it is faster and
+    # available offline besides. The cache being *complete* is what makes it
+    # sufficient — which is why the drain, not the search, was the real bug.
+
+
+#: Our page size rather than the server's default, so "a full page" is a fact
+#: this client can recognise — see `tools_changed_since`.
+PAGE_SIZE = 100
+
+#: Where a continuation token is found, in the order it is looked for. As
+#: tolerant as `_rows` is about the rows themselves, and for the same reason:
+#: guessing wrong here does not fail loudly, it silently truncates.
+CURSOR_KEYS = ("next_cursor", "nextCursor", "cursor", "next", "next_page")
+#: Envelopes that put paging beside the rows rather than at the top level.
+CURSOR_ENVELOPES = ("meta", "pagination", "page", "paging", "links")
 
 
 def _rows(data) -> list[dict]:
@@ -254,6 +324,62 @@ def _rows(data) -> list[dict]:
             if isinstance(found, list):
                 return [row for row in found if isinstance(row, dict)]
     return []
+
+
+def _find_cursor(data) -> tuple[str | None, str]:
+    """The continuation token and where it was found.
+
+    The location is returned, not just the value, because it is the thing worth
+    knowing when this stops working: an envelope that moves is invisible from
+    the outside — the drain simply reads one page and stops — and this is what
+    turns that into a line somebody can read.
+    """
+    if not isinstance(data, dict):
+        return None, ""
+    scopes = [("", data)] + [(name, data.get(name)) for name in CURSOR_ENVELOPES]
+    for envelope, scope in scopes:
+        if not isinstance(scope, dict):
+            continue
+        for key in CURSOR_KEYS:
+            value = scope.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip(), f"{envelope}.{key}" if envelope else key
+    return None, ""
+
+
+def _cursor(data) -> str | None:
+    """The continuation token, wherever this API happens to keep it."""
+    return _find_cursor(data)[0]
+
+
+def is_wrenchledger_id(value) -> bool:
+    """Whether this id could have come from WrenchLedger at all.
+
+    Tool ids there are UUIDs (WL-Q2 — the deep link is `/tools/{tool_uuid}`).
+    A `ShopTool` row keyed by anything else was invented here, by somebody
+    naming a tool on a job that the picker could not match, and the other
+    system has never heard of it.
+    """
+    try:
+        UUID(str(value))
+    except (ValueError, AttributeError, TypeError):
+        return False
+    return True
+
+
+def matches(row: dict, query: str) -> bool:
+    """Whether a tool row actually answers what was typed.
+
+    The same fields the local search looks at, so a tool cannot be findable in
+    one half of the merged result and not the other.
+    """
+    needle = (query or "").strip().casefold()
+    if not needle:
+        return False
+    return any(
+        needle in str(row.get(field) or "").casefold()
+        for field in ("name", "brand", "model", "id", "tool_id", "category")
+    )
 
 
 def keep_tool_fields(row: dict) -> dict:
@@ -269,12 +395,18 @@ WATERMARK_KEY = "wrenchledger.tools_watermark"
 LAST_SYNC_KEY = "wrenchledger.last_sync"
 
 
-def sync(*, client=None, tool_ids: list[str] | None = None) -> dict:
+def sync(*, client=None, tool_ids: list[str] | None = None, rebuild: bool = False) -> dict:
     """Refresh the availability cache.
 
     `tool_ids` scopes the schedule reads to one work order's tools, for the
     on-demand refresh when a job is opened — so what is shown is never stale at
     the moment it matters most.
+
+    `rebuild` throws the watermark away and reads the workspace from the start.
+    A delta poll is only ever as complete as every run before it, so a run that
+    truncated once leaves a hole no later delta will fill: the watermark has
+    already moved past it. Fixing the code that truncated does not fix the
+    cache, and there has to be a way to say *start again*.
     """
     from homeautoshop.core.models import Setting
     from homeautoshop.work.models import ShopTool
@@ -288,7 +420,7 @@ def sync(*, client=None, tool_ids: list[str] | None = None) -> dict:
 
     # Tier 2 first: a rename should land before the loan that references it, so
     # the gate never renders a tool as "(unknown)" with a due date beside it.
-    watermark = Setting.get(WATERMARK_KEY)
+    watermark = None if rebuild else Setting.get(WATERMARK_KEY)
     changed, moved = client.tools_changed_since(watermark)
     for row in changed:
         kept = keep_tool_fields(row)
@@ -332,11 +464,19 @@ def sync(*, client=None, tool_ids: list[str] | None = None) -> dict:
 
     # Tier 3: only tools a job actually references. There is no workspace-wide
     # schedule list, so this is per tool and deliberately the narrowest call.
+    #
+    # And only tools WrenchLedger has heard of. A tool named on a job that the
+    # picker could not match is recorded under the typed text — `Vacuum pump`
+    # became a tool id — and this then spent every sync asking WrenchLedger for
+    # `/tools/Vacuum pump/schedules`, which cannot succeed and never did. Asking
+    # about something the other system has no idea exists is not a fetch that
+    # failed, it is a question that should not have been posed.
     wanted = tool_ids if tool_ids is not None else list(
         ShopTool.objects.filter(references__isnull=False)
         .distinct()
         .values_list("tool_id", flat=True)
     )
+    wanted = [tool_id for tool_id in wanted if is_wrenchledger_id(tool_id)]
     for tool_id in wanted:
         try:
             schedules = client.schedules_for(tool_id)

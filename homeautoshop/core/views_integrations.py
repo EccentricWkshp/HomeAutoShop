@@ -24,6 +24,7 @@ from homeautoshop.accounts.models import require
 from .integrations import sync as lubelogger_sync
 from .integrations import wrenchledger as wl
 from .models import AuditLog, Setting
+from homeautoshop.work.models import ShopTool
 
 log = logging.getLogger(__name__)
 
@@ -58,6 +59,10 @@ def integrations(request):
                 "last": Setting.get(wl.LAST_SYNC_KEY),
                 "required_scopes": wl.REQUIRED_SCOPES,
                 "consumables_owner": conf.CONSUMABLES_OWNER,
+                # The one number that distinguishes "search is broken" from
+                # "the copy is incomplete", which look identical from outside.
+                "cached": ShopTool.objects.count(),
+                "cached_local": ShopTool.objects.filter(checked_at__isnull=True).count(),
             },
             "plate": {
                 "enabled": conf.PLATE_LOOKUP_ENABLED,
@@ -155,14 +160,21 @@ def integration_sync(request, name):
         return redirect("integrations")
 
     if name == "wrenchledger":
+        # A delta poll is only as complete as every run before it. `rebuild`
+        # forgets the watermark and reads the workspace from the start, which is
+        # the only way to fill a hole an earlier truncated run left behind.
+        rebuild = bool(request.POST.get("rebuild"))
         try:
-            summary = wl.sync()
+            summary = wl.sync(rebuild=rebuild)
         except Exception as exc:  # noqa: BLE001
             log.exception("wrenchledger sync failed")
             messages.error(request, _("Sync failed: %(err)s") % {"err": exc})
             return redirect("integrations")
         messages.success(
-            request, _("Checked %(n)d tool(s).") % {"n": summary["tools"]}
+            request,
+            _("Read every tool: %(n)d known here now.") % {"n": summary["tools"]}
+            if rebuild
+            else _("Checked %(n)d tool(s).") % {"n": summary["tools"]},
         )
         return redirect("integrations")
 

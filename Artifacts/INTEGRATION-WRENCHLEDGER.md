@@ -414,6 +414,38 @@ WrenchLedger is a commercial product by the same developer, and a contextual men
 | WL-Q10 | Whose `reminder_lead_days` does the dashboard resolve to? | **Moot, by design.** They can legitimately differ per person, so HomeAutoShop **keeps its own lead window** and never inherits one from another product — most of its users will not have a WrenchLedger subscription at all. The dashboard is demoted to an optional convenience (§3.4). Same principle as SPEC OQ-9 and §6.6: an optional integration never dictates core behavior. |
 | WL-Q11 | Is `updated_after` inclusive or exclusive? | **Strictly exclusive** — `t.updated_at > p_updated_after` (migration `0051`). So the watermark is the **maximum `updated_at` observed in the drained pages**, never the request time; a request-time watermark would silently skip anything written between query execution and response (§3.5). No millisecond nudging needed. |
 
+### 11.3 Fourth round — found by using it, then settled from the audit log
+
+Reported as: *most tools cannot be found by name, and the few that can look
+arbitrary.* Three assumptions in the adapter had never met the API — every test
+covering them mocks the client itself — and each one was wrong.
+
+They were answered by reading one instance's outbound audit log, which records
+host, path, purpose and status for every call and survives restarts. **206
+WrenchLedger calls; the numbers below are from that table**, not from reasoning
+about what the API probably does.
+
+| ID | Question | Resolution |
+| --- | --- | --- |
+| WL-Q12 | Where does `GET /tools` put its continuation token? | **Not at the top level under `next_cursor`, which was the only place the adapter looked.** The log settles it: **19 `/loans` calls and 19 pre-rebuild `/tools` calls** — one page per sync run, nineteen runs. A drain that had merely hit the 20-page bound would show twenty calls in *one* run. The cursor is now looked for as tolerantly as the rows already were (`next_cursor` / `nextCursor` / `cursor` / `next` / `next_page`, top level or under `meta` / `pagination` / `page` / `paging` / `links`), and the drain logs which key it found, once per run, so the day the envelope moves again is a line somebody can read rather than a silent truncation. |
+| WL-Q13 | What happens when a drain stops early? | **It loses the tail permanently and says nothing.** `updated_after` is strictly exclusive (WL-Q11), so advancing the watermark to the newest row of an unfinished page skips every older tool for good. Measured: a **642-tool workspace had 140–160 tools cached** — about a quarter — after nineteen runs each ratcheting the watermark forward one page. A **full page with no recognised cursor now leaves the watermark alone**: that shape is the signature of a token we failed to find, and repeating one page is cheap where guessing is not. The drain also sends its own `limit`, so "a full page" is a fact this client can recognise rather than the server's default. |
+| WL-Q14 | Does `GET /tools` support a `q` search parameter? | **No, and it does not ignore it — it refuses.** **137 `/tools` calls, every one HTTP 400, not a single success.** The remote half of tool search therefore never worked, on any query, since the day it was written; the failure was caught and reported to the operator as *"WrenchLedger did not answer"*, which was both alarming and false. The API answered at once and said the request was malformed. **The remote search is gone.** Searching is local, over the cache the drain fills — the documented path, the one that works, and instant and offline-capable besides. A complete cache is what makes it sufficient, which is why the drain was always the real bug. |
+| WL-Q15 | May a `ShopTool` id be sent to WrenchLedger unchecked? | **No.** A tool named on a job that the picker could not match is recorded under the typed text (FR-WL-7 — the integration is never load-bearing), so `Vacuum pump` became a tool id. Tier 3 then asked for `/tools/Vacuum pump/schedules` on every sync — **3 calls, status 0**, failing at the socket on the unencoded space. Ids are checked for UUID shape before any per-tool call, because asking about something the other system has never heard of is not a fetch that failed but a question that should not have been posed. Path segments are percent-encoded regardless. |
+
+**How these compounded.** The search was broken, so the picker could not find a
+tool by name; the operator typed the name anyway and it was stored as an id;
+that invented id then generated a failing call on every sync thereafter. One
+root cause — the truncated drain — reached the screen as three unrelated-looking
+faults.
+
+**Consequence for an instance already running.** Fixing the drain does not fill
+the hole a truncated drain left; the watermark has moved past it. **Read every
+tool again** on the integrations screen clears the watermark and reads the
+workspace from the start — 642 tools on the instance above, against the 140–160
+it had. That screen and the tools screen both now state how many tools are
+cached, because a search over four rows and a search over four hundred fail
+identically from the outside.
+
 ---
 
 ## 12. Held proposal — reciprocal pairing (no action)

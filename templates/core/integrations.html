@@ -67,6 +67,17 @@
       {% translate "Shows on a work order whether the tools it needs are actually here — on hand, on loan, or due for calibration. A warning, never a block." %}
     </p>
     <p><strong>{% translate "Last checked:" %}</strong> {{ wrenchledger.last|default:_("never") }}</p>
+    {% comment %}
+    The cache size, because it is the one number that says whether searching for
+    a tool can possibly work. A shop with two hundred tools and four rows here
+    does not have a search problem, it has an incomplete copy — and without this
+    line the two look identical from the outside.
+    {% endcomment %}
+    <p><strong>{% translate "Tools known here:" %}</strong> {{ wrenchledger.cached }}
+      {% if wrenchledger.cached_local %}
+        <span class="muted">{% blocktranslate with n=wrenchledger.cached_local %}({{ n }} added by hand){% endblocktranslate %}</span>
+      {% endif %}
+    </p>
     <div class="row">
       <form method="post" action="{% url 'integration_test' 'wrenchledger' %}">{% csrf_token %}
         <button type="submit">{% translate "Test the connection" %}</button>
@@ -74,7 +85,14 @@
       <form method="post" action="{% url 'integration_sync' 'wrenchledger' %}">{% csrf_token %}
         <button type="submit">{% translate "Check tools now" %}</button>
       </form>
+      <form method="post" action="{% url 'integration_sync' 'wrenchledger' %}">{% csrf_token %}
+        <input type="hidden" name="rebuild" value="1">
+        <button type="submit">{% translate "Read every tool again" %}</button>
+      </form>
     </div>
+    <p class="small muted">
+      {% translate "Ordinary checks only ask for what changed since the last one, so a run that stopped early leaves a gap no later check will fill. Read every tool again starts from the beginning — do that if a tool you own cannot be found here." %}
+    </p>
     <p class="small muted">
       {% blocktranslate with owner=wrenchledger.consumables_owner %}Consumables are tracked by <span class="mono">{{ owner }}</span>, so the same quart of oil is not counted in both systems.{% endblocktranslate %}
     </p>

@@ -327,35 +327,33 @@ class ToolLookupTests(Base):
     def test_a_one_letter_query_asks_nobody_anything(self):
         self.assertEqual(self.search("b"), {"results": [], "remote": False})
 
-    def test_wrenchledger_results_are_added_when_it_answers(self):
-        client = mock.Mock()
-        client.search_tools.return_value = [
-            {"id": "wl_1", "name": "Torque wrench", "brand": "CDI"},
-            # Already known here; must not appear twice.
-            {"id": "wl_9912", "name": "Breaker bar"},
-        ]
-        with (
-            mock.patch("homeautoshop.work.readiness.enabled", return_value=True),
-            mock.patch(
-                "homeautoshop.core.integrations.wrenchledger.WrenchLedgerClient",
-                return_value=client,
-            ),
-        ):
-            found = self.search("wrench")
-        self.assertEqual(sorted(row["id"] for row in found["results"]), ["wl_1", "wl_9912"])
-        self.assertTrue(found["remote"])
+    def test_the_search_asks_wrenchledger_nothing(self):
+        """It used to, with `GET /tools?q=…` — a parameter the API rejects. One
+        instance's audit log carried 137 of those calls and 137 HTTP 400s, so
+        the remote half of this search never worked once, while its failure was
+        reported to the operator as "WrenchLedger did not answer".
 
-    def test_a_failing_remote_still_returns_the_local_half(self):
-        with (
-            mock.patch("homeautoshop.work.readiness.enabled", return_value=True),
-            mock.patch(
-                "homeautoshop.core.integrations.wrenchledger.WrenchLedgerClient",
-                side_effect=RuntimeError("down"),
-            ),
-        ):
+        The cache is the catalogue now, and the sync is what keeps it honest.
+        """
+        with mock.patch(
+            "homeautoshop.core.integrations.wrenchledger.WrenchLedgerClient"
+        ) as client:
             found = self.search("breaker")
+
+        client.assert_not_called()
         self.assertEqual([row["id"] for row in found["results"]], ["wl_9912"])
-        self.assertFalse(found["remote"])
+
+    def test_a_tool_is_found_by_its_model_too(self):
+        self.assertEqual(
+            [row["id"] for row in self.search('1/2"')["results"]], ["wl_9912"]
+        )
+
+    def test_the_screen_says_how_complete_the_copy_is(self):
+        """A search over four cached tools and a search over four hundred fail
+        identically from the outside, and only one is a search problem."""
+        with mock.patch("homeautoshop.work.readiness.enabled", return_value=True):
+            response = self.client.get(reverse("tool_list"))
+        self.assertContains(response, "copied from WrenchLedger")
 
     def test_a_name_typed_and_submitted_resolves_without_script(self):
         self.client.post(
