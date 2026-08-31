@@ -93,11 +93,16 @@
       </div>
     </div>
   {% endif %}
-  {% if messages %}
-    <ul class="messages" role="status">
-      {% for message in messages %}<li class="msg {{ message.tags }}">{{ message }}</li>{% endfor %}
-    </ul>
-  {% endif %}
+  {% comment %}
+  Always rendered, empty or not. A live region has to exist *before* content is
+  put into it or the assistive technology has nothing to watch — and once a form
+  can update part of the page without navigating (`liveform.js`), a message that
+  appears into a `<ul>` created at the same moment is a message announced to
+  nobody. Empty, it renders nothing.
+  {% endcomment %}
+  <ul class="messages" role="status" aria-live="polite">
+    {% for message in messages %}<li class="msg {{ message.tags }}">{{ message }}</li>{% endfor %}
+  </ul>
   {% block content %}{% endblock %}
 </main>
 
@@ -116,6 +121,12 @@
 <script src="{% static 'scanner.js' %}" defer></script>
 {# Form behaviour only — every form it touches works correctly without it. #}
 <script src="{% static 'forms.js' %}" defer></script>
+{% comment %}
+Keeps your place when a form updates part of the page. Loaded after forms.js so
+its delegated submit handler runs after that file's per-form confirmations —
+a cancelled confirmation must stop the post, not merely stop the navigation.
+{% endcomment %}
+<script src="{% static 'liveform.js' %}" defer></script>
 
 {% comment %}
 One viewer for the whole page, filled in as it is opened. Empty and never

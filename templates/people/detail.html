@@ -3,7 +3,22 @@
 {% url 'person_list' as back_url %}
 {% include "partials/_back.html" with url=back_url label=_("People") %}
 <div class="spread"><h1>{{ person.display_name }}</h1>
-  <a class="btn" href="{% url 'person_edit' person.pk %}">{% translate "Edit" %}</a></div>
+  <div class="row">
+    <a class="btn" href="{% url 'person_edit' person.pk %}">{% translate "Edit" %}</a>
+    {% comment %}
+    Not while a vehicle still names them. Ending an ownership records that a car
+    changed hands; deleting the owner loses who used to have it, which is a
+    different and less true thing to do.
+    {% endcomment %}
+    {% if not current_assets %}
+      <form method="post" action="{% url 'person_delete' person.pk %}"
+            data-confirm="{% blocktranslate with name=person.display_name %}Remove {{ name }}?{% endblocktranslate %}">
+        {% csrf_token %}
+        <button class="btn danger" type="submit">{% translate "Delete" %}</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
 <div class="cols two">
   <section class="card">
     <h2>{% translate "Vehicles" %}</h2>

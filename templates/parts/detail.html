@@ -26,12 +26,25 @@
   <div class="row">
     <span class="pill {% if part.is_low %}warn{% endif %}">{{ part.on_hand }} {{ part.unit }}</span>
     <a class="btn" href="{% url 'part_edit' part.pk %}">{% translate "Edit" %}</a>
+    {% comment %}
+    Only while the drawer is empty. A part with a quantity is a thing in the
+    building, and removing the record does not remove the object — the shelf
+    would simply stop matching the room. Its history is unaffected either way:
+    this is the ordinary soft delete and the trash holds it for thirty days.
+    {% endcomment %}
+    {% if part.on_hand == 0 %}
+      <form method="post" action="{% url 'part_delete' part.pk %}"
+            data-confirm="{% blocktranslate with name=part.name %}Remove {{ name }}? It goes to the trash for 30 days.{% endblocktranslate %}">
+        {% csrf_token %}
+        <button class="btn danger" type="submit">{% translate "Delete" %}</button>
+      </form>
+    {% endif %}
   </div>
 </div>
 
 <div class="cols two">
   <div class="stack">
-    <section class="card">
+    <section class="card" id="stock-lots" data-live="stock-lots">
       <h2>{% translate "Stock lots" %}</h2>
       <p class="small muted">
         {% translate "Consumption draws the oldest lot first, at what that lot actually cost — not a blended average." %}
@@ -60,7 +73,7 @@
           </td>
           <td>
             {# A count writes an adjustment with a reason; it never overwrites. #}
-            <form method="post" action="{% url 'lot_count' part.pk lot.pk %}" class="row">{% csrf_token %}
+            <form method="post" action="{% url 'lot_count' part.pk lot.pk %}" class="row">{% csrf_token %}<input type="hidden" name="_anchor" value="stock-lots">
               <input type="number" step="{{ part.qty_step }}" name="counted" value="{{ lot.qty_on_hand }}" style="width:6rem"
                      aria-label="{% translate 'Counted quantity' %}">
               <input name="note" style="width:8rem" aria-label="{% translate 'Why the count differs' %}"
@@ -75,7 +88,7 @@
                 across the parts by their shares, so consuming the drier later
                 costs a share of $436.54 rather than nothing.
               {% endcomment %}
-              <form method="post" action="{% url 'lot_open_kit' part.pk lot.pk %}" class="row">{% csrf_token %}
+              <form method="post" action="{% url 'lot_open_kit' part.pk lot.pk %}" class="row">{% csrf_token %}<input type="hidden" name="_anchor" value="stock-lots">
                 <input type="number" step="1" min="1" max="{{ lot.qty_on_hand|floatformat:0 }}"
                        name="quantity" value="1" style="width:4.5rem"
                        aria-label="{% translate 'How many kits to open' %}">
@@ -85,7 +98,7 @@
             {% if lot.released_lots.exists %}
               <form method="post" action="{% url 'lot_close_kit' part.pk lot.pk %}"
                     data-confirm="{% translate 'Put the contents back in the box? Only possible while none of them have been used.' %}">
-                {% csrf_token %}
+                {% csrf_token %}<input type="hidden" name="_anchor" value="stock-lots">
                 <button type="submit" class="linkish small danger">{% translate "Put it back together" %}</button>
               </form>
             {% endif %}
@@ -97,7 +110,7 @@
       </table></div>
 
       <h2 style="margin-top:1rem">{% translate "Add stock" %}</h2>
-      <form method="post" action="{% url 'lot_add' part.pk %}" class="formgrid">{% csrf_token %}
+      <form method="post" action="{% url 'lot_add' part.pk %}" class="formgrid">{% csrf_token %}<input type="hidden" name="_anchor" value="stock-lots">
         {% for field in lot_form %}
           <div class="field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}</div>
         {% endfor %}
@@ -105,7 +118,7 @@
       </form>
     </section>
 
-    <section class="card">
+    <section class="card" id="used-on" data-live="used-on">
       <h2>{% translate "Used on" %}</h2>
       <ul class="list small">
         {% for usage in usages %}
@@ -139,7 +152,7 @@
         <p class="small muted">
           {% translate "For a part you fitted without a job here. Takes it off the shelf, oldest first, at what that one cost. Everything but the quantity is optional." %}
         </p>
-        <form method="post" action="{% url 'part_use' part.pk %}" class="formgrid">{% csrf_token %}
+        <form method="post" action="{% url 'part_use' part.pk %}" class="formgrid">{% csrf_token %}<input type="hidden" name="_anchor" value="used-on">
           <div class="field">
             <label for="id_use_qty">{% translate "How many" %}</label>
             <input type="number" step="{{ part.qty_step }}" min="{{ part.qty_step }}" name="qty" value="1"
@@ -172,15 +185,22 @@
   </div>
 
   <aside class="stack">
-    <section class="card">
+    <section class="card" id="other-numbers" data-live="other-numbers">
       <h2>{% translate "Other numbers" %}</h2>
       <p class="small muted">{% translate "The same part has several numbers. All of them should find it." %}</p>
       <ul class="list small">
         {% for ref in part.cross_refs.all %}
-          <li>{{ ref.get_system_display }}: <span class="mono">{{ ref.value }}</span></li>
+          <li class="spread">
+            <div>{{ ref.get_system_display }}: <span class="mono">{{ ref.value }}</span></div>
+            <form method="post" action="{% url 'crossref_remove' part.pk ref.pk %}"
+                  data-confirm="{% blocktranslate with value=ref.value %}Remove {{ value }}? A search or scan for it will stop finding this part.{% endblocktranslate %}">
+              {% csrf_token %}<input type="hidden" name="_anchor" value="other-numbers">
+              <button class="linkish small danger" type="submit">{% translate "Remove" %}</button>
+            </form>
+          </li>
         {% empty %}<li class="muted">{% translate "None recorded." %}</li>{% endfor %}
       </ul>
-      <form method="post" action="{% url 'crossref_add' part.pk %}" class="row" style="margin-top:.5rem">{% csrf_token %}
+      <form method="post" action="{% url 'crossref_add' part.pk %}" class="row" style="margin-top:.5rem">{% csrf_token %}<input type="hidden" name="_anchor" value="other-numbers">
         <select name="system" class="select" aria-label="{% translate 'Numbering system' %}">
           <option value="oem">OEM</option>
           <option value="interchange">{% translate "Interchange" %}</option>
@@ -305,7 +325,7 @@
       </form>
     </section>
 
-    <section class="card">
+    <section class="card" id="fits" data-live="fits">
       <h2>{% translate "Fits" %}</h2>
       {% comment %}
       The vehicle only. This used to print `{{ fitment }}`, which names the part
@@ -329,7 +349,7 @@
             </div>
             <div class="row">
               <a class="linkish small" href="{% url 'fitment_edit' part.pk fitment.pk %}">{% translate "Edit" %}</a>
-              <form method="post" action="{% url 'fitment_delete' part.pk fitment.pk %}">{% csrf_token %}
+              <form method="post" action="{% url 'fitment_delete' part.pk fitment.pk %}">{% csrf_token %}<input type="hidden" name="_anchor" value="fits">
                 <button class="linkish small danger" type="submit">{% translate "Remove" %}</button>
               </form>
             </div>

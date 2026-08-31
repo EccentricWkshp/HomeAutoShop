@@ -57,3 +57,57 @@ class ConfigMiddleware:
         invalidate()
         ensure_overlay()
         return self.get_response(request)
+
+
+class KeepYourPlaceMiddleware:
+    """Land a redirect where the form was, not at the top of the page.
+
+    Post-redirect-get is right and stays, but it costs the reader their place:
+    ticking the fourth job item on a long work order reloads the page and puts
+    them back at the top, hunting for the row they were on. A script fixes that
+    properly by never navigating at all (`static/liveform.js`) — this is the
+    half that works with no script.
+
+    A form inside a live region carries `_anchor`, and any redirect that answers
+    it gains that fragment. Done here rather than in each view because it is
+    true of every one of them, and forty views each remembering to append a
+    fragment is thirty-nine chances to forget.
+
+    Only same-page redirects are touched. A delete that returns to a list is
+    going somewhere the anchor does not exist, and scrolling to a missing target
+    is at best nothing and at worst a jump to somewhere arbitrary.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        if request.method != "POST":
+            return response
+        anchor = (request.POST.get("_anchor") or "").strip()
+        location = response.headers.get("Location", "") if response else ""
+        if not anchor or not location or "#" in location:
+            return response
+        if not _is_same_page(request, location):
+            return response
+        # Fragment-safe characters only: this ends up in a header, and an id is
+        # a short slug in every template that sets one.
+        if not anchor.replace("-", "").replace("_", "").isalnum():
+            return response
+        response.headers["Location"] = f"{location}#{anchor}"
+        return response
+
+
+def _is_same_page(request, location: str) -> bool:
+    """Whether the redirect goes back to the page the form was posted from."""
+    referer = request.META.get("HTTP_REFERER") or ""
+    if not referer:
+        return False
+    from urllib.parse import urlparse
+
+    here = urlparse(referer)
+    there = urlparse(location)
+    if there.netloc and there.netloc != here.netloc:
+        return False
+    return (there.path or here.path) == here.path

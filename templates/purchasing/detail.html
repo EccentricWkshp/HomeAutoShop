@@ -55,7 +55,10 @@
         <tr>
           <td>{% if line.part %}<a href="{% url 'part_detail' line.part.pk %}">{{ line.part }}</a>
               {% else %}{{ line.description_as_ordered }}
-              <div class="small muted">{% translate "Link a part before receiving." %}</div>{% endif %}</td>
+              <div class="small muted">{% translate "Link a part before receiving." %}</div>{% endif %}
+              {% if not line.qty_received %}
+                <div class="small"><a href="{% url 'purchase_line_edit' purchase.pk line.pk %}">{% translate "Correct this line" %}</a></div>
+              {% endif %}</td>
           <td class="mono">{{ line.qty_ordered }}</td>
           <td class="mono">{{ line.qty_received }}</td>
           <td class="mono">{{ line.unit_price }}</td>

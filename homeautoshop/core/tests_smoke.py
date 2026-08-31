@@ -26,9 +26,9 @@ from homeautoshop.diagnostics.models import DiagnosticSession, ParserProfile
 from homeautoshop.diagnostics.profiles import seed as seed_profiles
 from homeautoshop.inspections.models import Inspection
 from homeautoshop.maintenance.models import AssetServiceItem, ServiceDefinition
-from homeautoshop.parts.models import Part, PartFitment, StockLot
+from homeautoshop.parts.models import Location, Part, PartFitment, StockLot
 from homeautoshop.people.models import Person
-from homeautoshop.purchasing.models import Purchase, Vendor
+from homeautoshop.purchasing.models import Expense, Purchase, Vendor
 from django.core.files.base import ContentFile
 
 from homeautoshop.mediafiles.models import Media
@@ -78,6 +78,8 @@ class EveryPageRendersTests(TestCase):
         )
         cls.vendor = Vendor.objects.create(name="RockAuto")
         cls.purchase = Purchase.objects.create(vendor=cls.vendor)
+        cls.location = Location.objects.create(name="Shelf A")
+        cls.expense = Expense.objects.create(asset=cls.asset, amount_minor=1000)
         cls.spec = AssetSpec.objects.create(
             asset=cls.asset, group="tires", name="Front pressure", value="35"
         )
@@ -171,7 +173,13 @@ class EveryPageRendersTests(TestCase):
             by_name["pk"] = str(self.part.pk)
             by_name["fitment_id"] = str(self.fitment.pk)
             by_name["lot_id"] = str(self.lot.pk)
-        elif name in {"person_detail", "person_edit"}:
+        elif name in {"vendor_edit", "vendor_delete"}:
+            by_name["pk"] = str(self.vendor.pk)
+        elif name in {"location_edit", "location_delete"}:
+            by_name["pk"] = str(self.location.pk)
+        elif name in {"expense_edit", "expense_delete"}:
+            by_name["pk"] = str(self.expense.pk)
+        elif name in {"person_detail", "person_edit", "person_delete"}:
             by_name["pk"] = str(self.person.pk)
         elif name in {"user_detail", "user_set_active", "user_set_password"}:
             by_name["pk"] = str(self.admin.pk)

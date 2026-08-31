@@ -1,0 +1,25 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Expense" %} — {{ shop_name }}{% endblock %}
+{% block content %}
+{% if expense.work_order_id %}
+  {% url 'work_order_detail' expense.work_order_id as back_url %}
+{% elif expense.asset_id %}
+  {% url 'asset_costs' expense.asset_id as back_url %}
+{% else %}
+  {% url 'purchase_list' as back_url %}
+{% endif %}
+{% translate "Edit an expense" as heading %}
+{% include "partials/_editform.html" with heading=heading subtitle=expense form=form back_url=back_url back_label=_("Back") %}
+
+<section class="card">
+  <h2>{% translate "Remove this expense" %}</h2>
+  <p class="small muted">
+    {% translate "It leaves the cost rollups it was counted in. Removed here means removed from what this vehicle is recorded as having cost." %}
+  </p>
+  <form method="post" action="{% url 'expense_delete' expense.pk %}"
+        data-confirm="{% blocktranslate with amount=expense.amount %}Remove this {{ amount }} expense?{% endblocktranslate %}">
+    {% csrf_token %}
+    <button class="danger" type="submit">{% translate "Remove this expense" %}</button>
+  </form>
+</section>
+{% endblock %}

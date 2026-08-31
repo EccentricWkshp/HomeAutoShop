@@ -217,6 +217,10 @@ label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: .
 .pill.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, transparent); }
 
 .messages { list-style: none; padding: 0; margin: 0 0 1rem; }
+/* The list is always in the document so the live region exists before anything
+   is announced into it. Empty, it must take no space at all — a persistent
+   1rem gap above every page is a worse trade than the one it is paying for. */
+.messages:empty { margin: 0; }
 .msg { padding: .75rem 1rem; border-radius: var(--radius); margin-bottom: .5rem; background: var(--surface-2); border-left: 4px solid var(--accent); }
 .msg.success { border-left-color: var(--ok); }
 .msg.warning { border-left-color: var(--warn); }

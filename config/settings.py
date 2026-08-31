@@ -103,6 +103,10 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "homeautoshop.core.middleware.CurrentUserMiddleware",
+    # Last, so it sees the final redirect after everything else has had
+    # its say about it (§9.2 — the garage-first rule is mostly about not
+    # making somebody find their place again on a phone).
+    "homeautoshop.core.middleware.KeepYourPlaceMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"

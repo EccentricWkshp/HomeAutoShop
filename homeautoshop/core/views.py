@@ -343,6 +343,9 @@ TRASHABLE = {
     # Deletable only while nothing on it has been received, so a restored one
     # never has to reattach itself to stock that moved on without it.
     "purchase": ("homeautoshop.purchasing.models", "Purchase"),
+    # Removable only with an empty drawer, so a restored one never comes back
+    # to stock that moved on without it.
+    "part": ("homeautoshop.parts.models", "Part"),
 }
 
 

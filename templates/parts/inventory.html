@@ -18,7 +18,10 @@
   <div class="stack">
     {% for location in locations %}
       <section class="card">
-        <div class="spread"><h2>{{ location.path }}</h2><span class="pill">{{ location.units|default:0 }}</span></div>
+        <div class="spread">
+          <h2><a href="{% url 'location_edit' location.pk %}">{{ location.path }}</a></h2>
+          <span class="pill">{{ location.units|default:0 }}</span>
+        </div>
         <ul class="list small">
           {% for lot in location.stock_lots.all %}
             <li class="spread">

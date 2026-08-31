@@ -17,6 +17,19 @@
     <a class="btn" href="{% url 'asset_report' asset.pk %}">{% translate "Report" %}</a>
     <a class="btn" href="{% url 'asset_costs' asset.pk %}">{% translate "Costs" %}</a>
     <a class="btn" href="{% url 'asset_edit' asset.pk %}">{% translate "Edit" %}</a>
+    {% comment %}
+    Shown only for a vehicle with nothing attached, which is the only kind
+    anybody should be deleting. A car that was sold is marked **sold** and keeps
+    every job, reading and receipt — that record is the reason to have kept it,
+    and a list with a status filter on it is not worth throwing it away for.
+    {% endcomment %}
+    {% if can_delete %}
+      <form method="post" action="{% url 'asset_delete' asset.pk %}"
+            data-confirm="{% blocktranslate with name=asset.nickname %}Remove {{ name }}? It goes to the trash for 30 days.{% endblocktranslate %}">
+        {% csrf_token %}
+        <button class="btn danger" type="submit">{% translate "Delete" %}</button>
+      </form>
+    {% endif %}
     <a class="btn primary" href="{% url 'work_order_create' %}?asset={{ asset.pk }}">{% translate "New work order" %}</a>
   </div>
 </div>

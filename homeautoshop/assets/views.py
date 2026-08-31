@@ -145,6 +145,14 @@ def asset_detail(request, pk):
         "assets/detail.html",
         {
             "asset": asset,
+            # A vehicle with any history is not one anybody means to delete —
+            # `sold` is what a car you no longer own is. See `asset_delete`.
+            "can_delete": not (
+                asset.work_orders.exists()
+                or asset.usage_readings.exists()
+                or asset.expenses.exists()
+                or asset.inspections.exists()
+            ),
             # A summary, not the history. What the page is *for* is the meter,
             # the identity and the work — and those were below a scroll of
             # photographs before this was cut down.
@@ -363,6 +371,57 @@ def asset_edit(request, pk):
     else:
         form = AssetForm(instance=asset)
     return render(request, "assets/form.html", {"form": form, "asset": asset})
+
+
+@require_POST
+@login_required
+def asset_delete(request, pk):
+    """Remove a vehicle that should not be here.
+
+    Refused the moment it has any history — work orders, readings, expenses,
+    inspections. That refusal is not caution about the delete, which is soft and
+    restorable for thirty days (P-5); it is that **a vehicle with history is
+    almost never one somebody wants gone.** A car that was sold is `sold`, and
+    stays in the record with everything it cost and everything that was done to
+    it — which is the whole point of having kept it. Deleting it throws away the
+    answer to "what did that Civic actually cost me", permanently, to tidy a
+    list that has a status filter on it already.
+
+    What this is for is the other case: a vehicle added twice, or added to the
+    wrong instance, which has nothing attached because nothing has happened to
+    it yet.
+    """
+    asset = get_object_or_404(Asset, pk=pk)
+    require(request.user, "asset.edit", asset)
+
+    attached = {
+        _("work orders"): asset.work_orders.count(),
+        _("meter readings"): asset.usage_readings.count(),
+        _("expenses"): asset.expenses.count(),
+        _("inspections"): asset.inspections.count(),
+    }
+    held = {label: n for label, n in attached.items() if n}
+    if held:
+        messages.error(
+            request,
+            _(
+                "%(name)s has %(what)s. A vehicle you no longer own is marked "
+                "sold — it keeps its history, which is the reason to have it."
+            )
+            % {
+                "name": asset.nickname or str(asset),
+                "what": ", ".join(
+                    _("%(n)s %(label)s") % {"n": n, "label": label}
+                    for label, n in held.items()
+                ),
+            },
+        )
+        return redirect("asset_detail", pk=asset.pk)
+
+    name = asset.nickname or str(asset)
+    asset.delete()
+    messages.success(request, _("Removed %(name)s.") % {"name": name})
+    return redirect("asset_list")
 
 
 @require_GET

@@ -95,6 +95,9 @@ urlpatterns = [
     path("vehicles/plate-lookup/", assets.plate_lookup, name="plate_lookup"),
     path("vehicles/<uuid:pk>/", assets.asset_detail, name="asset_detail"),
     path("vehicles/<uuid:pk>/edit/", assets.asset_edit, name="asset_edit"),
+    # For a vehicle added twice, not for one that was sold — a sold car keeps
+    # its history, and `status = sold` is what says so.
+    path("vehicles/<uuid:pk>/delete/", assets.asset_delete, name="asset_delete"),
     path("vehicles/<uuid:pk>/decode/", assets.vin_decode, name="vin_decode"),
     path("vehicles/<uuid:pk>/readings/", assets.reading_create, name="reading_create"),
     path("vehicles/<uuid:pk>/photos/", assets.photo_upload, name="asset_photo_upload"),
@@ -153,6 +156,10 @@ urlpatterns = [
         name="work_order_order_shortfall",
     ),
     path("work-orders/<uuid:pk>/time/", work.time_add, name="work_order_time_add"),
+    # Append-only never meant unremovable: a timer left running overnight
+    # puts eleven hours on a job, and leaving it there costs the number.
+    path("work-orders/<uuid:pk>/time/<uuid:entry_id>/delete/", work.time_entry_delete,
+         name="time_entry_delete"),
     path("work-orders/<uuid:pk>/items/<uuid:item_id>/tools/", work.job_item_tool_add,
          name="job_item_tool_add"),
     path("work-orders/<uuid:pk>/tools/<uuid:reference_id>/remove/", work.job_item_tool_remove,
@@ -164,6 +171,8 @@ urlpatterns = [
     path("tools/<uuid:pk>/delete/", work.tool_delete, name="tool_delete"),
     path("tools/search/", work.tool_search, name="tool_search"),
     path("work-orders/<uuid:pk>/expenses/", purchasing.expense_add, name="work_order_expense_add"),
+    path("expenses/<uuid:pk>/edit/", purchasing.expense_edit, name="expense_edit"),
+    path("expenses/<uuid:pk>/delete/", purchasing.expense_delete, name="expense_delete"),
     # The vehicle page carries a summary of this; the full story lives here,
     # where nothing on the screen is competing with it.
     path("vehicles/<uuid:pk>/history/", assets.asset_timeline, name="asset_timeline"),
@@ -240,6 +249,11 @@ urlpatterns = [
     path("parts/<uuid:pk>/", parts.part_detail, name="part_detail"),
     path("parts/<uuid:pk>/edit/", parts.part_edit, name="part_edit"),
     path("parts/<uuid:pk>/crossrefs/", parts.crossref_add, name="crossref_add"),
+    # A wrong interchange number is worse than a missing one: it makes a scan
+    # land on the wrong shelf, confidently.
+    path("parts/<uuid:pk>/crossrefs/<uuid:ref_id>/remove/", parts.crossref_remove,
+         name="crossref_remove"),
+    path("parts/<uuid:pk>/delete/", parts.part_delete, name="part_delete"),
     # A fitment is a claim about a vehicle, and claims turn out to be wrong —
     # so it is editable, and "does not fit" is one of the things it can say.
     path("parts/<uuid:pk>/fitments/new/", parts.fitment_add, name="fitment_add"),
@@ -265,6 +279,11 @@ urlpatterns = [
     path("parts/<uuid:pk>/stock/<uuid:lot_id>/close/", parts.lot_close_kit, name="lot_close_kit"),
     path("inventory/", parts.inventory, name="inventory"),
     path("inventory/locations/", parts.location_create, name="location_create"),
+    # Bins carry printed labels, so a wrong name is expensive and the label
+    # survives a rename — it carries the primary key, not the name.
+    path("inventory/locations/<uuid:pk>/edit/", parts.location_edit, name="location_edit"),
+    path("inventory/locations/<uuid:pk>/delete/", parts.location_delete,
+         name="location_delete"),
     path("inventory/cores/<uuid:usage_id>/returned/", parts.core_returned, name="core_returned"),
     # Purchasing
     path("purchases/", purchasing.purchase_list, name="purchase_list"),
@@ -279,6 +298,19 @@ urlpatterns = [
         purchasing.purchase_line_receive,
         name="purchase_line_receive",
     ),
+    # Correctable only while nothing has been received: the receipt made stock
+    # at this price, and changing it underneath would leave lots costed at a
+    # number the order no longer states.
+    path(
+        "purchases/<uuid:pk>/lines/<uuid:line_id>/edit/",
+        purchasing.purchase_line_edit,
+        name="purchase_line_edit",
+    ),
+    path(
+        "purchases/<uuid:pk>/lines/<uuid:line_id>/delete/",
+        purchasing.purchase_line_delete,
+        name="purchase_line_delete",
+    ),
     # Receiving is one tap on a screen full of lines, so it needs an undo.
     path(
         "purchases/<uuid:pk>/lines/<uuid:line_id>/unreceive/",
@@ -289,6 +321,8 @@ urlpatterns = [
     path("purchases/<uuid:pk>/receipts/", purchasing.purchase_receipt_upload, name="purchase_receipt_upload"),
     path("vendors/", purchasing.vendor_list, name="vendor_list"),
     path("vendors/new/", purchasing.vendor_create, name="vendor_create"),
+    path("vendors/<uuid:pk>/edit/", purchasing.vendor_edit, name="vendor_edit"),
+    path("vendors/<uuid:pk>/delete/", purchasing.vendor_delete, name="vendor_delete"),
     # Reports
     path("reports/", core.reports, name="reports"),
     path("reports/export/<str:kind>.csv", core.export_csv, name="export_csv"),
@@ -298,6 +332,7 @@ urlpatterns = [
     path("people/new/", people.person_create, name="person_create"),
     path("people/<uuid:pk>/", people.person_detail, name="person_detail"),
     path("people/<uuid:pk>/edit/", people.person_edit, name="person_edit"),
+    path("people/<uuid:pk>/delete/", people.person_delete, name="person_delete"),
     # API + admin
     path("api/v1/", api.urls),
     path("admin/", admin.site.urls),

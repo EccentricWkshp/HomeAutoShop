@@ -7,6 +7,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext as _
+from django.views.decorators.http import require_POST
 
 from .models import Person
 
@@ -70,3 +71,33 @@ def person_edit(request, pk):
     else:
         form = PersonForm(instance=person)
     return render(request, "people/form.html", {"form": form, "person": person})
+
+
+@require_POST
+@login_required
+def person_delete(request, pk):
+    """Remove a person nobody's vehicle names.
+
+    Refused while an ownership row still points at them, because ending an
+    ownership is a different and more truthful act than deleting the owner: one
+    records that a car changed hands, the other loses who used to have it. End
+    the ownership on the vehicle first, and the person is then free to go — and
+    the record still says whose it was.
+    """
+    person = get_object_or_404(Person, pk=pk)
+    current = person.ownerships.filter(to_date__isnull=True).count()
+    if current:
+        messages.error(
+            request,
+            _(
+                "%(name)s still owns or drives %(n)s vehicle(s). End that on the "
+                "vehicle first — the record keeps whose it was."
+            )
+            % {"name": person.display_name, "n": current},
+        )
+        return redirect("person_detail", pk=person.pk)
+
+    name = person.display_name
+    person.delete()
+    messages.success(request, _("Removed %(name)s.") % {"name": name})
+    return redirect("person_list")

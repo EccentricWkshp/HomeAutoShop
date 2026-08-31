@@ -742,6 +742,165 @@ def location_create(request):
     return redirect("inventory")
 
 
+class LocationForm(forms.ModelForm):
+    class Meta:
+        model = Location
+        fields = ["name", "parent", "notes"]
+        widgets = {"notes": forms.Textarea(attrs={"rows": 2})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["parent"].required = False
+        self.fields["parent"].empty_label = _("— top level —")
+        if self.instance.pk:
+            # A location cannot be moved inside itself or inside anything it
+            # contains. `clean()` catches it, but a dropdown that offers the
+            # impossible is a worse way to find that out than one that does not.
+            self.fields["parent"].queryset = Location.objects.exclude(
+                pk__in=_descendants(self.instance) | {self.instance.pk}
+            )
+        for name, field in self.fields.items():
+            field.required = name == "name"
+            css = "select" if isinstance(field.widget, forms.Select) else "input"
+            if isinstance(field.widget, forms.Textarea):
+                css = "input textarea"
+            field.widget.attrs.setdefault("class", css)
+
+
+def _descendants(location) -> set:
+    """Every location underneath this one, however deep."""
+    found: set = set()
+    frontier = [location.pk]
+    while frontier:
+        children = list(
+            Location.objects.filter(parent_id__in=frontier)
+            .exclude(pk__in=found)
+            .values_list("pk", flat=True)
+        )
+        if not children:
+            break
+        found.update(children)
+        frontier = children
+    return found
+
+
+@login_required
+def location_edit(request, pk):
+    """Rename a shelf, or move a bin into a different cabinet (FR-INV-2).
+
+    Locations could be created and never touched, so a typo was permanent and a
+    cabinet could not be reorganised — on a shelf whose labels are *printed and
+    stuck to the bins*, which is exactly where a wrong name is most expensive.
+    The label keeps working either way: it carries the primary key, not the name.
+    """
+    location = get_object_or_404(Location, pk=pk)
+    form = LocationForm(request.POST or None, instance=location)
+    if request.method == "POST" and form.is_valid():
+        try:
+            form.instance.full_clean()
+        except ValidationError as exc:
+            messages.error(request, " ".join(m for ms in exc.message_dict.values() for m in ms))
+        else:
+            form.save()
+            messages.success(request, _("Saved."))
+            return redirect("inventory")
+    return render(
+        request, "parts/location_form.html", {"location": location, "form": form}
+    )
+
+
+@require_POST
+@login_required
+def location_delete(request, pk):
+    """Remove a place nothing is kept in.
+
+    Refused while it holds stock or contains another location. `StockLot.location`
+    is `SET_NULL`, so a soft delete would not orphan a lot outright — it would
+    do something worse and quieter: leave every lot in it pointing at a place no
+    list shows, which reads as *unfiled* on one screen and as a real shelf on
+    another. Empty the bin first, and the question answers itself.
+    """
+    location = get_object_or_404(Location, pk=pk)
+    children = Location.objects.filter(parent=location).count()
+    held = location.stock_lots.count()
+
+    if children:
+        messages.error(
+            request,
+            _("%(name)s contains %(n)s other location(s). Move or remove those first.")
+            % {"name": location.name, "n": children},
+        )
+    elif held:
+        messages.error(
+            request,
+            _("%(name)s still holds %(n)s stock lot(s). Move them somewhere else first.")
+            % {"name": location.name, "n": held},
+        )
+    else:
+        name = location.name
+        location.delete()
+        messages.success(request, _("Removed %(name)s.") % {"name": name})
+    return redirect("inventory")
+
+
+@require_POST
+@login_required
+def crossref_remove(request, pk, ref_id):
+    """Take a number off a part.
+
+    A cross-reference is a claim that this number finds this part, and a wrong
+    one is worse than a missing one: it makes a scan or a search land on the
+    wrong shelf, confidently.
+    """
+    part = get_object_or_404(Part, pk=pk)
+    ref = get_object_or_404(PartCrossRef, pk=ref_id, part=part)
+    value = ref.value
+    ref.delete()
+    messages.success(request, _("Removed %(value)s.") % {"value": value})
+    return redirect("part_detail", pk=part.pk)
+
+
+@require_POST
+@login_required
+def part_delete(request, pk):
+    """Remove a part that should not be in the catalogue.
+
+    Refused while any of it is on the shelf, and while a kit lists it as one of
+    its contents. Stock is the harder rule of the two: a part with a quantity is
+    a thing in the building, and making it disappear from every screen does not
+    make it disappear from the drawer — the shelf would simply stop matching the
+    room. Count it out or use it, and then it goes.
+
+    Its history does not go. Usages, purchase lines and fitments name it and
+    keep naming it; this is a soft delete like everything else, and the trash
+    holds it for thirty days (P-5).
+    """
+    part = get_object_or_404(Part, pk=pk)
+    in_kits = PartKitItem.objects.filter(part=part).select_related("kit")
+
+    if part.on_hand > 0:
+        messages.error(
+            request,
+            _(
+                "There are still %(n)s of these on the shelf. Count them out or "
+                "use them first — removing the record does not empty the drawer."
+            )
+            % {"n": part.on_hand},
+        )
+    elif in_kits.exists():
+        messages.error(
+            request,
+            _("%(kits)s list this as one of their contents. Remove it from those first.")
+            % {"kits": ", ".join(str(item.kit) for item in in_kits[:3])},
+        )
+    else:
+        name = str(part)
+        part.delete()
+        messages.success(request, _("Removed %(name)s.") % {"name": name})
+        return redirect("part_list")
+    return redirect("part_detail", pk=part.pk)
+
+
 @login_required
 def part_by_code(request):
     """Find or create a part from a scanned barcode (SPEC FR-INV-3).

@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Order line" %} — {{ purchase.order_number }}{% endblock %}
+{% block content %}
+{% url 'purchase_detail' purchase.pk as back_url %}
+{% translate "Edit an order line" as heading %}
+{% translate "How many have arrived is not here: that number is written by receiving and unwound by un-receiving, and both of those move stock. A box that changed it without moving anything would leave the shelf and the order disagreeing." as note %}
+{% include "partials/_editform.html" with heading=heading subtitle=line.description_as_ordered form=form back_url=back_url back_label=purchase.order_number note=note %}
+
+<section class="card">
+  <h2>{% translate "Remove this line" %}</h2>
+  <p class="small muted">
+    {% translate "For a line that should not be on the order. Possible only while none of it has been received." %}
+  </p>
+  <form method="post" action="{% url 'purchase_line_delete' purchase.pk line.pk %}"
+        data-confirm="{% translate 'Remove this line from the order?' %}">
+    {% csrf_token %}
+    <button class="danger" type="submit">{% translate "Remove this line" %}</button>
+  </form>
+</section>
+{% endblock %}

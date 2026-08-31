@@ -1,0 +1,25 @@
+{% load i18n %}
+{% comment %}
+One edit page for the small records — vendor, location, expense, purchase line.
+They were all growing the same page independently, which is four chances for
+four different answers to "where is Cancel" and four places to fix an accessible
+name. `heading`, `subtitle`, `form`, `back_url` and `back_label` are required;
+`note` and `danger` are optional blocks the including template fills in.
+{% endcomment %}
+{% include "partials/_back.html" with url=back_url label=back_label %}
+<h1>{{ heading }}</h1>
+{% if subtitle %}<p class="muted">{{ subtitle }}</p>{% endif %}
+
+<form method="post" class="card">{% csrf_token %}
+  {% if form.non_field_errors %}{{ form.non_field_errors }}{% endif %}
+  <div class="formgrid">
+    {% for field in form %}
+      <div class="field {% if field.field.widget.input_type == 'textarea' or field.name == 'notes' or field.name == 'address' %}full{% endif %}">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}
+        {% if field.help_text %}<p class="helptext">{{ field.help_text }}</p>{% endif %}{{ field.errors }}
+      </div>
+    {% endfor %}
+  </div>
+  {% if note %}<p class="small muted">{{ note }}</p>{% endif %}
+  {% include "partials/_formactions.html" with cancel_url=back_url %}
+</form>

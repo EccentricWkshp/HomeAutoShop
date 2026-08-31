@@ -498,6 +498,24 @@ def job_item_move(request, pk, item_id):
 
 @require_POST
 @login_required
+def time_entry_delete(request, pk, entry_id):
+    """Void a time entry (FR-TIME-1).
+
+    Not an edit — `TimeEntry` is append-only, and editing an observation is how
+    a record stops being one. But append-only never meant *unremovable*: a timer
+    left running overnight puts eleven hours on a job, and the only alternative
+    was to leave it there and stop trusting the number. This is the ordinary
+    soft delete, so the row is still in the database and still in the trash.
+    """
+    wo = get_object_or_404(WorkOrder, pk=pk)
+    entry = get_object_or_404(TimeEntry, pk=entry_id, work_order=wo)
+    entry.delete()
+    messages.success(request, _("Time entry removed."))
+    return redirect("work_order_detail", pk=wo.pk)
+
+
+@require_POST
+@login_required
 def job_item_toggle(request, pk, item_id):
     wo = get_object_or_404(WorkOrder, pk=pk)
     item = get_object_or_404(JobItem, pk=item_id, work_order=wo)

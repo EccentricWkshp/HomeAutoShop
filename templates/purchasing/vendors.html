@@ -5,10 +5,17 @@
   <section class="card">
     <ul class="list">
       {% for vendor in vendors %}
-        <li><strong>{{ vendor.name }}</strong>
-          <div class="small muted">{{ vendor.get_type_display }}
-            {% if vendor.return_window_days %}· {{ vendor.return_window_days }} {% translate "day returns" %}{% endif %}
-          </div></li>
+        <li class="spread">
+          <div>
+            <a href="{% url 'vendor_edit' vendor.pk %}"><strong>{{ vendor.name }}</strong></a>
+            <div class="small muted">{{ vendor.get_type_display }}
+              {% if vendor.return_window_days %}· {{ vendor.return_window_days }} {% translate "day returns" %}{% endif %}
+            </div>
+          </div>
+          {% if vendor.purchases.exists %}
+            <span class="pill">{% blocktranslate count n=vendor.purchases.count %}{{ n }} order{% plural %}{{ n }} orders{% endblocktranslate %}</span>
+          {% endif %}
+        </li>
       {% empty %}<li class="empty">{% translate "No vendors yet." %}</li>{% endfor %}
     </ul>
   </section>

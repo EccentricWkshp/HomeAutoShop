@@ -1,0 +1,25 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ vendor.name }} — {% translate "Vendor" %}{% endblock %}
+{% block content %}
+{% url 'vendor_list' as back_url %}
+{% translate "Edit a vendor" as heading %}
+{% include "partials/_editform.html" with heading=heading subtitle=vendor.name form=form back_url=back_url back_label=_("Vendors") %}
+
+<section class="card">
+  <h2>{% translate "Remove this vendor" %}</h2>
+  {% if vendor.purchases.exists %}
+    <p class="small muted">
+      {% blocktranslate count n=vendor.purchases.count %}One purchase names this vendor, so it stays — an order without a supplier is not a record of anything. Nothing is lost by leaving a vendor you no longer use.{% plural %}{{ n }} purchases name this vendor, so it stays — an order without a supplier is not a record of anything. Nothing is lost by leaving a vendor you no longer use.{% endblocktranslate %}
+    </p>
+  {% else %}
+    <p class="small muted">
+      {% translate "Nothing has been bought from this one, so it can go." %}
+    </p>
+    <form method="post" action="{% url 'vendor_delete' vendor.pk %}"
+          data-confirm="{% blocktranslate with name=vendor.name %}Remove {{ name }}?{% endblocktranslate %}">
+      {% csrf_token %}
+      <button class="danger" type="submit">{% translate "Remove this vendor" %}</button>
+    </form>
+  {% endif %}
+</section>
+{% endblock %}

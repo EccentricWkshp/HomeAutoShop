@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ location.path }} — {% translate "Location" %}{% endblock %}
+{% block content %}
+{% url 'inventory' as back_url %}
+{% translate "Edit a location" as heading %}
+{% translate "The printed label keeps working after a rename: it carries this location's id, not its name." as note %}
+{% include "partials/_editform.html" with heading=heading subtitle=location.path form=form back_url=back_url back_label=_("Shelf") note=note %}
+
+<section class="card">
+  <h2>{% translate "Remove this location" %}</h2>
+  {% if location.children.exists %}
+    <p class="msg warning">
+      {% translate "This contains other locations. Move or remove those first." %}
+    </p>
+  {% elif location.stock_lots.exists %}
+    <p class="msg warning">
+      {% translate "This still holds stock. Move it somewhere else first — a lot left pointing at a removed location reads as unfiled on one screen and as a real shelf on another." %}
+    </p>
+  {% else %}
+    <p class="small muted">{% translate "Empty and holding nothing else, so it can go." %}</p>
+    <form method="post" action="{% url 'location_delete' location.pk %}"
+          data-confirm="{% blocktranslate with name=location.path %}Remove {{ name }}?{% endblocktranslate %}">
+      {% csrf_token %}
+      <button class="danger" type="submit">{% translate "Remove this location" %}</button>
+    </form>
+  {% endif %}
+</section>
+{% endblock %}
