@@ -129,10 +129,10 @@ class Media(AppendOnlyModel):
         """Where a browser should ask for this file.
 
         Never the storage backend's own URL. With object storage that is a
-        presigned link signed against `http://storage:9000` — a hostname that
-        exists only inside the container network, so every photo was a broken
-        image and a dead link. See `mediafiles/views.py` for why the fix is a
-        route here rather than a second published port.
+        presigned link signed against whatever address the application reaches
+        the store at, which the browser frequently cannot — a broken image and
+        a dead link on every page. See `mediafiles/views.py` for why the answer
+        is a route here rather than a second published port.
         """
         from django.urls import reverse
 

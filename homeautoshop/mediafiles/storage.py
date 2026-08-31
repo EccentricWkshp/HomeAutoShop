@@ -1,9 +1,17 @@
 """
 S3-compatible object storage (SPEC §5.1, FR-DOC-8).
 
-MinIO earns its container by keeping large photos out of the database and off
-the application's own disk, so a backup is a database dump and a file tree
-rather than one enormous blob.
+**Not the default.** Media lives under MEDIA_ROOT unless an operator sets
+`STORAGE_DRIVER=s3` and points it at an object store of their own — media on a
+NAS, on rented storage, or on a host that is not the one running the
+application. Nothing is bundled for this: it is vendor-neutral boto3 against
+the S3 API, so it works against anything that speaks it, and `migrate_storage`
+moves the existing files either direction without touching the database.
+
+Worth knowing before choosing it: `run_backup()` copies MEDIA_ROOT, so media
+kept out here is in none of the backups this application takes. It says so when
+a backup runs and again before a restore, but backing that store up is the
+operator's job.
 
 The two rules that shape this module:
 
@@ -14,12 +22,12 @@ The two rules that shape this module:
   banner rather than pretending the file was saved.
 
 **What this module does *not* do by default is hand a URL to a browser.** A
-presigned URL is signed against the endpoint the application talks to, and in
-Compose that is `http://storage:9000` — a hostname that resolves only on the
-container network. Photos are therefore served by the application
-(`mediafiles/views.py`), which also makes reading one require a login rather
-than possession of a link. `public_endpoint` below is for the operator who has
-genuinely published their object store; it is blank unless they say otherwise.
+presigned URL is signed against the endpoint the application talks to, which is
+reachable from the application and not necessarily from anywhere else. Photos
+are therefore served by the application (`mediafiles/views.py`), which also
+makes reading one require a login rather than possession of a link.
+`public_endpoint` below is for the operator who has genuinely published their
+object store; it is blank unless they say otherwise.
 """
 
 from __future__ import annotations
@@ -60,9 +68,9 @@ class S3Storage(Storage):
         self.secret_key = secret_key
         self.region = region
         self.url_ttl = url_ttl
-        # Browsers reach MinIO through the proxy, not the compose-internal
-        # hostname, so presigned URLs may need a different host than the one
-        # the app talks to. Falls back to endpoint_url for single-host setups.
+        # A browser reaches the store by whatever address it is published on,
+        # which is not always the one the application uses, so a presigned URL
+        # may need a different host. Falls back to endpoint_url when they agree.
         self.public_endpoint = public_endpoint or endpoint_url
         self._client = None
         self._lock = threading.Lock()

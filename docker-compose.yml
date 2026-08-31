@@ -1,5 +1,5 @@
-# HomeAutoShop — five services, per SPEC §5.1.
-# Profiles: default (all five) · slim (jobs in-process) · dev (bind mounts).
+# HomeAutoShop — four services.
+# Profiles: default (all four) · slim (jobs in-process) · dev (bind mounts).
 
 name: homeautoshop
 
@@ -7,7 +7,7 @@ x-app: &app
   build:
     context: .
     args:
-      # OCR language packs (FR-DOC-5). The image installs exactly these and the
+      # OCR language packs. The image installs exactly these and the
       # application is told to use exactly these, from one variable, because the
       # two halves failing apart is silent both ways: an uninstalled language is
       # an error on a background job, and an unused pack is megabytes of image
@@ -18,8 +18,13 @@ x-app: &app
   env_file: [.env]
   environment:
     DATABASE_URL: postgresql://${POSTGRES_USER:-shop}:${POSTGRES_PASSWORD:-shop}@db:5432/${POSTGRES_DB:-homeautoshop}
-    STORAGE_DRIVER: ${STORAGE_DRIVER:-s3}
-    STORAGE_ENDPOINT: http://storage:9000
+    # Photos and documents live on `media-data`, beside the database dump they
+    # are backed up with. No object store is bundled: the one thing it would
+    # buy is a presigned URL straight to the browser, and that is off by
+    # default because it is a link anyone can use (mediafiles/views.py). An
+    # operator who wants one anyway sets STORAGE_DRIVER=s3 and STORAGE_ENDPOINT
+    # in .env and points them at their own.
+    STORAGE_DRIVER: ${STORAGE_DRIVER:-filesystem}
     STATIC_HASHED: "true"
     MEDIA_ROOT: /data/media
     BACKUP_DIR: /data/backups
@@ -29,7 +34,6 @@ x-app: &app
     - backup-data:/data/backups
   depends_on:
     db: {condition: service_healthy}
-    storage: {condition: service_started}
 
 services:
   proxy:
@@ -112,19 +116,9 @@ services:
       retries: 15
       start_period: 2s
 
-  storage:
-    image: minio/minio
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${STORAGE_ACCESS_KEY:-homeautoshop}
-      MINIO_ROOT_PASSWORD: ${STORAGE_SECRET_KEY:-homeautoshop-dev-secret}
-    volumes: [minio-data:/data]
-
 volumes:
   db-data:
   media-data:
   backup-data:
-  minio-data:
   caddy-data:
   caddy-config:

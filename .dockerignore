@@ -39,6 +39,8 @@ Artifacts/samples/**/*.pdf
 Artifacts/samples/*.jpg
 Artifacts/samples/**/*.jpeg
 Artifacts/samples/**/*.png
+Artifacts/samples/backups/
+Data/
 
 # History, tooling and editor noise.
 .git/

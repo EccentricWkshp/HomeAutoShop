@@ -5,7 +5,7 @@
 ```bash
 python -m venv venv
 venv/Scripts/python -m pip install -r requirements.txt   # POSIX: venv/bin/python
-cp .env.example .env      # then set DEBUG=true and STORAGE_DRIVER=filesystem
+cp .env.example .env      # then set DEBUG=true
 venv/Scripts/python manage.py migrate
 venv/Scripts/python manage.py seed
 venv/Scripts/python manage.py runserver
@@ -32,22 +32,24 @@ back.
 [docs/INSTALL.md](INSTALL.md) covers the whole first run, hostname and
 certificate included.
 
-Five services per SPEC §5.1. `docker compose --profile slim up` drops the
+Four services per SPEC §5.1. `docker compose --profile slim up` drops the
 worker and runs jobs in-process, which is fine below roughly five vehicles.
 
-### Two settings that matter locally
+### The one setting that matters locally
 
-`.env.example` is written for the deployed stack, so two of its values are
+`.env.example` is written for the deployed stack, and one of its values is
 wrong for a laptop:
 
 | | Deployed | Local |
 | --- | --- | --- |
 | `DEBUG` | `false` | `true` — for tracebacks; static files work either way |
-| `STORAGE_DRIVER` | `s3` | `filesystem` — otherwise uploads reach for MinIO |
 
-Leaving `STORAGE_DRIVER=s3` without MinIO running does not fail fast. Uploads
-hang on DNS resolution for `storage:9000` and then error, which reads like a
-bug in the media pipeline rather than a missing service.
+Media needs nothing: it goes to the filesystem under `data/media` either way,
+so `runserver` and the Compose stack store files the same. If you set
+`STORAGE_DRIVER=s3` to work on that driver, point `STORAGE_ENDPOINT` at a store
+you actually have — an unreachable one does not fail fast, it hangs on DNS and
+then errors, which reads like a bug in the media pipeline rather than a missing
+service.
 
 ## Static files
 
@@ -124,10 +126,25 @@ Two conventions worth keeping:
   made-up check digit tests only that the code agrees with the test author.
 - **Every test names the requirement it defends** in its docstring, so a
   failure says which promise broke.
-- **No test may touch the network.** The media tests pin `STORAGES` to local
-  filesystem storage, because otherwise they inherit `STORAGE_DRIVER` from
-  whatever `.env` happens to say and start dialling MinIO. A suite that depends
-  on ambient configuration passes and fails for reasons unrelated to the code.
+- **No test may touch the network.** The media tests pin `STORAGES` to a
+  temporary directory rather than inheriting `STORAGE_DRIVER` from whatever
+  `.env` happens to say — a suite that depends on ambient configuration passes
+  and fails for reasons unrelated to the code. It matters most for the tests
+  that exercise the `s3` driver: `mediafiles/testing.py` has the fixtures, and
+  `migrate_storage` is tested between two directories rather than against a
+  real object store.
+
+## Testing
+
+To run a clean test version:
+>docker compose down                 # stop the real stack; volumes kept
+>docker compose -p hastest up -d     # fresh, empty everything → setup wizard
+
+   ... do your clean test run ...
+
+>docker compose -p hastest down -v   # destroys ONLY hastest_* volumes
+>docker compose up -d                # your shop, exactly as it was
+
 
 ## Layout
 

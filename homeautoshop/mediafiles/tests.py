@@ -33,7 +33,7 @@ def make_image(size=(1200, 900), color=(180, 40, 40)) -> SimpleUploadedFile:
 # The pipeline under test is hashing, dedupe and derivation, none of which care
 # which storage backend holds the bytes. Without pinning it the suite inherits
 # STORAGE_DRIVER from the ambient .env and a plain `manage.py test` starts
-# trying to reach MinIO — tests that need the network are not tests.
+# trying to reach an object store — tests that need the network are not tests.
 
 
 

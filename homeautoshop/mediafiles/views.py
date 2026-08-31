@@ -5,17 +5,16 @@ This module exists because the obvious approach did not work and could not be
 made to work without asking the operator to build something.
 
 Object storage hands out **presigned URLs**, and a presigned URL is signed
-against the endpoint the application talks to — inside Compose that is
-`http://storage:9000`, a hostname that exists only on the container network. So
-every photo on every page was a link to a host the browser cannot resolve. The
-image did not render and the link went nowhere.
+against the endpoint the application talks to — routinely an address only the
+application can reach. Link to it from a page and every photo is a link to a
+host the browser cannot resolve: the image does not render and the link goes
+nowhere.
 
 The three ways out, and why this one:
 
-* **Publish MinIO's port and sign against a public address.** Works, and costs
-  the operator a second hostname, a second certificate, and an object store
-  exposed to the network. Too much to ask of a home shop, and it is not the
-  default in `docker-compose.yml` — MinIO deliberately publishes nothing.
+* **Publish the object store's port and sign against a public address.** Works,
+  and costs the operator a second hostname, a second certificate, and an object
+  store exposed to the network. Too much to ask of a home shop.
 * **Reverse-proxy the object store under the site's own name.** Also works, and
   depends on the operator's Caddyfile being exactly right, including passing the
   signed `Host` upstream. A silent breakage waiting for the first person who
@@ -32,6 +31,11 @@ straight from the store. At ten users and a garage's worth of vehicles
 (NFR-P-*) that is not the bottleneck, and an operator who has done the work to
 expose their object store can set `STORAGE_PUBLIC_ENDPOINT` and get the
 redirect instead.
+
+That redirect is also the whole argument for putting media in an object store
+at all, and it is off by default — which is why the stack does not run one
+(§5.1). Media lives under MEDIA_ROOT unless an operator asks otherwise, and
+this module serves it the same way either way.
 """
 
 from __future__ import annotations
@@ -110,7 +114,7 @@ def media_file(request, pk, variant: str = "original"):
         raise Http404
 
     # An operator who has published their object store gets the direct route,
-    # which is what MinIO is for. Everyone else gets the bytes from here.
+    # which is what the `s3` driver is for. Everyone else gets them from here.
     if _public_endpoint():
         return HttpResponseRedirect(handle.url)
 

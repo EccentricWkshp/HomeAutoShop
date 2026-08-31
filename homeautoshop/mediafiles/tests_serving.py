@@ -24,7 +24,7 @@ from django.urls import reverse
 from homeautoshop.accounts.models import User
 from homeautoshop.assets.models import Asset
 from homeautoshop.mediafiles.models import Media, MediaLink
-from homeautoshop.mediafiles.testing import COMPOSE_S3, STATICFILES, LocalMediaMixin
+from homeautoshop.mediafiles.testing import STATICFILES, UNREACHABLE_S3, LocalMediaMixin
 
 VIN = "1M8GDM9AXKP042788"
 
@@ -87,12 +87,12 @@ class ServingTests(LocalMedia):
 class NoInternalHostnamesTests(LocalMedia):
     """The actual bug, asserted against a page rather than against a helper."""
 
-    @override_settings(STORAGES=COMPOSE_S3)
+    @override_settings(STORAGES=UNREACHABLE_S3)
     def test_a_url_never_names_the_container_network(self):
         self.assertNotIn("storage:9000", self.media.url_for())
         self.assertNotIn("storage:9000", self.media.display_url)
 
-    @override_settings(STORAGES=COMPOSE_S3)
+    @override_settings(STORAGES=UNREACHABLE_S3)
     def test_and_neither_does_the_page_the_photo_is_on(self):
         asset = Asset.objects.create(nickname="Red truck", vin=VIN)
         MediaLink.objects.create(
@@ -106,9 +106,9 @@ class NoInternalHostnamesTests(LocalMedia):
         self.assertIn(reverse("media_file", args=[self.media.pk]), page)
 
     def test_an_operator_who_published_their_object_store_gets_the_direct_route(self):
-        """The redirect is what MinIO is for; it just cannot be the default."""
-        published = {"staticfiles": STATICFILES, "default": dict(COMPOSE_S3["default"])}
-        published["default"]["OPTIONS"] = dict(COMPOSE_S3["default"]["OPTIONS"])
+        """The redirect is what the `s3` driver is for; it just cannot be the default."""
+        published = {"staticfiles": STATICFILES, "default": dict(UNREACHABLE_S3["default"])}
+        published["default"]["OPTIONS"] = dict(UNREACHABLE_S3["default"]["OPTIONS"])
         published["default"]["OPTIONS"]["public_endpoint"] = "https://files.example.com"
         with override_settings(STORAGES=published):
             from homeautoshop.mediafiles import views
@@ -120,5 +120,5 @@ class NoInternalHostnamesTests(LocalMedia):
         Treating that as "published" is how this bug got shipped."""
         from homeautoshop.mediafiles import views
 
-        with override_settings(STORAGES=COMPOSE_S3):
+        with override_settings(STORAGES=UNREACHABLE_S3):
             self.assertEqual(views._public_endpoint(), "")

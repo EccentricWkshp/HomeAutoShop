@@ -211,12 +211,27 @@ def run_backup() -> Path:
     if media_root.exists():
         shutil.copytree(media_root, target / "media", dirs_exist_ok=True)
 
+    # This copies MEDIA_ROOT and nothing else, so with an object store selected
+    # the photos are not in here. Left unsaid, such an archive looks complete
+    # and the gap appears at a restore, which is the one moment it cannot be
+    # closed — so it is said here, and recorded in the manifest for the restore
+    # to say again.
+    media_external = settings.STORAGE_DRIVER != "filesystem"
+    if media_external:
+        log.warning(
+            "STORAGE_DRIVER=%s: photos and documents are in the object store and are "
+            "NOT in this backup. Back that store up separately, or bring the files "
+            "onto the filesystem with `manage.py migrate_storage --to filesystem`.",
+            settings.STORAGE_DRIVER,
+        )
+
     (target / "manifest.json").write_text(
         json.dumps(
             {
                 "created_at": stamp.isoformat(),
                 "vendor": connection.vendor,
                 "schema_version": SCHEMA_VERSION,
+                "media": "external" if media_external else "included",
             },
             indent=2,
         ),

@@ -40,7 +40,7 @@ CORPUS = pathlib.Path(__file__).resolve().parents[2] / "Artifacts" / "samples" /
 VIN = "1M8GDM9AXKP042788"
 
 # Media goes to the filesystem for the suite regardless of how the instance is
-# configured, so tests never reach for MinIO and never depend on it being up.
+# configured, so tests never reach for an object store or depend on one being up.
 FILESYSTEM_STORAGE = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},

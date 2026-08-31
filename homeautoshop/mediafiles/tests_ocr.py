@@ -35,7 +35,7 @@ def a_document(name: str = "receipt.pdf", mime: str = "application/pdf") -> Simp
 
 
 class LocalStorage(TestCase):
-    """Bytes go to a temp directory, not to MinIO.
+    """Bytes go to a temp directory, not to an object store.
 
     Without this the suite inherits STORAGE_DRIVER from the ambient .env and
     every upload here spends its time retrying a connection to a container.

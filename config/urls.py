@@ -257,5 +257,11 @@ urlpatterns = [
     path("admin/", admin.site.urls),
 ]
 
-if settings.DEBUG or settings.STORAGE_DRIVER == "filesystem":
+# `runserver` convenience only, and it has to stay that way: MEDIA_ROOT served
+# straight off the filesystem is every photo in the shop readable by anyone who
+# guesses a path, with no login. Media is served by `mediafiles.views`, which
+# checks. Widening this condition would not even work — `static()` returns
+# nothing unless DEBUG — which is exactly why it is worth being explicit about
+# what it is for.
+if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

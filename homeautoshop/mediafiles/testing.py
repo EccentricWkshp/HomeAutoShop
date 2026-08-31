@@ -22,14 +22,17 @@ from django.test import override_settings
 #: Django looks this up on the first `{% static %}` tag. Always include it.
 STATICFILES = {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"}
 
-#: What `docker-compose.yml` really sets, so a test can fail the way the
-#: deployed stack did: presigned URLs signed against a container-only host.
-COMPOSE_S3 = {
+#: An object store the browser cannot reach: presigned URLs signed against a
+#: host that resolves only where the application is. That is what an operator
+#: gets when they point `STORAGE_DRIVER=s3` at a store on their own network,
+#: and it is the case the serving path in `mediafiles/views.py` exists for, so
+#: it is worth being able to fail that way on purpose.
+UNREACHABLE_S3 = {
     "staticfiles": STATICFILES,
     "default": {
         "BACKEND": "homeautoshop.mediafiles.storage.S3Storage",
         "OPTIONS": {
-            "endpoint_url": "http://storage:9000",
+            "endpoint_url": "http://objects.invalid:9000",
             "bucket": "homeautoshop",
             "access_key": "x",
             "secret_key": "y",

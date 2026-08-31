@@ -5,9 +5,10 @@
 | **Document** | `Artifacts/SPEC.md` |
 | **Companion documents** | [README.md](README.md) · [REFERENCE.md](REFERENCE.md) · [SCHEMA-PARSER-PROFILES.md](SCHEMA-PARSER-PROFILES.md) · [SCHEMA-INSPECTION-TEMPLATES.md](SCHEMA-INSPECTION-TEMPLATES.md) · [INTEGRATION-LUBELOGGER.md](INTEGRATION-LUBELOGGER.md) · [INTEGRATION-WRENCHLEDGER.md](INTEGRATION-WRENCHLEDGER.md) |
 | **Status** | Draft for review |
-| **Version** | 0.6.4 |
+| **Version** | 0.6.5 |
 | **Date** | 2026-08-31 |
 | **Scope decisions** | Docker Compose deployment · all four feature modules in scope · household multi-user with garage PWA · four external integrations |
+| **v0.6.5 changes** | **No object store in the stack.** Media lives under `MEDIA_ROOT`, which is what §13.1 backs up; the earlier design put it in MinIO, where no backup reached it. That container had been justified by a presigned URL streaming photos straight to the browser, and v0.6.2 had already turned that off for good reason — such a link works for anyone who copies it, so `app` serves the bytes and reading a photo requires a login (§5.1, §12.3). Four services instead of five, and the measured idle footprint is now 338 MB against NFR-P-6's 900. The `s3` driver stays, vendor-neutral, for media on a NAS or on rented storage, with `manage.py migrate_storage` to move files either direction without touching the database. Backup and restore now say out loud when media is somewhere they cannot reach. |
 | **v0.6.4 changes** | Follow-ups from using the parts-order import. The preview now **leads to the import**: a browser clears a file input on submit, so previewing and then importing meant uploading the same file twice — which is how a preview stops being used. The document is stored on the way past (deduplicated by SHA-256) and the review screen carries a signed reference to it. Money is shown as money: the review screen and the purchase screens printed minor units, so a $155.87 order read as `15587`. And **every full-page form has a Cancel beside its Save** — without one the only exits were the browser's back button, which re-posts, or saving changes nobody wanted. |
 | **v0.6.3 changes** | **Supplier order confirmations are read into the catalogue** (FR-PUR-1, FR-PART-2/3). A RockAuto order PDF becomes a purchase with its lines, the parts in it — brand, manufacturer part number, part type, price, core charge, quantity — and fitment against the vehicle each was looked up under, recorded as *stated by vendor* rather than confirmed (FR-PART-4). Read by word geometry for the same reason §8.3a needs it: both text columns wrap, and they wrap above as well as below their own row. Kits are charged once and their contents catalogued but not billed; a rebate is money, not part of a part number. It rehearses before it writes, and `external_ref` makes a second read of the same file update rather than duplicate (§6.2). Also: the main navigation is reachable on a phone, where it had been hidden entirely below 800px with no route to seven of the nine sections. |
 | **v0.6.2 changes** | Fixes from first real use, three of which were load-bearing. **Uploaded files are served by the application** rather than linked to object storage: a presigned URL is signed against `http://storage:9000`, which resolves only inside Compose, so every photo was a broken image — and the route that replaces it needs a login, which a presigned link does not (§5.1, §12.3). **`capture` is no longer the only way to attach a photo** — it means camera-only, so the phone's library was unreachable. **A scan-tool report may be a photograph**, read by OCR, which is what §7.9 always promised for equipment that only prints paper. Plus: any open work order can return to `planned` (REFERENCE.md §1); work orders can be deleted from any state; the status form marks the field a chosen transition needs *before* it is submitted; the parent picker excludes cycles and explains itself when empty; the tool box searches WrenchLedger instead of asking for an id from memory; the timezone is a picker; a credential set in the environment no longer reports itself as unset. |
@@ -123,9 +124,9 @@ The design bias throughout: **your data lives on your hardware, works with the i
                         └───┬───────────────────────┬───────────────┘
                             │                       │
               ┌─────────────▼──────────┐   ┌────────▼─────────────────┐
-              │  db   PostgreSQL 16+   │   │  storage   MinIO (S3)    │
+              │  db   PostgreSQL 18+   │   │  media-data  (volume)    │
               │  relational + FTS +    │   │  originals + derivatives │
-              │  job queue             │   │  private bucket only     │
+              │  job queue             │   │  read only via `app`     │
               └─────────────▲──────────┘   └────────▲─────────────────┘
                             │                       │
                         ┌───┴───────────────────────┴───────────────┐
@@ -135,19 +136,20 @@ The design bias throughout: **your data lives on your hardware, works with the i
                         └───────────────────────────────────────────┘
 ```
 
-Five services, one `docker-compose.yml`, three named volumes (`db-data`, `media-data`, `backup-data`).
+Four services, one `docker-compose.yml`, three named volumes (`db-data`, `media-data`, `backup-data`).
 
 | Service | Image | Responsibility | Ports |
 | --- | --- | --- | --- |
 | `proxy` | `caddy:2-alpine` | TLS (internal CA by default), HSTS, compression, access logs | 443, 80 → 443 |
 | `app` | project image | REST API, server-rendered shell, PWA manifest and service worker, authentication, authorization, validation | internal 8080 |
 | `worker` | same image, different entrypoint | Async jobs; waits on the `jobs` table via `LISTEN/NOTIFY` | none |
-| `db` | `postgres:16-alpine` | System of record, full-text search, job queue | internal 5432 |
-| `storage` | `minio/minio` | S3-compatible blob store, private bucket, versioning off | internal 9000 |
+| `db` | `postgres:18-alpine` | System of record, full-text search, job queue | internal 5432 |
 
-**Compose profiles:** `default` (all five) · `slim` (drop `worker`; jobs run in-process in `app` — fine below roughly five vehicles) · `dev` (bind mounts, seed data, mail catcher).
+**Compose profiles:** `default` (all four) · `slim` (drop `worker`; jobs run in-process in `app` — fine below roughly five vehicles) · `dev` (bind mounts, seed data, mail catcher).
 
-> **Why MinIO instead of a plain bind mount:** presigned URLs let a 4 MB photo stream directly to and from the browser without passing through the app process — which matters on a low-power host over garage Wi-Fi. The cost is one more container. For operators who would rather have a filesystem-only footprint, a `FILESYSTEM` storage driver is a supported alternative (§14), at the price of proxying every byte through `app`.
+> **Why the filesystem rather than a bundled object store.** The argument for one is that a presigned URL lets a 4 MB photo stream straight to the browser without passing through `app`, which matters on a low-power host over garage Wi-Fi. That URL is not issued. It is a bearer token in a querystring — copied out of an address bar it works for anybody holding it — so `app` serves the bytes itself and reading a photo requires being signed in (§12.3). With that fast path off by default, a store in this file would be a network hop to the same disk, ~180 MB of RSS against NFR-P-6, and a fifth thing to keep patched. It would also break §13.1: a backup copies `MEDIA_ROOT`, and would hold no photos at all.
+>
+> The `s3` driver is supported and vendor-neutral (§14) for operators who want media on a NAS, on rented storage, or on a host other than the one running the application — with the backup caveat above, which the application states when a backup is taken and again before a restore. `manage.py migrate_storage` moves files either direction without touching the database, so the choice is not one-way.
 
 ### 5.2 Component responsibilities
 
@@ -262,7 +264,7 @@ The client shows a persistent queue indicator — *N changes waiting to sync* �
 | PDF / OCR | `pdfplumber` + `PyMuPDF`, `pytesseract`, `Pillow` | The deciding factor above. |
 | Typing | `mypy --strict` on domain modules, Pydantic at the API edge | The 100+ requirement domain surface is where Python most needs the guardrail. |
 
-> **Honest caveat — one NFR needs revising.** NFR-P-6 budgets < 700 MB RSS across five containers. Postgres (~120 MB) + MinIO (~180 MB) + Caddy (~15 MB) leaves ~385 MB, and Python `app` and `worker` processes will land nearer 200 MB each. Either **raise NFR-P-6 to 900 MB**, or run the `slim` profile (jobs in-process, one Python container) on constrained hosts. This is a real cost of the choice, stated rather than buried.
+> **Honest caveat — one NFR was revised, and the revision now looks pessimistic.** NFR-P-6 was raised from 700 MB to 900 MB (OQ-13) on the estimate that Python `app` and `worker` would land near 200 MB each on top of Postgres and an object store. Measured on a real instance at idle, the four containers come to **338 MB** — `app` 213, `worker` 70, `db` 38, `proxy` 17 — which is inside the figure the raise abandoned. The number is idle and on a small dataset, so it is a floor rather than a promise, and 900 MB stands until there is a measurement under load to lower it against. The `slim` profile (jobs in-process, one Python container) remains the answer on a genuinely constrained host. An operator who opts in to `STORAGE_DRIVER=s3` is running that store themselves, and this budget does not cover it.
 >
 > **Where this stack strains:** the offline conflict-merge UI (§5.4) is the one genuinely rich-client feature in the spec. HTMX plus a few hundred lines of vanilla JS over IndexedDB handles it, but if that proves painful in Phase 4, the escape hatch is one embedded client-side component — not a rewrite of the UI into an SPA.
 
@@ -1037,7 +1039,7 @@ POST   /admin/export                 → job → download
 | NFR-P-3 | First contentful paint < 1.5 s on LAN; interactive < 2.5 s on a mid-range phone. |
 | NFR-P-4 | Photo upload returns as soon as the object is stored; derivatives are async (FR-DOC-3). |
 | NFR-P-5 | Cold `docker compose up` to serving < 30 s, migrations included. |
-| NFR-P-6 | Idle footprint < 900 MB RSS across all five containers, or < 600 MB on the `slim` profile. **Raised from 700 MB (OQ-13)** — the Python choice (§5.7) makes the original figure unreachable, and an NFR nobody can meet is worse than an honest one. |
+| NFR-P-6 | Idle footprint < 900 MB RSS across all four containers, or < 600 MB on the `slim` profile. **Raised from 700 MB (OQ-13)** — the Python choice (§5.7) makes the original figure unreachable, and an NFR nobody can meet is worse than an honest one. Dropping the object store (§5.1) gave back ~180 MB of it; the figure is not lowered again, because the headroom is what the `s3` driver and a busier worker will spend. |
 
 ### 11.3 Reliability and operability
 
@@ -1048,7 +1050,7 @@ POST   /admin/export                 → job → download
 | NFR-R-3 | Structured JSON logs with a request ID; no secrets or full VINs at info level. |
 | NFR-R-4 | `/metrics` in Prometheus format *(SHOULD)*, off by default. |
 | NFR-R-5 | Schema migrations are forward-only, transactional, and tested against the previous release's data. |
-| NFR-R-6 | The app starts and serves read-only with a clear banner if blob storage is unreachable — **a MinIO outage must not hide the service history**. |
+| NFR-R-6 | The app starts and serves read-only with a clear banner if blob storage is unreachable — **a storage outage must not hide the service history**. Moot on the default `filesystem` driver, where media shares its fate with the application; it is the `s3` driver, where the store is a separate machine that can be down on its own, that this defends. |
 
 ### 11.4 Maintainability
 
@@ -1100,6 +1102,8 @@ Parameterized queries only; output encoding by default; strict CSP without `unsa
 
 A nightly `backup.run` job produces a timestamped set: `pg_dump` (custom format, compressed), a media manifest with checksums, and either a full or incremental media copy into `backup-data`. Retention is GFS-style (configurable, default: 7 daily, 4 weekly, 6 monthly). Every backup is verified — the dump is test-restorable and a sample of media checksums is validated — and the result recorded. **The dashboard shows backup age and warns loudly past 7 days** (FR-ADM-4): a backup system nobody looks at is not a backup system.
 
+The media half of a backup is a copy of `MEDIA_ROOT`: everything under the default `filesystem` driver, and nothing under `s3` — a backup cannot reach into an object store it was only ever given an API client for. A gap like that is otherwise discovered at a restore, which is the one moment it cannot be closed, so it is stated three times: a warning in the log when the backup is taken, `"media": "external"` in the manifest, and a warning from `manage.py restore` before it does anything. An operator on `s3` backs that store up themselves.
+
 Optional post-backup sync to an operator-configured target (rsync/rclone to a NAS, external drive, or off-site) is supported as a shell hook, not a bundled cloud client.
 
 ### 13.2 Restore
@@ -1131,8 +1135,8 @@ values a wrong answer would lock an operator out of the settings screen with.
 | `BASE_URL` | — | Required; must be `https://` for full function (C-1) |
 | `TLS_MODE` | `internal` | `internal` \| `custom` \| `acme-dns` |
 | `DATABASE_URL` | compose-provided | Postgres DSN |
-| `STORAGE_DRIVER` | `s3` | `s3` \| `filesystem` |
-| `STORAGE_*` | compose-provided | Endpoint, bucket, credentials |
+| `STORAGE_DRIVER` | `filesystem` | `filesystem` \| `s3`. `filesystem` puts media under `MEDIA_ROOT`, where the backup finds it; `s3` is an object store the operator supplies. `manage.py migrate_storage` moves files between them without touching the database |
+| `STORAGE_*` | unset | Endpoint, bucket, credentials. Read only when `STORAGE_DRIVER=s3`, and none of them has a working default — there is no bundled object store to point at |
 | `STORAGE_PUBLIC_ENDPOINT` | unset | Only for an operator who has genuinely published their object store on an address a browser can reach. Blank — the default — means files are served by the application, which needs no second hostname, no second certificate and no exposed port, and makes reading a photo require a login |
 | `UNITS` | `imperial` | `imperial` \| `metric`; per-user override |
 | `CURRENCY` | `USD` | ISO 4217 |

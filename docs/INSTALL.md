@@ -32,13 +32,12 @@ docker compose version
 cp .env.example .env
 ```
 
-Four values matter before first boot. The rest have working defaults.
+Three values matter before first boot. The rest have working defaults.
 
 | | |
 | --- | --- |
 | `SECRET_KEY` | Long and random. Sessions and signed values depend on it, so changing it later logs everyone out. |
 | `POSTGRES_PASSWORD` | Anything, but not the shipped default. |
-| `STORAGE_SECRET_KEY` | Same. |
 | `SITE_ADDRESS` | The hostname you will type in a browser — `shop.home.arpa` by default. Caddy issues a certificate for exactly this name, so a mismatch here is the most common reason the site will not load. |
 
 `ALLOWED_HOSTS` must contain whatever you set `SITE_ADDRESS` to.
@@ -49,7 +48,7 @@ Any secret can be supplied out of a file instead by pointing `<NAME>_FILE` at a 
 The shop name, units and currency, Offline Mode, the integration addresses and
 their keys, the reminder settings and the backup schedule all live under
 *Settings* in the account menu, and a value set there wins over the one in
-`.env`. Set the four above, start it, and change the rest from a browser.
+`.env`. Set the three above, start it, and change the rest from a browser.
 
 Two things stay here because they cannot live in the database:
 
@@ -64,7 +63,7 @@ Two things stay here because they cannot live in the database:
 docker compose up -d
 ```
 
-Five containers. The `app` container runs migrations, collects static files and
+Four containers. The `app` container runs migrations, collects static files and
 seeds the built-in templates before gunicorn starts, so the first boot takes
 longer than later ones. Watch it settle:
 

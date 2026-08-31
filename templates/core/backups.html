@@ -58,7 +58,10 @@
               <td class="small">
                 {% if item.kind == "backup" %}
                   {% if item.complete %}
-                    {% translate "database" %}{% if item.media %} · {% translate "media" %}{% endif %}
+                    {% translate "database" %}{% if item.media and not item.media_external %} · {% translate "media" %}{% endif %}
+                    {% if item.media_external %}
+                      <span class="pill warn" title="{% translate 'Taken while media was in an object store, which a backup cannot reach into. Back that store up separately.' %}">{% translate "photos not included" %}</span>
+                    {% endif %}
                   {% else %}
                     <span class="pill danger">{% translate "no database in it" %}</span>
                   {% endif %}

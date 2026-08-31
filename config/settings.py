@@ -267,6 +267,26 @@ OCR_LANGUAGES = "+".join(env("OCR_LANGUAGES", "eng").replace(",", " ").split())
 # 300 DPI is hours of worker time for text nobody searches.
 OCR_PDF_MAX_PAGES = env_int("OCR_PDF_MAX_PAGES", 20)
 
+# Read whichever driver is selected, because `migrate_storage` has to build
+# both ends at once and the configured default is only ever one of them —
+# including halfway through a migration, when the setting has been flipped and
+# the files have not yet moved.
+S3_OPTIONS = {
+    # No default: nothing is bundled to point at, so `s3` means a store the
+    # operator runs or rents and the address is theirs to give. Blank is
+    # boto3's own default, which is real AWS S3.
+    "endpoint_url": env("STORAGE_ENDPOINT", ""),
+    "bucket": env("STORAGE_BUCKET", "homeautoshop"),
+    "access_key": env("STORAGE_ACCESS_KEY", ""),
+    "secret_key": env("STORAGE_SECRET_KEY", ""),
+    "region": env("STORAGE_REGION", "us-east-1"),
+    # Only for an operator who has actually published their object store on an
+    # address a browser can reach. Left blank — the default — files are served
+    # by the application instead, which needs no second hostname, no second
+    # certificate, and no exposed port. See homeautoshop/mediafiles/views.py.
+    "public_endpoint": env("STORAGE_PUBLIC_ENDPOINT", ""),
+}
+
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
@@ -274,19 +294,7 @@ STORAGES = {
 if STORAGE_DRIVER == "s3":
     STORAGES["default"] = {
         "BACKEND": "homeautoshop.mediafiles.storage.S3Storage",
-        "OPTIONS": {
-            "endpoint_url": env("STORAGE_ENDPOINT", "http://storage:9000"),
-            "bucket": env("STORAGE_BUCKET", "homeautoshop"),
-            "access_key": env("STORAGE_ACCESS_KEY", ""),
-            "secret_key": env("STORAGE_SECRET_KEY", ""),
-            "region": env("STORAGE_REGION", "us-east-1"),
-            # Only for an operator who has actually published their object
-            # store on an address a browser can reach. Left blank — the
-            # default — files are served by the application instead, which
-            # needs no second hostname, no second certificate, and no exposed
-            # port. See homeautoshop/mediafiles/views.py.
-            "public_endpoint": env("STORAGE_PUBLIC_ENDPOINT", ""),
-        },
+        "OPTIONS": S3_OPTIONS,
     }
 
 STATIC_URL = "/static/"

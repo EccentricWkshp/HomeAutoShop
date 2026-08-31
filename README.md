@@ -28,7 +28,7 @@ remember which brand of caliper they used.
 | Service-manual link pinning (LEMON / CHARM / ALLDATA DIY) | ✅ |
 | Localization scaffolding + CI gate on unwrapped strings | ✅ |
 | Ownership history, 30-day trash with restore | ✅ |
-| Object storage (MinIO/S3) with presigned URLs | ✅ |
+| Media on the filesystem, backed up with the database — or any S3 store you point it at | ✅ |
 | OCR of documents, photographed receipts and scanned PDFs | ✅ |
 | **Read a photographed printout — battery testers and anything else that only prints paper** | ✅ |
 | REST API + OpenAPI at `/api/v1/docs` | ✅ |
@@ -71,7 +71,7 @@ remember which brand of caliper they used.
 | **Instance settings in the UI, with the `.env` file as the fallback** | ✅ |
 | **Backup, export and download from the UI — restore stays a command** | ✅ |
 
-932 tests, all passing — on SQLite and on Postgres 18.
+1023 tests, all passing — on SQLite and on Postgres 18.
 
 ## Quick start
 

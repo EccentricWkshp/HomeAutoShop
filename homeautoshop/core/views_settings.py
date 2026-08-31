@@ -18,6 +18,7 @@ least afford to.
 
 from __future__ import annotations
 
+import json
 import logging
 import shutil
 from pathlib import Path
@@ -187,6 +188,20 @@ def _directory_size(path: Path) -> int:
     return sum(item.stat().st_size for item in path.rglob("*") if item.is_file())
 
 
+def _manifest(entry: Path) -> dict:
+    """A backup's manifest, or an empty one.
+
+    Unreadable and absent are the same answer here. A backup taken before the
+    manifest carried a `media` key is not a backup with a known problem, it is
+    one we cannot say either way about — and inventing a reassuring answer for
+    it is exactly the failure this screen exists to avoid.
+    """
+    try:
+        return json.loads((entry / "manifest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
 def held_backups() -> list[dict]:
     """What is actually on disk, read from disk.
 
@@ -214,6 +229,11 @@ def held_backups() -> list[dict]:
                     "bytes": _directory_size(entry),
                     "database": database,
                     "media": (entry / "media").exists(),
+                    # Taken against an object store, so what is in the `media`
+                    # folder is whatever happened to be on local disk and not
+                    # the photos. Without this the row says "database · media"
+                    # and is wrong in the direction that costs the most.
+                    "media_external": _manifest(entry).get("media") == "external",
                     # A backup with no database half is the one that must not
                     # look like the others: it is a media copy, and restoring
                     # from it would produce an empty shop full of photos.

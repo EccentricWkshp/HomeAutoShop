@@ -76,6 +76,19 @@ class Command(BaseCommand):
             + (f" ({sum(1 for p in media_source.rglob('*') if p.is_file()):,} files)" if has_media else "")
         )
 
+        # Said before the restore rather than discovered after it. A backup
+        # taken with an object store selected holds the database and whatever
+        # happened to be under MEDIA_ROOT — not the photos. Restoring it looks
+        # like a success and produces a shop whose pictures are all missing.
+        if manifest.get("media") == "external":
+            self.stdout.write(
+                self.style.WARNING(
+                    "This backup was taken with STORAGE_DRIVER set to an object store, so "
+                    "the photos and documents are NOT in it. Restore that store from its "
+                    "own backup as well, or the service history comes back without them."
+                )
+            )
+
         occupied = self._instance_has_data()
         if occupied and not options["force"]:
             raise CommandError(
