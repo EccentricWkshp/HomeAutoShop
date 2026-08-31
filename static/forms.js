@@ -224,6 +224,42 @@
     });
   }
 
+  /* ----------------------------------------------- the units the part uses
+   * Which units apply depends on which part, and a quantity box beside a part
+   * picker cannot know that in the markup. So the options carry their own list
+   * and the select beside them is filled from whichever is chosen.
+   *
+   * It starts empty and hidden, which is what makes this safe to skip: with no
+   * script the field never reaches the server and the quantity is read in the
+   * part's own unit — named in the option text, so the reader is not guessing
+   * either way. A counted part gets no picker at all, because there is no
+   * factor between a gasket and a litre.
+   */
+  function wireUnitPickers(root) {
+    root.querySelectorAll("select[data-units-from]").forEach(function (picker) {
+      var parts = document.getElementById(picker.getAttribute("data-units-from"));
+      if (!parts) return;
+      var apply = function () {
+        var option = parts.options[parts.selectedIndex];
+        var units = ((option && option.getAttribute("data-units")) || "")
+          .split(",")
+          .filter(Boolean);
+        picker.textContent = "";
+        // One unit is not a choice, and a dropdown with a single option is a
+        // control that asks a question with no answers.
+        picker.hidden = units.length < 2;
+        units.forEach(function (unit) {
+          var entry = document.createElement("option");
+          entry.value = unit;
+          entry.textContent = unit;
+          picker.appendChild(entry);
+        });
+      };
+      apply();
+      on(parts, "change", apply);
+    });
+  }
+
   /* ------------------------------------------------------ confirm before losing
    * Only where something disappears from view. A confirmation on everything
    * teaches people to dismiss confirmations.
@@ -244,6 +280,7 @@
     wireStatusForm(document);
     wireToolPickers(document);
     wireQuantitySteps(document);
+    wireUnitPickers(document);
     wireConfirms(document);
   }
 

@@ -485,6 +485,17 @@ class AssetSpec(RevisionedModel):
     group = models.CharField(max_length=16, choices=SpecGroup.choices, default=SpecGroup.OTHER)
     name = models.CharField(max_length=120)
     value = models.CharField(max_length=200)
+    #: The other end, when the spec is a range rather than a figure. Plenty are:
+    #: a refrigerant charge is 0.50–0.55 kg, a cold tyre pressure is 32–35 psi,
+    #: a valve lash is a window. Typed into `value` as "0.50-0.55" it reads
+    #: correctly and compares to nothing, so a range stored as text is a range
+    #: nothing can ever check a measurement against.
+    value_max = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name=_("to"),
+        help_text=_("Only for a spec that is a range. Leave blank for a single figure."),
+    )
     unit = models.CharField(max_length=24, blank=True)
     condition = models.CharField(
         max_length=120, blank=True, help_text=_("e.g. “cold, curb weight” — a spec without its condition is a guess.")
@@ -525,12 +536,22 @@ class AssetSpec(RevisionedModel):
             )
         ]
 
+    @property
+    def is_range(self) -> bool:
+        return bool(self.value_max)
+
     def __str__(self) -> str:
         return f"{self.name}: {self.display_value}"
 
     @property
     def display_value(self) -> str:
-        bits = [self.value, self.unit]
+        """The figure or the range, with its unit and condition.
+
+        One place, because a range formatted by hand at each call site is one
+        call site away from printing `0.50 kg` with the top of it missing.
+        """
+        span = f"{self.value}–{self.value_max}" if self.value_max else self.value
+        bits = [span, self.unit]
         text = " ".join(b for b in bits if b)
         return f"{text} ({self.condition})" if self.condition else text
 

@@ -613,7 +613,9 @@ def part_require(request, pk):
     ).first()
 
     try:
-        qty = Decimal(str(request.POST.get("qty") or 1))
+        qty = part.quantity_in_stock_units(
+            request.POST.get("qty") or 1, request.POST.get("qty_unit")
+        )
     except (InvalidOperation, TypeError):
         messages.error(request, _("Check the quantity and try again."))
         return redirect("work_order_detail", pk=wo.pk)
@@ -746,7 +748,12 @@ def part_use(request, pk):
     try:
         result = consume(
             part,
-            request.POST.get("qty") or 1,
+            # In whatever unit was picked beside the box, held in the part's
+            # own (FR-INV-13). Half a kilogram of R-134a is as ordinary a thing
+            # to record on a job as it is off the shelf.
+            part.quantity_in_stock_units(
+                request.POST.get("qty") or 1, request.POST.get("qty_unit")
+            ),
             work_order=wo,
             job_item=JobItem.objects.filter(pk=request.POST.get("job_item") or None).first(),
             user=request.user,

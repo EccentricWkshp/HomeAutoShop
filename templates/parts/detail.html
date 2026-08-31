@@ -162,7 +162,12 @@
         </p>
         <form method="post" action="{% url 'part_use' part.pk %}" class="formgrid">{% csrf_token %}<input type="hidden" name="_anchor" value="used-on">
           <div class="field">
-            <label for="id_use_qty">{% blocktranslate with unit=part.unit_label %}How many ({{ unit }}){% endblocktranslate %}</label>
+            {% comment %}
+            Just "How many". The unit is named by the picker beside the box, and
+            a label that also names it says `(pounds)` next to a dropdown reading
+            `oz` — two answers to one question, one of them wrong.
+            {% endcomment %}
+            <label for="id_use_qty">{% translate "How many" %}</label>
             <div class="row">
               <input type="number" step="{{ part.qty_step }}" min="{{ part.qty_step }}" name="qty" value="1"
                      id="id_use_qty" inputmode="decimal" class="input" style="flex:1">

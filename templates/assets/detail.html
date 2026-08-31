@@ -182,7 +182,16 @@
     {% with decoded=asset.decoded_details %}
       {% if decoded %}
       <section class="card">
-        <h2>{% translate "What the VIN says" %}</h2>
+        {% comment %}
+        Folded shut. A full decode is forty rows of manufacturer registration
+        data in a sidebar that also has to hold the meter, the identity, the
+        owners and the manuals — and it is read once, when the vehicle is first
+        entered, and almost never again. `<details>` because it is native: it
+        opens from a keyboard, announces itself as expandable, and needs no
+        script to do either.
+        {% endcomment %}
+        <details>
+          <summary><h2 style="display:inline">{% translate "What the VIN says" %}</h2></summary>
         <p class="small muted">
           {% translate "Returned by the lookup and kept on file. Nothing here is editable — it is what the manufacturer registered, which is worth knowing even where it disagrees with the vehicle in front of you." %}
         </p>
@@ -203,6 +212,7 @@
             {% endfor %}
           </tbody></table>
         {% endfor %}
+        </details>
       </section>
       {% endif %}
     {% endwith %}

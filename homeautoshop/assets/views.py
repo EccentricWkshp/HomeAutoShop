@@ -615,12 +615,18 @@ def ownership_end(request, pk, ownership_id):
 class SpecForm(forms.ModelForm):
     class Meta:
         model = AssetSpec
-        fields = ["group", "name", "value", "unit", "condition", "source", "is_sensitive", "is_pinned"]
+        fields = [
+            "group", "name", "value", "value_max", "unit", "condition",
+            "source", "is_sensitive", "is_pinned",
+        ]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for name, field in self.fields.items():
             field.required = name in ("group", "name", "value")
+            if name == "value":
+                # Reads as the pair it is once there is a second box beside it.
+                field.label = _("Value, or the low end")
             if not isinstance(field.widget, forms.CheckboxInput):
                 css = "select" if isinstance(field.widget, forms.Select) else "input"
                 field.widget.attrs.setdefault("class", css)

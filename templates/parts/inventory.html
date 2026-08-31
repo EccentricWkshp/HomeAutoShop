@@ -58,23 +58,11 @@
       </button>
     </section>
 
-    <section class="card">
-      <h2>{% translate "Add a location" %}</h2>
-      <form method="post" action="{% url 'location_create' %}" class="row">{% csrf_token %}
-        <input name="name" required style="flex:1" aria-label="{% translate 'Location name' %}"
-               placeholder="{% translate 'Shelf B3' %}">
-        <select name="parent" class="select" aria-label="{% translate 'Inside which location' %}">
-          <option value="">{% translate "Top level" %}</option>
-          {% for location in locations %}<option value="{{ location.pk }}">{{ location.path }}</option>{% endfor %}
-        </select>
-        <button type="submit">{% translate "Add" %}</button>
-      </form>
-    </section>
-  </div>
+      </div>
 
   <aside class="stack">
     {% if cores %}
-    <section class="card">
+        <section class="card">
       <h2>{% translate "Cores owed back" %}</h2>
       <p class="small muted">{% translate "An uncollected core charge is money already spent." %}</p>
       <ul class="list small">
@@ -122,6 +110,19 @@
         <span class="pill warn">{{ lot.expires_on }}</span></li>{% endfor %}</ul>
     </section>
     {% endif %}
+    <section class="card">
+      <h2>{% translate "Add a location" %}</h2>
+      <form method="post" action="{% url 'location_create' %}" class="row">{% csrf_token %}
+        <input name="name" required style="flex:1" aria-label="{% translate 'Location name' %}"
+               placeholder="{% translate 'Shelf B3' %}">
+        <select name="parent" class="select" aria-label="{% translate 'Inside which location' %}">
+          <option value="">{% translate "Top level" %}</option>
+          {% for location in locations %}<option value="{{ location.pk }}">{{ location.path }}</option>{% endfor %}
+        </select>
+        <button type="submit">{% translate "Add" %}</button>
+      </form>
+    </section>
+
   </aside>
 </div>
 {% endblock %}
