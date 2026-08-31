@@ -419,12 +419,24 @@ class WorkOrderNote(AppendOnlyModel):
         return self.body[:60]
 
 
-class TimeEntry(AppendOnlyModel):
+class TimeEntry(RevisionedModel):
     """Time on a job (SPEC §7.6, FR-TIME-1..3).
 
-    Append-only like the rest of the capture surface. Time may be valued at an
-    instance rate for reporting, but that figure is labeled an estimate and is
-    never rendered as a bill — this is not a commercial shop (NG-1).
+    **Editable, and it used to be append-only.** The reasoning for append-only
+    was sound in the abstract — an observation is not a fact that changes — and
+    wrong for this shop in particular: picking the wrong category, which is the
+    commonest mistake anybody makes here, became delete-and-retype. That is not
+    a stronger record, it is the same record with an extra step and a gap in the
+    ledger where the deleted row was.
+
+    This is a home garage (NG-1). Nobody is billed from these numbers and no
+    auditor reads them, so the cost of immutability is paid every day and the
+    benefit is paid to nobody. Readings, notes and media stay append-only, where
+    the argument still holds: those are captures from a moment, and a corrected
+    odometer reading really is a different observation from the one taken.
+
+    Time may be valued at an instance rate for reporting, but that figure is
+    labeled an estimate and is never rendered as a bill.
     """
 
     class Category(models.TextChoices):

@@ -44,7 +44,7 @@
             </form>
             <form method="post" action="{% url 'code_status' code.pk %}">{% csrf_token %}
               <input type="hidden" name="status" value="ignored">
-              <button class="linkish small" type="submit">{% translate "Live with it" %}</button>
+              <button class="linkish small" type="submit">{% translate "Dismiss" %}</button>
             </form>
           </div>
         </td>

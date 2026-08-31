@@ -14,7 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from decimal import Decimal
-from django.db.models import Sum
+from django.db.models import Q, Sum
 from django.utils.translation import gettext_lazy as _
 
 from .measurements import Money
@@ -90,9 +90,17 @@ def asset_cost(asset, *, include_tooling: bool | None = None) -> Rollup:
 
     rollup = Rollup(currency=conf.CURRENCY_REPORTING)
 
-    parts_minor = 0
-    for work_order in asset.work_orders.prefetch_related("part_usages"):
-        parts_minor += sum(u.line_total_minor for u in work_order.part_usages.all())
+    # Every part that went on this vehicle, whether or not a job records it.
+    # Reading only `asset.work_orders` was the bug: a part used against the
+    # vehicle with no work order behind it (FR-INV-10) left the shelf, cost real
+    # money, and appeared in no total anywhere — the one number the whole
+    # feature exists to make true was the one it missed.
+    from homeautoshop.parts.models import PartUsage
+
+    usages = PartUsage.objects.filter(
+        Q(work_order__asset=asset) | Q(work_order__isnull=True, asset=asset)
+    )
+    parts_minor = sum(usage.line_total_minor for usage in usages)
     rollup.add(str(_("Parts")), parts_minor)
 
     expenses = Expense.objects.filter(asset=asset)

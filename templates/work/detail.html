@@ -421,7 +421,7 @@
           <li class="spread"><div>{{ entry.get_category_display }}
             <div class="muted">{{ entry.note }}{% if entry.user %} · {{ entry.user.display_name }}{% endif %}</div></div>
             <div class="row">
-              <span class="mono">{{ entry.hours }} h</span>
+              <a class="mono" href="{% url 'time_entry_edit' wo.pk entry.pk %}">{{ entry.hours }} h</a>
               {% comment %}
               Removal, not editing. A time entry is an observation and stays
               one — but append-only never meant unremovable, and a timer left

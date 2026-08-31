@@ -254,6 +254,29 @@ def _timeline(asset: Asset) -> list[dict]:
                 "flag": reading.is_rollback,
             }
         )
+    # A part fitted with no job behind it (FR-INV-10). Its work-order siblings
+    # already appear through the job that used them; these had no route onto
+    # this page at all, so "I put that fuel pump in" was recorded and then
+    # visible nowhere the vehicle is read.
+    from homeautoshop.parts.models import PartUsage
+
+    for usage in (
+        PartUsage.objects.filter(asset=asset, work_order__isnull=True)
+        .select_related("part")[:50]
+    ):
+        events.append(
+            {
+                "when": timezone.make_aware(
+                    timezone.datetime.combine(
+                        usage.installed_at, timezone.datetime.min.time()
+                    )
+                ),
+                "kind": "part",
+                "title": _("Part fitted"),
+                "detail": f"{usage.qty:g} × {usage.part}",
+                "url": f"/parts/{usage.part.pk}/",
+            }
+        )
     for link in MediaLink.for_entity(asset).select_related("media")[:30]:
         events.append(
             {

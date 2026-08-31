@@ -120,6 +120,27 @@ def purchase_create(request):
     return render(request, "purchasing/form.html", {"form": form, "purchase": None})
 
 
+@login_required
+def purchase_edit(request, pk):
+    """Correct the order itself (FR-PUR-1).
+
+    Lines could be added and received and the *order* could not be touched, so
+    a missing order number, a tax figure left at zero, or the wrong vendor was
+    permanent — and shipping and tax are not decoration: they are what makes a
+    landed cost landed, and every lot received against this order is priced
+    from them.
+    """
+    purchase = get_object_or_404(Purchase, pk=pk)
+    form = PurchaseForm(request.POST or None, instance=purchase)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, _("Saved."))
+        return redirect("purchase_detail", pk=purchase.pk)
+    return render(
+        request, "purchasing/form.html", {"form": form, "purchase": purchase}
+    )
+
+
 @require_POST
 @login_required
 def purchase_line_add(request, pk):

@@ -510,7 +510,9 @@ def lot_add(request, pk):
         lot.save()
         StockTransaction.record(
             lot,
-            form.cleaned_data["quantity"],
+            part.quantity_in_stock_units(
+                form.cleaned_data["quantity"], request.POST.get("quantity_unit")
+            ),
             StockTransaction.Reason.FOUND,
             note=str(_("Added by hand")),
             user=request.user,
@@ -611,10 +613,16 @@ def part_use(request, pk):
 
         asset = Asset.objects.filter(pk=request.POST["asset"]).first()
 
+    # Entered in whatever is written on the container, held in the part's own
+    # unit. Half a kilogram of R-134a out of a cylinder stocked by the pound is
+    # 1.102 lb, and nobody should be doing that on paper.
+    quantity = part.quantity_in_stock_units(
+        request.POST.get("qty") or 1, request.POST.get("qty_unit")
+    )
     try:
         result = consume(
             part,
-            request.POST.get("qty") or 1,
+            quantity,
             asset=asset,
             installed_at=request.POST.get("installed_at") or None,
             note=(request.POST.get("note") or "").strip(),
@@ -641,7 +649,10 @@ def lot_count(request, pk, lot_id):
     lot = get_object_or_404(StockLot, pk=lot_id, part=part)
     note = (request.POST.get("note") or "").strip()
     try:
-        entry = cycle_count(lot, request.POST.get("counted") or 0, note=note, user=request.user)
+        counted = part.quantity_in_stock_units(
+            request.POST.get("counted") or 0, request.POST.get("counted_unit")
+        )
+        entry = cycle_count(lot, counted, note=note, user=request.user)
     except ValidationError as exc:
         messages.error(request, " ".join(exc.messages))
     else:

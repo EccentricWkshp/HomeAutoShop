@@ -496,6 +496,62 @@ def job_item_move(request, pk, item_id):
     return redirect("work_order_detail", pk=wo.pk)
 
 
+class TimeEntryForm(forms.ModelForm):
+    """A time entry after it was logged (FR-TIME-1).
+
+    Hours rather than minutes, because hours is what anybody says out loud and
+    minutes is what the column stores.
+    """
+
+    hours = forms.DecimalField(max_digits=6, decimal_places=2, min_value=0)
+
+    class Meta:
+        model = TimeEntry
+        fields = ["category", "job_item", "note"]
+        labels = {"job_item": _("Which line of work")}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["job_item"].required = False
+        self.fields["job_item"].empty_label = _("The whole job")
+        if self.instance.pk:
+            self.fields["hours"].initial = round(self.instance.minutes / 60, 2)
+            self.fields["job_item"].queryset = JobItem.objects.filter(
+                work_order=self.instance.work_order
+            )
+        for name, field in self.fields.items():
+            field.required = name == "hours"
+            css = "select" if isinstance(field.widget, forms.Select) else "input"
+            field.widget.attrs.setdefault("class", css)
+
+    def save(self, commit=True):
+        entry = super().save(commit=False)
+        entry.minutes = int(Decimal(str(self.cleaned_data["hours"])) * 60)
+        # A timer's own start and end no longer describe an edited duration, and
+        # keeping them would make `hours` and the timestamps disagree.
+        if entry.started_at or entry.ended_at:
+            entry.started_at = None
+            entry.ended_at = None
+        if commit:
+            entry.save()
+        return entry
+
+
+@login_required
+def time_entry_edit(request, pk, entry_id):
+    """Correct a time entry — most often its category (FR-TIME-1)."""
+    wo = get_object_or_404(WorkOrder, pk=pk)
+    entry = get_object_or_404(TimeEntry, pk=entry_id, work_order=wo)
+    form = TimeEntryForm(request.POST or None, instance=entry)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, _("Saved."))
+        return redirect("work_order_detail", pk=wo.pk)
+    return render(
+        request, "work/time_form.html", {"wo": wo, "entry": entry, "form": form}
+    )
+
+
 @require_POST
 @login_required
 def time_entry_delete(request, pk, entry_id):

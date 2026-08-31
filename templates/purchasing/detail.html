@@ -18,6 +18,7 @@
       <div class="small muted">{% translate "Total" %}</div>
       <div class="mono" style="font-size:1.4rem">{{ purchase.total }}</div>
     </div>
+    <a class="btn" href="{% url 'purchase_edit' purchase.pk %}">{% translate "Edit" %}</a>
     {% comment %}
       Offered whatever the status, and refused by the view while any of it is
       received — a purchase is where a stock lot's cost came from, so deleting

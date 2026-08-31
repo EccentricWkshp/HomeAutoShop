@@ -158,6 +158,8 @@ urlpatterns = [
     path("work-orders/<uuid:pk>/time/", work.time_add, name="work_order_time_add"),
     # Append-only never meant unremovable: a timer left running overnight
     # puts eleven hours on a job, and leaving it there costs the number.
+    path("work-orders/<uuid:pk>/time/<uuid:entry_id>/edit/", work.time_entry_edit,
+         name="time_entry_edit"),
     path("work-orders/<uuid:pk>/time/<uuid:entry_id>/delete/", work.time_entry_delete,
          name="time_entry_delete"),
     path("work-orders/<uuid:pk>/items/<uuid:item_id>/tools/", work.job_item_tool_add,
@@ -292,6 +294,9 @@ urlpatterns = [
     # parts in the catalogue (FR-PUR-1, FR-PART-2).
     path("purchases/import/", purchasing_import.order_import, name="order_import"),
     path("purchases/<uuid:pk>/", purchasing.purchase_detail, name="purchase_detail"),
+    # Tax and shipping are not decoration: every lot received against this
+    # order is priced from them.
+    path("purchases/<uuid:pk>/edit/", purchasing.purchase_edit, name="purchase_edit"),
     path("purchases/<uuid:pk>/lines/", purchasing.purchase_line_add, name="purchase_line_add"),
     path(
         "purchases/<uuid:pk>/lines/<uuid:line_id>/receive/",

@@ -1,0 +1,18 @@
+{% load i18n %}
+{% comment %}
+A unit beside a quantity box, offered only when there is a real choice. A part
+counted in ones has nothing to convert to, and a dropdown with one option in it
+is a control that asks a question with no answers.
+
+`name` is the field name the quantity uses, plus `_unit` — the view converts
+whatever comes back into the part's own unit, so the shelf holds one number per
+part however it was typed.
+{% endcomment %}
+{% if part.compatible_units|length > 1 %}
+  <label class="visually-hidden" for="{{ id }}">{% translate "Unit" %}</label>
+  <select name="{{ name }}" id="{{ id }}" class="select" style="width:6rem">
+    {% for choice in part.compatible_units %}
+      <option value="{{ choice }}"{% if choice == part.unit %} selected{% endif %}>{{ choice }}</option>
+    {% endfor %}
+  </select>
+{% endif %}

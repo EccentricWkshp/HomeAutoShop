@@ -1021,11 +1021,20 @@ class TimeEntryTests(TestCase):
         entry = TimeEntry.objects.create(work_order=self.wo, minutes=45)
         self.assertEqual(entry.hours, 0.75)
 
-    def test_time_entries_are_append_only(self):
+    def test_a_time_entry_can_be_corrected(self):
+        """It used to refuse, and the refusal was wrong for this shop: picking
+        the wrong category is the commonest mistake anybody makes here, and
+        delete-and-retype is the same record with a gap where the old row was.
+        Nobody is billed from these numbers (NG-1)."""
         entry = TimeEntry.objects.create(work_order=self.wo, minutes=45)
-        entry.minutes = 500
-        with self.assertRaises(ValidationError):
-            entry.save()
+
+        entry.minutes = 30
+        entry.category = TimeEntry.Category.DIAGNOSIS
+        entry.save()
+
+        entry.refresh_from_db()
+        self.assertEqual(entry.minutes, 30)
+        self.assertEqual(entry.category, TimeEntry.Category.DIAGNOSIS)
 
 
 class UseWithoutAJobTests(TestCase):

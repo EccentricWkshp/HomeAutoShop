@@ -6252,7 +6252,7 @@ msgid "Make a job"
 msgstr ""
 
 #: templates/diagnostics/asset.html:46
-msgid "Live with it"
+msgid "Dismiss"
 msgstr ""
 
 #: templates/diagnostics/asset.html:60

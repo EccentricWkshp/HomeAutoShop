@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Time" %} — {{ wo.number }}{% endblock %}
+{% block content %}
+{% url 'work_order_detail' wo.pk as back_url %}
+{% translate "Edit a time entry" as heading %}
+{% translate "Editable because picking the wrong category is the commonest mistake anybody makes here, and delete-and-retype is not a stronger record — it is the same one with a gap where the old row was." as note %}
+{% include "partials/_editform.html" with heading=heading subtitle=wo.number form=form back_url=back_url back_label=wo.number note=note %}
+{% endblock %}

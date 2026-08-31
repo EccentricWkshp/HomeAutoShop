@@ -12,7 +12,7 @@ Two ideas carry most of the value here:
 
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
@@ -20,8 +20,26 @@ from django.db.models import F, Sum
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
+from homeautoshop.core.measurements import PART_UNITS, UNIT_LABELS
 from homeautoshop.core.models import AppendOnlyModel, BaseModel, RevisionedModel
 from homeautoshop.core.money import money, money_columns
+
+
+#: Everything a part can be measured in, grouped so the picker reads as the
+#: shop thinks: what you count, what you weigh, what you pour, what you cut off
+#: a roll. Built from the conversion table rather than typed out beside it, so a
+#: unit that exists here is a unit the arithmetic actually knows.
+UNIT_CHOICES = [
+    (_("Counted"), [("each", UNIT_LABELS["each"])]),
+    (_("Weight"), [(u, UNIT_LABELS[u]) for u in PART_UNITS["mass"]]),
+    (_("Volume"), [(u, UNIT_LABELS[u]) for u in PART_UNITS["volume"]]),
+    (_("Length"), [(u, UNIT_LABELS[u]) for u in PART_UNITS["length"]]),
+]
+
+
+#: What every quantity column in this module stores. Named once so a
+#: conversion rounds to exactly what the database will accept.
+QUANTITY_PLACES = Decimal("0.001")
 
 
 class PartType(models.TextChoices):
@@ -38,11 +56,13 @@ class Part(RevisionedModel):
     manufacturer = models.CharField(max_length=80, blank=True)
     part_number = models.CharField(max_length=80, blank=True, db_index=True)
     part_type = models.CharField(max_length=20, choices=PartType.choices, default=PartType.AFTERMARKET)
-    unit = models.CharField(
-        max_length=8,
-        default="each",
-        choices=[("each", _("each")), ("L", _("litres")), ("kg", _("kilograms")), ("ft", _("feet"))],
-    )
+    #: What one of these is measured in. Four choices were hard-coded here —
+    #: each, litres, kilograms, feet — which is not a preference so much as a
+    #: guess about somebody else's catalogue: R-134a is sold in cylinders by the
+    #: pound and dispensed by the ounce or the half-kilogram, and none of those
+    #: were sayable. The set now covers mass, volume, length and count, and a
+    #: quantity may be *entered* in any unit of the same kind and converted.
+    unit = models.CharField(max_length=8, default="each", choices=UNIT_CHOICES)
     is_consumable = models.BooleanField(default=False)
     has_core = models.BooleanField(default=False)
     core_value_minor, core_value_currency = money_columns("core_value", null=True)
@@ -85,6 +105,51 @@ class Part(RevisionedModel):
     def is_countable(self) -> bool:
         """Whether this part comes in whole ones."""
         return self.unit == "each"
+
+    @property
+    def unit_label(self) -> str:
+        from homeautoshop.core.measurements import unit_label
+
+        return unit_label(self.unit)
+
+    @property
+    def compatible_units(self) -> tuple[str, ...]:
+        """Units a quantity of this part may be typed in.
+
+        A pound of refrigerant and an ounce of it are the same substance, so the
+        entry boxes offer both and the arithmetic joins them up. `each` converts
+        to nothing, which is the honest answer for a gasket.
+        """
+        from homeautoshop.core.measurements import compatible_units
+
+        return compatible_units(self.unit)
+
+    def quantity_in_stock_units(self, value, unit: str | None = None) -> Decimal:
+        """`value` of `unit`, as a quantity of this part.
+
+        Stock is always held in the part's own unit — one number per part, so
+        the shelf total never depends on which box somebody typed into. Converting
+        at the edge is what lets the box accept what is actually written on the
+        cylinder.
+        """
+        from homeautoshop.core.measurements import UnknownUnitError, convert
+
+        amount = Decimal(str(value))
+        if not unit or unit == self.unit:
+            return amount
+        try:
+            converted = Decimal(str(convert(amount, unit, self.unit)))
+        except UnknownUnitError:
+            # A unit the table does not know. Taking the number at face value is
+            # better than refusing the whole entry over the box beside it.
+            return amount
+        # Quantised, because a conversion factor is irrational-looking and the
+        # ledger holds three decimal places: half a kilogram is
+        # 1.102311310924387903614869007 lb, which the column refuses outright.
+        # Rounding here rather than at the column means the number that lands is
+        # the number this returns, and the residual — under a thousandth of a
+        # pound — is smaller than anything a shop scale reads.
+        return converted.quantize(QUANTITY_PLACES, rounding=ROUND_HALF_UP)
 
     @property
     def qty_step(self) -> str:

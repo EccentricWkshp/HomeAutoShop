@@ -31,6 +31,10 @@ _TO_CANONICAL: dict[str, tuple[str, Decimal]] = {
     "km": ("distance", Decimal(1)),
     "mi": ("distance", Decimal("1.609344")),
     "m": ("distance", Decimal("0.001")),
+    # Parts are sold by the foot — hose, wire, weatherstrip — so length has to
+    # be a dimension parts can be measured in, not only one odometers use.
+    "ft": ("distance", Decimal("0.0003048")),
+    "in": ("distance", Decimal("0.0000254")),
     "L": ("volume", Decimal(1)),
     "ml": ("volume", Decimal("0.001")),
     "qt": ("volume", Decimal("0.946352946")),
@@ -181,4 +185,56 @@ UNIT_LABELS = {
     "km": _("kilometres"),
     "hours": _("hours"),
     "cycles": _("cycles"),
+    "each": _("each"),
+    "L": _("litres"),
+    "ml": _("millilitres"),
+    "qt": _("quarts"),
+    "gal": _("gallons"),
+    "floz": _("fluid ounces"),
+    "kg": _("kilograms"),
+    "g": _("grams"),
+    "lb": _("pounds"),
+    "oz": _("ounces"),
+    "m": _("metres"),
+    "ft": _("feet"),
+    "in": _("inches"),
 }
+
+#: What a part can be measured in, grouped by what it can be converted within.
+#: A vendor's units are the vendor's business — R-134a is sold by the pound in
+#: cylinders and dispensed by the ounce or the half-kilogram — so the catalogue
+#: has to hold both and the arithmetic has to join them up.
+PART_UNITS: dict[str, tuple[str, ...]] = {
+    "count": ("each",),
+    "mass": ("lb", "oz", "kg", "g"),
+    "volume": ("qt", "gal", "floz", "L", "ml"),
+    "length": ("ft", "in", "m"),
+}
+
+#: `dimension_of` calls length "distance", because that is what the canonical
+#: table calls it. Parts do not measure distance; they measure length.
+_PART_DIMENSION = {"distance": "length"}
+
+
+def part_dimension(unit: str) -> str:
+    """Which group of units this one can be converted within.
+
+    `count` for `each`, which converts to nothing — a thing is a thing, and
+    there is no factor between a gasket and a litre.
+    """
+    if unit == "each" or not unit:
+        return "count"
+    try:
+        found = dimension_of(unit)
+    except UnknownUnitError:
+        return "count"
+    return _PART_DIMENSION.get(found, found)
+
+
+def compatible_units(unit: str) -> tuple[str, ...]:
+    """Every unit a quantity of this part may be entered in."""
+    return PART_UNITS.get(part_dimension(unit), ("each",))
+
+
+def unit_label(unit: str) -> str:
+    return UNIT_LABELS.get(unit, unit)

@@ -6255,7 +6255,7 @@ msgid "Make a job"
 msgstr "Convertir en trabajo"
 
 #: templates/diagnostics/asset.html:46
-msgid "Live with it"
+msgid "Dismiss"
 msgstr "Vivir con eso"
 
 #: templates/diagnostics/asset.html:60

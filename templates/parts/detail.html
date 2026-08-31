@@ -76,6 +76,7 @@
             <form method="post" action="{% url 'lot_count' part.pk lot.pk %}" class="row">{% csrf_token %}<input type="hidden" name="_anchor" value="stock-lots">
               <input type="number" step="{{ part.qty_step }}" name="counted" value="{{ lot.qty_on_hand }}" style="width:6rem"
                      aria-label="{% translate 'Counted quantity' %}">
+              {% include "partials/_unit.html" with name="counted_unit" id="count-unit-"|add:lot.pk|stringformat:"s" %}
               <input name="note" style="width:8rem" aria-label="{% translate 'Why the count differs' %}"
                      placeholder="{% translate 'reason' %}">
               <button type="submit" class="small">{% translate "Adjust" %}</button>
@@ -112,7 +113,14 @@
       <h2 style="margin-top:1rem">{% translate "Add stock" %}</h2>
       <form method="post" action="{% url 'lot_add' part.pk %}" class="formgrid">{% csrf_token %}<input type="hidden" name="_anchor" value="stock-lots">
         {% for field in lot_form %}
-          <div class="field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}</div>
+          <div class="field">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {% if field.name == 'quantity' %}
+              <div class="row">{{ field }}
+                {% include "partials/_unit.html" with name="quantity_unit" id="id_lot_qty_unit" %}
+              </div>
+            {% else %}{{ field }}{% endif %}
+          </div>
         {% endfor %}
         <div class="field full"><button class="primary" type="submit">{% translate "Add" %}</button></div>
       </form>
@@ -154,9 +162,12 @@
         </p>
         <form method="post" action="{% url 'part_use' part.pk %}" class="formgrid">{% csrf_token %}<input type="hidden" name="_anchor" value="used-on">
           <div class="field">
-            <label for="id_use_qty">{% translate "How many" %}</label>
-            <input type="number" step="{{ part.qty_step }}" min="{{ part.qty_step }}" name="qty" value="1"
-                   id="id_use_qty" inputmode="decimal" class="input">
+            <label for="id_use_qty">{% blocktranslate with unit=part.unit_label %}How many ({{ unit }}){% endblocktranslate %}</label>
+            <div class="row">
+              <input type="number" step="{{ part.qty_step }}" min="{{ part.qty_step }}" name="qty" value="1"
+                     id="id_use_qty" inputmode="decimal" class="input" style="flex:1">
+              {% include "partials/_unit.html" with name="qty_unit" id="id_use_qty_unit" %}
+            </div>
           </div>
           <div class="field">
             <label for="id_use_asset">{% translate "On which vehicle" %}</label>
