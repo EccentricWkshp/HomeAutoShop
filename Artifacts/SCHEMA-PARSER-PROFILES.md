@@ -4,8 +4,10 @@
 | --- | --- |
 | **Document** | `Artifacts/SCHEMA-PARSER-PROFILES.md` |
 | **Status** | Draft for review |
-| **Version** | 0.3.0 |
+| **Version** | 0.4.1 |
 | **Date** | 2026-09-01 |
+| **v0.4.1 changes** | **The data stream is read, not only the codes.** New `live_data_extractor` fills `DiagnosticSession.live_data` and the Reading / Value / Min / Max table that have existed since Phase 4 and that only the built-in D8 parser could reach — so a THINKCAR data-stream report holding 159 readings and no fault codes imported as an empty session. It is not a datalog reader, and §1a says where that line falls and why. |
+| **v0.4.0 changes** | **A PDF is read as the lines it was printed as.** `_read_pdf` joined each page's words in *extraction order*, which is not layout — and reading it as though it were made three report formats unparseable and let a label reach down a flattened page for a value that was not its own, reporting a VIN for a car whose tablet printed `VIN: --`. With the printed lines back, three more profiles were written (THINKCAR, TOPDON, Carly) and new `section_pattern` attributes a code to the module heading above it: 388 of the 398 codes the catalog reads now carry their module, where none did. Also new: `join`, for a cell wrapped across two printed lines; and label anchoring tries every occurrence of a label rather than the first. |
 | **v0.3.0 changes** | §1 said the right moment to freeze this contract is when a second tool's reports arrive. They have — fourteen tools' worth, gathered from the public web (see the [corpus README](samples/scan-reports/README.md)) — and new §1a records what four working profiles needed that the contract could not express: `multiline` rows, a column with a fallback `group`, `map` as a closed vocabulary, and a fallback profile that stops outranking a specific one. §2 is rewritten around the corpus as it now is. |
 | **Parent spec** | [SPEC.md](SPEC.md) |
 | **Implements** | SPEC.md §8.3a (`FR-INT-4`–`FR-INT-7`), entity `parser_profile` |
@@ -50,7 +52,7 @@ A parser profile is **data**. This is the contract the extraction engine impleme
 > | ASCII hyphens | **U+2011** throughout: dates, `F‑150`, `B1352‑20`. Normalize on the way in or every pattern silently misses |
 > | DTC matches `[PBCU][0-9A-F]{4}` | correct, and a narrower `\d{4}` is not — `P219A` is a real code. Codes also carry a failure-type byte: `B1352‑20` |
 > | states are Stored/Pending/Permanent/History | also `CMDTCs(Storage Trouble Code)`, `ODDTCs(Request Trouble Code)`, and GM's three separate outcomes (`Last test`, `This ignition`, `Since Clear`) |
-> | readiness monitors are the optional extra section | **no sample has readiness.** They all have **Live Data**: name, value, maximum, minimum, unit — which the schema does not model |
+> | readiness monitors are the optional extra section | **no sample has readiness.** They all have **Live Data**: name, value, maximum, minimum, unit — which the schema did not model. It does now: `live_data_extractor`, §1a |
 >
 > Two structural facts no field-extractor vocabulary would have captured:
 >
@@ -144,9 +146,9 @@ review:
   flag_below_confidence: 0.85
 ```
 
-## 1a. What four more tools added to the contract
+## 1a. What seven more tools added to the contract
 
-The schema above was written against one format. Four more profiles now ship in the catalog — Ross-Tech VCDS, Autel MaxiSys, BlueDriver, Car Scanner ELM OBD2 — written against reports gathered from the public web, and they needed four things the original contract had no way to express. Each was added because a real format demanded it, and each is measured rather than anticipated.
+The schema above was written against one format. Seven profiles now ship in the catalog — Ross-Tech VCDS, Autel MaxiSys, THINKCAR, TOPDON, Carly, BlueDriver, Car Scanner ELM OBD2 — written against reports gathered from the public web, and they needed seven things the original contract had no way to express. Each was added because a real format demanded it, and each is measured rather than anticipated.
 
 ### `media_type: text` is the common case, not the exception
 
@@ -174,7 +176,18 @@ Rows were matched one line at a time. A VCDS Auto-Scan states a fault as two:
 
 A line-at-a-time reader has to pick one and is wrong either way. **Measured across nine real Auto-Scans: 191 faults, 30 of them carrying a J2012 code.** Reading only the indented line reports five faults in six as absent; reading only the first throws away the code a person can look up. Hence `multiline`, and hence a column's `group` accepting a *list* — the first group that matched wins, so one column can say "the standard code, or the vendor's if that is all there is".
 
-`multiline` also carries every PDF profile, for an unrelated reason: **a page of extracted PDF text is a single line**, so `^` and `$` match once per page and a row cannot be anchored to one. Rows are found by shape, ended by the status vocabulary.
+`multiline` was also, for a while, the only way to read a PDF at all — a page of extracted text was a single line, so `^` and `$` matched once per page and a row could not be anchored to one. That is fixed at the source (see below) and `multiline` is now what its name says: a row that genuinely spans lines.
+
+### `join` — a cell reassembled from a wrapped row
+
+TOPDON prints every fault as exactly two printed lines, with the description split across both and the status column split with it:
+
+```text
+CF1461 No message (diagnosis OBD engine, 0x397): Receiver EGS, Fault currently
+transmitter DME/DDE                                                    present
+```
+
+The halves are two capture groups of one match. Without `join` a column takes the first group that matched — the right default, and here it would truncate every description in the report. `{ role: description, group: [2, 4], join: ' ' }` puts the cell back together.
 
 ### `map` is a closed vocabulary
 
@@ -184,11 +197,62 @@ An unrecognized value used to pass straight through. Harmless for a description;
 
 `detect` ranked on score alone. `Generic code list` claims any text with a trouble code in it — deliberately — and scores **1.0** on a VCDS Auto-Scan where the VCDS profile scores 0.85, because the older Beta builds omit one of its four signals. Three real Auto-Scans went to the fallback, which read *nothing* out of reports holding 61, 14 and 0 faults. A profile naming a `tool_vendor` or `tool_model` now outranks one naming neither, provided it clears its own threshold — which is exactly the claim its author makes by publishing it. Among profiles that both name a tool, the score decides as before.
 
+### A PDF is read as the lines it was *printed* as
+
+This was the single biggest thing wrong with the engine, and it was not in the schema at all — it was in `_read_pdf`, which joined each page's words **in extraction order** into one line. Extraction order is the order words were written into the PDF's content stream. It is not layout, and reading it as though it were made three formats unparseable:
+
+```
+Curren  EOBD/OBD II P0A80 Replace Hybrid/EV Battery Pack  t
+```
+
+That is a THINKCAR report whose status column wraps. Reconstructed by position it reads `EOBD/OBD II P0A80 Replace Hybrid/EV Battery Pack`, with the module, the code and the description in the order a person sees them.
+
+It also stopped a real misreading. An Autel report that prints `VIN: --` was yielding a VIN — the first seventeen characters of the repair-order number, found much further down a page flattened into a single line. **A wrong VIN is worse than no VIN**: it is the one misreading that poisons a vehicle record silently. Label anchoring now also tries *every* occurrence of a label rather than the first, because a BlueDriver report captions its header `VIN retrieved from Vehicle` and prints `VIN: <vin>` on the line below.
+
+### `section_pattern` — which module a code came from
+
+```yaml
+locate:
+  section_pattern: '(?m)^(.+?)\s*\(\s*\d+\s+DTCs?\s*\)\s*$'   # `SRS airbag ( 2 DTCs )`
+```
+
+Every PDF report in the corpus prints the module as a heading above a group of rows, and a row-at-a-time extractor had no idea which heading it was under — so a nineteen-module all-system scan imported as one undifferentiated list. That is the difference between *the car has eighteen codes* and *the airbag module has two*. Headings are found once and a row belongs to the last one before it; `module` remains a column first, for the tools that print it in the row.
+
+**388 of the 398 codes** the catalog profiles read from the corpus now carry the module they came from. The ten that do not are BlueDriver's confirmed and pending groups, which name a state rather than a module and are deliberately excluded — a module column that sometimes holds a state is worse than one left empty, because it reads as fact.
+
+### `live_data_extractor` — the data stream, not just the codes
+
+```yaml
+live_data_extractor:
+  locate: { headings: ['Live Data'] }
+  row_pattern: '(?m)^(.+?)\s+(-?[\d.]+|Compl|ON|OFF)\s*([A-Za-z%/°]{1,10}( [A-Za-z]{1,3})?)?\s*$'
+  columns:
+    - { role: name,  group: 1 }
+    - { role: value, group: 2 }
+    - { role: unit,  group: 3 }
+```
+
+The same machinery as the code table, keyed on `name` instead of `code` — a data stream *is* a table, and the only difference is which column makes a row worth keeping.
+
+**`DiagnosticSession.live_data` and the Reading / Value / Min / Max table on the session screen both predate this.** Only the built-in D8 parser could fill them, so a THINKCAR data-stream report holding **159 readings and no fault codes at all** imported as an entirely empty session — a report whose whole content the parser could see and had nowhere to put. Against the counts those reports print for themselves, the THINKCAR profile now reads 224 of 231, 146 of 159 and 40 of 41; the remainder are readings whose value wrapped onto the next line, almost all of them `No Supported`.
+
+Two things it deliberately does not do. **The unit is its own column** — `16.50deg` sorts and compares as a string where `16.50` does not. And **minimum and maximum stay empty** where the tool prints one sample: the D8 reports a range and THINKCAR does not, and a minimum equal to the reading is a claim about a range nobody measured.
+
+What this is *not* is a datalog reader. A logger CSV is a time series; `LiveDatum` is a reading. Collapsing ten thousand rows of RPM to a min and a max throws away the only thing a datalog is for, and SPEC NG-4 puts scan data on the per-session side of that line. The corpus keeps what a profile here could read and says so by name in `not-captured.json`.
+
 ### What a declarative profile still cannot do
 
-**Attribute a code to its module.** Autel, THINKCAR and TOPDON all print the module as a heading above a group of rows, and the table extractor matches a row at a time with no notion of the section it sits in — so a code arrives correct and unattributed, and a nine-module all-system scan imports as one list. Car Scanner's text export puts `ECU:` inside each fault block and is read correctly, which is a fair argument for §8.3b's preference for a text export where a tool offers one.
+**Read a report whose columns wrap around the code.** THINKCAR's *older* generator prints the module name and the status wrapped above and below their own row, so a description arrives in fragments with only the column geometry to reassemble it:
 
-**Read a report whose columns interleave.** THINKCAR's newer PDF wraps the status cell around the code — `Curren … EOBD/OBD II P0A80 Replace Hybrid/EV Battery Pack … t` — and TOPDON embeds a second identifier mid-description. No profile is published for either: half-reading a diagnostic report is worse than not reading it, which is the catalog README's own argument. Their captures are in the corpus, marked unread, waiting for whoever wants them.
+```
+TCM (Transmission   Shift Level Position Signal Performance
+P2805               Aging
+Control Module)     Failure
+```
+
+That is the wall the D8 hit, and the answer is the same: no profile is published for it. Half-reading a diagnostic report is worse than not claiming the format. Those captures are in the corpus marked unread, and the profile that covers THINKCAR's *newer* generator fingerprints on the newer header so it does not claim them.
+
+The same rule settled TOPDON, where the two tablets in the corpus differ: one wraps to a fixed two lines and is read completely, the other to a variable depth and is not. Fingerprinting on the shared header claimed both and read one fault in eleven out of the second — recognized and effectively unread, which is the worst answer a fingerprint can give. **A profile should claim the layout it can read, not every report the vendor has ever printed.**
 
 ## 2. Development workflow for a new profile
 

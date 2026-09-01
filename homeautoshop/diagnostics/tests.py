@@ -901,3 +901,312 @@ class DetectPrefersTheToolItWasWrittenForTests(TestCase):
         chosen, value = engine.detect([specific, better], document)
         self.assertEqual(chosen.name, "Better")
         self.assertEqual(value, 1.0)
+
+
+class PrintedLinesTests(TestCase):
+    """A PDF read as the lines it was printed as (`lines_from_words`).
+
+    Extraction order is not layout. A PDF hands its words over in whatever
+    order they were written into the content stream, and joining them that way
+    gave one meaningless line per page — which made three report formats
+    unparseable and, worse, let a label reach across a page for a value that
+    was not its own.
+    """
+
+    def _words(self, *rows):
+        """`(top, text, text, …)` per printed row, handed over shuffled."""
+        out = []
+        for top, *texts in rows:
+            for index, text in enumerate(texts):
+                out.append({"text": text, "top": top, "x0": index * 20.0})
+        return list(reversed(out))
+
+    def test_words_are_grouped_into_the_rows_they_were_printed_on(self):
+        page = self._words((10.0, "VIN:", "--"), (24.0, "Odometer:", "505242km"))
+        self.assertEqual(
+            engine.lines_from_words([page]), ["VIN: --", "Odometer: 505242km"]
+        )
+
+    def test_a_row_is_ordered_left_to_right_whatever_order_it_arrived_in(self):
+        page = [
+            {"text": "third", "top": 10.0, "x0": 300.0},
+            {"text": "first", "top": 10.0, "x0": 10.0},
+            {"text": "second", "top": 10.0, "x0": 100.0},
+        ]
+        self.assertEqual(engine.lines_from_words([page]), ["first second third"])
+
+    def test_words_a_hair_apart_are_still_one_line(self):
+        """Type on a line does not share a top to the micron."""
+        page = [
+            {"text": "Fault", "top": 819.09, "x0": 10.0},
+            {"text": "currently", "top": 819.59, "x0": 60.0},
+        ]
+        self.assertEqual(engine.lines_from_words([page]), ["Fault currently"])
+
+    def test_a_label_no_longer_reaches_down_the_page_for_a_value(self):
+        """The reason this matters, and it is not tidiness.
+
+        An Autel report prints `VIN: --` for a vehicle whose VIN the tablet
+        could not read. Flattened into one line per page, the label-anchored
+        extractor ran past the `--` and took the first seventeen characters of
+        the repair-order number printed further down — reporting a VIN for a
+        car that had none. A wrong VIN is worse than no VIN: it is the one
+        misreading that poisons a vehicle record silently.
+        """
+        page = self._words(
+            (10.0, "VIN:", "--"),
+            (30.0, "Repair", "Order", "Number:", "DR8GR4C0122320251221171431407"),
+        )
+        profile = ParserProfile(
+            field_extractors={
+                "vin": {
+                    "strategy": "label_anchored",
+                    "labels": ["VIN"],
+                    "pattern": "([A-HJ-NPR-Z0-9]{17})",
+                }
+            }
+        )
+        document = engine.Document(
+            text="\n".join(engine.lines_from_words([page])), pages=[page]
+        )
+        self.assertEqual(engine.apply(profile, document).value("vin"), "")
+
+    def test_every_occurrence_of_a_label_is_tried(self):
+        """A BlueDriver report captions its header `VIN retrieved from Vehicle`
+        and prints `VIN: <vin>` underneath. Stopping at the first match found a
+        label with no value after it and reported the report as having none."""
+        profile = ParserProfile(
+            field_extractors={
+                "vin": {
+                    "strategy": "label_anchored",
+                    "labels": ["VIN"],
+                    "pattern": "([A-HJ-NPR-Z0-9]{17})",
+                }
+            }
+        )
+        document = engine.Document(
+            text="VIN retrieved from Vehicle\nVIN: 1M8GDM9AXKP042788\n"
+        )
+        self.assertEqual(
+            engine.apply(profile, document).value("vin"), "1M8GDM9AXKP042788"
+        )
+
+
+class SectionAttributionTests(TestCase):
+    """Which module a code came from (`locate.section_pattern`).
+
+    Every PDF report in the corpus prints the module as a heading above a group
+    of rows, and a row-at-a-time extractor has no idea which heading it is
+    under — so a nineteen-module all-system scan imported as one
+    undifferentiated list, which is the difference between "the car has
+    eighteen codes" and "the airbag module has two".
+    """
+
+    REPORT = (
+        "Engine and ECT ( 2 DTCs )\n"
+        "P0304:00 Cycle 4 misfire Past\n"
+        "P0300:00 Multi cylinder misfire Past\n"
+        "SRS airbag ( 1 DTC )\n"
+        "B00A0:8F Occupant sensor unit Past\n"
+    )
+
+    def _profile(self, **locate):
+        return ParserProfile(
+            table_extractor={
+                "locate": locate,
+                "row_pattern": r"([PBCU][0-9A-F]{4}:[0-9A-F]{2})\s+(.+?)\s+(Past|Current)$",
+                "columns": [
+                    {"role": "code", "group": 1},
+                    {"role": "description", "group": 2},
+                ],
+            }
+        )
+
+    def _rows(self, **locate):
+        profile = self._profile(**locate)
+        return engine.apply(profile, engine.Document(text=self.REPORT)).codes
+
+    def test_a_row_belongs_to_the_heading_above_it(self):
+        rows = self._rows(section_pattern=r"(?m)^(.+?)\s*\(\s*\d+\s+DTCs?\s*\)\s*$")
+        self.assertEqual(
+            [r["module"] for r in rows],
+            ["Engine and ECT", "Engine and ECT", "SRS airbag"],
+        )
+
+    def test_without_a_pattern_a_row_carries_no_module_at_all(self):
+        """Not an empty string — the key is simply absent, so a profile that
+        declares no sections produces exactly what it did before."""
+        self.assertNotIn("module", self._rows()[0])
+
+    def test_an_alternation_takes_whichever_branch_matched(self):
+        """One tool, two firmware generations, two ways of naming a module —
+        and in an alternation every group but one is `None`."""
+        report = "01 - Engine Control Module\nP0304:00 Cycle 4 misfire Past\n"
+        profile = self._profile(
+            section_pattern=r"(?m)^(?:\d+\.\s*(.+?)\s*\(|[0-9A-F]{2}\s+-\s+(.+?))\s*$"
+        )
+        rows = engine.apply(profile, engine.Document(text=report)).codes
+        self.assertEqual(rows[0]["module"], "Engine Control Module")
+
+    def test_a_broken_pattern_costs_the_module_and_not_the_codes(self):
+        rows = self._rows(section_pattern=r"(?m)^(unclosed")
+        self.assertEqual(len(rows), 3)
+        self.assertNotIn("module", rows[0])
+
+
+class JoinedColumnTests(TestCase):
+    """A cell put back together from a wrapped row (`join`).
+
+    TOPDON prints every fault as exactly two printed lines with the description
+    split across both. Taking only the first group would publish a profile that
+    truncates every description it reads.
+    """
+
+    REPORT = (
+        "CF1461 No message (diagnosis OBD engine, 0x397): Receiver EGS, Fault currently\n"
+        "transmitter DME/DDE present\n"
+    )
+    RULE = {
+        "multiline": True,
+        "row_pattern": (
+            r"(?m)^([A-Z][0-9A-F]{4,6})[ \t]+(.+?)[ \t]+(Fault currently)[ \t]*\r?\n"
+            r"(.+?)[ \t]*(present)[ \t]*$"
+        ),
+    }
+
+    def _row(self, description_column):
+        profile = ParserProfile(
+            table_extractor={
+                **self.RULE,
+                "columns": [{"role": "code", "group": 1}, description_column],
+            }
+        )
+        return engine.apply(profile, engine.Document(text=self.REPORT)).codes[0]
+
+    def test_the_halves_are_joined(self):
+        row = self._row({"role": "description", "group": [2, 4], "join": " "})
+        self.assertEqual(
+            row["description"],
+            "No message (diagnosis OBD engine, 0x397): Receiver EGS, transmitter DME/DDE",
+        )
+
+    def test_without_join_the_first_group_still_wins(self):
+        """The fallback meaning is unchanged — a column can still say
+        `prefer this group, else that one`."""
+        row = self._row({"role": "description", "group": [2, 4]})
+        self.assertEqual(
+            row["description"], "No message (diagnosis OBD engine, 0x397): Receiver EGS,"
+        )
+
+    def test_a_group_that_did_not_match_contributes_nothing(self):
+        row = self._row({"role": "description", "group": [9, 2, 4], "join": " "})
+        self.assertTrue(row["description"].startswith("No message"))
+
+
+class LiveDataExtractorTests(TestCase):
+    """A data stream read out of a report (`live_data_extractor`).
+
+    `DiagnosticSession.live_data` and the Reading / Value / Min / Max table on
+    the session screen both predate this. Only the built-in D8 parser could
+    fill them, so a THINKCAR data-stream report holding 159 readings and no
+    fault codes at all imported as an entirely empty session — a report whose
+    whole content the parser could see and had nowhere to put.
+    """
+
+    REPORT = (
+        "Live Data Aty (5)\n"
+        "Absolute Throttle Position 0%\n"
+        "Actual Ignition Advance Angle 16.50deg\n"
+        "Ambient Air Temperature 34degree C\n"
+        "4WD Switch OFF\n"
+        "Engine Coolant Temperature -7degree C\n"
+    )
+
+    RULE = {
+        "locate": {"headings": ["Live Data"]},
+        "row_pattern": (
+            r"(?m)^(.+?)\s+(-?[\d.]+|Not Avl|Compl|ON|OFF)\s*"
+            r"([A-Za-z%/°]{1,10}(?: [A-Za-z]{1,3})?)?\s*$"
+        ),
+        "columns": [
+            {"role": "name", "group": 1},
+            {"role": "value", "group": 2},
+            {"role": "unit", "group": 3},
+        ],
+        "row_filters": {"drop_if_matches": ["(?i)^Live Data Aty"]},
+    }
+
+    def _rows(self, **overrides):
+        profile = ParserProfile(live_data_extractor={**self.RULE, **overrides})
+        return engine.apply(profile, engine.Document(text=self.REPORT)).live_data
+
+    def test_every_reading_is_read(self):
+        self.assertEqual(len(self._rows()), 5)
+
+    def test_the_unit_is_its_own_column(self):
+        """`16.50deg` sorts and compares as a string; `16.50` does not."""
+        rows = {r["name"]: r for r in self._rows()}
+        self.assertEqual(rows["Actual Ignition Advance Angle"]["value"], "16.50")
+        self.assertEqual(rows["Actual Ignition Advance Angle"]["unit"], "deg")
+
+    def test_a_unit_may_contain_a_space(self):
+        rows = {r["name"]: r for r in self._rows()}
+        self.assertEqual(rows["Ambient Air Temperature"]["unit"], "degree C")
+
+    def test_a_negative_reading_keeps_its_sign(self):
+        rows = {r["name"]: r for r in self._rows()}
+        self.assertEqual(rows["Engine Coolant Temperature"]["value"], "-7")
+
+    def test_a_reading_whose_value_is_a_word_is_still_a_reading(self):
+        """`4WD Switch OFF`. With free text on both sides, only a vocabulary
+        can say where the name ends and the value begins."""
+        rows = {r["name"]: r for r in self._rows()}
+        self.assertEqual(rows["4WD Switch"]["value"], "OFF")
+
+    def test_a_row_with_no_name_is_not_a_reading(self):
+        """A number on a page is not a measurement of anything."""
+        profile = ParserProfile(live_data_extractor=self.RULE)
+        rows = engine.apply(profile, engine.Document(text="Live Data\n  42%\n")).live_data
+        self.assertEqual(rows, [])
+
+    def test_readings_carry_no_state(self):
+        """`state` belongs to a fault. A coolant temperature is not `stored`."""
+        self.assertNotIn("state", self._rows()[0])
+
+    def test_minimum_and_maximum_are_left_empty_rather_than_invented(self):
+        """A minimum equal to the reading is a claim about a range nobody
+        measured. The D8 prints a range; THINKCAR prints one sample."""
+        row = self._rows()[0]
+        self.assertNotIn("minimum", row)
+        self.assertNotIn("maximum", row)
+
+    def test_a_profile_with_no_live_data_extractor_reads_none(self):
+        profile = ParserProfile(
+            table_extractor={
+                "row_pattern": r"([PBCU][0-9A-F]{4})\s+(.*)",
+                "columns": [
+                    {"role": "code", "group": 1},
+                    {"role": "description", "group": 2},
+                ],
+            }
+        )
+        out = engine.apply(profile, engine.Document(text="P0301 Misfire\n"))
+        self.assertEqual(out.live_data, [])
+        self.assertEqual(len(out.codes), 1)
+
+    def test_it_survives_a_yaml_round_trip(self):
+        """It is a profile key like any other, so it exports and re-imports."""
+        profile = ParserProfile(
+            name="Test", media_type="text", live_data_extractor=self.RULE
+        )
+        again = profilelib.from_yaml(profilelib.to_yaml(profile))
+        self.assertEqual(again.live_data_extractor, self.RULE)
+
+    def test_a_broken_pattern_is_refused_at_import_naming_the_field(self):
+        document = (
+            "name: Test\nmedia_type: text\n"
+            "live_data_extractor:\n  row_pattern: '(unclosed'\n"
+        )
+        with self.assertRaises(profilelib.ProfileInvalid) as caught:
+            profilelib.from_yaml(document)
+        self.assertIn("live_data_extractor", str(caught.exception))

@@ -69,6 +69,13 @@ table_extractor:
   locate:
     headings: ['Trouble Codes:']
     stop_at: []
+    # `---- Anti Lock Brakes Codes Scan Report----`. BlueDriver groups by
+    # *which scan* found the codes, and two of those groups name a state rather
+    # than a module -- `Confirmed`, `Pending`. Those two are excluded by name,
+    # because a module column that sometimes holds a state is worse than one
+    # left empty: it reads as fact. Their rows keep whatever the row's own
+    # `Status:` field said.
+    section_pattern: '(?m)^-{2,}\s*(?!Confirmed|Pending)(.+?)\s+Codes Scan Report-{2,}\s*$'
   # A page of PDF flattens to one line, so rows are found by shape.
   multiline: true
   # `1:P0108 Manifold Absolute Pressure/Barometric Pressure Circuit High`, and

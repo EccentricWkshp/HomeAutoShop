@@ -43,37 +43,44 @@
     {
       "code": "P0304",
       "description": "Cylinder 4",
-      "state": "stored"
+      "state": "stored",
+      "module": "Engine"
     },
     {
       "code": "P068A",
       "description": "ECM Power Relay Load Circuit",
-      "state": "stored"
+      "state": "stored",
+      "module": "Engine"
     },
     {
       "code": "01520",
       "description": "Rain and Light Recognition Sensor (G397)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "00153",
       "description": "Windshield Wiper Motor;  Driver Side (V216)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "00446",
       "description": "Function Limitation due to Under-Voltage",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "U1011",
       "description": "Supply voltage",
-      "state": "stored"
+      "state": "stored",
+      "module": "Airbags"
     },
     {
       "code": "01316",
       "description": "ABS Control Module",
-      "state": "stored"
+      "state": "stored",
+      "module": "Steering Assist"
     }
   ],
   "live_data": [],

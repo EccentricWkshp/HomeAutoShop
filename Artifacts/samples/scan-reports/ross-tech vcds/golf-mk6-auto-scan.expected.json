@@ -43,77 +43,92 @@
     {
       "code": "P0304",
       "description": "Cylinder 4",
-      "state": "stored"
+      "state": "stored",
+      "module": "Engine"
     },
     {
       "code": "P068A",
       "description": "ECM Power Relay Load Circuit",
-      "state": "stored"
+      "state": "stored",
+      "module": "Engine"
     },
     {
       "code": "01520",
       "description": "Rain and Light Recognition Sensor (G397)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "00153",
       "description": "Windshield Wiper Motor;  Driver Side (V216)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "00446",
       "description": "Function Limitation due to Under-Voltage",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "U1011",
       "description": "Supply voltage",
-      "state": "stored"
+      "state": "stored",
+      "module": "Airbags"
     },
     {
       "code": "01305",
       "description": "Databus for Infotainment",
-      "state": "stored"
+      "state": "stored",
+      "module": "CAN Gateway"
     },
     {
       "code": "01300",
       "description": "Control Module for Navigation with CD-Rom (J401)",
-      "state": "stored"
+      "state": "stored",
+      "module": "CAN Gateway"
     },
     {
       "code": "01304",
       "description": "Radio",
-      "state": "stored"
+      "state": "stored",
+      "module": "CAN Gateway"
     },
     {
       "code": "00446",
       "description": "Function Limitation due to Under-Voltage",
-      "state": "stored"
+      "state": "stored",
+      "module": "Media Player 3"
     },
     {
       "code": "01811",
       "description": "Supply Voltage for Door Controller; Drivers Side (J386)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Door Elect, Driver"
     },
     {
       "code": "01316",
       "description": "ABS Control Module",
-      "state": "stored"
+      "state": "stored",
+      "module": "Steering Assist"
     },
     {
       "code": "01812",
       "description": "Supply Voltage for Door Controller; Pass. Side (J387)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Door Elect, Pass."
     },
     {
       "code": "01813",
       "description": "Supply Voltage for Door Controller; Rear Left (J388)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Door, Rear Left"
     },
     {
       "code": "01814",
       "description": "Supply Voltage for Door Controller; Rear Right (J389)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Door, Rear Right"
     }
   ],
   "live_data": [],

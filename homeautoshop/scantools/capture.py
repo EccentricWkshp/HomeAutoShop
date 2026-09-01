@@ -312,7 +312,12 @@ def redact_words(words: list[dict]) -> tuple[list[str], set[str]]:
         if value == text and _is_value(text):
             if blanking:
                 value, blanking = MASK, blanking - 1
-            elif PERSONAL_BEFORE.search(window):
+            elif PERSONAL_BEFORE.search(window) and not _next_is_a_label(texts, index):
+                # The lookahead matters on the *first* word too, not only when
+                # continuing. A TOPDON report prints `Repair Shop:` with nothing
+                # after it and `Report Number:` beside it, so blanking the first
+                # word took `Report` — leaving `Number: TOPDON1709155693`, which
+                # cost that tool's own profile its strongest fingerprint signal.
                 value, blanking = MASK, VALUE_WORDS - 1
             elif EQUIPMENT_BEFORE.search(window):
                 # One word. A serial is a token, and blanking the rest of the
@@ -324,11 +329,18 @@ def redact_words(words: list[dict]) -> tuple[list[str], set[str]]:
 
 def _still_the_value(words: list[dict], texts: list[str], index: int, left: int) -> bool:
     """Is this word still part of the value that started a few words back?"""
-    if left <= 0 or _is_label(texts[index]):
-        return False
-    if index + 1 < len(texts) and _is_label(texts[index + 1]):
+    if left <= 0 or _is_label(texts[index]) or _next_is_a_label(texts, index):
         return False
     return _same_line(words[index - 1], words[index])
+
+
+def _next_is_a_label(texts: list[str], index: int) -> bool:
+    """Is the word after this one a label, making this one part of *its* name?
+
+    `Tel: <number>  Test Time: …` keeps its `Test` this way, and a label with
+    an empty value keeps the label printed beside it.
+    """
+    return index + 1 < len(texts) and _is_label(texts[index + 1])
 
 
 def _is_label(text: str) -> bool:
@@ -352,6 +364,10 @@ def _is_value(text: str) -> bool:
     return bool(stripped) and not _is_label(stripped) and stripped not in "-|"
 
 
+class NothingToCapture(ValueError):
+    """The file was read and holds no text a parser could ever see."""
+
+
 def capture(pdf_path: pathlib.Path) -> tuple[dict, set[str]]:
     """Read a report into the plain structure the parser consumes."""
     from .xtool_d8 import words_from_pdf
@@ -373,7 +389,47 @@ def capture(pdf_path: pathlib.Path) -> tuple[dict, set[str]]:
                 for word, text in zip(page, texts)
             ]
         )
+    if not any(pages):
+        # An image-only PDF — a scanned document, or a tool that renders its
+        # report as a picture. §7.9 has always promised the OCR fallback for
+        # exactly this, and the capture path was not using it: a Techstream
+        # report scanned into a recall filing produced a capture with **zero
+        # words**, which was written, committed and counted as a sample. A
+        # fixture over nothing passes every test there is.
+        raise NothingToCapture(
+            f"{pdf_path.name} has no text layer — it is an image-only PDF"
+        )
     return {"source": pdf_path.name, "pages": pages}, produced
+
+
+def capture_by_ocr(pdf_path: pathlib.Path) -> tuple[dict, set[str]]:
+    """Read an image-only PDF the only way there is to read one.
+
+    OCR loses the geometry, so this yields a *text* capture. That is honest
+    about what survived: a parser reading this is reading what a program
+    guessed the picture said, and a profile written against word positions
+    would have nothing to stand on.
+    """
+    from homeautoshop.mediafiles.services import read_pdf_text_by_ocr
+
+    raw = pdf_path.read_bytes()
+    text = read_pdf_text_by_ocr(raw)
+    if not text.strip():
+        raise NothingToCapture(
+            f"{pdf_path.name} has no text layer, and OCR read nothing from it "
+            f"(is OCR_ENABLED set, and is tesseract installed?)"
+        )
+    kept, truncated = _trim(text, "text")
+    text, produced = redact_document(kept)
+    capture: dict = {
+        "source": pdf_path.name,
+        "media_type": "text",
+        "read_by": "ocr",
+        "text": text,
+    }
+    if truncated:
+        capture["truncated"] = True
+    return capture, produced
 
 
 #: A tabular log is a header and then ten thousand rows of the same columns.
@@ -440,7 +496,7 @@ def _color(value):
         return [round(float(value), 4)]
 
 
-def capture_path(source: pathlib.Path, tool: str = "") -> pathlib.Path:
+def capture_path(source: pathlib.Path, tool: str = "", *, kind: str = "") -> pathlib.Path:
     """Where a capture belongs: under its tool's folder in the corpus.
 
     The corpus is filed one folder per scanner, because a flat pile of reports
@@ -452,13 +508,17 @@ def capture_path(source: pathlib.Path, tool: str = "") -> pathlib.Path:
 
     The suffix says what kind of capture it is, because the two are read
     differently and a reader should not have to open one to find out: a PDF
-    keeps its word geometry, everything else keeps its text.
+    keeps its word geometry, everything else keeps its text. `kind` overrides
+    the guess for the one case where the extension lies about the outcome — a
+    PDF with no text layer is read by OCR, which produces text and no geometry.
     """
     folder = CORPUS / tool if tool else CORPUS
-    return folder / (source.stem + suffix_for(source))
+    return folder / (source.stem + suffix_for(source, kind=kind))
 
 
-def suffix_for(source: pathlib.Path) -> str:
+def suffix_for(source: pathlib.Path, *, kind: str = "") -> str:
+    if kind:
+        return ".words.json" if kind == "pdf" else ".text.json"
     return ".words.json" if source.suffix.lower() == ".pdf" else ".text.json"
 
 
@@ -485,12 +545,24 @@ def remember(produced: set[str]) -> int:
 
 
 def write(source: pathlib.Path, tool: str = "") -> tuple[pathlib.Path, set[str]]:
-    """Capture one report into the corpus, whatever kind of file it is."""
-    if source.suffix.lower() == ".pdf":
-        data, produced = capture(source)
+    """Capture one report into the corpus, whatever kind of file it is.
+
+    A PDF with no text layer falls through to OCR rather than being written as
+    an empty capture, and if OCR reads nothing either this raises — so the
+    caller reports the report as unreadable instead of the corpus quietly
+    gaining a sample that says nothing.
+    """
+    # Decided from the content, like everywhere else here. A file fetched from
+    # the web has whatever extension its publisher chose, and one of them
+    # serves a PDF under a name that says otherwise.
+    if source.open("rb").read(5) == b"%PDF-":
+        try:
+            data, produced = capture(source)
+        except NothingToCapture:
+            data, produced = capture_by_ocr(source)
     else:
         data, produced = capture_document(source)
-    target = capture_path(source, tool)
+    target = capture_path(source, tool, kind=data.get("media_type", ""))
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(data, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     return target, produced

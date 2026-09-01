@@ -43,17 +43,20 @@
     {
       "code": "P0304",
       "description": "Cylinder 4",
-      "state": "stored"
+      "state": "stored",
+      "module": "Engine"
     },
     {
       "code": "01304",
       "description": "Radio",
-      "state": "stored"
+      "state": "stored",
+      "module": "CAN Gateway"
     },
     {
       "code": "01316",
       "description": "ABS Control Module",
-      "state": "stored"
+      "state": "stored",
+      "module": "Steering Assist"
     }
   ],
   "live_data": [],

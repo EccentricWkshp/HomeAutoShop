@@ -2,12 +2,6 @@
   "profile": "Autel MaxiSys - Vehicle Diagnostic Report",
   "score": 1.0,
   "fields": {
-    "vin": {
-      "value": "DR8GR4C0122320251",
-      "confidence": 0.28,
-      "page": 0,
-      "label": "VIN"
-    },
     "odometer": {
       "value": "505242",
       "confidence": 0.8,

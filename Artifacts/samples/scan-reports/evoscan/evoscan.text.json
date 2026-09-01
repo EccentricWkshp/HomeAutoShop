@@ -1,5 +1,0 @@
-{
- "source": "evoscan.csv",
- "media_type": "csv",
- "text": "# Generated test file - format based on master branch aliases - NOT CANONICAL\nLogID,LogEntrySeconds,RPM,TPS,APP,IAT\n1,0.000,800,0.0,0.0,75\n2,0.100,850,2.5,5.0,76\n3,0.200,900,5.0,10.0,77\n4,0.300,950,7.5,15.0,78\n5,0.400,1000,10.0,20.0,79\n6,0.500,1050,12.5,25.0,80\n"
-}

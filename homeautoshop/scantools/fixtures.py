@@ -103,59 +103,33 @@ def pages(capture: pathlib.Path) -> list[list[dict]]:
 
 
 def text(capture: pathlib.Path) -> str:
-    """A capture as flat text, whichever kind it is.
+    """A capture as text, whichever kind it is.
 
-    Word geometry is joined the way `engine._read_pdf` joins it, so a profile
-    scored against a capture and the same profile scored against the PDF it
-    came from see the same string. They did not, once: `build_catalog` built
-    its own document and reached a different answer from the import screen for
-    the same report, which is the kind of disagreement that makes a badge
-    meaningless.
+    Word geometry is turned into text the way `engine._read_pdf` does it — by
+    the *same function*, so a profile scored against a capture and the same
+    profile scored against the PDF it came from see the same string. They did
+    not, once: `build_catalog` built its own document and reached a different
+    answer from the import screen for the same report, which is the kind of
+    disagreement that makes a badge meaningless.
     """
-    from homeautoshop.diagnostics.engine import normalize
+    from homeautoshop.diagnostics.engine import lines_from_words, normalize
 
     data = json.loads(capture.read_text(encoding="utf-8"))
     if "text" in data:
         return normalize(data["text"])
-    return "\n".join(
-        " ".join(normalize(str(word.get("text", ""))) for word in page)
-        for page in data.get("pages") or []
-    )
-
-
-#: Tops within this far apart were printed on the same line. The same figure
-#: `capture.LINE_TOLERANCE` uses, and for the same reason.
-LINE_TOLERANCE = 2.0
+    return "\n".join(lines_from_words(data.get("pages") or []))
 
 
 def lines(capture: pathlib.Path) -> list[str]:
-    """A capture as the lines it was *printed* as, not as extraction order.
+    """A capture as the lines it was printed as.
 
-    :func:`text` joins a whole page into one string, which is what a profile
-    reads and is wrong for anything asking whether two words belong together.
-    An audit looking for `Customer: <name>` over that string finds
-    `Customer: Sub` — `Customer:` ending one line with nothing after it, and
-    `Sub Model:` beginning the next, forty points down the page and two hundred
-    to the left. Reconstructing the lines is what lets the check see what the
-    redaction rules see, and an audit that disagrees with the redactor about
-    the shape of the page reports the absence of a name as a name.
+    The same thing :func:`text` returns, split — which it was not, once. This
+    reconstructed lines while `text` flattened a page into one string, so the
+    redaction audit and the parsers disagreed about the shape of the page and
+    the audit reported the *absence* of a name as a name. Now the parsers read
+    the printed lines too, and there is one answer to what a page says.
     """
-    if kind(capture) == "text":
-        return text(capture).splitlines()
-
-    from homeautoshop.diagnostics.engine import normalize
-
-    out: list[str] = []
-    for page in pages(capture):
-        rows: list[tuple[float, list[tuple[float, str]]]] = []
-        for word in sorted(page, key=lambda w: (float(w.get("top", 0)), float(w.get("x0", 0)))):
-            top, x0 = float(word.get("top", 0)), float(word.get("x0", 0))
-            if rows and abs(rows[-1][0] - top) <= LINE_TOLERANCE:
-                rows[-1][1].append((x0, str(word.get("text", ""))))
-            else:
-                rows.append((top, [(x0, str(word.get("text", "")))]))
-        out.extend(normalize(" ".join(t for _, t in row)) for _, row in rows)
-    return out
+    return text(capture).splitlines()
 
 
 def media_type(capture: pathlib.Path) -> str:

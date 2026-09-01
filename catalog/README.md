@@ -52,7 +52,7 @@ person in a position to prove it reads their reports.
 
 ## What is already here
 
-Seven templates and four parser profiles. They are meant to be read as
+Seven templates and seven parser profiles. They are meant to be read as
 examples as much as installed:
 
 | File | What it shows |
@@ -65,9 +65,12 @@ examples as much as installed:
 | `checklists/pre-tow-check.yaml` | Five minutes in the driveway, every item something that fails at highway speed. |
 | `checklists/out-of-storage.yaml` | Faults that happen because a vehicle *sat*, which an ordinary service checklist misses. |
 | `profiles/ross-tech-vcds-auto-scan.yaml` | A fault stated across two lines, and a code column that falls back from J2012 to the vendor's own numbering. Verified against seven Auto-Scans. |
-| `profiles/autel-maxisys-vehicle-diagnostic-report.yaml` | A PDF read as text, with the status vocabulary ending each row. Verified against three reports from three tablets. |
-| `profiles/bluedriver-scan-report.yaml` | The simplest report shape there is — numbered lines, one code each. Unproven: one sample exists. |
-| `profiles/car-scanner-elm-obd2-dtc-report.yaml` | A text export, one fault per block, and the only profile here that reads the **module** for every code. Unproven. |
+| `profiles/autel-maxisys-vehicle-diagnostic-report.yaml` | A PDF read as text, with the status vocabulary ending each row and the module read off the heading above it. Verified against three reports from three tablets. |
+| `profiles/thinkcar-all-system-report.yaml` | The only profile that reads a **data stream** as well as a code table - one of its reports found no faults at all and is 159 readings. Also shows a profile **declining** a format: THINKCAR's older generator wraps its columns around the code, and the fingerprint is written so as not to claim it. |
+| `profiles/topdon-full-system-report.yaml` | A description reassembled from a cell wrapped over two printed lines. Unproven, and its notes say exactly which of the vendor's two layouts it reads. |
+| `profiles/carly-diagnostics-report.yaml` | The simplest structure here — a module heading and one fault per line — and a report with no VIN and no odometer at all. Unproven. |
+| `profiles/bluedriver-scan-report.yaml` | Numbered lines, one code each. Unproven: one sample exists. |
+| `profiles/car-scanner-elm-obd2-dtc-report.yaml` | A text export, one fault per block, with the module *inside* each fault rather than above it. Unproven. |
 
 Every template is generic and says so in its own description. None is
 transcribed from a manufacturer's schedule, and none should be treated as one —

@@ -52,12 +52,37 @@
     },
     {
       "kind": "profile",
+      "slug": "carly-diagnostics-report",
+      "name": "Carly - Diagnostics Report",
+      "path": "profiles/carly-diagnostics-report.yaml",
+      "description": "Carly Carly — Written against one report - a 2009 BMW 7 series with 27 issues across nine modules, published on a forum and redacted in the corpus. **Unproven**: the catalog's verified badge needs two reports from different vehicles, and four more Carly reports were found and could not be retrieved. Know two things before importing one.",
+      "author": "HomeAutoShop"
+    },
+    {
+      "kind": "profile",
       "slug": "ross-tech-vcds-auto-scan",
       "name": "Ross-Tech VCDS - Auto-Scan",
       "path": "profiles/ross-tech-vcds-auto-scan.yaml",
       "description": "Ross-Tech VCDS — Developed against eleven Auto-Scans from four vehicles and five VCDS releases, 2014 to 2018, published on the public web; the captures in the corpus are redacted - VIN replaced by a stand-in, licence plate removed, workshop code and VCID zeroed - so this was written against the shape of the report and not against anybody's vehicle. Two things to know before trusting what it reads.",
       "author": "HomeAutoShop",
       "verified": true
+    },
+    {
+      "kind": "profile",
+      "slug": "thinkcar-all-system-report",
+      "name": "THINKCAR - All System Report",
+      "path": "profiles/thinkcar-all-system-report.yaml",
+      "description": "THINKCAR THINKTOOL — Written against three reports from the THINKTOOL/ThinkDiag family, all 2026 and all published on the public web: a Changan CS95 with six faults across four modules, a 2012 Toyota FJ Cruiser with twelve across five, and a JAC pickup whose scan found none at all. Every code carries the module it came from, read off the heading above its group. Two of the three are listed below rather than three.",
+      "author": "HomeAutoShop",
+      "verified": true
+    },
+    {
+      "kind": "profile",
+      "slug": "topdon-full-system-report",
+      "name": "TOPDON - Full System Report",
+      "path": "profiles/topdon-full-system-report.yaml",
+      "description": "TOPDON ArtiDiag — Written against an ArtiDiag900 Lite post-scan of a 2014 BMW 335i xDrive - 23 systems, every one of the 51 faults printed in it read, each with the module it came from - published on the public web and redacted in the corpus.",
+      "author": "HomeAutoShop"
     },
     {
       "kind": "schedule",

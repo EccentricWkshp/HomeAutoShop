@@ -1,0 +1,187 @@
+# THINKCAR -- All System / Data Stream Report
+#
+# The report a THINKTOOL or ThinkDiag produces from its newer app, the one whose
+# header carries `Order no:` and a `Shop Info` block. It states a fault as three
+# consecutive printed lines and never varies:
+#
+#     P0137
+#     Current
+#     O2 Sensor Circuit Low Voltage Bank 1 Sensor 2
+#
+# THINKCAR's *older* generator - header `Diagnostic Report THINKCAR`, table
+# `System Code Description Status` - is deliberately not covered here. It wraps
+# the module name and the status around the code, so a description arrives in
+# fragments above and below its own row and only the column geometry separates
+# them. That is the same wall the XTOOL D8 hit, and the same answer applies:
+# a profile that half-reads a diagnostic report is worse than one that does not
+# claim the format. Those reports are in the corpus, marked unread.
+name: THINKCAR - All System Report
+author: HomeAutoShop
+tool_vendor: THINKCAR
+tool_model: THINKTOOL
+version: 1
+media_type: pdf
+
+fingerprint:
+  threshold: 0.6
+  signals:
+    - kind: doc_text
+      pattern: '(?im)^(?:All System Diagnostic|Data Stream) Report'
+      weight: 0.3
+    # The newer generator's header block, and what separates it from the older
+    # one: `Order no:` and a shop-information section neither of which the
+    # `Diagnostic Report THINKCAR` layout prints.
+    - kind: doc_text
+      pattern: '(?i)Order\s*no\s*[:：]'
+      weight: 0.3
+    - kind: doc_text
+      pattern: '(?i)Shop\s*Info'
+      weight: 0.2
+    - kind: doc_text
+      pattern: '(?im)^DTC Qty\s*\(\s*\d+\s*\)'
+      weight: 0.2
+
+field_extractors:
+  vin:
+    strategy: label_anchored
+    labels: ['VIN']
+    pattern: '([A-HJ-NPR-Z0-9]{17})'
+    validate: vin_check_digit
+    confidence: 0.8
+  odometer:
+    strategy: label_anchored
+    labels: ['Odometer']
+    pattern: '([\d,.]+)'
+    coerce: { type: number }
+    confidence: 0.8
+  odometer_unit:
+    strategy: label_anchored
+    labels: ['Odometer']
+    pattern: '[\d,.]+\s*(km|kms|mi|miles)'
+    confidence: 0.8
+  performed_on:
+    strategy: label_anchored
+    labels: ['Time']
+    # `March 31, 2026 18:28:15` -- a month name, unlike every other tool here.
+    pattern: '([A-Z][a-z]+ \d{1,2}, \d{4} \d{2}:\d{2}:\d{2})'
+    coerce: { type: datetime, formats: ['%B %d, %Y %H:%M:%S'] }
+    confidence: 0.9
+  vehicle_description:
+    strategy: label_anchored
+    labels: ['Make']
+    pattern: '([A-Za-z][A-Za-z-]*)'
+    confidence: 0.7
+  tool_version:
+    strategy: label_anchored
+    labels: ['Vehicle Software Version']
+    pattern: '(V[\d.]+)'
+    confidence: 0.8
+  tool_vendor:
+    strategy: regex
+    pattern: '(THINKCAR)'
+    confidence: 0.9
+
+table_extractor:
+  locate:
+    headings: []
+    stop_at: []
+    # `3 ECMECT-Engine and ECT` on the line above `DTC Qty (3)`. The count line
+    # is what makes the heading unambiguous -- the number and name alone would
+    # match half the summary table.
+    section_pattern: '(?m)^\d+\s+(.+?)\s*\r?\nDTC Qty\s*\(\s*\d+\s*\)\s*$'
+  multiline: true
+  # Three lines, always: the code, its status, then the description. Four to
+  # seven code characters, because this tool reports both J2012 codes and the
+  # manufacturer's own longer ones -- a Changan reports `B190414`.
+  row_pattern: '(?m)^([PBCU][0-9A-F]{3,6})\s*\r?\n(Current|Pending|History|Permanent|Stored|N/A)\s*\r?\n(.+?)\s*$'
+  columns:
+    - { role: code, group: 1 }
+    - { role: state_raw, group: 2 }
+    - { role: description, group: 3 }
+    - role: state
+      group: 2
+      map:
+        Current: stored
+        Stored: stored
+        Pending: pending
+        Permanent: permanent
+        History: history
+  row_filters:
+    drop_if_matches:
+      - '(?i)no (fault|trouble|dtc)s? (found|detected)'
+
+# --- the data stream ------------------------------------------------------
+# A THINKCAR `Data Stream Report` is mostly this. One of the reports below
+# found no fault codes at all and carries 159 readings; without this it
+# imported as an entirely empty session, from a report whose whole content the
+# parser could see and had nowhere to put.
+live_data_extractor:
+  locate:
+    headings: ['Live Data']
+    stop_at: []
+  # `Absolute Throttle Position 0%`, `Actual Ignition Advance Angle 16.50deg`,
+  # `Ambient Air Temperature 34degree C`. The value and its unit are printed
+  # with nothing between them, so the unit is whatever non-numeric tail follows
+  # the number -- and it is read as its own column rather than left on the
+  # value, because `16.50deg` sorts and compares as a string while `16.50`
+  # does not. The unit may contain one space: this tool writes `degree C`.
+  #
+  # **Not every reading is a number.** `4WD Switch OFF`, `A/C Monitor Compl`,
+  # `Fuel System Status Closed Loop` — the value is a word, and with free text
+  # on both sides nothing but a vocabulary can say where the name ends and the
+  # value begins. The list below is taken from the reports themselves rather
+  # than imagined, longest alternatives first so `No Supported` is not read as
+  # `No` followed by a unit called `Supported`.
+  row_pattern: '(?m)^(.+?)\s+(-?[\d.]+|No Supported|Not Supported|Not Avl|Closed Loop|Open Loop|Incompl|Compl|Unable|ACTIVE|INACTIVE|Normal|N/A|ON|OFF)\s*([A-Za-z%/°]{1,10}(?: [A-Za-z]{1,3})?)?\s*$'
+  columns:
+    - { role: name, group: 1 }
+    - { role: value, group: 2 }
+    - { role: unit, group: 3 }
+  row_filters:
+    drop_if_matches:
+      # The section's own count line, and the page furniture that repeats on
+      # every page of a long data stream. Neither is a reading, and a footer
+      # ending in a page number is exactly the shape of one.
+      - '(?i)^Live Data Aty'
+      - '(?i)THINKCAR provides diagnostic technology'
+      - '(?i)^(All System |Data Stream )?Diagnostic Report'
+      # **A reading's name has no colon in it.** A long data stream runs over
+      # several pages and THINKCAR reprints the whole shop-and-vehicle header
+      # on each one, so `Shop Name: N/A Telephone: N/A Sn: 000000000000` sits
+      # in the middle of the table and reads exactly like a reading called
+      # `Shop Name: N/A Telephone: N/A Sn:` with the value `000000000000`.
+      # That is how a Changan report came to hold 44 readings out of 41.
+      - '[:：]\s'
+
+notes: >
+  Written against three reports from the THINKTOOL/ThinkDiag family, all 2026
+  and all published on the public web: a Changan CS95 with six faults across
+  four modules, a 2012 Toyota FJ Cruiser with twelve across five, and a JAC
+  pickup whose scan found none at all. Every code carries the module it came
+  from, read off the heading above its group.
+
+  Two of the three are listed below rather than three. The FJ Cruiser's report
+  is read correctly - all twelve codes, all five modules - but the tablet could
+  not read that vehicle's VIN and printed `VIN: N/A`, and a profile may only
+  claim a report it fills every declared field from.
+
+  Note what the tool reports as a status. `N/A` is common and is not a parser
+  failure: the app prints a fault's state only where the controller supplied
+  one, and `N/A` is kept in `state_raw` exactly as printed rather than being
+  guessed at.
+
+  **The data stream is read as well as the codes**, which for these reports is
+  most of what they contain - the JAC found no faults at all and its whole
+  content is 159 readings. Against the counts the reports print for
+  themselves, this reads 224 of 231, 146 of 159 and 40 of 41. The remainder
+  are readings whose value wrapped onto the following line, almost all of them
+  `No Supported` - a PID the controller does not implement. They are missed
+  rather than misread: nothing invented, and a count that can be compared
+  against the one the report prints.
+
+  Minimum and maximum stay empty. THINKCAR prints a single sample per reading
+  and does not report a range, and a minimum equal to the reading would be a
+  claim about a range nobody measured.
+verified_against:
+  - changan-cs95-data-stream-report
+  - jac-pickup-eobd2-data-stream-all-system-report

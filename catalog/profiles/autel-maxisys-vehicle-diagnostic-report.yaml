@@ -80,8 +80,17 @@ field_extractors:
 
 table_extractor:
   locate:
-    headings: ['DTC Description Status']
-    stop_at: ['Technician Notes', 'Disclaimer:']
+    # No heading slice. Anchoring on the column header threw away the first
+    # module's name with everything before it, so two codes in every report
+    # arrived unattributed - the one thing this section exists to fix.
+    headings: []
+    stop_at: ['Technician Notes']
+    # `Engine and ECT ( 1 DTC )`, `SRS airbag ( 2 DTCs )` -- the module, on its
+    # own line above its rows, and every row after it belongs to it until the
+    # next one. Without this a nine-module all-system scan imports as one
+    # undifferentiated list, which is the difference between "the car has
+    # eighteen codes" and "the airbag module has two".
+    section_pattern: '(?m)^(.+?)\s*\(\s*\d+\s+DTCs?\s*\)\s*$'
   # Every page of a PDF flattens to a single line of text, so a row cannot be
   # anchored to one -- `^` and `$` match once per page here, not once per row.
   # Rows are found by shape instead, and the status word is what ends one.
@@ -128,11 +137,9 @@ notes: >
   carries a name, a telephone number, an e-mail address and a street address,
   and none of it survives capture.
 
-  What this does not read is which module a code came from. Autel prints the
-  module as a heading above each group of rows, and the declarative table
-  extractor matches a row at a time with no notion of the section it sits in -
-  so a code arrives correct and unattributed. Worth knowing before reading an
-  imported all-system scan: nine modules of codes come in as one list.
+  Every code carries the module it came from, read off the heading above its
+  group of rows - so an all-system scan of nineteen modules arrives as what it
+  is rather than as one undifferentiated list.
 
   All five reports are recognized and their code tables read exactly - 13, 18,
   13, 3 and an empty one, each agreeing with the count the report prints for

@@ -94,6 +94,13 @@ class ParserProfile(BaseModel):
     fingerprint = models.JSONField(default=dict, blank=True)
     field_extractors = models.JSONField(default=dict, blank=True)
     table_extractor = models.JSONField(default=dict, blank=True)
+    #: The data-stream table, in the same shape as `table_extractor` but keyed
+    #: on a reading's name rather than a code. `DiagnosticSession.live_data`
+    #: and the Reading/Value/Min/Max table on the session screen both predate
+    #: this - only the built-in D8 parser could fill them, so a THINKCAR
+    #: data-stream report holding 159 readings and no fault codes imported as
+    #: an empty session.
+    live_data_extractor = models.JSONField(default=dict, blank=True)
 
     source = models.CharField(
         max_length=10, choices=ProfileSource.choices, default=ProfileSource.USER

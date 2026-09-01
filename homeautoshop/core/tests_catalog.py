@@ -847,6 +847,13 @@ class TheShippedExamplesTests(TestCase):
         root = pathlib.Path(settings.BASE_DIR) / "catalog"
         return sorted(root.glob("*/*.yaml"))
 
+    def templates(self):
+        """Schedules and checklists — the kinds a person can judge by reading."""
+        return [p for p in self.examples() if p.parent.name != "profiles"]
+
+    def profiles(self):
+        return [p for p in self.examples() if p.parent.name == "profiles"]
+
     def test_there_are_some(self):
         self.assertGreaterEqual(len(self.examples()), 4)
 
@@ -875,7 +882,7 @@ class TheShippedExamplesTests(TestCase):
         """The README asks reviewers to check that a template is honest about
         being generic. The shipped ones have to pass their own rule: they will
         be applied to vehicles nobody who wrote them has seen."""
-        for path in self.examples():
+        for path in self.templates():
             with self.subTest(file=path.name):
                 body = path.read_text(encoding="utf-8").lower()
                 self.assertTrue(
@@ -885,8 +892,14 @@ class TheShippedExamplesTests(TestCase):
 
     def test_safety_items_are_marked_as_such(self):
         """A brake item that grades like an air filter is the failure mode
-        this flag exists to prevent."""
-        for path in self.examples():
+        this flag exists to prevent.
+
+        Templates only. A parser profile has no severity to set — it reads what
+        a scan tool printed — and this caught the BlueDriver profile for the
+        word `Brakes` inside `Anti Lock Brakes`, which is a module name in a
+        report rather than a service anybody grades.
+        """
+        for path in self.templates():
             body = path.read_text(encoding="utf-8")
             if "Brake" not in body:
                 continue
@@ -895,6 +908,31 @@ class TheShippedExamplesTests(TestCase):
                     "severity: safety" in body or "is_safety_critical: true" in body,
                     "a checklist or schedule naming brakes must flag them",
                 )
+
+    def test_every_profile_says_what_it_was_written_against(self):
+        """The honesty rule for a profile, which is not the one for a template.
+
+        A schedule has to admit it is generic because it will be applied to
+        vehicles nobody who wrote it has seen. A profile's equivalent is that
+        its correctness cannot be judged by reading it at all, so it has to say
+        what real reports it was developed against — and, where it is not
+        proven, that it is not.
+        """
+        for path in self.profiles():
+            with self.subTest(file=path.name):
+                body = path.read_text(encoding="utf-8")
+                self.assertIn("notes:", body, "a profile must say what it reads")
+                self.assertTrue(
+                    "written against" in body.lower()
+                    or "developed against" in body.lower(),
+                    "a profile must name the reports behind it",
+                )
+                if "verified_against:" not in body:
+                    self.assertIn(
+                        "nproven",
+                        body,
+                        "a profile with no proven reports must say so in its notes",
+                    )
 
 
 def build_catalog_module():

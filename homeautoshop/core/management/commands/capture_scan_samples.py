@@ -113,6 +113,15 @@ class Command(BaseCommand):
                 "No fetched samples found. Run `manage.py fetch_scan_samples` first."
             )
 
+        skip = _skipped(manifest.CORPUS)
+        kept = [p for p in sources if _key(p) not in skip]
+        if len(kept) < len(sources):
+            self.stdout.write(
+                f"Skipping {len(sources) - len(kept)} file(s) listed in "
+                f"{SKIP_FILE} — see the reasons there."
+            )
+        sources = kept
+
         captured, skipped, refused = [], 0, []
         produced: set[str] = set()
         for source in sources:
@@ -218,3 +227,26 @@ class Command(BaseCommand):
 
 def _short(path: Path) -> str:
     return f"{path.parent.name}/{path.name}"
+
+
+#: Files fetched into the corpus that are deliberately not captured, with the
+#: reason beside each. A list rather than a rule, because "this is a picture of
+#: a graph" and "this is the vendor's training slides" are judgments a person
+#: makes about a particular file, not properties a program can test for.
+SKIP_FILE = "not-captured.json"
+
+
+def _key(path: Path) -> str:
+    return f"{path.parent.parent.name}/{path.parent.name}/{path.name}"
+
+
+def _skipped(corpus: Path) -> set[str]:
+    import json as _json
+
+    target = corpus / SKIP_FILE
+    if not target.exists():
+        return set()
+    try:
+        return set(_json.loads(target.read_text(encoding="utf-8")).get("skip") or {})
+    except (OSError, ValueError):
+        return set()

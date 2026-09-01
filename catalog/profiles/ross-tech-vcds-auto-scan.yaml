@@ -103,6 +103,11 @@ table_extractor:
     # anybody noticing.
     headings: []
     stop_at: []
+    # `Address 01: Engine (CCZ)       Labels: 06J-907-115-CCZ.clb` -- the
+    # controller, above its own faults. An Auto-Scan is the whole car, so
+    # without this a Golf's thirty-two faults arrive as one list with no way to
+    # tell the engine's from the driver's door.
+    section_pattern: '(?m)^Address\s+[0-9A-F]{2}:\s*([^(\r\n]+?)\s*(?:\(|Labels:|$)'
   # A fault is two lines, so a row is two lines. Ross-Tech's own fault number
   # and the description come first; the J2012 code, where the controller has
   # one, is indented underneath in either of two shapes -- `P0304 - 000` on the

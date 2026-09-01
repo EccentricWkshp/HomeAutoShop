@@ -41,6 +41,7 @@ FIELDS = (
     "fingerprint",
     "field_extractors",
     "table_extractor",
+    "live_data_extractor",
     "notes",
 )
 
@@ -111,6 +112,7 @@ def from_yaml(text: str, *, source: str = ProfileSource.IMPORTED) -> ParserProfi
         fingerprint=data.get("fingerprint") or {},
         field_extractors=data.get("field_extractors") or {},
         table_extractor=data.get("table_extractor") or {},
+        live_data_extractor=data.get("live_data_extractor") or {},
         notes=str(data.get("notes", "")),
         author=str(data.get("author", ""))[:80],
         verified_against=_captures(data.get("verified_against")),
@@ -134,11 +136,16 @@ def _patterns(profile: ParserProfile):
     for name, rule in (profile.field_extractors or {}).items():
         if isinstance(rule, dict) and (pattern := rule.get("pattern")):
             yield f"field_extractors.{name}", pattern
-    table = profile.table_extractor or {}
-    if pattern := table.get("row_pattern"):
-        yield "table_extractor.row_pattern", pattern
-    for pattern in (table.get("row_filters") or {}).get("drop_if_matches") or []:
-        yield "table_extractor.row_filters", pattern
+    for where, table in (
+        ("table_extractor", profile.table_extractor or {}),
+        ("live_data_extractor", profile.live_data_extractor or {}),
+    ):
+        if pattern := table.get("row_pattern"):
+            yield f"{where}.row_pattern", pattern
+        if pattern := (table.get("locate") or {}).get("section_pattern"):
+            yield f"{where}.locate.section_pattern", pattern
+        for pattern in (table.get("row_filters") or {}).get("drop_if_matches") or []:
+            yield f"{where}.row_filters", pattern
 
 
 # --------------------------------------------------------------------------

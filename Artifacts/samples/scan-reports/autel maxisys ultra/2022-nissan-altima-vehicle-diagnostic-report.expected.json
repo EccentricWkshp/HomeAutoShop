@@ -50,108 +50,126 @@
       "code": "P0304:00",
       "description": "Cycle 4 misfire",
       "state_raw": "Past",
-      "state": "history"
+      "state": "history",
+      "module": "Engine"
     },
     {
       "code": "P0300:00",
       "description": "Multi cylinder misfire",
       "state_raw": "Past",
-      "state": "history"
+      "state": "history",
+      "module": "Engine"
     },
     {
       "code": "C111D:1C",
       "description": "Pump motor",
       "state_raw": "Past",
-      "state": "history"
+      "state": "history",
+      "module": "ABS"
     },
     {
       "code": "B00A0:8F",
       "description": "Occupant sensor unit",
       "state_raw": "Past",
-      "state": "history"
+      "state": "history",
+      "module": "Air bag"
     },
     {
       "code": "C1704:00",
       "description": "Low pressure (left front)",
       "state_raw": "Past",
-      "state": "history"
+      "state": "history",
+      "module": "Air pressure monitor"
     },
     {
       "code": "C1705:00",
       "description": "Low pressure (right front)",
       "state_raw": "Past",
-      "state": "history"
+      "state": "history",
+      "module": "Air pressure monitor"
     },
     {
       "code": "C1706:00",
       "description": "Low pressure (right rear)",
       "state_raw": "Past",
-      "state": "history"
+      "state": "history",
+      "module": "Air pressure monitor"
     },
     {
       "code": "C1707:00",
       "description": "Low pressure (left rear)",
       "state_raw": "Past",
-      "state": "history"
+      "state": "history",
+      "module": "Air pressure monitor"
     },
     {
       "code": "U1300:01",
       "description": "AV communication circuit",
       "state_raw": "Past",
-      "state": "history"
+      "state": "history",
+      "module": "Multi AV"
     },
     {
       "code": "B132A:01",
       "description": "External USB",
       "state_raw": "Past",
-      "state": "history"
+      "state": "history",
+      "module": "Multi AV"
     },
     {
       "code": "B132A:13",
       "description": "External USB",
       "state_raw": "Past",
-      "state": "history"
+      "state": "history",
+      "module": "Multi AV"
     },
     {
       "code": "B13D9:8F",
       "description": "USB communication error",
       "state_raw": "Past",
-      "state": "history"
+      "state": "history",
+      "module": "Multi AV"
     },
     {
       "code": "B1339:8F",
       "description": "Rear camera connection",
       "state_raw": "Past",
-      "state": "history"
+      "state": "history",
+      "module": "Multi AV"
     },
     {
       "code": "B1341:16",
       "description": "Head unit",
       "state_raw": "Past",
-      "state": "history"
+      "state": "history",
+      "module": "Multi AV"
     },
     {
       "code": "B1360:02",
       "description": "Combination meter",
       "state_raw": "Past",
-      "state": "history"
+      "state": "history",
+      "module": "Multi AV"
     },
     {
       "code": "C1A16:97",
       "state_raw": "Past",
-      "state": "history"
+      "state": "history",
+      "module": "Laser/radar"
     },
     {
       "code": "B26FE:00",
       "description": "Hood switch CAN diagnosis error",
       "state_raw": "Past",
-      "state": "history"
+      "state": "history",
+      "module": "BCM"
     },
     {
       "code": "B24A9:15",
       "description": "Sunload sensor",
       "state_raw": "Past",
-      "state": "history"
+      "state": "history",
+      "module": "HVAC"
     }
   ],
   "live_data": [],

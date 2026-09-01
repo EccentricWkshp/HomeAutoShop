@@ -1,5 +1,743 @@
 {
-  "profile": "",
-  "score": 0.0,
-  "unread": true
+  "profile": "THINKCAR - All System Report",
+  "score": 0.8,
+  "fields": {
+    "vin": {
+      "value": "LJ11PABD9PC661617",
+      "confidence": 1.0,
+      "page": 0,
+      "label": "VIN"
+    },
+    "odometer": {
+      "value": "0",
+      "confidence": 0.8,
+      "page": 0,
+      "label": "Odometer"
+    },
+    "odometer_unit": {
+      "value": "km",
+      "confidence": 0.8,
+      "page": 0,
+      "label": "Odometer"
+    },
+    "performed_on": {
+      "value": "2026-02-14T15:08:57",
+      "confidence": 0.9,
+      "page": 0,
+      "label": "Time"
+    },
+    "vehicle_description": {
+      "value": "EOBD",
+      "confidence": 0.7,
+      "page": 0,
+      "label": "Make"
+    },
+    "tool_version": {
+      "value": "V10.22",
+      "confidence": 0.8,
+      "page": 0,
+      "label": "Vehicle Software Version"
+    },
+    "tool_vendor": {
+      "value": "THINKCAR",
+      "confidence": 0.9,
+      "page": 0,
+      "label": ""
+    }
+  },
+  "codes": [],
+  "live_data": [
+    {
+      "name": "# Of DTCs Stored In This ECU",
+      "value": "0"
+    },
+    {
+      "name": "Absolute Throttle Position",
+      "value": "0",
+      "unit": "%"
+    },
+    {
+      "name": "Accelerator Pedal Position D",
+      "value": "19.608",
+      "unit": "%"
+    },
+    {
+      "name": "Accelerator Pedal Position E",
+      "value": "9.804",
+      "unit": "%"
+    },
+    {
+      "name": "Actual EGR A Duty Cycle/Position",
+      "value": "100",
+      "unit": "%"
+    },
+    {
+      "name": "Actual EGR B Duty Cycle/Position",
+      "value": "No Supported",
+      "unit": "%"
+    },
+    {
+      "name": "Actual Engine - Percent Torque",
+      "value": "22",
+      "unit": "%"
+    },
+    {
+      "name": "Air Flow Rate From Mass Air Flow Sensor",
+      "value": "14.09",
+      "unit": "g/s"
+    },
+    {
+      "name": "Ambient Air Temperature",
+      "value": "34",
+      "unit": "degree C"
+    },
+    {
+      "name": "Auto Trans Neutral Drive Status",
+      "value": "No Supported"
+    },
+    {
+      "name": "Average Distance Between PF Regens",
+      "value": "0",
+      "unit": "km"
+    },
+    {
+      "name": "Average Time Between PF Regens",
+      "value": "No Supported",
+      "unit": "min"
+    },
+    {
+      "name": "Barometric Pressure",
+      "value": "83",
+      "unit": "kPa"
+    },
+    {
+      "name": "Boost Pressure B Control Status",
+      "value": "No Supported"
+    },
+    {
+      "name": "Boost Pressure Sensor A",
+      "value": "86.06",
+      "unit": "kPa"
+    },
+    {
+      "name": "Boost Pressure Sensor B",
+      "value": "No Supported",
+      "unit": "kPa"
+    },
+    {
+      "name": "Calculated Load Value",
+      "value": "19.608",
+      "unit": "%"
+    },
+    {
+      "name": "Catalyst Temperature Bank 1, Sensor 1",
+      "value": "102.500",
+      "unit": "degree C"
+    },
+    {
+      "name": "Catalyst Temperature Bank 1, Sensor 2",
+      "value": "99.700",
+      "unit": "degree C"
+    },
+    {
+      "name": "Charge Air Cooler Temperature Bank 1, Sensor",
+      "value": "1"
+    },
+    {
+      "name": "Charge Air Cooler Temperature Bank 1, Sensor 2",
+      "value": "64",
+      "unit": "degree C"
+    },
+    {
+      "name": "Charge Air Cooler Temperature Bank 2, Sensor",
+      "value": "1"
+    },
+    {
+      "name": "Charge Air Cooler Temperature Bank 2, Sensor",
+      "value": "2"
+    },
+    {
+      "name": "Commanded Boost Pressure A",
+      "value": "96.88",
+      "unit": "kPa"
+    },
+    {
+      "name": "Commanded Boost Pressure B",
+      "value": "No Supported",
+      "unit": "kPa"
+    },
+    {
+      "name": "Commanded EGR",
+      "value": "0",
+      "unit": "%"
+    },
+    {
+      "name": "Commanded EGR A Duty Cycle/Position",
+      "value": "0",
+      "unit": "%"
+    },
+    {
+      "name": "Commanded EGR B Duty Cycle/Position",
+      "value": "No Supported",
+      "unit": "%"
+    },
+    {
+      "name": "Commanded Fuel Rail Pressure A",
+      "value": "24290",
+      "unit": "kPa"
+    },
+    {
+      "name": "Commanded Fuel Rail Pressure B",
+      "value": "No Supported",
+      "unit": "kPa"
+    },
+    {
+      "name": "Commanded Intake Air Flow A Control",
+      "value": "100",
+      "unit": "%"
+    },
+    {
+      "name": "Commanded Intake Air Flow B Control",
+      "value": "No Supported",
+      "unit": "%"
+    },
+    {
+      "name": "Commanded Throttle Actuator Control",
+      "value": "100",
+      "unit": "%"
+    },
+    {
+      "name": "Commanded Wastegate A Position",
+      "value": "100",
+      "unit": "%"
+    },
+    {
+      "name": "Commanded Wastegate B Position",
+      "value": "No Supported",
+      "unit": "%"
+    },
+    {
+      "name": "Control Module Voltage",
+      "value": "14.44",
+      "unit": "V"
+    },
+    {
+      "name": "Cumulative continuous MI counter",
+      "value": "0",
+      "unit": "H"
+    },
+    {
+      "name": "Distance Traveled Since DTCs Cleared",
+      "value": "3"
+    },
+    {
+      "name": "Distance Traveled While MIL Is Activated",
+      "value": "0",
+      "unit": "km"
+    },
+    {
+      "name": "Driver' S Demand Engine - Percent Torque",
+      "value": "-125",
+      "unit": "%"
+    },
+    {
+      "name": "ECU Malfunction Indication status",
+      "value": "N/A"
+    },
+    {
+      "name": "EGR A Error",
+      "value": "N/A"
+    },
+    {
+      "name": "EGR B Error",
+      "value": "No Supported",
+      "unit": "%"
+    },
+    {
+      "name": "EGR Error",
+      "value": "99.219",
+      "unit": "%"
+    },
+    {
+      "name": "Emission System readiness Not",
+      "value": "Compl",
+      "unit": "ete"
+    },
+    {
+      "name": "Engine Coolant Temperature",
+      "value": "83",
+      "unit": "degree C"
+    },
+    {
+      "name": "Engine Coolant Temperature 1",
+      "value": "83",
+      "unit": "degree C"
+    },
+    {
+      "name": "Engine Coolant Temperature",
+      "value": "2"
+    },
+    {
+      "name": "Engine Friction - Percent Torque",
+      "value": "130",
+      "unit": "%"
+    },
+    {
+      "name": "Engine Fuel Rate",
+      "value": "0.5",
+      "unit": "L/h"
+    },
+    {
+      "name": "Engine Oil Temperature",
+      "value": "83",
+      "unit": "degree C"
+    },
+    {
+      "name": "Engine Reference Torque",
+      "value": "169",
+      "unit": "Nm"
+    },
+    {
+      "name": "Engine RPM",
+      "value": "812.5",
+      "unit": "rpm"
+    },
+    {
+      "name": "Engine Run Time Since DTCs Cleared",
+      "value": "33",
+      "unit": "Min"
+    },
+    {
+      "name": "Engine Run Time While MIL Is Activated",
+      "value": "0",
+      "unit": "Min"
+    },
+    {
+      "name": "Equivalence Ratio (Lambda) (B1-S1)",
+      "value": "0"
+    },
+    {
+      "name": "Equivalence Ratio (Lambda) (B1-S2)",
+      "value": "0"
+    },
+    {
+      "name": "Exhaust Gas Recirculation TEMP Bank 1, Sensor 1",
+      "value": "-40",
+      "unit": "degree C"
+    },
+    {
+      "name": "Exhaust Gas Recirculation TEMP Bank 1, Sensor",
+      "value": "2"
+    },
+    {
+      "name": "Exhaust Gas Recirculation TEMP Bank 2, Sensor",
+      "value": "1"
+    },
+    {
+      "name": "Exhaust Gas Recirculation TEMP Bank 2, Sensor",
+      "value": "2"
+    },
+    {
+      "name": "Exhaust Gas Temperature Bank 1, Sensor 1",
+      "value": "102",
+      "unit": "degree C"
+    },
+    {
+      "name": "Exhaust Gas Temperature Bank 1, Sensor 2",
+      "value": "94.20",
+      "unit": "degree C"
+    },
+    {
+      "name": "Exhaust Gas Temperature Bank 1, Sensor 3",
+      "value": "94.20",
+      "unit": "degree C"
+    },
+    {
+      "name": "Exhaust Gas Temperature Bank 1, Sensor",
+      "value": "4"
+    },
+    {
+      "name": "Exhaust Pressure Sensor Bank 1",
+      "value": "0",
+      "unit": "kPa"
+    },
+    {
+      "name": "Exhaust Pressure Sensor Bank 2",
+      "value": "No Supported",
+      "unit": "kPa"
+    },
+    {
+      "name": "Fuel Injection Quantity Control 1 Status",
+      "value": "No Supported"
+    },
+    {
+      "name": "Fuel Injection Quantity Control 2 Status",
+      "value": "No Supported"
+    },
+    {
+      "name": "Fuel Injection Timing",
+      "value": "209.828",
+      "unit": "deg"
+    },
+    {
+      "name": "Fuel Injection Timing Control 1 Status",
+      "value": "No Supported"
+    },
+    {
+      "name": "Fuel Injection Timing Control 2 Status",
+      "value": "No Supported"
+    },
+    {
+      "name": "Fuel Pressure Control 1 Status",
+      "value": "Closed Loop"
+    },
+    {
+      "name": "Fuel Pressure Control 2 Status",
+      "value": "No Supported"
+    },
+    {
+      "name": "Fuel Rail Pressure",
+      "value": "N/A"
+    },
+    {
+      "name": "Fuel Rail Pressure (Absolute)",
+      "value": "N/A"
+    },
+    {
+      "name": "Fuel Rail Pressure A",
+      "value": "24200",
+      "unit": "kPa"
+    },
+    {
+      "name": "Fuel Rail Pressure B",
+      "value": "No Supported",
+      "unit": "kPa"
+    },
+    {
+      "name": "Fuel Rail Temperature A",
+      "value": "63",
+      "unit": "degree C"
+    },
+    {
+      "name": "Glow Plug Lamp Status",
+      "value": "OFF"
+    },
+    {
+      "name": "Highest ECU B1 counter",
+      "value": "0",
+      "unit": "H"
+    },
+    {
+      "name": "Idle Fuel Balance/Contribution Control 1 Status",
+      "value": "Closed Loop"
+    },
+    {
+      "name": "Idle Fuel Balance/Contribution Control 2 Status",
+      "value": "No Supported"
+    },
+    {
+      "name": "Intake Air Temperature",
+      "value": "64",
+      "unit": "degree C"
+    },
+    {
+      "name": "Intake Air Temperature Bank 1, Sensor 1",
+      "value": "43",
+      "unit": "degree C"
+    },
+    {
+      "name": "Intake Air Temperature Bank 1, Sensor 2",
+      "value": "50",
+      "unit": "degree C"
+    },
+    {
+      "name": "Intake Air Temperature Bank 1, Sensor 3",
+      "value": "64",
+      "unit": "degree C"
+    },
+    {
+      "name": "Intake Air Temperature Bank 2, Sensor",
+      "value": "1"
+    },
+    {
+      "name": "Intake Air Temperature Bank 2, Sensor",
+      "value": "2"
+    },
+    {
+      "name": "Intake Air Temperature Bank 2, Sensor",
+      "value": "3"
+    },
+    {
+      "name": "Intake Manifold Absolute Pressure",
+      "value": "85",
+      "unit": "kPa"
+    },
+    {
+      "name": "Intake Manifold Absolute Pressure A",
+      "value": "85.56",
+      "unit": "kPa"
+    },
+    {
+      "name": "Intake Manifold Absolute Pressure B",
+      "value": "No Supported",
+      "unit": "kPa"
+    },
+    {
+      "name": "Malfunction Indicator Lamp (MIL) Status",
+      "value": "OFF"
+    },
+    {
+      "name": "Mass Air Flow Sensor A",
+      "value": "14.41",
+      "unit": "g/s"
+    },
+    {
+      "name": "Mass Air Flow Sensor B",
+      "value": "No Supported",
+      "unit": "g/s"
+    },
+    {
+      "name": "Normalized Trigger for PF Regen",
+      "value": "0",
+      "unit": "%"
+    },
+    {
+      "name": "NOx Sensor Concentration Bank 1 Sensor 1",
+      "value": "2000",
+      "unit": "ppm"
+    },
+    {
+      "name": "NOx Sensor Concentration Bank 1 Sensor 2",
+      "value": "2000",
+      "unit": "ppm"
+    },
+    {
+      "name": "NOx Sensor Concentration Bank 2 Sensor 1",
+      "value": "No Supported",
+      "unit": "ppm"
+    },
+    {
+      "name": "NOx Sensor Concentration Bank 2 Sensor 2",
+      "value": "No Supported",
+      "unit": "ppm"
+    },
+    {
+      "name": "Number of engine operating hours that the continuous MI was Active. (Continuous MI counter)",
+      "value": "0",
+      "unit": "H"
+    },
+    {
+      "name": "Number of engine operating hours that the continuous MI was Active. (Continuous MI counter)",
+      "value": "0",
+      "unit": "H"
+    },
+    {
+      "name": "Number Of Warm-Ups Since DTCs Cleared",
+      "value": "0"
+    },
+    {
+      "name": "O2 Sensor Concentration Bank 1 Sensor 1",
+      "value": "No Supported",
+      "unit": "%"
+    },
+    {
+      "name": "O2 Sensor Concentration Bank 1 Sensor 2",
+      "value": "No Supported",
+      "unit": "%"
+    },
+    {
+      "name": "O2 Sensor Concentration Bank 2 Sensor 1",
+      "value": "No Supported",
+      "unit": "%"
+    },
+    {
+      "name": "O2 Sensor Concentration Bank 2 Sensor 2",
+      "value": "No Supported",
+      "unit": "%"
+    },
+    {
+      "name": "O2 Sensor Lambda Bank 1 Sensor 1",
+      "value": "0"
+    },
+    {
+      "name": "O2 Sensor Lambda Bank 1 Sensor 2",
+      "value": "0"
+    },
+    {
+      "name": "O2 Sensor Lambda Bank 2 Sensor 1",
+      "value": "No Supported"
+    },
+    {
+      "name": "O2 Sensor Lambda Bank 2 Sensor 2",
+      "value": "No Supported"
+    },
+    {
+      "name": "Oxygen Sensor Current (B1-S1)",
+      "value": "-128",
+      "unit": "mA"
+    },
+    {
+      "name": "Oxygen Sensor Current (B1-S2)",
+      "value": "-128",
+      "unit": "mA"
+    },
+    {
+      "name": "Particulate Filter (PF) Regen Type",
+      "value": "No Supported"
+    },
+    {
+      "name": "Particulate Filter Bank 1 Delta Pressure",
+      "value": "327.69",
+      "unit": "kPa"
+    },
+    {
+      "name": "Particulate Filter Bank 1 Inlet Pressure",
+      "value": "83.82",
+      "unit": "kPa"
+    },
+    {
+      "name": "Particulate Filter Bank 1 Outlet Pressure",
+      "value": "83.82",
+      "unit": "kPa"
+    },
+    {
+      "name": "PF Bank 1 Inlet Temperature Sensor",
+      "value": "94.20",
+      "unit": "degree C"
+    },
+    {
+      "name": "PF Bank 1 Outlet Temperature Sensor",
+      "value": "94.20",
+      "unit": "degree C"
+    },
+    {
+      "name": "PM Sensor Active status Bank 1 Sensor",
+      "value": "1",
+      "unit": "NO"
+    },
+    {
+      "name": "PM Sensor Active status Bank 2 Sensor 1",
+      "value": "No Supported"
+    },
+    {
+      "name": "PM Sensor Mass Concentration Bank 2 Sensor",
+      "value": "1"
+    },
+    {
+      "name": "PM Sensor normalized output value Bank 1 Sensor 1",
+      "value": "0",
+      "unit": "%"
+    },
+    {
+      "name": "PM Sensor normalized output value Bank 2 Sensor 1",
+      "value": "No Supported",
+      "unit": "%"
+    },
+    {
+      "name": "PM Sensor regen status Bank 1 Sensor",
+      "value": "1",
+      "unit": "NO"
+    },
+    {
+      "name": "PM Sensor regen status Bank 2 Sensor 1",
+      "value": "No Supported"
+    },
+    {
+      "name": "Power Take Off (PTO) Status",
+      "value": "No Supported"
+    },
+    {
+      "name": "Recommended Transmission Gear For Current Vehicle Conditions",
+      "value": "No Supported"
+    },
+    {
+      "name": "Relative Accelerator Pedal Position",
+      "value": "0",
+      "unit": "%"
+    },
+    {
+      "name": "Relative Intake Air Flow A Position",
+      "value": "0",
+      "unit": "%"
+    },
+    {
+      "name": "Relative Intake Air Flow B Position",
+      "value": "No Supported",
+      "unit": "%"
+    },
+    {
+      "name": "Relative Throttle Position",
+      "value": "0",
+      "unit": "%"
+    },
+    {
+      "name": "Time Since Engine Start",
+      "value": "462",
+      "unit": "S"
+    },
+    {
+      "name": "Total Engine Run Time",
+      "value": "191539.55",
+      "unit": "min"
+    },
+    {
+      "name": "Total Idle Run Time",
+      "value": "No Supported",
+      "unit": "min"
+    },
+    {
+      "name": "Total Run Time With PTO Active",
+      "value": "No Supported",
+      "unit": "min"
+    },
+    {
+      "name": "Turbocharger A Compressor Inlet Temperature",
+      "value": "43",
+      "unit": "degree C"
+    },
+    {
+      "name": "Turbocharger A Compressor Outlet Temperature",
+      "value": "N/A"
+    },
+    {
+      "name": "Turbocharger A Turbine Inlet Temperature",
+      "value": "134.20",
+      "unit": "degree C"
+    },
+    {
+      "name": "Turbocharger A Turbine Outlet Temperature",
+      "value": "102",
+      "unit": "degree C"
+    },
+    {
+      "name": "Turbocharger Compressor Inlet Pressure Sensor A",
+      "value": "83",
+      "unit": "kPa"
+    },
+    {
+      "name": "Turbocharger Compressor Inlet Pressure Sensor B",
+      "value": "No Supported",
+      "unit": "kPa"
+    },
+    {
+      "name": "Vehicle Malfunction Indicator status MI",
+      "value": "Off"
+    },
+    {
+      "name": "Vehicle Speed Sensor",
+      "value": "0",
+      "unit": "km/h"
+    },
+    {
+      "name": "Wastegate A Position",
+      "value": "100",
+      "unit": "%"
+    },
+    {
+      "name": "Wastegate B Position",
+      "value": "No Supported",
+      "unit": "%"
+    }
+  ],
+  "warnings": []
 }

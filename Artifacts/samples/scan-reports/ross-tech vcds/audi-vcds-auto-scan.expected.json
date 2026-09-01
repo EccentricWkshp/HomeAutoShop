@@ -43,72 +43,86 @@
     {
       "code": "P0671",
       "description": "Cylinder 1 Glow Plug Circuit (Q10)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Engine"
     },
     {
       "code": "P0672",
       "description": "Cylinder 2 Glow Plug Circuit (Q11)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Engine"
     },
     {
       "code": "P0673",
       "description": "Cylinder 3 Glow Plug Circuit (Q12)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Engine"
     },
     {
       "code": "P0674",
       "description": "Cylinder 4 Glow Plug Circuit (Q13)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Engine"
     },
     {
       "code": "00483",
       "description": "Control Module for Auxiliary Air Heater",
-      "state": "stored"
+      "state": "stored",
+      "module": "Auto HVAC"
     },
     {
       "code": "00526",
       "description": "Brake Light Switch (F)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "01304",
       "description": "Radio",
-      "state": "stored"
+      "state": "stored",
+      "module": "CAN Gateway"
     },
     {
       "code": "00913",
       "description": "Window Regulator Switch; Front Right Driver (E81)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Door Elect, Driver"
     },
     {
       "code": "00914",
       "description": "Window Regulator Switch; Rear Left; Driver (E53)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Door Elect, Driver"
     },
     {
       "code": "01317",
       "description": "Control Module in Instrument Cluster (J285)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Radio"
     },
     {
       "code": "01299",
       "description": "Diagnostic Interface for Data Bus (J533)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Radio"
     },
     {
       "code": "00858",
       "description": "Connection; Radio Intermediate Frequency (IF) Output to Antenna Amplifier",
-      "state": "stored"
+      "state": "stored",
+      "module": "Radio"
     },
     {
       "code": "00931",
       "description": "Locking Module for Central Locking; Rear Right (F223)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Door, Rear Right"
     },
     {
       "code": "00361",
       "description": "Heater Element for Auxiliary Heater (Z35)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Aux. Heat"
     }
   ],
   "live_data": [],

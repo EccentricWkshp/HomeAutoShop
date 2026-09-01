@@ -8,7 +8,7 @@
 | **Version** | 0.6.6 |
 | **Date** | 2026-09-01 |
 | **Scope decisions** | Docker Compose deployment · all four feature modules in scope · household multi-user with garage PWA · four external integrations |
-| **v0.6.6 changes** | **The second scan tool arrived, and thirteen more with it.** 171 reports published on the public web are now in the corpus as redacted captures, and four parser profiles came out of them — Ross-Tech VCDS, Autel MaxiSys, BlueDriver, Car Scanner ELM OBD2 — **published in the catalog rather than bundled in the image**, because there are hundreds of scan tools and an operator owns one. §15.1 records what the profile contract could not express and now can, and the one thing it still cannot: attribute a code to its module. Two findings are load-bearing. §8.3a's "word geometry is necessary" is a fact about the D8, not about scan reports — three of the four new profiles read text, one of them from a PDF. And NFR-S-5's redaction rule, which keys off the ISO 3779 check digit, would have published every **European** VIN in the corpus unredacted: position 9 is a check digit only where a regulator requires one. A VIN is now also anything VIN-shaped following a VIN label, and licence plates, shop details and workshop codes are redacted by rule, with an audit pass over what was written because a rule cannot know that a technician signed page four. |
+| **v0.6.6 changes** | **The second scan tool arrived, and thirteen more with it.** 169 reports published on the public web are now in the corpus as redacted captures, and **seven parser profiles** came out of them — Ross-Tech VCDS, Autel MaxiSys, THINKCAR, TOPDON, Carly, BlueDriver, Car Scanner ELM OBD2 — **published in the catalog rather than bundled in the image**, because there are hundreds of scan tools and an operator owns one. §15.1 records what the profile contract could not express and now can. Three findings are load-bearing. §8.3a's "word geometry is necessary" is a fact about the D8, not about scan reports. **A PDF was being read in extraction order rather than as the lines it was printed as** — which made three formats unparseable and reported a VIN for a car whose tablet printed `VIN: --`; the fix also lets a code carry the module heading above it, so 388 of the 398 codes the catalog reads now arrive attributed where none did. And NFR-S-5's redaction rule, which keys off the ISO 3779 check digit, would have published every **European** VIN in the corpus unredacted: position 9 is a check digit only where a regulator requires one. A VIN is now also anything VIN-shaped following a VIN label, and licence plates, shop details and workshop codes are redacted by rule, with an audit pass over what was written because a rule cannot know that a technician signed page four. |
 | **v0.6.5 changes** | **No object store in the stack.** Media lives under `MEDIA_ROOT`, which is what §13.1 backs up; the earlier design put it in MinIO, where no backup reached it. That container had been justified by a presigned URL streaming photos straight to the browser, and v0.6.2 had already turned that off for good reason — such a link works for anyone who copies it, so `app` serves the bytes and reading a photo requires a login (§5.1, §12.3). Four services instead of five, and the measured idle footprint is now 338 MB against NFR-P-6's 900. The `s3` driver stays, vendor-neutral, for media on a NAS or on rented storage, with `manage.py migrate_storage` to move files either direction without touching the database. Backup and restore now say out loud when media is somewhere they cannot reach. |
 | **v0.6.4 changes** | Follow-ups from using the parts-order import. The preview now **leads to the import**: a browser clears a file input on submit, so previewing and then importing meant uploading the same file twice — which is how a preview stops being used. The document is stored on the way past (deduplicated by SHA-256) and the review screen carries a signed reference to it. Money is shown as money: the review screen and the purchase screens printed minor units, so a $155.87 order read as `15587`. And **every full-page form has a Cancel beside its Save** — without one the only exits were the browser's back button, which re-posts, or saving changes nobody wanted. |
 | **v0.6.3 changes** | **Supplier order confirmations are read into the catalog** (FR-PUR-1, FR-PART-2/3). A RockAuto order PDF becomes a purchase with its lines, the parts in it — brand, manufacturer part number, part type, price, core charge, quantity — and fitment against the vehicle each was looked up under, recorded as *stated by vendor* rather than confirmed (FR-PART-4). Read by word geometry for the same reason §8.3a needs it: both text columns wrap, and they wrap above as well as below their own row. Kits are charged once and their contents catalogd but not billed; a rebate is money, not part of a part number. It rehearses before it writes, and `external_ref` makes a second read of the same file update rather than duplicate (§6.2). Also: the main navigation is reachable on a phone, where it had been hidden entirely below 800px with no route to seven of the nine sections. |
@@ -1386,29 +1386,58 @@ identically either way.
 and declined to freeze the contract until a second tool's reports arrive. That
 judgment was right, and it has now been tested — see below.
 
-**The second tool arrived, and fourteen more with it.** 171 reports and exports
+**The second tool arrived, and fourteen more with it.** 169 reports and exports
 published on the public web were gathered into the corpus (`fetch_scan_samples`,
-`capture_scan_samples`), and **four working profiles came out of them**: Ross-Tech
-VCDS, Autel MaxiSys, BlueDriver and Car Scanner ELM OBD2. Three of the four read
-*text*, one of those from a PDF — so §8.3a's finding that word geometry is
-necessary turns out to be a fact about the D8 rather than about scan reports.
-Word geometry is what a format costs you, not what a parser deserves.
+`capture_scan_samples`), and **seven working profiles came out of them**:
+Ross-Tech VCDS, Autel MaxiSys, THINKCAR, TOPDON, Carly, BlueDriver and Car
+Scanner ELM OBD2. Most read *text*, several of those from a PDF — so §8.3a's
+finding that word geometry is necessary turns out to be a fact about the D8
+rather than about scan reports. Word geometry is what a format costs you, not
+what a parser deserves.
 
-Four things the contract could not express, each added because a format demanded
-it and each recorded in SCHEMA-PARSER-PROFILES.md §1a: a row that spans lines
-(`multiline`), a column that falls back between capture groups, `map` as a closed
-vocabulary rather than a set of shortcuts, and a *generic* profile that no longer
-outranks a specific one on score alone. That last was not cosmetic — the bundled
-`Generic code list` scored 1.0 on a VCDS Auto-Scan where the VCDS profile scored
-0.85, and read nothing out of reports holding 61, 14 and 0 faults.
+**The largest single defect was in how a PDF was read at all.** `_read_pdf`
+joined each page's words in *extraction order* — the order they were written
+into the content stream, which is not the order they appear on the page — and
+produced one meaningless line per page. That made three formats unparseable, and
+it let a label reach across a flattened page for a value that was not its own:
+an Autel report printing `VIN: --` yielded a VIN, the first seventeen characters
+of a repair-order number further down. A wrong VIN is worse than no VIN. Reading
+the printed lines instead fixed the misreading and unlocked the three formats,
+with **zero change to anything that already worked**.
 
-What the profiles still cannot do is attribute a code to its module: every PDF
-format here prints the module as a heading above a group of rows, and a
-row-at-a-time extractor has no notion of the section it is inside. A nine-module
-all-system scan therefore imports as one list. Two formats — THINKCAR's newer
-report and TOPDON's — interleave their columns badly enough that no profile is
-published for them at all; half-reading a diagnostic report is worse than not
-reading it. Their captures are in the corpus, marked unread.
+Six things the contract could not express, each added because a format demanded
+it and each recorded in SCHEMA-PARSER-PROFILES.md §1a: a row that spans lines,
+a column that falls back between capture groups, a column *joined* from a cell
+wrapped over two lines, `map` as a closed vocabulary rather than a set of
+shortcuts, a section heading that attributes a code to its module, and a
+*generic* profile that no longer outranks a specific one on score alone. That
+last was not cosmetic — the bundled `Generic code list` scored 1.0 on a VCDS
+Auto-Scan where the VCDS profile scored 0.85, and read nothing out of reports
+holding 61, 14 and 0 faults.
+
+**A code now arrives with the module it came from** — 388 of the 398 the catalog
+profiles read, where none did. **And the data stream is read, not only the code
+table.** `DiagnosticSession.live_data` and the Reading / Value / Min / Max panel
+on the session screen shipped in Phase 4 and only the D8's built-in parser could
+fill them, so a THINKCAR data-stream report holding 159 readings and no fault
+codes at all imported as an entirely empty session. A `live_data_extractor` is
+now a profile key like any other.
+
+That is deliberately **not** a datalog reader, and the boundary is NG-4's. A
+`LiveDatum` is a reading with a value and a range — what a tool prints during a
+session. A logger CSV is a time series, and collapsing ten thousand rows of RPM
+to a minimum and a maximum throws away the only thing such a file is for. The
+corpus therefore keeps what a profile here could read and names what it drops,
+with the reason, in `not-captured.json`.
+
+What is still not read is a report whose columns
+wrap *around* the code: THINKCAR's older generator prints the module name and
+the status above and below their own row, so a description arrives in fragments
+that only column geometry could reassemble. That is the D8's wall, and the
+answer is the same — no profile is published for it, and the profile for
+THINKCAR's newer generator fingerprints so as not to claim it. The same rule
+settled TOPDON, whose two tablets wrap differently: claiming both read one fault
+in eleven out of the second, which is the worst answer a fingerprint can give.
 
 **The profiles are published, not bundled** (§8.1b). The image still ships two —
 the D8 and the generic text reader — and the rest live in the catalog, because

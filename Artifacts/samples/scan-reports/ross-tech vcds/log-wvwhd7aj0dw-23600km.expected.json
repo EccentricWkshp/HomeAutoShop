@@ -43,27 +43,32 @@
     {
       "code": "02214",
       "description": "Tire Pressure Warning",
-      "state": "stored"
+      "state": "stored",
+      "module": "ABS Brakes"
     },
     {
       "code": "01134",
       "description": "Alarm Horn (H12)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "01800",
       "description": "Light Switch (E1)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "01516",
       "description": "Terminal 30; Left",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "02391",
       "description": "Terminal 30 Reference",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     }
   ],
   "live_data": [],

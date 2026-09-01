@@ -43,162 +43,194 @@
     {
       "code": "P0562",
       "description": "System Voltage",
-      "state": "stored"
+      "state": "stored",
+      "module": "Engine"
     },
     {
       "code": "00668",
       "description": "Supply Voltage Terminal 30",
-      "state": "stored"
+      "state": "stored",
+      "module": "ABS Brakes"
     },
     {
       "code": "U1113",
       "description": "Function Restriction due to Faults in Other Modules",
-      "state": "stored"
+      "state": "stored",
+      "module": "Auto HVAC"
     },
     {
       "code": "00153",
       "description": "Windshield Wiper Motor;  Driver Side (V216)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "00446",
       "description": "Function Limitation due to Under-Voltage",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "01299",
       "description": "Diagnostic Interface for Data Bus (J533)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "01493",
       "description": "Bulb for Blinkers; Front Left (M5)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "01495",
       "description": "Bulb for High-Beams; Left (M30)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "01499",
       "description": "Bulb for High-Beams; Right (M32)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "02896",
       "description": "Control Circuit for LED Module for DRL and Parking Light; Left",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "02898",
       "description": "Control Circuit for LED Module for DRL and Parking Light; Right",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "U1011",
       "description": "Supply voltage",
-      "state": "stored"
+      "state": "stored",
+      "module": "Airbags"
     },
     {
       "code": "U1111",
       "description": "Function Restricted due to Missing Message(s)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Instruments"
     },
     {
       "code": "U1111",
       "description": "Function Restricted due to Missing Message(s)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Instruments"
     },
     {
       "code": "U1011",
       "description": "Supply voltage",
-      "state": "stored"
+      "state": "stored",
+      "module": "Instruments"
     },
     {
       "code": "01300",
       "description": "Control Module for Navigation with CD-Rom (J401)",
-      "state": "stored"
+      "state": "stored",
+      "module": "CAN Gateway"
     },
     {
       "code": "01304",
       "description": "Radio",
-      "state": "stored"
+      "state": "stored",
+      "module": "CAN Gateway"
     },
     {
       "code": "00446",
       "description": "Function Limitation due to Under-Voltage",
-      "state": "stored"
+      "state": "stored",
+      "module": "Media Player 3"
     },
     {
       "code": "00532",
       "description": "Supply Voltage B+",
-      "state": "stored"
+      "state": "stored",
+      "module": "Media Player 3"
     },
     {
       "code": "01811",
       "description": "Supply Voltage for Door Controller; Drivers Side (J386)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Door Elect, Driver"
     },
     {
       "code": "01316",
       "description": "ABS Control Module",
-      "state": "stored"
+      "state": "stored",
+      "module": "Steering Assist"
     },
     {
       "code": "01812",
       "description": "Supply Voltage for Door Controller; Pass. Side (J387)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Door Elect, Pass."
     },
     {
       "code": "01042",
       "description": "Control Module; Not Coded",
-      "state": "stored"
+      "state": "stored",
+      "module": "Headlight Range"
     },
     {
       "code": "02656",
       "description": "Power Output Stage for Left Headlight (J667); Not Coded",
-      "state": "stored"
+      "state": "stored",
+      "module": "Headlight Range"
     },
     {
       "code": "02657",
       "description": "Power Output Stage for Right Headlight (J668); Not Coded",
-      "state": "stored"
+      "state": "stored",
+      "module": "Headlight Range"
     },
     {
       "code": "01539",
       "description": "Headlights Not Adjusted",
-      "state": "stored"
+      "state": "stored",
+      "module": "Headlight Range"
     },
     {
       "code": "02233",
       "description": "Left Headlight Power Output Stage (J667)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Headlight Range"
     },
     {
       "code": "02234",
       "description": "Right Headlight Power Output Stage (J668)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Headlight Range"
     },
     {
       "code": "02629",
       "description": "Sensor for Swivel Module Position; Left",
-      "state": "stored"
+      "state": "stored",
+      "module": "Headlight Range"
     },
     {
       "code": "02628",
       "description": "Sensor for Swivel Module Position; Right",
-      "state": "stored"
+      "state": "stored",
+      "module": "Headlight Range"
     },
     {
       "code": "01813",
       "description": "Supply Voltage for Door Controller; Rear Left (J388)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Door, Rear Left"
     },
     {
       "code": "01814",
       "description": "Supply Voltage for Door Controller; Rear Right (J389)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Door, Rear Right"
     }
   ],
   "live_data": [],

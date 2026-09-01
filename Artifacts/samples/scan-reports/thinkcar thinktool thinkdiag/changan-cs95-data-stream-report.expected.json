@@ -1,5 +1,289 @@
 {
-  "profile": "",
-  "score": 0.0,
-  "unread": true
+  "profile": "THINKCAR - All System Report",
+  "score": 1.0,
+  "fields": {
+    "vin": {
+      "value": "LS4ASE2A9NJ339621",
+      "confidence": 1.0,
+      "page": 0,
+      "label": "VIN"
+    },
+    "odometer": {
+      "value": "0",
+      "confidence": 0.8,
+      "page": 0,
+      "label": "Odometer"
+    },
+    "odometer_unit": {
+      "value": "km",
+      "confidence": 0.8,
+      "page": 0,
+      "label": "Odometer"
+    },
+    "performed_on": {
+      "value": "2026-04-06T14:18:14",
+      "confidence": 0.9,
+      "page": 0,
+      "label": "Time"
+    },
+    "vehicle_description": {
+      "value": "CHANGAN",
+      "confidence": 0.7,
+      "page": 0,
+      "label": "Make"
+    },
+    "tool_version": {
+      "value": "V10.42",
+      "confidence": 0.8,
+      "page": 0,
+      "label": "Vehicle Software Version"
+    },
+    "tool_vendor": {
+      "value": "THINKCAR",
+      "confidence": 0.9,
+      "page": 0,
+      "label": ""
+    }
+  },
+  "codes": [
+    {
+      "code": "B190414",
+      "state_raw": "N/A",
+      "description": "FrontLeftCornerSensor_ShortToGNDOrOpen",
+      "state": "stored",
+      "module": "RRS(TUNG THIH Reversing Radar System)"
+    },
+    {
+      "code": "B107202",
+      "state_raw": "N/A",
+      "description": "FR tire pressure low",
+      "state": "stored",
+      "module": "BCM(Body Control Module)"
+    },
+    {
+      "code": "U214108",
+      "state_raw": "N/A",
+      "description": "EPB node message damaged",
+      "state": "stored",
+      "module": "ESP(Bosch Electronic Stability Program 9.0)"
+    },
+    {
+      "code": "B211477",
+      "state_raw": "N/A",
+      "description": "ESP indicating deceleration control unavailable",
+      "state": "stored",
+      "module": "Car model configuration code - ACC (Adaptive Cruise Control) Model"
+    },
+    {
+      "code": "B210681",
+      "state_raw": "N/A",
+      "description": "EPB (Electronic Parking Brake) fault",
+      "state": "stored",
+      "module": "Car model configuration code - ACC (Adaptive Cruise Control) Model"
+    },
+    {
+      "code": "B212578",
+      "state_raw": "N/A",
+      "description": "ACC not calibrated or calibration deviation too large",
+      "state": "stored",
+      "module": "Car model configuration code - ACC (Adaptive Cruise Control) Model"
+    }
+  ],
+  "live_data": [
+    {
+      "name": "Accelerator Pedal Opening",
+      "value": "0",
+      "unit": "%"
+    },
+    {
+      "name": "Actual Electronic Throttle Opening",
+      "value": "5.69",
+      "unit": "%"
+    },
+    {
+      "name": "Actual Engine Torque",
+      "value": "0",
+      "unit": "%"
+    },
+    {
+      "name": "Actual Ignition Advance Angle",
+      "value": "16.50",
+      "unit": "deg"
+    },
+    {
+      "name": "Actual Torque",
+      "value": "10.85",
+      "unit": "%"
+    },
+    {
+      "name": "Actual Torque Responded At Torque Comparison In Function Monitor",
+      "value": "0",
+      "unit": "%"
+    },
+    {
+      "name": "Air Inflation Efficiency",
+      "value": "27.00",
+      "unit": "%"
+    },
+    {
+      "name": "Air Passage Constant",
+      "value": "0"
+    },
+    {
+      "name": "Ambient Temperature",
+      "value": "59.25",
+      "unit": "degree C"
+    },
+    {
+      "name": "Battery Voltage",
+      "value": "14.35",
+      "unit": "V"
+    },
+    {
+      "name": "Control The PID Controlled Quantity Of Throttle",
+      "value": "19.48",
+      "unit": "%"
+    },
+    {
+      "name": "Desired Torque",
+      "value": "10.98",
+      "unit": "%"
+    },
+    {
+      "name": "Detection Of Clutch Operations",
+      "value": "0"
+    },
+    {
+      "name": "Downstream Oxygen Sensor Voltage",
+      "value": "0.13",
+      "unit": "V"
+    },
+    {
+      "name": "Electronic Throttle Position Sensor Channel 1 Voltage When The Throttle Opening At About 95%",
+      "value": "0.77",
+      "unit": "V"
+    },
+    {
+      "name": "Engine Coolant Temperature Model Substitution Value At Fault",
+      "value": "80.25",
+      "unit": "degree C"
+    },
+    {
+      "name": "Engine Load",
+      "value": "30.86",
+      "unit": "%"
+    },
+    {
+      "name": "Engine Speed",
+      "value": "873",
+      "unit": "rpm"
+    },
+    {
+      "name": "Engine Water Temperature",
+      "value": "96.00",
+      "unit": "degree C"
+    },
+    {
+      "name": "Environmental Pressure",
+      "value": "830.27",
+      "unit": "hPa"
+    },
+    {
+      "name": "Expected Throttle Opening",
+      "value": "5.88",
+      "unit": "%"
+    },
+    {
+      "name": "Fuel Consumption",
+      "value": "0.00",
+      "unit": "L/s"
+    },
+    {
+      "name": "Gear",
+      "value": "0"
+    },
+    {
+      "name": "Heat Flow Meter (HFM)",
+      "value": "18",
+      "unit": "kg/h"
+    },
+    {
+      "name": "Intake Air Pressure",
+      "value": "463.52",
+      "unit": "hPa"
+    },
+    {
+      "name": "Intake Air Temperature",
+      "value": "65.25",
+      "unit": "degree C"
+    },
+    {
+      "name": "Intake Temperature Sensor Output Voltage",
+      "value": "65.25",
+      "unit": "degree C"
+    },
+    {
+      "name": "Mass Air Flow",
+      "value": "16",
+      "unit": "kg/h"
+    },
+    {
+      "name": "Maximum Indicated Torque",
+      "value": "33.73",
+      "unit": "%"
+    },
+    {
+      "name": "Model Exhaust Gas Temperature At Downstream Catalyst",
+      "value": "N/A"
+    },
+    {
+      "name": "Opening Calculated According To Signal Of Accelerator Pedal Sensor 1",
+      "value": "0.53",
+      "unit": "%"
+    },
+    {
+      "name": "Running Time After Start",
+      "value": "298.80",
+      "unit": "s"
+    },
+    {
+      "name": "Secondary Air Charging Model Mass Air Flow Correction Factor",
+      "value": "0.96"
+    },
+    {
+      "name": "Throttle Angle At Limp",
+      "value": "6.27",
+      "unit": "%"
+    },
+    {
+      "name": "Throttle Voltmeter 1 Calculated Valve Opening",
+      "value": "5.69",
+      "unit": "%"
+    },
+    {
+      "name": "Throttle Voltmeter 2 Calculated Valve Opening",
+      "value": "5.52",
+      "unit": "%"
+    },
+    {
+      "name": "Torque Constant",
+      "value": "0"
+    },
+    {
+      "name": "Unfiltered Engine Coolant Temperature",
+      "value": "93.75",
+      "unit": "degree C"
+    },
+    {
+      "name": "Vehicle Speed",
+      "value": "0",
+      "unit": "km/h"
+    },
+    {
+      "name": "Vehicle Speed Output To Scanner",
+      "value": "0",
+      "unit": "km/h"
+    }
+  ],
+  "warnings": []
 }

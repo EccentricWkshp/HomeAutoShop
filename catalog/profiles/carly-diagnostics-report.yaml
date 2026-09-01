@@ -1,0 +1,85 @@
+# Carly -- Diagnostics Report
+#
+# The PDF the Carly app produces from a phone and an adapter, for BMW and the
+# other makes it supports. It is the cleanest report in this catalog: one fault
+# per line, the module as a bare heading above its faults, and no table at all.
+#
+#     Engine
+#     Fault code: 243000 Glow plug cylinder 5 control: interruption
+#     Fault code: INFO 27AB00 DDE control unit internal (cyclic authentication)
+#
+# `INFO` is Carly's own marker for a fault it grades as informational rather
+# than a defect. It is read into the status rather than dropped, because "the
+# tool did not think this one mattered" is exactly the kind of judgment a person
+# reviewing an import wants to see, and exactly the kind a parser must not make
+# on its own.
+name: Carly - Diagnostics Report
+author: HomeAutoShop
+tool_vendor: Carly
+tool_model: Carly
+version: 1
+media_type: pdf
+
+fingerprint:
+  threshold: 0.6
+  signals:
+    - kind: doc_text
+      pattern: '(?im)^CARLY DIAGNOSTICS REPORT'
+      weight: 0.45
+    - kind: doc_text
+      pattern: '(?im)^STATUS\s+TOTAL ISSUES\s+HEALTHY SYSTEMS'
+      weight: 0.3
+    - kind: doc_text
+      pattern: '(?im)^Fault code:'
+      weight: 0.25
+
+field_extractors:
+  vehicle_description:
+    # `BMW 7 series (2009)` on the second line -- the report has no VIN and no
+    # odometer anywhere, which is worth knowing before importing one: it
+    # identifies a *model*, not a car, so the operator picks the vehicle.
+    strategy: regex
+    pattern: '(?m)^([A-Z][A-Za-z]+ [^\r\n(]+?)\s*\(\d{4}\)\s*$'
+    confidence: 0.7
+  model_year:
+    strategy: regex
+    pattern: '(?m)^[A-Z][A-Za-z]+ [^\r\n(]+?\((\d{4})\)\s*$'
+    confidence: 0.8
+  tool_vendor:
+    strategy: regex
+    pattern: '(Carly)'
+    confidence: 0.9
+
+table_extractor:
+  locate:
+    headings: ['Issues (']
+    stop_at: []
+    # A module heading is a short line that is not a fault and not a figure --
+    # `Engine`, `Seat Belt Tensioner Right`. Anchored on being followed by a
+    # fault line, because that is what makes it a heading rather than a stray
+    # word from the summary block above.
+    section_pattern: '(?m)^([A-Z][A-Za-z0-9 /()-]{2,48})\s*\r?\n(?=Fault code:)'
+  multiline: true
+  # The code is Carly's six-hex-digit BMW fault number, not a J2012 code, and
+  # is read as printed -- it is what a person looks up in BMW documentation.
+  row_pattern: '(?m)^Fault code:\s*(INFO\s+)?([0-9A-F]{6})\s+(.+?)\s*$'
+  columns:
+    - { role: code, group: 2 }
+    - { role: description, group: 3 }
+    - { role: state_raw, group: 1 }
+  row_filters:
+    drop_if_matches:
+      - '(?i)no fault'
+
+notes: >
+  Written against one report - a 2009 BMW 7 series with 27 issues across nine
+  modules, published on a forum and redacted in the corpus. **Unproven**: the
+  catalog's verified badge needs two reports from different vehicles, and four
+  more Carly reports were found and could not be retrieved.
+
+  Know two things before importing one. **A Carly report carries no VIN and no
+  odometer** - it names the model and the year and nothing that identifies the
+  car - so an import cannot match it to a vehicle for you. And **the codes are
+  BMW's own six-digit fault numbers**, not J2012 codes, so this application's
+  bundled code dictionary will have nothing to say about them; the description
+  Carly printed is the description you get.

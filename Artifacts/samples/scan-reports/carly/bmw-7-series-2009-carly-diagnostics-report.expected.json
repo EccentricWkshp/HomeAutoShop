@@ -1,5 +1,206 @@
 {
-  "profile": "",
-  "score": 0.0,
-  "unread": true
+  "profile": "Carly - Diagnostics Report",
+  "score": 1.0,
+  "fields": {
+    "vehicle_description": {
+      "value": "BMW 7 series",
+      "confidence": 0.7,
+      "page": 0,
+      "label": ""
+    },
+    "model_year": {
+      "value": "2009",
+      "confidence": 0.8,
+      "page": 0,
+      "label": ""
+    },
+    "tool_vendor": {
+      "value": "CARLY",
+      "confidence": 0.9,
+      "page": 0,
+      "label": ""
+    }
+  },
+  "codes": [
+    {
+      "code": "243000",
+      "description": "Glow plug cylinder 5 control: interruption",
+      "state": "stored",
+      "module": "Engine"
+    },
+    {
+      "code": "27AB00",
+      "description": "DDE control unit internal (cyclic authentication): record check is not okay",
+      "state_raw": "INFO",
+      "state": "stored",
+      "module": "Engine"
+    },
+    {
+      "code": "4E0008",
+      "description": "VSM event vehiclestate",
+      "state_raw": "INFO",
+      "state": "stored",
+      "module": "Seat Belt Tensioner Right"
+    },
+    {
+      "code": "4E005A",
+      "description": "ALG speed input error",
+      "state_raw": "INFO",
+      "state": "stored",
+      "module": "Seat Belt Tensioner Right"
+    },
+    {
+      "code": "4E005B",
+      "description": "ALG acc lat input error",
+      "state_raw": "INFO",
+      "state": "stored",
+      "module": "Seat Belt Tensioner Right"
+    },
+    {
+      "code": "4E005C",
+      "description": "ALG acc long input error",
+      "state_raw": "INFO",
+      "state": "stored",
+      "module": "Seat Belt Tensioner Right"
+    },
+    {
+      "code": "4E005D",
+      "description": "ALG yaw rate input error",
+      "state_raw": "INFO",
+      "state": "stored",
+      "module": "Seat Belt Tensioner Right"
+    },
+    {
+      "code": "4E005E",
+      "description": "ALG steering angle input error",
+      "state_raw": "INFO",
+      "state": "stored",
+      "module": "Seat Belt Tensioner Right"
+    },
+    {
+      "code": "4E005F",
+      "description": "ALG brake input error",
+      "state_raw": "INFO",
+      "state": "stored",
+      "module": "Seat Belt Tensioner Right"
+    },
+    {
+      "code": "4E0061",
+      "description": "ALG emergency braking error",
+      "state_raw": "INFO",
+      "state": "stored",
+      "module": "Seat Belt Tensioner Right"
+    },
+    {
+      "code": "4E0062",
+      "description": "ALG evasive manoeuvre error",
+      "state_raw": "INFO",
+      "state": "stored",
+      "module": "Seat Belt Tensioner Right"
+    },
+    {
+      "code": "4E0063",
+      "description": "ALG body slip error",
+      "state_raw": "INFO",
+      "state": "stored",
+      "module": "Seat Belt Tensioner Right"
+    },
+    {
+      "code": "4E0064",
+      "description": "ALG over under steering error",
+      "state_raw": "INFO",
+      "state": "stored",
+      "module": "Seat Belt Tensioner Right"
+    },
+    {
+      "code": "4E0065",
+      "description": "ALG under steering drift error",
+      "state_raw": "INFO",
+      "state": "stored",
+      "module": "Seat Belt Tensioner Right"
+    },
+    {
+      "code": "4E0066",
+      "description": "ALG trbs error",
+      "state_raw": "INFO",
+      "state": "stored",
+      "module": "Seat Belt Tensioner Right"
+    },
+    {
+      "code": "16004C",
+      "description": "SECU - DEM event KFC KL30 undervoltage (secu)",
+      "state_raw": "INFO",
+      "state": "stored",
+      "module": "Active Steering"
+    },
+    {
+      "code": "16004E",
+      "description": "SECU - DEM event KFC KL15 undervoltage (secu)",
+      "state_raw": "INFO",
+      "state": "stored",
+      "module": "Active Steering"
+    },
+    {
+      "code": "800FB5",
+      "description": "Exterior mirrors poti defective right",
+      "state": "stored",
+      "module": "Foot Well Module"
+    },
+    {
+      "code": "800FB6",
+      "description": "Defective exterior mirror heating or elektro.-crome left",
+      "state": "stored",
+      "module": "Foot Well Module"
+    },
+    {
+      "code": "030015",
+      "description": "Window driver-side: invalid characteristic, no standardization exists",
+      "state": "stored",
+      "module": "Foot Well Module"
+    },
+    {
+      "code": "9307A8",
+      "description": "DAYS passenger door / page (BFT): invalid current value to unlocking line",
+      "state": "stored",
+      "module": "Car Access System"
+    },
+    {
+      "code": "9307B6",
+      "description": "DAYS passenger door / side rear (BFTH): invalid current value to unlocking line",
+      "state": "stored",
+      "module": "Car Access System"
+    },
+    {
+      "code": "802A08",
+      "description": "PIA: porting limited due to lack of calibration",
+      "state": "stored",
+      "module": "Rear Seat (driver side)"
+    },
+    {
+      "code": "D0195B",
+      "description": "Message error (warning lane change, ID: waRN inch) channel: HC2 - timeout / Message error",
+      "state": "stored",
+      "module": "Rear Seat (driver side)"
+    },
+    {
+      "code": "8011D7",
+      "description": "Parking heater, water pump short circuit to positive or open circuit / EKMV: OBD current sensor",
+      "state": "stored",
+      "module": "Air Conditioning"
+    },
+    {
+      "code": "8011E4",
+      "description": "Parking heater: EOL checksum error / EKMV: OBD memory error EEPROM",
+      "state": "stored",
+      "module": "phase 2 short circuit to positive"
+    },
+    {
+      "code": "800494",
+      "description": "Nivi camera: internal software error / Nivi camera: no communication to the control unit",
+      "state": "stored",
+      "module": "Night Vision"
+    }
+  ],
+  "live_data": [],
+  "warnings": []
 }

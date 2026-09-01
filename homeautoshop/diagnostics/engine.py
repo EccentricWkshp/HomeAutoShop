@@ -216,13 +216,55 @@ def _looks_delimited(text: str) -> bool:
     return len(counts) == 1 and counts.pop() >= 2
 
 
+#: Tops within this far apart were printed on the same line.
+LINE_TOLERANCE = 2.0
+
+
+def lines_from_words(pages: list[list[dict]]) -> list[str]:
+    """Word geometry read back as the lines it was **printed** as.
+
+    Extraction order is not layout. A PDF hands its words over in whatever
+    order they were written into the content stream, and joining them that way
+    produced one meaningless line per page — which is what every profile here
+    was reading, and what made three formats unparseable:
+
+        Curren  EOBD/OBD II P0A80 Replace Hybrid/EV Battery Pack  t
+
+    That is a THINKCAR report whose status column wraps. Reconstructed by
+    position it is `EOBD/OBD II P0A80 Replace Hybrid/EV Battery Pack`, with the
+    module, the code and the description in the order a person reads them.
+
+    It also stops a label reaching across the page for a value. An Autel report
+    that prints `VIN: --` was giving up a VIN — the first seventeen characters
+    of the repair-order number, found much further down a page that had been
+    flattened into a single line. A wrong VIN is worse than no VIN: it is the
+    one misreading that poisons the vehicle record silently.
+
+    Sorted by position rather than trusted: the words arrive in extraction
+    order, so a row assembled by appending would be scrambled left to right as
+    well as top to bottom.
+    """
+    out: list[str] = []
+    for page in pages:
+        rows: list[list[str]] = []
+        top_of: float | None = None
+        for word in sorted(
+            page, key=lambda w: (float(w.get("top", 0)), float(w.get("x0", 0)))
+        ):
+            top = float(word.get("top", 0))
+            if top_of is None or abs(top - top_of) > LINE_TOLERANCE:
+                rows.append([])
+                top_of = top
+            rows[-1].append(normalize(str(word.get("text", ""))))
+        out.extend(" ".join(row) for row in rows)
+    return out
+
+
 def _read_pdf(raw: bytes) -> Document:
     from homeautoshop.scantools.xtool_d8 import words_from_pdf
 
     pages = words_from_pdf(io.BytesIO(raw))
-    text = "\n".join(
-        " ".join(normalize(str(w.get("text", ""))) for w in page) for page in pages
-    )
+    text = "\n".join(lines_from_words(pages))
     if not text.strip():
         # An image-only PDF — a scanner's output, or a tool that renders its
         # report as a picture. §7.9 always promised the OCR fallback here; the
@@ -436,6 +478,10 @@ def _declarative(profile, document: Document) -> Extraction:
     table = profile.table_extractor or {}
     if table:
         out.codes = _extract_table(table, text)
+
+    live = profile.live_data_extractor or {}
+    if live:
+        out.live_data = _extract_live_data(live, text)
     return out
 
 
@@ -446,24 +492,33 @@ def _extract_field(rule: dict, text: str) -> Field | None:
 
     if strategy == "label_anchored":
         for label in rule.get("labels") or []:
-            # The value is whatever follows the label on the same line, or the
-            # profile's pattern applied to it. Anchoring on the line keeps a
-            # label from reaching across the page and claiming the next field.
-            anchor = re.search(
-                rf"{re.escape(label)}\s*[:\-]?\s*(.+)", text, re.I
-            )
-            if not anchor:
-                continue
-            tail = anchor.group(1).strip()
-            value = tail.split("\n")[0].strip()
-            if pattern:
-                inner = re.search(pattern, tail, re.I)
-                if not inner:
+            # **Every** occurrence of the label, not the first. A BlueDriver
+            # report captions its header `VIN retrieved from Vehicle` and
+            # prints `VIN: <vin>` on the next line, so stopping at the first
+            # match found a label with no value after it and reported the
+            # report as having no VIN. Cheap to try them all, and a label that
+            # appears twice with a value only under the second is ordinary.
+            for anchor in re.finditer(
+                rf"{re.escape(label)}\s*[:：\-]?\s*(.+)", text, re.I
+            ):
+                # The value is whatever follows the label on the same line, or
+                # the profile's pattern applied to it. Anchoring on the line
+                # keeps a label from reaching across the page and claiming the
+                # next field.
+                # `(.+)` cannot cross a newline, so the tail *is* the rest of
+                # the label's line — which is only a real limit now that a PDF
+                # is read as the lines it was printed as rather than one line
+                # per page.
+                tail = anchor.group(1).strip()
+                value = tail
+                if pattern:
+                    inner = re.search(pattern, tail, re.I)
+                    if not inner:
+                        continue
+                    value = (inner.group(1) if inner.groups() else inner.group(0)).strip()
+                if not value:
                     continue
-                value = (inner.group(1) if inner.groups() else inner.group(0)).strip()
-            if not value:
-                continue
-            return _coerced(rule, value, confidence, label)
+                return _coerced(rule, value, confidence, label)
         return None
 
     if not pattern:
@@ -504,8 +559,45 @@ def _coerced(rule: dict, value: str, confidence: float, label: str) -> Field | N
     return Field(value=value, confidence=confidence, label=label)
 
 
+#: What a live-data row must carry to be a row at all. A reading with no name
+#: is a number on a page.
+LIVE_DEFAULT_PATTERN = r"(?m)^(.+?)\s+(-?[\d.,]+)\s*([^\s\d]{0,12})\s*$"
+
+
+def _extract_live_data(rule: dict, text: str) -> list[dict]:
+    """Pull a data-stream table out of a report (`live_data_extractor`).
+
+    The same machinery as the code table, keyed on `name` instead of `code`,
+    because a data stream *is* a table — the difference is only which column
+    makes a row worth keeping.
+
+    Worth having because the shape is already modelled and already shown. The
+    D8's built-in parser has always filled `DiagnosticSession.live_data`, and
+    the session screen has always had a Reading / Value / Min / Max table for
+    it; a declarative profile simply had no way to. So a THINKCAR data-stream
+    report holding 159 readings and no fault codes at all imported as an empty
+    session — a report whose entire content the parser could see and had
+    nowhere to put.
+
+    Not every tool prints a minimum and a maximum. The D8 does; THINKCAR does
+    not. Those columns stay empty rather than being computed from a single
+    sample, because a minimum equal to the reading is a claim about a range
+    nobody measured.
+    """
+    rows = _extract_rows(rule, text, required="name", default_pattern=LIVE_DEFAULT_PATTERN)
+    for row in rows:
+        row.pop("state", None)
+    return rows
+
+
 def _extract_table(rule: dict, text: str) -> list[dict]:
     """Pull DTC rows out of flat text, between a heading and a stop marker."""
+    return _extract_rows(rule, text, required="code")
+
+
+def _extract_rows(
+    rule: dict, text: str, *, required: str, default_pattern: str = ""
+) -> list[dict]:
     locate = rule.get("locate") or {}
     body = text
     for heading in locate.get("headings") or []:
@@ -520,28 +612,89 @@ def _extract_table(rule: dict, text: str) -> list[dict]:
             break
 
     drop = [re.compile(p, re.I) for p in (rule.get("row_filters") or {}).get("drop_if_matches", [])]
-    row_pattern = rule.get("row_pattern") or r"^\s*([PBCU][0-9A-F]{4}(?:-[0-9A-F]{2})?)\s+(.*)$"
-    columns = rule.get("columns") or [
-        {"role": "code", "group": 1},
-        {"role": "description", "group": 2},
-    ]
+    row_pattern = (
+        rule.get("row_pattern")
+        or default_pattern
+        or r"^\s*([PBCU][0-9A-F]{4}(?:-[0-9A-F]{2})?)\s+(.*)$"
+    )
+    columns = rule.get("columns") or _default_columns(required)
+
+    sections = _sections(locate.get("section_pattern"), body)
 
     if rule.get("multiline"):
-        return _rows_from_blocks(body, row_pattern, columns, drop)
+        return _rows_from_blocks(body, row_pattern, columns, drop, sections, required)
 
     rows: list[dict] = []
-    for line in body.splitlines():
-        if any(pattern.search(line) for pattern in drop):
-            continue
-        match = re.search(row_pattern, line, re.I)
-        if not match:
-            continue
-        if row := _row_from(match, columns):
-            rows.append(row)
+    offset = 0
+    for line in body.splitlines(keepends=True):
+        stripped = line.rstrip("\r\n")
+        if not any(pattern.search(stripped) for pattern in drop):
+            match = re.search(row_pattern, stripped, re.I)
+            if match and (row := _row_from(match, columns, required)):
+                # Only where a heading was found, so a profile that declares no
+                #  keeps rows exactly as they were.
+                if not row.get("module") and (found := _section_at(sections, offset)):
+                    row["module"] = found
+                rows.append(row)
+        offset += len(line)
     return rows
 
 
-def _rows_from_blocks(body, row_pattern, columns, drop) -> list[dict]:
+def _sections(pattern: str | None, body: str) -> list[tuple[int, str]]:
+    """Where each section heading starts, and what it names.
+
+    **Which module a code came from is a fact about the page, not about the
+    row.** Every PDF report in the corpus prints the module as a heading above
+    a group of rows — `ABS ( 1 DTC )`, `Engine`, `01 - Engine Control Module` —
+    and a row-at-a-time extractor has no idea which heading it is under. So a
+    nine-module all-system scan imported as one undifferentiated list, and the
+    schema documented that as something a declarative profile could not do.
+
+    It can: find the headings once, remember where each starts, and a row
+    belongs to the last heading before it. `module` is still a column first —
+    THINKCAR prints it *in* the row — and this only fills the gap.
+    """
+    if not pattern:
+        return []
+    try:
+        found = list(re.finditer(pattern, body, re.I | re.M))
+    except re.error:
+        return []
+    # The first group that matched, not group 1. A tool that changed its report
+    # layout between firmware versions needs an alternation to name the module
+    # in both — TOPDON writes `1. EGS(…) (6Fault Code)` on one tablet and
+    # `01 - Engine Control Module 1` on the other — and in an alternation every
+    # group but one is `None`.
+    return [(m.start(), name) for m in found if (name := _named_group(m))]
+
+
+def _named_group(match: re.Match) -> str:
+    for value in match.groups() or ():
+        if value and value.strip():
+            return value.strip()
+    return match.group(0).strip() if not match.groups() else ""
+
+
+def _section_at(sections: list[tuple[int, str]], offset: int) -> str:
+    name = ""
+    for start, heading in sections:
+        if start > offset:
+            break
+        name = heading
+    return name
+
+
+def _default_columns(required: str) -> list[dict]:
+    if required == "name":
+        return [
+            {"role": "name", "group": 1},
+            {"role": "value", "group": 2},
+            {"role": "unit", "group": 3},
+        ]
+    return [{"role": "code", "group": 1}, {"role": "description", "group": 2}]
+
+
+def _rows_from_blocks(body, row_pattern, columns, drop, sections, required="code") -> list[dict]:
     """One row per *fault*, where a fault is printed across several lines.
 
     A VCDS Auto-Scan states a fault as a block: Ross-Tech's own five- to
@@ -562,22 +715,30 @@ def _rows_from_blocks(body, row_pattern, columns, drop) -> list[dict]:
     for match in re.finditer(row_pattern, body, re.I | re.M):
         if any(pattern.search(match.group(0)) for pattern in drop):
             continue
-        if row := _row_from(match, columns):
+        if row := _row_from(match, columns, required):
+            if not row.get("module") and (found := _section_at(sections, match.start())):
+                row["module"] = found
             rows.append(row)
     return rows
 
 
-def _row_from(match: re.Match, columns: list[dict]) -> dict | None:
+def _row_from(match: re.Match, columns: list[dict], required: str = "code") -> dict | None:
+    """One row, or nothing if the column that makes it a row did not match.
+
+     is which column that is:  for a fault table,  for a
+    data stream. A reading with no name is a number on a page, exactly as a
+    description with no code is a sentence.
+    """
     row: dict = {}
     for column in columns:
-        raw = _first_group(match, column.get("group", 1))
+        raw = _first_group(match, column.get("group", 1), column.get("join"))
         if raw is None:
             continue
         role = column.get("role", "description")
         value = _mapped(column, raw)
         if value is not None:
             row[role] = value
-    if not row.get("code"):
+    if not row.get(required):
         return None
     row.setdefault("state", "stored")
     return row
@@ -609,23 +770,38 @@ def _mapped(column: dict, raw: str) -> str | None:
     return column.get("map_default")
 
 
-def _first_group(match: re.Match, group) -> str | None:
-    """The first of these groups that matched, so a column can have a fallback.
+def _first_group(match: re.Match, group, join: str | None = None) -> str | None:
+    """A column's raw text, from one capture group or several.
 
-    A fault block names its code in the vendor's vocabulary and, where one
-    exists, in J2012's. Both are the code; which one is *available* varies per
-    controller. A column that can say `group: [3, 1]` — prefer the J2012 code,
-    fall back to the vendor's — reads that correctly, where a single group has
-    to be wrong for one of the two shapes.
+    Without `join`, the **first** group that matched wins, so a column can have
+    a fallback. A fault block names its code in the vendor's vocabulary and,
+    where one exists, in J2012's; which is *available* varies per controller. A
+    column that says `group: [3, 1]` — prefer the J2012 code, fall back to the
+    vendor's — reads that correctly, where a single group has to be wrong for
+    one of the two shapes.
+
+    With `join`, they are concatenated, which is how a **wrapped cell** is put
+    back together. TOPDON prints every fault as exactly two lines with the
+    description split across both and the status column split with it:
+
+        CF1461 No message (diagnosis OBD engine, 0x397): Receiver EGS, Fault currently
+        transmitter DME/DDE                                                    present
+
+    The halves are two groups of one match. Taking only the first would publish
+    a profile that truncates every description it reads, which is worse than
+    one that admits it cannot read the format.
     """
+    parts = []
     for index in group if isinstance(group, (list, tuple)) else [group]:
         try:
             value = match.group(int(index))
         except (IndexError, ValueError):
             continue
         if value and value.strip():
-            return value.strip()
-    return None
+            if join is None:
+                return value.strip()
+            parts.append(value.strip())
+    return join.join(parts) if parts else None
 
 
 # --------------------------------------------------------------------------

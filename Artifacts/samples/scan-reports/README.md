@@ -3,7 +3,7 @@
 The test corpus that parser profiles are developed against (SPEC.md §8.3a).
 
 It comes from two places, and the difference matters. Nine reports were made in
-this shop with an XTOOL D8. A hundred and seventy-one more were **published on
+this shop with an XTOOL D8. A hundred and thirty-four more were **published on
 the public web** by other people, gathered by `fetch_scan_samples` from the
 manifests in this folder, and cover fourteen more tools.
 
@@ -134,9 +134,47 @@ of parser:
   and the profile's name with it.
 
 A capture no profile reads yet gets `{"unread": true}`, which is not a
-placeholder. 153 of them say plainly that nobody has written a profile for that
-format — and if a new profile's fingerprint is loose enough to start claiming
-81 unrelated live-data logs, that fixture diff is what says so.
+placeholder. 111 of them say plainly that nobody has written a profile for that
+format. Almost all are consumer OBD-app *logs* — a time series rather than a
+set of readings — and 81 are one research dataset of a single car driving the
+same road. And if a new profile's fingerprint is ever loose enough to start
+claiming those 81, that fixture diff is what says so.
+
+**A PDF is read as the lines it was printed as**, not in the order the words
+come out of it. That is a property of the corpus as much as of the parser: it
+is what makes `fixtures.lines` and the redaction audit agree with each other
+about the shape of a page, and it is why a report whose column wraps —
+`EOBD/OBD II P0A80 Replace Hybrid/EV Battery Pack`, split into three fragments
+by extraction order — can be read at all.
+
+## Files deliberately not captured
+
+`not-captured.json` names fetched files that are **not** turned into captures,
+with the reason beside each — 37 of them. A capture is committed, so anything
+no parser here will ever read is kept out by name rather than by somebody
+remembering. Their provenance stays in `sources.json` and the file stays in
+`originals/`, so nothing is lost and a line can be deleted to change the mind.
+
+Most are **race and tuning loggers** — MegaSquirt, COBB, Haltech, MHD,
+RomRaider, Woolich, Zeitronix, RaceChrono and a dozen more — and they share one
+reason. They are time series, not readings. This application models live data
+as a reading with a value, a minimum and a maximum, which is what a scan tool
+prints during a session, and shows it that way on the session screen. A
+datalog of ten thousand rows of RPM against time is a different artifact for a
+different job: collapsing it to a minimum and a maximum throws away the only
+thing it is for, and keeping the series is something neither the schema nor the
+screen can hold. SPEC NG-4 puts scan data on the per-session side of that line.
+
+The consumer OBD-app logs are still here — Torque, OBDLink, OBD Auto Doctor —
+and they are the same shape. The line drawn is *could this application ever
+read it*: a phone app logging an OBD session is a plausible future import; a
+standalone racing ECU's telemetry is not.
+
+A PDF with **no text layer** is not written as an empty capture either. It goes
+to OCR, and if that reads nothing the report is reported as unreadable rather
+than committed — a fixture over nothing passes every test there is. One report
+in the corpus is in that state today: a Techstream printout scanned into a
+recall filing, which needs `OCR_ENABLED` and tesseract to capture.
 
 ## What to capture (priority order)
 
@@ -147,7 +185,8 @@ format — and if a new profile's fingerprint is loose enough to start claiming
 | 3 | **Multi-section** | Proves section boundaries are detected. | ✅ `Silverado202504120859` (ECU + codes + live data) |
 | 4 | **Multi-page** | Page-spanning tables are where extraction usually fails. | ✅ `Silverado202309291358` (13 pages, 395 rows) |
 | 5 | **Readiness monitors** | Modeled in the schema, never yet seen. | ❌ still wanted |
-| 6 | **A second tool per format family** | The verified badge needs two, and four profiles are stuck at one. | ❌ TOPDON, BlueDriver, Car Scanner, Techstream |
+| 6 | **A second tool per format family** | The verified badge needs two, and four profiles are stuck at one. | ❌ TOPDON, Carly, BlueDriver, Car Scanner |
+| 7 | **Readiness monitors** | See row 5. | ❌ |
 
 A single sample overfits to incidental layout; several is what caught `P219A`,
 `0mile`, a status cell that renders above the row it belongs to, and — from the

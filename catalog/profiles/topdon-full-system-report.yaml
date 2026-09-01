@@ -1,0 +1,135 @@
+# TOPDON -- Full System / Vehicle Health Report
+#
+# The PDF an ArtiDiag or similar TOPDON tablet produces after an all-system
+# scan. Its table wraps, and it wraps *regularly*: every fault is exactly two
+# printed lines, with the description split across both and the status column
+# split with it.
+#
+#     CF1461 No message (diagnosis OBD engine, 0x397): Receiver EGS, Fault currently
+#     transmitter DME/DDE                                                    present
+#
+# So the row pattern spans two lines and the description column is joined from
+# both halves. Reading only the first line would truncate every description in
+# the report, which is the kind of half-reading that makes a profile worse than
+# no profile.
+name: TOPDON - Full System Report
+author: HomeAutoShop
+tool_vendor: TOPDON
+tool_model: ArtiDiag
+version: 1
+media_type: pdf
+
+fingerprint:
+  threshold: 0.6
+  signals:
+    # The tablet stamps its own report number on every page, and the fullwidth
+    # colon is TOPDON's: one report writes `Report Number：` with U+FF1A while
+    # writing `Mileage:` with an ASCII one, in the same header.
+    - kind: doc_text
+      pattern: '(?i)Report\s*Number\s*[:：]\s*TOPDON\d+'
+      weight: 0.35
+    - kind: doc_text
+      pattern: '(?i)systems were scanned, and \d+ of them were detected'
+      weight: 0.15
+    - kind: doc_text
+      pattern: '(?i)Full System Report\s*\(\s*\d+\s*\)'
+      weight: 0.2
+    # **A signal about the table, not the tool.** The two TOPDON reports in the
+    # corpus come from tablets whose generators differ, and only this one wraps
+    # its status column as `Fault currently` / `present` across a fixed two
+    # lines. Fingerprinting on the header alone claimed both and read one fault
+    # in eleven out of the other -- recognized, and effectively unread, which
+    # is the worst answer a fingerprint can give. A profile should claim the
+    # layout it can read, not every report the vendor has ever printed.
+    - kind: doc_text
+      pattern: '(?i)Fault (?:not )?currently\s+present'
+      weight: 0.3
+
+field_extractors:
+  vin:
+    strategy: label_anchored
+    labels: ['VIN']
+    pattern: '([A-HJ-NPR-Z0-9]{17})'
+    validate: vin_check_digit
+    confidence: 0.8
+  odometer:
+    strategy: label_anchored
+    # `Mileage: 211823 km` on one tablet, `Distance Traveled: 32019 Miles` on
+    # the other. Both are the odometer; neither is the label the other uses.
+    labels: ['Mileage', 'Distance Traveled', 'Odometer']
+    pattern: '([\d,.]+)'
+    coerce: { type: number }
+    confidence: 0.8
+  odometer_unit:
+    strategy: label_anchored
+    labels: ['Mileage', 'Distance Traveled', 'Odometer']
+    pattern: '[\d,.]+\s*(km|kms|mi|miles)'
+    confidence: 0.8
+  performed_on:
+    strategy: label_anchored
+    labels: ['Time', 'Diagnostic Time']
+    pattern: '(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})'
+    coerce: { type: datetime, formats: ['%Y-%m-%d %H:%M:%S'] }
+    confidence: 0.9
+  vehicle_description:
+    strategy: label_anchored
+    labels: ['Make']
+    # No space in the class. The make shares its line with the next field, so a
+    # class allowing spaces read `BMW Vehicle Software Version` as the make.
+    pattern: '([A-Za-z][A-Za-z-]*)'
+    confidence: 0.7
+  model_year:
+    strategy: label_anchored
+    labels: ['Year']
+    pattern: '(\d{4})'
+    confidence: 0.8
+  tool_vendor:
+    strategy: regex
+    pattern: '(TOPDON)'
+    confidence: 0.9
+
+table_extractor:
+  locate:
+    headings: []
+    stop_at: []
+    # `1. EGS(Electronic Transmission Control) (6Fault Code)` on one tablet,
+    # `01 - Engine Control Module 1` on the other. Both name the module above
+    # its own rows, and a code without its module is half an answer on a
+    # twenty-three-system scan.
+    section_pattern: '(?m)^(?:\d+\.\s*(.+?)\s*\(\s*\d+\s*Fault Code\s*\)|[0-9A-F]{2}\s+-\s+(.+?)\s+(?:Fault|No fault)\s+\d+)\s*$'
+  multiline: true
+  # Two lines, always. The status vocabulary ends the first line and the second
+  # line ends with the rest of it, so both halves of the status are matched and
+  # discarded and both halves of the description are kept.
+  row_pattern: '(?m)^([A-Z][0-9A-F]{4,6}(?::[0-9A-F/]{2,5})?)[ \t]+(.+?)[ \t]+(Fault (?:not )?currently|Active/|Passive/)[ \t]*\r?\n(.+?)[ \t]*(present|Static|Sporadic)[ \t]*$'
+  columns:
+    - { role: code, group: 1 }
+    # The wrapped cell, put back together. `join` is what makes that possible;
+    # without it a column takes the first group that matched and every
+    # description in the report would stop mid-sentence.
+    - { role: description, group: [2, 4], join: ' ' }
+    - { role: state_raw, group: [3, 5], join: ' ' }
+  row_filters:
+    drop_if_matches:
+      - '(?i)no fault code'
+
+notes: >
+  Written against an ArtiDiag900 Lite post-scan of a 2014 BMW 335i xDrive - 23
+  systems, every one of the 51 faults printed in it read, each with the module
+  it came from - published on the public web and redacted in the corpus.
+
+  **Unproven, and for a reason worth knowing before you install it.** The other
+  TOPDON report in the corpus, from a different tablet, wraps its table to a
+  *variable* depth: two lines for one fault, three for the next, with the
+  status split across the first two and a second identifier embedded in the
+  description. This profile reads the fixed two-line wrap and does not read
+  that, so claiming both would be claiming something false. If your tablet
+  produces the layout above it will read your reports; if it produces the other
+  one it will read almost nothing, and you will see that immediately on the
+  review screen rather than quietly.
+
+  Two more things. **The codes are the manufacturer's, not J2012's** - BMW
+  reports `CF1461` and `D35744` - and they are read as printed, because that is
+  what the tool said and what a person can look up. And **the description is
+  reassembled from two printed lines**, so it is complete but its internal
+  spacing is this profile's, not the report's.

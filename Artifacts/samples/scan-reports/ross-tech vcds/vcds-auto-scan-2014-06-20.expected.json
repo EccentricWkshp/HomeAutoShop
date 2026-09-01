@@ -37,72 +37,86 @@
     {
       "code": "00927",
       "description": "Terminal 30 (Right)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "00979",
       "description": "Lamp for Low Beam; Right (M31)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "00985",
       "description": "Right Tail Light (M2)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "00987",
       "description": "Lamp for Brake Light; Left (M9)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "01497",
       "description": "Bulb for Blinkers; Front Right (M7)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "01499",
       "description": "Bulb for High-Beams; Right (M32)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "01501",
       "description": "Bulb for Blinkers; Rear Left (M6)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "01504",
       "description": "Bulb for License-Plate Light (X)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "01519",
       "description": "Bulb for Back-Up Lights; Right (M17)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "02092",
       "description": "Enabling Heated Seat",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "02394",
       "description": "Parking Light Left Front (M1)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "B1101",
       "description": "CD Changer",
-      "state": "stored"
+      "state": "stored",
+      "module": "Navigation"
     },
     {
       "code": "01512",
       "description": "Control Module for Sliding Roof",
-      "state": "stored"
+      "state": "stored",
+      "module": "Centr. Electr. II"
     },
     {
       "code": "02907",
       "description": "Control Module for Roof Shade (J394)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Centr. Electr. II"
     }
   ],
   "live_data": [],

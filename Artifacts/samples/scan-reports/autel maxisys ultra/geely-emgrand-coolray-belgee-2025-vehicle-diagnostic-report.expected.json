@@ -50,79 +50,92 @@
       "code": "U300616",
       "description": "Network error,unable to get fault code definition",
       "state_raw": "Read Codes/History DTCs",
-      "state": "history"
+      "state": "history",
+      "module": "TCU (Transmission Control Unit)-TCU (automatic transmission control unit)"
     },
     {
       "code": "U012287",
       "description": "Network error,unable to get fault code definition",
       "state_raw": "Read Codes/History DTCs",
-      "state": "history"
+      "state": "history",
+      "module": "SRS (Supplement Restrain System)"
     },
     {
       "code": "U300616",
       "description": "Network error,unable to get fault code definition",
       "state_raw": "Read Codes/History DTCs",
-      "state": "history"
+      "state": "history",
+      "module": "SRS (Supplement Restrain System)"
     },
     {
       "code": "U300616",
       "description": "Network error,unable to get fault code definition",
       "state_raw": "Read Codes/History DTCs",
-      "state": "history"
+      "state": "history",
+      "module": "A/C (automatic air conditioning system)"
     },
     {
       "code": "U012287",
       "description": "Network error,unable to get fault code definition",
       "state_raw": "Read Codes/History DTCs",
-      "state": "history"
+      "state": "history",
+      "module": "EPS(Electronic Power Steering system)"
     },
     {
       "code": "U300616",
       "description": "Network error,unable to get fault code definition",
       "state_raw": "Read Codes/History DTCs",
-      "state": "history"
+      "state": "history",
+      "module": "EPS(Electronic Power Steering system)"
     },
     {
       "code": "C110E16",
       "description": "Network error,unable to get fault code definition",
       "state_raw": "Read Codes/History DTCs",
-      "state": "history"
+      "state": "history",
+      "module": "EPS(Electronic Power Steering system)"
     },
     {
       "code": "C113A02",
       "description": "Network error,unable to get fault code definition",
       "state_raw": "Read Codes/History DTCs",
-      "state": "history"
+      "state": "history",
+      "module": "EPS(Electronic Power Steering system)"
     },
     {
       "code": "U300616",
       "description": "Network error,unable to get fault code definition",
       "state_raw": "Read Codes/History DTCs",
-      "state": "history"
+      "state": "history",
+      "module": "TCM (Top Column Module)"
     },
     {
       "code": "U012287",
       "description": "Network error,unable to get fault code definition",
       "state_raw": "Read Codes/History DTCs",
-      "state": "history"
+      "state": "history",
+      "module": "GW (Gateway)"
     },
     {
       "code": "U016487",
       "description": "Network error,unable to get fault code definition",
       "state_raw": "Read Codes/History DTCs",
-      "state": "history"
+      "state": "history",
+      "module": "GW (Gateway)"
     },
     {
       "code": "U300616",
       "description": "Network error,unable to get fault code definition",
       "state_raw": "Read Codes/History DTCs",
-      "state": "history"
+      "state": "history",
+      "module": "GW (Gateway)"
     },
     {
       "code": "U300616",
       "description": "Network error,unable to get fault code definition",
       "state_raw": "Read Codes/History DTCs",
-      "state": "history"
+      "state": "history",
+      "module": "HVSM (Heated Ventilated Seat Module)"
     }
   ],
   "live_data": [],

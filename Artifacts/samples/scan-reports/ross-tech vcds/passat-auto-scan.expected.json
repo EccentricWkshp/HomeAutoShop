@@ -31,307 +31,368 @@
     {
       "code": "P1267",
       "description": "PD Unit Injector: Cylinder 3 (N242): Regulation Range Exceeded",
-      "state": "stored"
+      "state": "stored",
+      "module": "Engine"
     },
     {
       "code": "P1604",
       "description": "Internal Control Module: Output Driver IC Error",
-      "state": "stored"
+      "state": "stored",
+      "module": "Engine"
     },
     {
       "code": "P1699",
       "description": "Powertrain Data Bus: Missing Message from Steering Wheel Electronics",
-      "state": "stored"
+      "state": "stored",
+      "module": "Engine"
     },
     {
       "code": "P1635",
       "description": "Powertrain Data Bus: Missing Message from A/C Controller",
-      "state": "stored"
+      "state": "stored",
+      "module": "Engine"
     },
     {
       "code": "P1570",
       "description": "Engine Start Blocked by Immobilizer",
-      "state": "stored"
+      "state": "stored",
+      "module": "Engine"
     },
     {
       "code": "U0140",
       "description": "Body Control Module (Central Electric): No Communications",
-      "state": "stored"
+      "state": "stored",
+      "module": "Engine"
     },
     {
       "code": "00474",
       "description": "Control Module for Immobilizer",
-      "state": "stored"
+      "state": "stored",
+      "module": "ABS Brakes"
     },
     {
       "code": "00778",
       "description": "Steering Angle Sensor (G85)",
-      "state": "stored"
+      "state": "stored",
+      "module": "ABS Brakes"
     },
     {
       "code": "01809",
       "description": "Actuating Motor for Temperature Flap; Left (V158)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Auto HVAC"
     },
     {
       "code": "01336",
       "description": "Data Bus for Comfort System",
-      "state": "stored"
+      "state": "stored",
+      "module": "Auto HVAC"
     },
     {
       "code": "00538",
       "description": "Reference Voltage",
-      "state": "stored"
+      "state": "stored",
+      "module": "Auto HVAC"
     },
     {
       "code": "00538",
       "description": "Reference Voltage",
-      "state": "stored"
+      "state": "stored",
+      "module": "Auto HVAC"
     },
     {
       "code": "01336",
       "description": "Data Bus for Comfort System",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "01333",
       "description": "Door Control Module; Rear Left (J388)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "01330",
       "description": "Central Control Module for Central Convenience (J393)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "01336",
       "description": "Data Bus for Comfort System",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "01321",
       "description": "Control Module for Airbags (J234)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "01320",
       "description": "Control Module for Climatronic (J255)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "01314",
       "description": "Engine Control Module",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "00466",
       "description": "Control Module for Steering Column Electronics (J527)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "00153",
       "description": "Windshield Wiper Motor;  Driver Side (V216)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "01317",
       "description": "Control Module in Instrument Cluster (J285)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Cent. Elect."
     },
     {
       "code": "01336",
       "description": "Data Bus for Comfort System",
-      "state": "stored"
+      "state": "stored",
+      "module": "Steering wheel"
     },
     {
       "code": "01299",
       "description": "Diagnostic Interface for Data Bus (J533)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Steering wheel"
     },
     {
       "code": "00474",
       "description": "Control Module for Immobilizer",
-      "state": "stored"
+      "state": "stored",
+      "module": "Instruments"
     },
     {
       "code": "00457",
       "description": "Control Module for Network (J519)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Instruments"
     },
     {
       "code": "01336",
       "description": "Data Bus for Comfort System",
-      "state": "stored"
+      "state": "stored",
+      "module": "Instruments"
     },
     {
       "code": "01327",
       "description": "Control Module for Parking Aid (J446)",
-      "state": "stored"
+      "state": "stored",
+      "module": "CAN Gateway"
     },
     {
       "code": "00470",
       "description": "Combination comfort Databus in Single Wire",
-      "state": "stored"
+      "state": "stored",
+      "module": "CAN Gateway"
     },
     {
       "code": "00474",
       "description": "Control Module for Immobilizer",
-      "state": "stored"
+      "state": "stored",
+      "module": "CAN Gateway"
     },
     {
       "code": "01331",
       "description": "Door Control Module; Driver Side (J386)",
-      "state": "stored"
+      "state": "stored",
+      "module": "CAN Gateway"
     },
     {
       "code": "01332",
       "description": "Door Control Module; Passenger Side (J387)",
-      "state": "stored"
+      "state": "stored",
+      "module": "CAN Gateway"
     },
     {
       "code": "01333",
       "description": "Door Control Module; Rear Left (J388)",
-      "state": "stored"
+      "state": "stored",
+      "module": "CAN Gateway"
     },
     {
       "code": "01334",
       "description": "Door Control Module; Rear Right (J389)",
-      "state": "stored"
+      "state": "stored",
+      "module": "CAN Gateway"
     },
     {
       "code": "00466",
       "description": "Control Module for Steering Column Electronics (J527)",
-      "state": "stored"
+      "state": "stored",
+      "module": "CAN Gateway"
     },
     {
       "code": "01320",
       "description": "Control Module for Climatronic (J255)",
-      "state": "stored"
+      "state": "stored",
+      "module": "CAN Gateway"
     },
     {
       "code": "00457",
       "description": "Control Module for Network (J519)",
-      "state": "stored"
+      "state": "stored",
+      "module": "CAN Gateway"
     },
     {
       "code": "01330",
       "description": "Central Control Module for Central Convenience (J393)",
-      "state": "stored"
+      "state": "stored",
+      "module": "CAN Gateway"
     },
     {
       "code": "01336",
       "description": "Data Bus for Comfort System",
-      "state": "stored"
+      "state": "stored",
+      "module": "CAN Gateway"
     },
     {
       "code": "01336",
       "description": "Data Bus for Comfort System",
-      "state": "stored"
+      "state": "stored",
+      "module": "CAN Gateway"
     },
     {
       "code": "02823",
       "description": "Requirements for Locking the Steering Column Lock not met",
-      "state": "stored"
+      "state": "stored",
+      "module": "Immobilizer"
     },
     {
       "code": "02828",
       "description": "Enabling Steering Column Lock from Diagnostic Interface",
-      "state": "stored"
+      "state": "stored",
+      "module": "Immobilizer"
     },
     {
       "code": "02829",
       "description": "Enabling Steering Column Lock from Steering Wheel Electronics",
-      "state": "stored"
+      "state": "stored",
+      "module": "Immobilizer"
     },
     {
       "code": "01044",
       "description": "Control Module Incorrectly Coded",
-      "state": "stored"
+      "state": "stored",
+      "module": "Navigation"
     },
     {
       "code": "01042",
       "description": "Control Module; Not Coded",
-      "state": "stored"
+      "state": "stored",
+      "module": "Navigation"
     },
     {
       "code": "01704",
       "description": "Terminal 58 (Dimming)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Navigation"
     },
     {
       "code": "01550",
       "description": "Signal for Reverse Gear",
-      "state": "stored"
+      "state": "stored",
+      "module": "Navigation"
     },
     {
       "code": "01129",
       "description": "S Terminal (H15)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Navigation"
     },
     {
       "code": "01064",
       "description": "Terminal 58d; Interior Dimming",
-      "state": "stored"
+      "state": "stored",
+      "module": "Navigation"
     },
     {
       "code": "00862",
       "description": "Antenna for GPS Navigation (R50/R52)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Navigation"
     },
     {
       "code": "00576",
       "description": "Terminal 15",
-      "state": "stored"
+      "state": "stored",
+      "module": "Navigation"
     },
     {
       "code": "01336",
       "description": "Data Bus for Comfort System",
-      "state": "stored"
+      "state": "stored",
+      "module": "Door Elect, Driver"
     },
     {
       "code": "01330",
       "description": "Central Control Module for Central Convenience (J393)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Door Elect, Driver"
     },
     {
       "code": "00778",
       "description": "Steering Angle Sensor (G85)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Steering Assist"
     },
     {
       "code": "00323",
       "description": "Vehicle Inclination Sensor (G384)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Central Conv."
     },
     {
       "code": "01331",
       "description": "Door Control Module; Driver Side (J386)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Central Conv."
     },
     {
       "code": "01332",
       "description": "Door Control Module; Passenger Side (J387)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Central Conv."
     },
     {
       "code": "01333",
       "description": "Door Control Module; Rear Left (J388)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Central Conv."
     },
     {
       "code": "01334",
       "description": "Door Control Module; Rear Right (J389)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Central Conv."
     },
     {
       "code": "01336",
       "description": "Data Bus for Comfort System",
-      "state": "stored"
+      "state": "stored",
+      "module": "Central Conv."
     },
     {
       "code": "00457",
       "description": "Control Module for Network (J519)",
-      "state": "stored"
+      "state": "stored",
+      "module": "Central Conv."
     }
   ],
   "live_data": [],

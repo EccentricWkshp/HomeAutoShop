@@ -2,12 +2,6 @@
   "profile": "Autel MaxiSys - Vehicle Diagnostic Report",
   "score": 1.0,
   "fields": {
-    "vin": {
-      "value": "V1DGN5C0129820250",
-      "confidence": 0.28,
-      "page": 0,
-      "label": "VIN"
-    },
     "odometer": {
       "value": "279722",
       "confidence": 0.8,
@@ -27,7 +21,7 @@
       "label": "Test Time"
     },
     "tool_vendor": {
-      "value": "autel",
+      "value": "Autel",
       "confidence": 0.9,
       "page": 0,
       "label": ""
@@ -50,19 +44,22 @@
       "code": "P0135",
       "description": "Oxygen sensor heater circuit (bank 1 sensor 1)",
       "state_raw": "Current",
-      "state": "stored"
+      "state": "stored",
+      "module": "Engine and ECT"
     },
     {
       "code": "B0101",
       "description": "Driving side squib circuit open",
       "state_raw": "Current",
-      "state": "stored"
+      "state": "stored",
+      "module": "SRS airbag"
     },
     {
       "code": "B0101",
       "description": "Driving side squib circuit open",
       "state_raw": "History",
-      "state": "history"
+      "state": "history",
+      "module": "SRS airbag"
     }
   ],
   "live_data": [],
