@@ -373,3 +373,259 @@ class WorkOrderLinkageTests(TestCase):
         job.status = JobItem.Status.DONE
         job.save()
         self.assertEqual(ServiceCompletion.objects.count(), 1)
+
+
+class RemovingAScheduledItemTests(TestCase):
+    """Reported as: switching templates leaves the old one's items on screen.
+
+    It did, and there was nothing to do about it. `Ignore` was the only way to
+    say no to a scheduled item, and an ignored item stays in the list forever
+    — so a vehicle that had been through two templates showed both, and the
+    list only ever grew.
+
+    The rule these tests pin down is where removal stops: an item nobody has
+    ever completed is a plan, and a plan belongs to whoever owns the vehicle;
+    an item with completions is a record, and removing it would take the
+    record with it.
+    """
+
+    def setUp(self):
+        from homeautoshop.accounts.models import Role, User
+
+        self.user = User.objects.create_user(
+            username="andy", password="x" * 16, role=Role.ADMIN
+        )
+        self.client.force_login(self.user)
+        self.asset = Asset.objects.create(nickname="Truck", meter_unit="mi")
+        self.item = AssetServiceItem.objects.create(
+            asset=self.asset, definition=oil_change(), interval_distance=5000
+        )
+
+    def url(self, item=None):
+        from django.urls import reverse
+
+        return reverse("service_item_remove", args=[self.asset.pk, (item or self.item).pk])
+
+    def test_an_item_never_done_is_removed(self):
+        self.client.post(self.url())
+        self.assertFalse(AssetServiceItem.objects.filter(pk=self.item.pk).exists())
+
+    def test_removal_is_a_soft_delete(self):
+        """Nothing in this application destroys a row, and this is no exception."""
+        self.client.post(self.url())
+        self.assertTrue(AssetServiceItem.all_objects.filter(pk=self.item.pk).exists())
+
+    def test_a_removed_item_is_gone_from_every_listing(self):
+        """The half that would have gone wrong silently.
+
+        `AssetServiceItem.objects` was a plain manager, not an alive one, so a
+        soft-deleted item stayed visible on the schedule, on the due list and
+        in the forecast. Harmless while nothing could delete one; the whole
+        feature the moment something could.
+        """
+        self.item.status = ServiceStatus.OVERDUE
+        self.item.save()
+        self.client.post(self.url())
+        self.assertEqual(self.asset.service_items.count(), 0)
+        self.assertEqual(due_dashboard(), [])
+
+    def test_an_item_with_history_is_refused_and_told_why(self):
+        complete(self.item, on=TODAY, usage=100_000)
+        response = self.client.post(self.url(), follow=True)
+        self.assertTrue(AssetServiceItem.objects.filter(pk=self.item.pk).exists())
+        said = " ".join(str(m) for m in response.context["messages"])
+        self.assertIn("Ignore it instead", said)
+
+    def test_ignoring_still_works_on_an_item_with_history(self):
+        """The alternative the refusal names has to actually be there."""
+        from django.urls import reverse
+
+        complete(self.item, on=TODAY, usage=100_000)
+        self.client.post(
+            reverse("service_item_snooze", args=[self.asset.pk, self.item.pk]),
+            {"action": "disable"},
+        )
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.status, ServiceStatus.DISABLED)
+
+    def test_the_screen_separates_tracked_from_ignored(self):
+        from django.urls import reverse
+
+        other = AssetServiceItem.objects.create(
+            asset=self.asset,
+            definition=ServiceDefinition.objects.create(name="Rotate tires"),
+            interval_distance=6000,
+            status=ServiceStatus.DISABLED,
+        )
+        page = self.client.get(reverse("asset_schedule", args=[self.asset.pk]))
+        self.assertEqual([i for i, _ in page.context["rows"]], [self.item])
+        self.assertEqual(list(page.context["ignored"]), [other])
+
+
+class SwitchingTemplatesTests(TestCase):
+    """FR-MAINT-12 — applying a template can replace rather than only add."""
+
+    def setUp(self):
+        from homeautoshop.accounts.models import Role, User
+
+        self.user = User.objects.create_user(
+            username="andy", password="x" * 16, role=Role.ADMIN
+        )
+        self.client.force_login(self.user)
+        self.asset = Asset.objects.create(nickname="Truck", meter_unit="mi")
+        self.oil = oil_change()
+        self.tires = ServiceDefinition.objects.create(name="Rotate tires")
+        self.coolant = ServiceDefinition.objects.create(name="Coolant")
+
+        self.old = ScheduleTemplate.objects.create(name="Old", slug="old")
+        TemplateItem.objects.create(template=self.old, definition=self.oil, interval_distance=5000)
+        TemplateItem.objects.create(template=self.old, definition=self.coolant, interval_months=48)
+
+        self.new = ScheduleTemplate.objects.create(name="New", slug="new")
+        TemplateItem.objects.create(template=self.new, definition=self.oil, interval_distance=3000)
+        TemplateItem.objects.create(template=self.new, definition=self.tires, interval_distance=6000)
+
+    def apply(self, template, **extra):
+        from django.urls import reverse
+
+        return self.client.post(
+            reverse("apply_schedule_template", args=[self.asset.pk]),
+            {"template": str(template.pk), **extra},
+            follow=True,
+        )
+
+    def names(self):
+        return sorted(self.asset.service_items.values_list("definition__name", flat=True))
+
+    def test_applying_without_replace_still_only_adds(self):
+        self.apply(self.old)
+        self.apply(self.new)
+        self.assertEqual(self.names(), ["Coolant", "Engine oil and filter", "Rotate tires"])
+
+    def test_replacing_drops_what_the_new_template_does_not_want(self):
+        self.apply(self.old)
+        self.apply(self.new, replace="1")
+        self.assertEqual(self.names(), ["Engine oil and filter", "Rotate tires"])
+
+    def test_replacing_keeps_anything_with_history_and_says_so(self):
+        self.apply(self.old)
+        complete(
+            self.asset.service_items.get(definition=self.coolant), on=TODAY, usage=100_000
+        )
+        response = self.apply(self.new, replace="1")
+        self.assertIn("Coolant", self.names())
+        said = " ".join(str(m) for m in response.context["messages"])
+        self.assertIn("they have been done before", said)
+
+    def test_reapplying_a_template_brings_a_removed_item_back(self):
+        """Otherwise removal is a trap: the template reports items added and
+        the item does not appear, because the soft-deleted row was found and
+        left deleted."""
+        self.apply(self.old)
+        item = self.asset.service_items.get(definition=self.coolant)
+        item.delete()
+        self.assertNotIn("Coolant", self.names())
+
+        self.apply(self.old)
+        self.assertIn("Coolant", self.names())
+
+    def test_a_revived_item_keeps_its_history(self):
+        """The same row comes back, not a second one beside it."""
+        self.apply(self.old)
+        item = self.asset.service_items.get(definition=self.coolant)
+        complete(item, on=TODAY, usage=100_000)
+        item.delete()
+
+        self.apply(self.old)
+        revived = self.asset.service_items.get(definition=self.coolant)
+        self.assertEqual(revived.pk, item.pk)
+        self.assertEqual(revived.last_done_on, TODAY)
+        self.assertEqual(
+            AssetServiceItem.all_objects.filter(
+                asset=self.asset, definition=self.coolant
+            ).count(),
+            1,
+        )
+
+    def test_a_revived_item_comes_back_tracked(self):
+        self.apply(self.old)
+        item = self.asset.service_items.get(definition=self.coolant)
+        item.status = ServiceStatus.DISABLED
+        item.save()
+        item.delete()
+
+        self.apply(self.old)
+        item.refresh_from_db()
+        self.assertEqual(item.status, ServiceStatus.OK)
+
+
+class TheScheduleChecksWhoseVehicleItIsTests(TestCase):
+    """Every write on this screen names its vehicle, not just its URL.
+
+    The helper gate is an allow-list of URL names, and `service_item_update`
+    was on it — as it should be, since a helper does maintain the vehicle they
+    were given. What none of these views did was call `require()` with the
+    vehicle in hand, so the allow-list let a helper POST to *any* vehicle's
+    schedule, including ones they had never been granted.
+    """
+
+    def setUp(self):
+        from homeautoshop.accounts.models import AssetAccess, Role, User
+
+        self.helper = User.objects.create_user(
+            username="sam", password="x" * 16, role=Role.HELPER
+        )
+        self.client.force_login(self.helper)
+        self.mine = Asset.objects.create(nickname="Mine", meter_unit="mi")
+        self.theirs = Asset.objects.create(nickname="Theirs", meter_unit="mi")
+        AssetAccess.objects.create(user=self.helper, asset=self.mine, level="write")
+        self.item = AssetServiceItem.objects.create(
+            asset=self.theirs, definition=oil_change(), interval_distance=5000
+        )
+
+    def post(self, name, *args, **data):
+        from django.urls import reverse
+
+        return self.client.post(reverse(name, args=args), data)
+
+    def test_a_helper_cannot_remove_an_item_from_a_vehicle_they_were_not_given(self):
+        self.assertEqual(
+            self.post("service_item_remove", self.theirs.pk, self.item.pk).status_code, 403
+        )
+        self.assertTrue(AssetServiceItem.objects.filter(pk=self.item.pk).exists())
+
+    def test_nor_edit_its_intervals(self):
+        self.assertEqual(
+            self.post(
+                "service_item_update", self.theirs.pk, self.item.pk, interval_distance="1"
+            ).status_code,
+            403,
+        )
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.interval_distance, 5000)
+
+    def test_nor_back_fill_a_service_onto_it(self):
+        self.assertEqual(
+            self.post("service_item_complete", self.theirs.pk, self.item.pk).status_code, 403
+        )
+        self.assertEqual(ServiceCompletion.objects.count(), 0)
+
+    def test_a_read_only_grant_does_not_carry_a_write(self):
+        from homeautoshop.accounts.models import AssetAccess
+
+        AssetAccess.objects.filter(user=self.helper, asset=self.mine).update(level="read")
+        mine = AssetServiceItem.objects.create(
+            asset=self.mine,
+            definition=ServiceDefinition.objects.create(name="Rotate tires"),
+            interval_distance=6000,
+        )
+        self.assertEqual(self.post("service_item_remove", self.mine.pk, mine.pk).status_code, 403)
+
+    def test_but_a_write_grant_on_their_own_vehicle_works(self):
+        mine = AssetServiceItem.objects.create(
+            asset=self.mine,
+            definition=ServiceDefinition.objects.create(name="Rotate tires"),
+            interval_distance=6000,
+        )
+        self.post("service_item_remove", self.mine.pk, mine.pk)
+        self.assertFalse(AssetServiceItem.objects.filter(pk=mine.pk).exists())

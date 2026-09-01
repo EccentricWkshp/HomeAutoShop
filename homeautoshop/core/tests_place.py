@@ -125,7 +125,10 @@ class AnchorTests(Base):
         "diagnostics/profiles.html": 1,
         "diagnostics/session.html": 1,
         "inspections/detail.html": 1,
-        "maintenance/schedule.html": 2,
+        # Was 2. The scheduled-items card is a live region now — it grew a
+        # third row action, and a page that already jumped to the top was not
+        # the place to add one.
+        "maintenance/schedule.html": 1,
         "parts/cores.html": 1,
         "parts/detail.html": 1,
         "purchasing/detail.html": 2,

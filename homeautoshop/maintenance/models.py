@@ -18,7 +18,7 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from homeautoshop.core.measurements import to_canonical
-from homeautoshop.core.models import BaseModel, RevisionedModel
+from homeautoshop.core.models import BaseModel, RevisionedModel, alive_manager
 
 
 class Severity(models.TextChoices):
@@ -154,7 +154,12 @@ class AssetServiceItem(RevisionedModel):
     snooze_reason = models.CharField(max_length=200, blank=True)
     notes = models.TextField(blank=True)
 
-    objects = models.Manager.from_queryset(AssetServiceItemQuerySet)()
+    # `alive_manager`, not a plain `Manager.from_queryset` — the difference is
+    # the whole soft-delete contract, and this model got it wrong. A plain
+    # manager shadows `AliveManager` and shows removed rows everywhere, which
+    # cost nothing while nothing could remove one and became the bug the
+    # moment removal existed.
+    objects = alive_manager(AssetServiceItemQuerySet)
     all_objects = models.Manager.from_queryset(AssetServiceItemQuerySet)()
 
     class Meta:
@@ -182,6 +187,22 @@ class AssetServiceItem(RevisionedModel):
     @property
     def is_safety(self) -> bool:
         return self.definition.severity == Severity.SAFETY
+
+    @property
+    def is_removable(self) -> bool:
+        """Nothing has ever been recorded against it, so it is a plan, not a record.
+
+        The line removal is allowed to cross. Taking an item off a vehicle
+        loses the intention to service it, which is the operator's to change;
+        it must not lose the fact that a service happened, which is not.
+
+        `times_done` is the annotation the schedule page adds so a list of
+        thirty items costs one query rather than thirty-one. Without it this
+        falls back to asking, so a caller holding a bare instance still gets
+        the right answer.
+        """
+        counted = getattr(self, "times_done", None)
+        return (self.completions.count() if counted is None else counted) == 0
 
     def clean(self):
         super().clean()

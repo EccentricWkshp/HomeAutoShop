@@ -74,7 +74,8 @@ VEHICLE = frozenset({
     "part_list", "part_detail", "part_search", "part_by_code",
     # Maintenance
     "due_list", "service_item_add", "service_item_update",
-    "service_item_complete", "service_item_snooze", "apply_schedule_template",
+    "service_item_complete", "service_item_snooze", "service_item_remove",
+    "apply_schedule_template",
     # Inspections
     "inspection_list", "inspection_start", "inspection_detail",
     "inspection_resume", "inspection_add_check", "inspection_complete",

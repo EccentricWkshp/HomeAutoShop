@@ -268,7 +268,20 @@ def apply_template(asset, template: ScheduleTemplate, *, overwrite: bool = False
         existing = AssetServiceItem.all_objects.filter(
             asset=asset, definition=entry.definition
         ).first()
-        if existing and not overwrite:
+        if existing is not None and existing.is_deleted:
+            # Removed from this vehicle before, and now asked for again by
+            # name. Revive the row rather than skip it or insert beside it:
+            # it still holds this item's completions and its last-done date,
+            # and a second row for the same definition is the thing the
+            # unique constraint exists to prevent. Without this branch the
+            # template would report items added and show none of them.
+            existing.deleted_at = None
+            if existing.status == ServiceStatus.DISABLED:
+                # It is back because a template asked for it. Coming back
+                # already switched off would be indistinguishable from the
+                # apply having silently failed.
+                existing.status = ServiceStatus.OK
+        elif existing is not None and not overwrite:
             continue
         item = existing or AssetServiceItem(asset=asset, definition=entry.definition)
         item.interval_distance = entry.interval_distance or entry.definition.default_interval_distance
@@ -279,6 +292,33 @@ def apply_template(asset, template: ScheduleTemplate, *, overwrite: bool = False
         recalculate(item)
         created.append(item)
     return created
+
+
+@transaction.atomic
+def prune_to_template(asset, template: ScheduleTemplate) -> tuple[int, int]:
+    """Take off whatever this template does not ask for. Returns (removed, kept).
+
+    Switching a vehicle from one schedule to another was previously a one-way
+    door: applying the new template added its items and left every item of the
+    old one sitting in the list, and the only thing to do with those was
+    ignore them one at a time and watch them stay on screen forever.
+
+    What it will not remove is an item with history — the same line
+    `is_removable` draws. Those are reported back as `kept` rather than
+    silently spared, because a count of nine removed out of twelve invites the
+    question the message should already have answered.
+    """
+    wanted = set(
+        template.items.values_list("definition_id", flat=True)
+    )
+    removed = kept = 0
+    for item in AssetServiceItem.objects.filter(asset=asset).exclude(definition_id__in=wanted):
+        if item.is_removable:
+            item.delete()
+            removed += 1
+        else:
+            kept += 1
+    return removed, kept
 
 
 @transaction.atomic

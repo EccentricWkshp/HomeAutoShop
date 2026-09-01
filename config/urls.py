@@ -258,6 +258,8 @@ urlpatterns = [
          name="service_item_update"),
     path("vehicles/<uuid:pk>/schedule/items/<uuid:item_id>/done/", maintenance.service_item_complete,
          name="service_item_complete"),
+    path("vehicles/<uuid:pk>/schedule/items/<uuid:item_id>/remove/", maintenance.service_item_remove,
+         name="service_item_remove"),
     path("vehicles/<uuid:pk>/schedule/items/<uuid:item_id>/snooze/", maintenance.service_item_snooze,
          name="service_item_snooze"),
     path("vehicles/<uuid:pk>/components/", maintenance.component_add, name="component_add"),

@@ -9,7 +9,7 @@
 
 <div class="cols two">
   <div class="stack">
-    <section class="card">
+    <section class="card" id="schedule" data-live="schedule">
       <h2>{% translate "Scheduled items" %}</h2>
       <p class="small muted">
         {% translate "Whichever comes first — distance, time, or hours — makes it due. Every interval here is yours to edit." %}
@@ -20,7 +20,7 @@
           <th>{% translate "Next" %}</th><th>{% translate "Status" %}</th><th></th>
         </tr>
         {% for item, projection in rows %}
-        <tr>
+        <tr id="item-{{ item.pk }}">
           <td>
             <strong>{{ item.definition.name }}</strong>
             {% if item.is_safety %}<span class="pill danger">{% translate "Safety" %}</span>{% endif %}
@@ -28,7 +28,7 @@
           </td>
           <td>
             <form method="post" action="{% url 'service_item_update' asset.pk item.pk %}" class="row">
-              {% csrf_token %}
+              {% csrf_token %}<input type="hidden" name="_anchor" value="schedule">
               <span class="unitbox">
                 <input type="number" name="interval_distance" id="dist-{{ item.pk }}"
                        value="{{ item.interval_distance|default:'' }}"
@@ -59,26 +59,74 @@
           <td>
             {# Back-fill: record a past service without inventing a work order. #}
             <form method="post" action="{% url 'service_item_complete' asset.pk item.pk %}" class="row">
-              {% csrf_token %}
+              {% csrf_token %}<input type="hidden" name="_anchor" value="schedule">
               <input type="date" name="completed_on" style="width:9rem"
                      aria-label="{% translate 'Date it was done' %}">
               <button type="submit" class="small primary">{% translate "Done" %}</button>
             </form>
-            <form method="post" action="{% url 'service_item_snooze' asset.pk item.pk %}" class="row">
-              {% csrf_token %}
-              {% if item.status == 'disabled' %}
-                <button type="submit" name="action" value="enable" class="linkish small">{% translate "Track" %}</button>
-              {% else %}
+            <div class="row">
+              <form method="post" action="{% url 'service_item_snooze' asset.pk item.pk %}" class="row">
+                {% csrf_token %}<input type="hidden" name="_anchor" value="schedule">
                 <button type="submit" name="action" value="snooze" class="linkish small">{% translate "Snooze" %}</button>
                 <button type="submit" name="action" value="disable" class="linkish small">{% translate "Ignore" %}</button>
-              {% endif %}
-            </form>
+              </form>
+              {% comment %}
+              Shown on every row, including the ones it will refuse. The
+              alternative — hiding it wherever an item has been done — makes
+              "how do I get rid of this?" unanswerable on exactly the rows
+              somebody is most likely to ask it about. Refusing with a message
+              that names Ignore teaches the rule at the moment it matters,
+              which is how `part_delete` and `person_delete` already behave.
+              {% endcomment %}
+              <form method="post" action="{% url 'service_item_remove' asset.pk item.pk %}"
+                    data-confirm="{% blocktranslate with name=item.definition.name %}Take {{ name }} off this schedule?{% endblocktranslate %}">
+                {% csrf_token %}<input type="hidden" name="_anchor" value="schedule">
+                <button type="submit" class="linkish small danger">{% translate "Remove" %}</button>
+              </form>
+            </div>
           </td>
         </tr>
         {% empty %}
         <tr><td colspan="5" class="muted">{% translate "Nothing scheduled yet. Apply a template to start." %}</td></tr>
         {% endfor %}
       </table></div>
+
+      {% comment %}
+      Ignored items live in the same card rather than a section of their own,
+      and that is deliberate: `liveform.js` swaps one region per submit, so
+      Ignore and Track — which move an item between these two lists — would
+      update only the half the button was in if they were two regions.
+      Folded away, because an ignored item is a decision already made.
+      {% endcomment %}
+      {% if ignored %}
+        <details class="stack" style="margin-top:.75rem">
+          <summary class="small muted">
+            {% blocktranslate count n=ignored|length %}{{ n }} item not tracked{% plural %}{{ n }} items not tracked{% endblocktranslate %}
+          </summary>
+          <ul class="list small">
+            {% for item in ignored %}
+              <li class="spread" id="item-{{ item.pk }}">
+                <div>{{ item.definition.name }}
+                  {% if item.last_done_on %}
+                    <div class="muted">{% blocktranslate with on=item.last_done_on %}Last done {{ on }}{% endblocktranslate %}</div>
+                  {% endif %}
+                </div>
+                <div class="row">
+                  <form method="post" action="{% url 'service_item_snooze' asset.pk item.pk %}">
+                    {% csrf_token %}<input type="hidden" name="_anchor" value="schedule">
+                    <button type="submit" name="action" value="enable" class="linkish small">{% translate "Track" %}</button>
+                  </form>
+                  <form method="post" action="{% url 'service_item_remove' asset.pk item.pk %}"
+                        data-confirm="{% blocktranslate with name=item.definition.name %}Take {{ name }} off this schedule?{% endblocktranslate %}">
+                    {% csrf_token %}<input type="hidden" name="_anchor" value="schedule">
+                    <button type="submit" class="linkish small danger">{% translate "Remove" %}</button>
+                  </form>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        </details>
+      {% endif %}
     </section>
 
     <section class="card">
@@ -117,6 +165,20 @@
             </option>
           {% endfor %}
         </select>
+        {% comment %}
+        Off by default, because adding is the safe reading of "apply" and the
+        one this button has always meant. Switching a vehicle from one
+        schedule to another is the other intention, and it had no button at
+        all: the old template's items stayed on the list and the only thing to
+        do with them was ignore them one by one.
+        {% endcomment %}
+        <label class="check" for="replace">
+          <input type="checkbox" name="replace" id="replace" value="1">
+          {% translate "Replace what is here" %}
+        </label>
+        <p class="small muted">
+          {% translate "Removes items this template does not include. Anything that has been done before stays — that is history, not a plan." %}
+        </p>
         <button class="primary" type="submit">{% translate "Apply" %}</button>
       </form>
       <p class="small muted">{% translate "Applying twice never overwrites an interval you changed." %}</p>
