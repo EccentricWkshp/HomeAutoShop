@@ -165,13 +165,17 @@ class MoneyFlowTests(TestCase):
         response = self.client.get(reverse("asset_costs", args=[self.asset.pk]))
         self.assertContains(response, "Fuel is not included")
 
-    def test_core_can_be_marked_returned_from_the_shelf(self):
+    def test_a_core_can_be_marked_returned(self):
+        """It used to be marked from the Shelf screen. Cores moved under Parts
+        — see `parts/tests_cores.py` for why — and this checks the money side
+        of it: the deposit stops being owed and the date is recorded."""
         cored = Part.objects.create(name="Alternator", has_core=True, core_value_minor=4500)
         wo = WorkOrder.objects.create(asset=self.asset, title="Charging")
         usage = PartUsage.objects.create(work_order=wo, part=cored, qty=1)
         self.assertTrue(usage.owes_core)
 
-        self.client.post(reverse("core_returned", args=[usage.pk]), {"next": reverse("inventory")})
+        self.client.post(reverse("core_update"), {"usage": str(usage.pk)})
+
         usage.refresh_from_db()
         self.assertTrue(usage.core_returned)
         self.assertIsNotNone(usage.core_returned_on)

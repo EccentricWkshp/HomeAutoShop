@@ -148,7 +148,7 @@
               <div class="muted">{{ usage.installed_at }} · {{ usage.get_source_display }}</div>
             </div>
             <div>{{ usage.qty }}
-              {% if usage.owes_core %}<span class="pill warn">{% translate "core owed" %}</span>{% endif %}
+              {% if usage.owes_core %}<a class="pill warn" href="{% url 'core_list' %}">{% translate "core owed" %}</a>{% endif %}
               {% if usage.under_warranty %}<span class="pill ok">{% translate "under warranty" %}</span>{% endif %}
             </div>
           </li>

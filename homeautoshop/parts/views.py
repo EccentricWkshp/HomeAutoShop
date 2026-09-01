@@ -16,7 +16,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.defaultfilters import floatformat
 from django.urls import reverse
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext as _, ngettext
 from django.views.decorators.http import require_POST
 
 from homeautoshop.assets.models import Asset
@@ -29,8 +29,9 @@ from .models import (
     StockTransaction,
 )
 from .services import (
-    candidates, close_kit, consume, cycle_count, expiring_lots, find, kit_weights,
-    open_kit, outstanding_cores, restock_list, resolve_part, split_kit_cost,
+    candidates, close_kit, consume, core_value_owed, cycle_count, expiring_lots,
+    find, kit_weights, open_kit, outstanding_cores, restock_list, resolve_part,
+    returned_cores, split_kit_cost,
 )
 
 
@@ -376,7 +377,15 @@ def part_list(request):
     return render(
         request,
         "parts/list.html",
-        {"parts": rows, "q": query, "low": restock_list(), "page": page},
+        {
+            "parts": rows,
+            "q": query,
+            "low": restock_list(),
+            "page": page,
+            "cores_owed": PartUsage.objects.filter(
+                part__has_core=True, core_returned=False
+            ).count(),
+        },
     )
 
 
@@ -797,7 +806,6 @@ def inventory(request):
             "unfiled": [] if focus else unfiled,
             "low": [] if focus else restock_list(),
             "expiring": [] if focus else expiring_lots(),
-            "cores": [] if focus else outstanding_cores(),
             "value": None if focus else inventory_value(),
         },
     )
@@ -822,17 +830,72 @@ def _with_children(location) -> list:
     return found
 
 
+@login_required
+def core_list(request):
+    """Every core, owed and returned, in one place (FR-PUR-4).
+
+    Reported as: *"I know I saw a button to mark the core returned but I can't
+    find it again."* It was on the **Shelf** screen, in a panel among the
+    restock list and the expiring fluids — and the reporter found it twice by
+    accident, which is a stronger signal than never finding it at all. A core
+    is a fact about a part somebody fitted, not about a bin it was stored in,
+    and it was filed under storage.
+
+    So it lives under Parts, it shows the returned ones as well as the owed —
+    the question is *what happened to this core*, and a list of debts alone
+    cannot answer it — and every "core owed" pill in the application links
+    here, so the button is wherever the problem is mentioned.
+    """
+    owed = outstanding_cores()
+    return render(
+        request,
+        "parts/cores.html",
+        {
+            "owed": owed,
+            "returned": returned_cores(),
+            "owed_value": core_value_owed(owed),
+        },
+    )
+
+
 @require_POST
 @login_required
-def core_returned(request, usage_id):
+def core_update(request):
+    """Mark cores returned, or put one back to owed.
+
+    Takes a list rather than one id: cores come back to the counter in an
+    armful, and ticking six boxes and pressing one button is the difference
+    between recording that and not bothering. The undo is the same endpoint
+    because a core marked returned by a slip needs the same journey back.
+    """
     from django.utils import timezone
 
-    usage = get_object_or_404(PartUsage, pk=usage_id)
-    usage.core_returned = True
-    usage.core_returned_on = timezone.localdate()
-    usage.save()
-    messages.success(request, _("Core marked returned."))
-    return redirect(request.POST.get("next") or "inventory")
+    usages = list(
+        PartUsage.objects.filter(pk__in=request.POST.getlist("usage"), part__has_core=True)
+    )
+    if not usages:
+        messages.error(request, _("Choose a core first."))
+        return redirect(request.POST.get("next") or "core_list")
+
+    returning = request.POST.get("state", "returned") == "returned"
+    for usage in usages:
+        usage.core_returned = returning
+        usage.core_returned_on = timezone.localdate() if returning else None
+        usage.save()
+
+    messages.success(
+        request,
+        ngettext(
+            "%(n)d core marked returned.", "%(n)d cores marked returned.", len(usages)
+        )
+        % {"n": len(usages)}
+        if returning
+        else ngettext(
+            "%(n)d core is owed again.", "%(n)d cores are owed again.", len(usages)
+        )
+        % {"n": len(usages)},
+    )
+    return redirect(request.POST.get("next") or "core_list")
 
 
 @require_POST

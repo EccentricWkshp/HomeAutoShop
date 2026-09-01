@@ -1,0 +1,97 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Cores" %} — {{ shop_name }}{% endblock %}
+{% block content %}
+{% url 'part_list' as back_url %}
+{% include "partials/_back.html" with url=back_url label=_("Parts") %}
+
+<div class="spread">
+  <div><h1>{% translate "Cores" %}</h1>
+    <p class="muted small">
+      {% translate "A deposit the shop paid and gets back when the old part goes to the counter. Left unreturned it is simply money gone." %}
+    </p>
+  </div>
+  {% if owed_value %}<span class="pill warn mono">{{ owed_value }}</span>{% endif %}
+</div>
+
+<section class="card">
+  <div class="spread">
+    <h2>{% translate "Owed" %}</h2>
+    {% if owed_value %}
+      <span class="small muted">{% blocktranslate %}{{ owed_value }} outstanding{% endblocktranslate %}</span>
+    {% endif %}
+  </div>
+
+  {% if owed %}
+    {% comment %}
+    One form around the whole list, one button under it. Cores come back to the
+    counter in an armful, so ticking six boxes and pressing Returned once is the
+    difference between recording the trip and not bothering to.
+    {% endcomment %}
+    <form method="post" action="{% url 'core_update' %}">{% csrf_token %}
+      <input type="hidden" name="state" value="returned">
+      <ul class="list">
+        {% for usage in owed %}
+          <li class="spread">
+            <div class="row">
+              <input type="checkbox" name="usage" value="{{ usage.pk }}"
+                     id="core-{{ usage.pk }}">
+              <div>
+                <label for="core-{{ usage.pk }}">{{ usage.part }}</label>
+                <div class="muted small">
+                  {% if usage.vehicle %}{{ usage.vehicle.nickname }} · {% endif %}
+                  {% if usage.installed_at %}{{ usage.installed_at }}{% else %}{% translate "date not recorded" %}{% endif %}
+                  {% comment %}
+                  A core can be owed on a part fitted with no work order behind
+                  it (FR-INV-10), and `{% url %}` on a null work order raises
+                  rather than rendering blank — so the link is only a link when
+                  there is somewhere for it to go.
+                  {% endcomment %}
+                  · {% if usage.work_order %}
+                      <a href="{% url 'work_order_detail' usage.work_order.pk %}">{{ usage.work_order.title }}</a>
+                    {% else %}
+                      <a href="{% url 'part_detail' usage.part.pk %}">{% translate "the part" %}</a>
+                    {% endif %}
+                </div>
+              </div>
+            </div>
+            <span class="mono">{{ usage.part.core_value|default:"—" }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+      <div class="row" style="margin-top:.5rem">
+        <button class="primary" type="submit">{% translate "Mark returned" %}</button>
+      </div>
+    </form>
+  {% else %}
+    <p class="muted small">{% translate "Nothing owed. Every core has gone back." %}</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>{% translate "Returned" %}</h2>
+  {% if returned %}
+    <p class="small muted">
+      {% translate "Here so a core marked returned by mistake can be put back, and so a trip to the counter can be checked against what was taken." %}
+    </p>
+    <ul class="list small">
+      {% for usage in returned %}
+        <li class="spread">
+          <div><a href="{% url 'part_detail' usage.part.pk %}">{{ usage.part }}</a>
+            <div class="muted">
+              {% if usage.vehicle %}{{ usage.vehicle.nickname }} · {% endif %}
+              {% if usage.core_returned_on %}{% translate "returned" %} {{ usage.core_returned_on }}{% endif %}
+            </div>
+          </div>
+          <form method="post" action="{% url 'core_update' %}">{% csrf_token %}
+            <input type="hidden" name="state" value="owed">
+            <input type="hidden" name="usage" value="{{ usage.pk }}">
+            <button class="linkish small" type="submit">{% translate "Still owed" %}</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted small">{% translate "None returned yet." %}</p>
+  {% endif %}
+</section>
+{% endblock %}

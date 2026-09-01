@@ -17,6 +17,8 @@ from django.db import transaction
 from django.db.models import Q, Sum
 from django.utils.translation import gettext_lazy as _
 
+from homeautoshop.core.measurements import Money
+
 from .models import Part, PartFitment, PartUsage, StockLot, StockTransaction
 
 
@@ -396,15 +398,50 @@ def expiring_lots(days: int = 60) -> list[StockLot]:
     )
 
 
+def _core_usages():
+    return PartUsage.objects.select_related(
+        "part", "work_order", "work_order__asset", "asset"
+    ).filter(part__has_core=True)
+
+
 def outstanding_cores() -> list[PartUsage]:
     """Uncollected core charges — the money a home shop most often loses (FR-PUR-4)."""
+    return list(_core_usages().filter(core_returned=False).order_by("installed_at"))
+
+
+def returned_cores(limit: int = 50) -> list[PartUsage]:
+    """The ones already taken back, most recent first.
+
+    Shown beside the outstanding ones rather than dropped, for two reasons that
+    are really one. A core marked returned by a slip of the mouse has to be
+    findable to be undone, and somebody standing at the parts counter with an
+    armful of old calipers needs to see which of them are already dealt with.
+    Both are the same question — *what happened to this core* — and a list that
+    only shows debts cannot answer it.
+    """
     return list(
-        PartUsage.objects.select_related(
-            "part", "work_order", "work_order__asset", "asset"
-        )
-        .filter(part__has_core=True, core_returned=False)
-        .order_by("installed_at")
+        _core_usages()
+        .filter(core_returned=True)
+        .order_by("-core_returned_on", "-installed_at")[:limit]
     )
+
+
+def core_value_owed(usages) -> Money | None:
+    """What the outstanding cores are worth, or nothing if none of them say.
+
+    The point of the whole feature is money that walks out of the shop, so the
+    figure belongs on the screen. Parts whose core charge was never recorded
+    are skipped rather than counted as zero — a total that quietly treats
+    unknown as nothing understates exactly the thing it exists to report.
+    """
+    amounts = [
+        usage.part.core_value
+        for usage in usages
+        if usage.part.core_value_minor is not None
+    ]
+    if not amounts:
+        return None
+    return Money(sum(a.amount for a in amounts), amounts[0].currency)
 
 
 def split_kit_cost(total_minor: int, shares: list[Decimal]) -> list[int]:

@@ -1210,7 +1210,9 @@ class UsageWithoutAJobRendersEverywhereTests(TestCase):
         PartUsage.objects.update(warranty_months=24)
 
     def test_the_cores_owed_list(self):
-        response = self.client.get(reverse("inventory"))
+        """Its own screen under Parts now, not a panel on the Shelf — a core is
+        a deposit on a part somebody fitted, not a fact about a bin."""
+        response = self.client.get(reverse("core_list"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Alternator")
 

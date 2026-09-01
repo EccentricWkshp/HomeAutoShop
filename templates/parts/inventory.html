@@ -61,38 +61,6 @@
       </div>
 
   <aside class="stack">
-    {% if cores %}
-        <section class="card">
-      <h2>{% translate "Cores owed back" %}</h2>
-      <p class="small muted">{% translate "An uncollected core charge is money already spent." %}</p>
-      <ul class="list small">
-        {% for usage in cores %}
-          <li class="spread">
-            {% comment %}
-            A core can be owed on a part fitted with no work order behind it
-            (FR-INV-10), and `{% url %}` on a null work order is a
-            NoReverseMatch rather than a blank — so the link is only a link when
-            there is somewhere for it to go.
-            {% endcomment %}
-            <div>
-              {% if usage.work_order %}
-                <a href="{% url 'work_order_detail' usage.work_order.pk %}">{{ usage.part }}</a>
-              {% else %}
-                <a href="{% url 'part_detail' usage.part.pk %}">{{ usage.part }}</a>
-              {% endif %}
-              <div class="muted">
-                {% if usage.vehicle %}{{ usage.vehicle.nickname }} · {% endif %}{{ usage.installed_at }}
-              </div>
-            </div>
-            <form method="post" action="{% url 'core_returned' usage.pk %}">{% csrf_token %}
-              <button class="linkish small" type="submit">{% translate "Returned" %}</button>
-            </form>
-          </li>
-        {% endfor %}
-      </ul>
-    </section>
-    {% endif %}
-
     {% if low %}
     <section class="card">
       <h2>{% translate "Restock" %}</h2>

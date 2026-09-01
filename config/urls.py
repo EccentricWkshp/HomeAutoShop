@@ -250,6 +250,8 @@ urlpatterns = [
     path("parts/new/", parts.part_create, name="part_create"),
     path("parts/by-code/", parts.part_by_code, name="part_by_code"),
     path("parts/search/", parts.part_search, name="part_search"),
+    path("parts/cores/", parts.core_list, name="core_list"),
+    path("parts/cores/update/", parts.core_update, name="core_update"),
     path("parts/<uuid:pk>/", parts.part_detail, name="part_detail"),
     path("parts/<uuid:pk>/edit/", parts.part_edit, name="part_edit"),
     path("parts/<uuid:pk>/crossrefs/", parts.crossref_add, name="crossref_add"),
@@ -288,7 +290,6 @@ urlpatterns = [
     path("inventory/locations/<uuid:pk>/edit/", parts.location_edit, name="location_edit"),
     path("inventory/locations/<uuid:pk>/delete/", parts.location_delete,
          name="location_delete"),
-    path("inventory/cores/<uuid:usage_id>/returned/", parts.core_returned, name="core_returned"),
     # Purchasing
     path("purchases/", purchasing.purchase_list, name="purchase_list"),
     path("purchases/new/", purchasing.purchase_create, name="purchase_create"),

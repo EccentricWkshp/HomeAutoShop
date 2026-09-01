@@ -2,7 +2,18 @@
 {% block title %}{% translate "Parts" %} — {{ shop_name }}{% endblock %}
 {% block content %}
 <div class="spread"><h1>{% translate "Parts" %}</h1>
-  <a class="btn primary" href="{% url 'part_create' %}">{% translate "Add part" %}</a></div>
+  <div class="row">
+    {% comment %}
+    Cores were filed under Shelf, where the reporter found the button twice by
+    accident and could not find it a third time. A core is a fact about a part
+    somebody fitted, not about the bin it came out of, so the way to it is
+    here — carrying the count, because an unreturned core is money already gone
+    and a link that says how much is owed gets pressed.
+    {% endcomment %}
+    <a class="btn" href="{% url 'core_list' %}">{% translate "Cores" %}{% if cores_owed %}
+      <span class="pill warn">{{ cores_owed }}</span>{% endif %}</a>
+    <a class="btn primary" href="{% url 'part_create' %}">{% translate "Add part" %}</a>
+  </div></div>
 
 <form method="get" class="row" style="margin-bottom:1rem">
   <label class="visually-hidden" for="part-q">{% translate "Find a part" %}</label>

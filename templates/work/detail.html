@@ -381,7 +381,7 @@
           <li class="spread">
             <div><a href="{% url 'part_detail' usage.part.pk %}">{{ usage.part }}</a>
               <div class="muted">{{ usage.qty }} · {{ usage.get_source_display }}
-                {% if usage.owes_core %}· <span class="pill warn">{% translate "core owed" %}</span>{% endif %}</div></div>
+                {% if usage.owes_core %}· <a class="pill warn" href="{% url 'core_list' %}">{% translate "core owed" %}</a>{% endif %}</div></div>
             <span class="mono">{{ usage.unit_cost|default:"—" }}</span>
           </li>
         {% empty %}<li class="muted">{% translate "No parts recorded." %}</li>{% endfor %}
