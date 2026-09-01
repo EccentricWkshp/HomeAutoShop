@@ -621,3 +621,53 @@ class Recall(BaseModel):
     @property
     def needs_attention(self) -> bool:
         return self.owner_status in (self.OwnerStatus.OPEN, self.OwnerStatus.SCHEDULED)
+
+
+class AssetLink(BaseModel):
+    """A page on the internet that is about this particular vehicle.
+
+    The forum thread where somebody solved the exact fault, the wiring diagram
+    that took an hour to find, the video of the timing-belt job on this engine,
+    the listing it was bought from. All of it is knowledge that took work to
+    locate and that is otherwise kept in a browser bookmark folder nobody else
+    in the household can reach.
+
+    **Distinct from `AssetServiceInfoLink` on purpose.** That one pins a
+    *provider's* page — one row per configured provider, resolved once because
+    those libraries index by a catalog string no VIN yields (§8.5). This is the
+    open-ended other half: any address, no provider, as many as you like. They
+    look similar on screen and they answer different questions — "where is the
+    manual for this" against "what else did I find out about this".
+
+    Nothing is ever fetched. A link is stored and displayed; the shop does not
+    reach out to it, so no allowlist and no offline-mode question arises.
+    """
+
+    asset = models.ForeignKey(Asset, on_delete=models.CASCADE, related_name="links")
+    url = models.URLField(max_length=500)
+    label = models.CharField(max_length=120, blank=True)
+    notes = models.CharField(
+        max_length=300,
+        blank=True,
+        help_text=_("Why this is worth keeping — the thing you would forget."),
+    )
+
+    class Meta:
+        ordering = ["label", "-created_at"]
+
+    def __str__(self) -> str:
+        return self.label or self.url
+
+    @property
+    def display_label(self) -> str:
+        """Something to click on, even when nobody typed a label.
+
+        The bare URL is a poor label and a truncated one is worse, so the host
+        stands in: `www.ford-trucks.com` says more about where a link goes than
+        the first forty characters of a query string ever do.
+        """
+        if self.label:
+            return self.label
+        from urllib.parse import urlparse
+
+        return urlparse(self.url).netloc or self.url

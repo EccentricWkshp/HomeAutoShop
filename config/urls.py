@@ -104,6 +104,9 @@ urlpatterns = [
     path("vehicles/<uuid:pk>/read-vin/", assets.vin_read, name="vin_read"),
     path("vehicles/<uuid:pk>/readings/", assets.reading_create, name="reading_create"),
     path("vehicles/<uuid:pk>/photos/", assets.photo_upload, name="asset_photo_upload"),
+    path("vehicles/<uuid:pk>/documents/", assets.document_upload, name="asset_document_upload"),
+    path("vehicles/<uuid:pk>/links/", assets.link_add, name="asset_link_add"),
+    path("vehicles/<uuid:pk>/links/<uuid:link_id>/remove/", assets.link_delete, name="asset_link_delete"),
     path(
         "vehicles/<uuid:pk>/manuals/<uuid:provider_id>/pin/",
         assets.service_info_pin,
@@ -210,7 +213,8 @@ urlpatterns = [
     path("vehicles/<uuid:pk>/recalls/", assets.asset_recalls, name="asset_recalls"),
     path("vehicles/<uuid:pk>/recalls/check/", assets.recall_check, name="recall_check"),
     path("vehicles/<uuid:pk>/recalls/<uuid:recall_id>/", assets.recall_status, name="recall_status"),
-    path("vehicles/<uuid:pk>/report.pdf", assets.asset_report, name="asset_report"),
+    path("vehicles/<uuid:pk>/report/", assets.asset_report, name="asset_report"),
+    path("vehicles/<uuid:pk>/report.pdf", assets.asset_report_pdf, name="asset_report_pdf"),
     # Inspections (DVI)
     path("inspections/", inspections.inspection_list, name="inspection_list"),
     path("inspections/start/", inspections.inspection_start, name="inspection_start"),

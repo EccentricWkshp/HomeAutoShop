@@ -1,0 +1,73 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ asset.nickname }} — {% translate "Report" %}{% endblock %}
+{% block content %}
+{% url 'asset_detail' asset.pk as back_url %}
+{% include "partials/_back.html" with url=back_url label=asset.nickname %}
+
+{% comment %}
+What the sale document will say, before it is produced.
+
+The button here used to start a download. That is the wrong shape for this
+particular document: it is the one you hand to a buyer, it is the one place
+sensitive specs are deliberately withheld, and how complete it looks is the
+whole question — all of which somebody wants to check while there is still
+time to fill a gap in, rather than after a file has landed in a downloads
+folder. Rendered from the same `report_sections` the PDF is drawn from, so
+this page cannot promise a section the document leaves out.
+{% endcomment %}
+
+<div class="spread">
+  <div>
+    <h1>{{ asset.nickname }}</h1>
+    <p class="muted">{{ asset.descriptor }}</p>
+  </div>
+  <div class="row">
+    {% if include_costs %}
+      <a class="btn" href="?costs=0">{% translate "Without costs" %}</a>
+    {% else %}
+      <a class="btn" href="?">{% translate "With costs" %}</a>
+    {% endif %}
+    <a class="btn primary" href="{% url 'asset_report_pdf' asset.pk %}{% if not include_costs %}?costs=0{% endif %}">
+      {% translate "Download PDF" %}
+    </a>
+  </div>
+</div>
+
+<div class="card">
+  <p class="small">
+    {% blocktranslate count n=filled %}One section has anything in it.{% plural %}{{ n }} sections have anything in them.{% endblocktranslate %}
+    {% translate "A gap below is a gap in the record, and it will be a gap in the document too." %}
+  </p>
+  {% if hidden_specs %}
+    {% comment %}
+    Said out loud rather than silently done. Somebody handing this to a buyer
+    should know the key code was withheld — and somebody who wanted it in
+    there should find out here rather than from the buyer.
+    {% endcomment %}
+    <p class="small muted">
+      {% blocktranslate count n=hidden_specs %}One specification is marked sensitive and is left out of this document.{% plural %}{{ n }} specifications are marked sensitive and are left out of this document.{% endblocktranslate %}
+    </p>
+  {% endif %}
+</div>
+
+{% for section in sections %}
+  {% if not section.is_empty or section.note %}
+    <section class="card">
+      <h2>{{ section.title }}</h2>
+      {% if section.is_empty %}
+        <p class="muted small">{{ section.note }}</p>
+      {% else %}
+        <div class="tablewrap"><table>
+          <tr>{% for column in section.columns %}<th>{{ column }}</th>{% endfor %}</tr>
+          {% for row in section.rows %}
+            <tr>{% for cell in row %}<td>{{ cell|linebreaksbr }}</td>{% endfor %}</tr>
+          {% endfor %}
+        </table></div>
+        {% if section.note %}<p class="small muted">{{ section.note }}</p>{% endif %}
+      {% endif %}
+    </section>
+  {% endif %}
+{% endfor %}
+
+<p class="small muted">{{ footer }}</p>
+{% endblock %}

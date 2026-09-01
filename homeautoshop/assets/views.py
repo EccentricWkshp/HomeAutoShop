@@ -24,7 +24,7 @@ from homeautoshop.accounts.policy import (
 
 from homeautoshop.accounts.models import require
 from homeautoshop.core.measurements import distance_unit_for
-from homeautoshop.mediafiles.models import MediaLink
+from homeautoshop.mediafiles.models import Media, MediaLink
 from homeautoshop.mediafiles.services import ingest
 from homeautoshop.work.models import WorkOrder
 
@@ -33,6 +33,7 @@ from . import vindecode
 from . import vpic_fields
 from .models import (
     Asset,
+    AssetLink,
     AssetSpec,
     Recall,
     SpecGroup,
@@ -137,7 +138,13 @@ def asset_detail(request, pk):
     require(request.user, "asset.read", asset)
     readings = asset.usage_readings.all()[:20]
     work_orders = asset.work_orders.select_related("asset")[:25]
-    photos = MediaLink.for_entity(asset)
+    # Split by what the file *is*, not by which form uploaded it. Every
+    # attachment used to land in the Photos grid, so a PDF of the title
+    # appeared there as a blank thumbnail with no way to read it — the file
+    # decides which section it belongs to (FR-DOC-10).
+    attachments = list(MediaLink.for_entity(asset))
+    photos = [a for a in attachments if a.media.kind == Media.Kind.PHOTO]
+    documents = [a for a in attachments if a.media.kind != Media.Kind.PHOTO]
     providers = ServiceInfoProvider.objects.filter(is_enabled=True)
     links = {link.provider_id: link for link in asset.service_info_links.all()}
     # Hidden providers are listed separately rather than dropped: a provider
@@ -169,6 +176,8 @@ def asset_detail(request, pk):
             "readings": readings,
             "work_orders": work_orders,
             "photos": photos,
+            "documents": documents,
+            "asset_links": asset.links.all(),
             "reading_form": ReadingForm(),
             "providers": shown,
             "hidden_providers": hidden,
@@ -585,6 +594,74 @@ def photo_upload(request, pk):
             _("Added %(n)d photo(s).") % {"n": created}
             if created
             else _("Those photos were already on file."),
+        )
+    return redirect("asset_detail", pk=asset.pk)
+
+
+@require_POST
+@login_required
+def link_add(request, pk):
+    """Keep a page that is about this vehicle (FR-VEH-13).
+
+    Only `http` and `https` are accepted. A URL field is rendered straight
+    into an `href`, and `javascript:` in an href is script execution — so the
+    scheme is checked here rather than trusted from a form that a determined
+    POST never goes through.
+    """
+    asset = get_object_or_404(Asset, pk=pk)
+    require(request.user, "asset.edit", asset)
+    url = (request.POST.get("url") or "").strip()
+
+    if not url.lower().startswith(("http://", "https://")):
+        messages.error(request, _("Paste a full web address starting with http."))
+        return redirect("asset_detail", pk=asset.pk)
+
+    AssetLink.objects.create(
+        asset=asset,
+        url=url[:500],
+        label=(request.POST.get("label") or "").strip()[:120],
+        notes=(request.POST.get("notes") or "").strip()[:300],
+    )
+    messages.success(request, _("Saved the link."))
+    return redirect("asset_detail", pk=asset.pk)
+
+
+@require_POST
+@login_required
+def link_delete(request, pk, link_id):
+    asset = get_object_or_404(Asset, pk=pk)
+    require(request.user, "asset.edit", asset)
+    link = get_object_or_404(AssetLink, pk=link_id, asset=asset)
+    link.delete()
+    messages.success(request, _("Removed the link."))
+    return redirect("asset_detail", pk=asset.pk)
+
+
+@require_POST
+@login_required
+def document_upload(request, pk):
+    """Attach a manual, a title, a receipt (FR-DOC-1).
+
+    The same `ingest` the photo form uses: which kind a file becomes is read
+    off the file, so a photo uploaded here still lands under Photos and a PDF
+    dropped on the photo form still lands here. The two forms exist for where
+    somebody looks, not to classify anything.
+    """
+    asset = get_object_or_404(Asset, pk=pk)
+    require(request.user, "asset.edit", asset)
+    files = request.FILES.getlist("files")
+    created = 0
+    for upload in files:
+        _media, was_new = ingest(
+            upload, user=request.user, entity=asset, role=MediaLink.Role.OTHER
+        )
+        created += was_new
+    if files:
+        messages.success(
+            request,
+            _("Added %(n)d document(s).") % {"n": created}
+            if created
+            else _("Those documents were already on file."),
         )
     return redirect("asset_detail", pk=asset.pk)
 
@@ -1122,12 +1199,48 @@ def recall_status(request, pk, recall_id):
 
 @login_required
 def asset_report(request, pk):
-    """The sale document (FR-REP-2, G-1)."""
+    """What the sale document will say, before it is produced (FR-REP-2, G-1).
+
+    The button used to start a download. That is the wrong shape for this
+    particular document: it is the thing you hand to a buyer, it is the one
+    place sensitive specs are deliberately withheld, and how complete it looks
+    is the whole question — all of which somebody wants to check *before* a
+    file lands in their downloads folder, not after opening it from there.
+
+    Rendered from `report_sections`, the same description the PDF is drawn
+    from, so the preview cannot promise a section the document omits.
+    """
+    from homeautoshop.core.reports import report_footer, report_sections
+
+    asset = get_object_or_404(Asset, pk=pk)
+    require(request.user, "asset.read", asset)
+    include_costs = request.GET.get("costs") != "0"
+    sections = report_sections(asset, include_costs=include_costs)
+    return render(
+        request,
+        "assets/report.html",
+        {
+            "asset": asset,
+            "sections": sections,
+            "footer": report_footer(),
+            "include_costs": include_costs,
+            # Counted rather than trusted: a report that would be mostly empty
+            # is worth knowing about while there is still time to fill it in.
+            "filled": sum(1 for section in sections if not section.is_empty),
+            "hidden_specs": asset.specs.filter(is_sensitive=True).count(),
+        },
+    )
+
+
+@login_required
+def asset_report_pdf(request, pk):
+    """The file itself, once somebody has seen what is in it."""
     from django.http import HttpResponse
 
     from homeautoshop.core.reports import build_vehicle_report
 
     asset = get_object_or_404(Asset, pk=pk)
+    require(request.user, "asset.read", asset)
     pdf = build_vehicle_report(asset, include_costs=request.GET.get("costs") != "0")
     response = HttpResponse(pdf, content_type="application/pdf")
     slug = "".join(c if c.isalnum() else "-" for c in asset.nickname).strip("-").lower()

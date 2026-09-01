@@ -113,6 +113,102 @@
         <button type="submit">{% translate "Add photos" %}</button>
       </form>
     </section>
+
+    {% comment %}
+    Documents, separate from Photos because the file decides (FR-DOC-10): a
+    photograph enlarges in place over the record it belongs to, a document
+    opens in its own tab where the browser's viewer can page and search it.
+    Both used to land in the Photos grid, so the PDF of a title showed as a
+    blank thumbnail that could not be read.
+    {% endcomment %}
+    <section class="card" id="documents" data-live="documents">
+      <h2>{% translate "Documents" %}</h2>
+      <ul class="list small">
+        {% for link in documents %}
+          <li class="spread">
+            <div>
+              {% comment %}
+              A link to the file first, so it still opens with scripting
+              blocked, and `rel=noopener` because it leaves the page.
+              {% endcomment %}
+              <a href="{% url 'media_file' link.media.pk %}" target="_blank" rel="noopener noreferrer">
+                {{ link.media.original_filename|default:link.media.get_kind_display }} ↗</a>
+              <div class="muted">
+                {{ link.media.get_kind_display }}
+                {% if link.caption %} · {{ link.caption }}{% endif %}
+              </div>
+            </div>
+            <form method="post" action="{% url 'media_unlink' link.pk %}">
+              {% csrf_token %}<input type="hidden" name="_anchor" value="documents">
+              <button type="submit" class="linkish small"
+                      data-confirm="{% translate 'Take this off the vehicle?' %}">
+                {% translate "Detach" %}
+              </button>
+            </form>
+          </li>
+        {% empty %}
+          <li class="muted">{% translate "No documents yet — the title, the manual, an insurance card." %}</li>
+        {% endfor %}
+      </ul>
+      <form method="post" action="{% url 'asset_document_upload' asset.pk %}"
+            enctype="multipart/form-data" class="row" style="margin-top:.75rem">
+        {% csrf_token %}<input type="hidden" name="_anchor" value="documents">
+        <label class="filepick">
+          <input type="file" name="files" multiple
+                 aria-label="{% translate 'Choose documents for this vehicle' %}">
+          <span>{% translate "Choose files" %}</span>
+        </label>
+        <button type="submit">{% translate "Add documents" %}</button>
+      </form>
+    </section>
+
+    {% comment %}
+    Links: any page that is about this vehicle. Distinct from the Service
+    manuals card in the sidebar, which pins one address per configured
+    provider (§8.5) — this is the open-ended half, for the forum thread that
+    solved the fault and the diagram that took an hour to find. Nothing here
+    is ever fetched by the shop; a link is stored and shown.
+    {% endcomment %}
+    <section class="card" id="links" data-live="links">
+      <h2>{% translate "Links" %}</h2>
+      <ul class="list small">
+        {% for link in asset_links %}
+          <li class="spread">
+            <div>
+              <a href="{{ link.url }}" target="_blank" rel="noopener noreferrer">{{ link.display_label }} ↗</a>
+              {% if link.notes %}<div class="muted">{{ link.notes }}</div>{% endif %}
+            </div>
+            <form method="post" action="{% url 'asset_link_delete' asset.pk link.pk %}">
+              {% csrf_token %}<input type="hidden" name="_anchor" value="links">
+              <button type="submit" class="linkish small"
+                      data-confirm="{% translate 'Remove this link?' %}">
+                {% translate "Remove" %}
+              </button>
+            </form>
+          </li>
+        {% empty %}
+          <li class="muted">{% translate "No links yet — a forum thread, a diagram, a video that covers this job." %}</li>
+        {% endfor %}
+      </ul>
+      <form method="post" action="{% url 'asset_link_add' asset.pk %}" class="stack" style="margin-top:.75rem">
+        {% csrf_token %}<input type="hidden" name="_anchor" value="links">
+        <div class="row">
+          <input type="url" name="url" required style="flex:2"
+                 aria-label="{% translate 'Web address' %}"
+                 placeholder="{% translate 'https://…' %}">
+          <input name="label" style="flex:1"
+                 aria-label="{% translate 'What to call it' %}"
+                 placeholder="{% translate 'what to call it' %}">
+        </div>
+        <div class="row">
+          <input name="notes" style="flex:1"
+                 aria-label="{% translate 'Why it is worth keeping' %}"
+                 placeholder="{% translate 'why it is worth keeping' %}">
+          <button type="submit">{% translate "Save link" %}</button>
+        </div>
+      </form>
+    </section>
+
   </div>
 
   <aside class="stack">
