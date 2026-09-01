@@ -1,0 +1,64 @@
+{% load i18n %}
+{% comment %}
+What a pre-1981 VIN says, read against the manufacturer's own tables.
+
+Every reading is shown, not just the best one, because several numbering
+schemes share a shape — a Ford truck of 1961 and one of 1970 are both three
+letters, an engine, a plant and six digits — and picking one silently would be
+inventing a fact about somebody's vehicle. Each names the sheet it was read
+against, for the same reason a decoded field carries its provenance.
+{% endcomment %}
+{% if vin_readings %}
+  <div class="stack" style="margin-top:.5rem">
+    {% if vin_readings|length > 1 %}
+      <p class="small muted">
+        {% blocktranslate count n=vin_readings|length %}One reading.{% plural %}{{ n }} readings fit this number.{% endblocktranslate %}
+        {% comment %}
+        Offered only while the year is genuinely open. It was printed
+        unconditionally, so a vehicle whose year was already filled in was told
+        to fill in the year — advice that had visibly just failed.
+        {% endcomment %}
+        {% if not vin_year %}{% translate "Filling in the model year narrows them." %}{% endif %}
+      </p>
+    {% endif %}
+    {% for reading in vin_readings %}
+      <details class="vinreading"{% if forloop.first %} open{% endif %}>
+        <summary>
+          <strong>{{ reading.label }}</strong>
+          {% if reading.years %}
+            · {% for year in reading.years %}{{ year }}{% if not forloop.last %} {% translate "or" %} {% endif %}{% endfor %}
+          {% endif %}
+          {% comment %}
+          A reading with positions its tables do not recognise is a weaker one,
+          and where several are offered the reader deserves to see which is
+          which without opening all of them.
+          {% endcomment %}
+          {% if reading.unknown %}
+            <span class="muted small">· {% blocktranslate count n=reading.unknown|length %}{{ n }} position unrecognised{% plural %}{{ n }} positions unrecognised{% endblocktranslate %}</span>
+          {% endif %}
+        </summary>
+        <table class="small">
+          {% for part in reading.readings %}
+            <tr>
+              <th>{{ part.label }}</th>
+              <td class="mono">{{ part.code }}</td>
+              {% comment %}
+              "not in the table" belongs only to a position that holds a code.
+              A unit number holds a number, and saying its own value is missing
+              from a table it was never in reads as a fault in a VIN that is
+              perfectly fine.
+              {% endcomment %}
+              <td>
+                {% if part.text %}{{ part.text }}
+                {% elif not part.free %}<span class="muted">{% translate "not in the table" %}</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </table>
+        {% if reading.notes %}<p class="small muted">{{ reading.notes }}</p>{% endif %}
+        <p class="small muted">{% translate "Read against" %} <span class="mono">{{ reading.source }}</span></p>
+      </details>
+    {% endfor %}
+  </div>
+{% endif %}

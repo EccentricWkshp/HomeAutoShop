@@ -1,0 +1,468 @@
+"""Reading a VIN from before there was a standard (SPEC FR-VEH-12, §8.1a).
+
+vPIC reads the 17-character VIN and nothing else, so every vehicle built before
+the 1981 model year had an identifier nothing here could interpret. The tables
+that do interpret them exist — LMC Truck publishes them, and they are in
+`Artifacts/VIN Decoding/` — so `F26SVAE1234` can be read as an F-250 4WD with a
+400 V8 built at Kentucky Truck in 1978 without asking anyone anything.
+
+The load-bearing test in this file is `test_every_scheme_reads_its_own_example`.
+The schemes are hand-transcribed off scanned sheets, and a slip in a table does
+not fail loudly — it produces a confident wrong answer about somebody's truck.
+Checking every documented example on every run is what makes that slip an
+ordinary test failure instead.
+"""
+
+from __future__ import annotations
+
+from django.test import TestCase
+from django.urls import reverse
+
+from homeautoshop.accounts.models import Role, User
+from homeautoshop.assets.models import Asset
+from homeautoshop.assets.vin_schemes import SCHEMES
+from homeautoshop.assets.vindecode import decode, describe
+
+#: The worked example: F-250 4WD, 400 CID V8, Kentucky Truck, 1978.
+TRUCK = "F26SVAE1234"
+
+
+class SchemeDataTests(TestCase):
+    """The transcription itself, checked against its own documentation."""
+
+    def test_every_scheme_reads_its_own_example(self):
+        """The guard on the data. A mistyped table does not raise — it answers
+        wrongly and confidently, which is worse."""
+        for scheme in SCHEMES:
+            with self.subTest(scheme=scheme["id"]):
+                read = [c.scheme for c in decode(scheme["example"])]
+                self.assertIn(scheme["id"], read, scheme["example"])
+
+    def test_every_scheme_names_the_document_it_came_from(self):
+        """A disputed entry should be checkable against the page it was read
+        off rather than argued about."""
+        for scheme in SCHEMES:
+            with self.subTest(scheme=scheme["id"]):
+                self.assertTrue(scheme["source"].endswith(".pdf"))
+
+    def test_field_widths_match_the_example(self):
+        """Exactly, or with room left for the running number where a scheme
+        ends in one — GM's production numbers have no fixed length."""
+        for scheme in SCHEMES:
+            with self.subTest(scheme=scheme["id"]):
+                fixed = sum(f["width"] for f in scheme["fields"])
+                if any(f["width"] == 0 for f in scheme["fields"]):
+                    self.assertGreater(len(scheme["example"]), fixed)
+                else:
+                    self.assertEqual(fixed, len(scheme["example"]))
+
+    def test_only_the_last_field_may_be_open_ended(self):
+        """A variable-width field anywhere else would make every position
+        after it unreadable."""
+        for scheme in SCHEMES:
+            widths = [f["width"] for f in scheme["fields"]]
+            with self.subTest(scheme=scheme["id"]):
+                self.assertNotIn(0, widths[:-1])
+
+    def test_every_scheme_has_exactly_one_sequence(self):
+        """The sequence is what the serial blocks are matched against, so a
+        scheme with two of them, or none, would read years off the wrong part."""
+        for scheme in SCHEMES:
+            roles = [f["role"] for f in scheme["fields"]]
+            with self.subTest(scheme=scheme["id"]):
+                self.assertEqual(roles.count("sequence"), 1)
+
+    def test_a_scheme_with_serial_blocks_has_no_year_field(self):
+        """Two sources for one fact is two chances to disagree about it."""
+        for scheme in SCHEMES:
+            if not scheme.get("serial_blocks"):
+                continue
+            with self.subTest(scheme=scheme["id"]):
+                self.assertNotIn("year", [f["role"] for f in scheme["fields"]])
+
+    def test_scheme_ids_are_unique(self):
+        ids = [scheme["id"] for scheme in SCHEMES]
+        self.assertEqual(len(ids), len(set(ids)))
+
+
+class FordTruckTests(TestCase):
+    """The reported case, decoded against `FC_VIN-Chassis_ID.pdf`."""
+
+    def read(self, vin=TRUCK, **kwargs):
+        return describe(vin, **kwargs)
+
+    def test_the_truck_is_read_completely(self):
+        found = self.read()
+
+        self.assertEqual(found.make, "Ford")
+        self.assertEqual(found.scheme, "ford-truck-1973-1979")
+        self.assertIn("F-250 4WD", found.summary)
+        self.assertIn("400 CID", found.summary)
+        self.assertIn("Kentucky Truck", found.summary)
+
+    def test_the_year_comes_from_the_serial_block(self):
+        """There is no model-year position in this scheme at all — which is
+        exactly why a rule about character positions could not read one."""
+        self.assertEqual(self.read().years, (1978,))
+        self.assertNotIn("year", [r.role for r in self.read().readings])
+
+    def test_the_engine_settles_a_year_the_blocks_leave_open(self):
+        """Ford's own blocks overlap: `AE1234` is inside both the 1976 block
+        and the 1978 one. The 400 was not offered until 1977, so the two facts
+        together give one year where either alone gives two."""
+        blocks = [
+            b["year"]
+            for scheme in SCHEMES
+            if scheme["id"] == "ford-truck-1973-1979"
+            for b in scheme["serial_blocks"]
+            if b["from"] <= "AE1234" <= b["to"]
+        ]
+
+        self.assertEqual(sorted(blocks), [1976, 1978])
+        self.assertEqual(self.read().years, (1978,))
+
+    def test_the_same_serial_reads_as_1976_with_a_1976_engine(self):
+        """The other side of the overlap, and why both blocks are kept:
+        `AE1234` really is a 1976 as well. Swap the 400 for the 360 offered
+        that year and the same number reads as one.
+
+        Taken through `decode` rather than `describe`, because a 360 in a
+        Kentucky-built F-250 is also a perfectly good 1967–72 truck and there
+        is no honest way to choose between the two from the number alone."""
+        found = next(
+            c for c in decode("F26YVAE1234") if c.scheme == "ford-truck-1973-1979"
+        )
+
+        self.assertEqual(found.years, (1976,))
+
+    def test_a_contradiction_means_this_is_not_the_scheme(self):
+        """A 400 was not offered before 1977 and `Q00,500` is squarely in the
+        1973 block. Nothing reconciles those, so this is the wrong table
+        rather than a truck with a surprising engine."""
+        self.assertNotIn(
+            "ford-truck-1973-1979", [c.scheme for c in decode("F26SVQ00500")]
+        )
+
+    def test_an_unknown_code_is_reported_rather_than_invented(self):
+        found = decode("F26QVAE1234")[0]
+
+        engine = next(r for r in found.readings if r.role == "engine")
+        self.assertEqual(engine.text, "")
+        self.assertIn(engine, found.unknown)
+
+    def test_the_unit_number_is_not_a_gap(self):
+        """It carries a value rather than a code, so having no table entry is
+        what it is supposed to look like."""
+        self.assertTrue(self.read().is_complete)
+
+    def test_i_and_q_decode_because_ford_stamped_them(self):
+        """Highland Park is plant `I`, and the 1973 block starts at Q00,001 —
+        both letters the 1981 standard bans."""
+        found = describe("F10AIQ00001")
+
+        self.assertIn("Highland Park", found.summary)
+        self.assertEqual(found.years, (1973,))
+
+
+class AmbiguityTests(TestCase):
+    def test_two_schemes_of_the_same_shape_are_both_returned(self):
+        """A Ford truck of 1961 and one of 1970 are both three letters, an
+        engine, a plant and six digits. Choosing between them silently would
+        be inventing a fact."""
+        read = [c.scheme for c in decode("F25BR350001")]
+
+        self.assertIn("ford-truck-1961-1966", read)
+        self.assertIn("ford-truck-1967-1972", read)
+
+    def test_and_describe_refuses_to_pick_one(self):
+        self.assertIsNone(describe("F25BR350001"))
+
+    def test_a_known_year_is_what_separates_them(self):
+        self.assertEqual(describe("F25BR350001", year=1965).scheme, "ford-truck-1961-1966")
+        self.assertEqual(describe("F25BR350001", year=1970).scheme, "ford-truck-1967-1972")
+
+    def test_a_year_the_scheme_cannot_narrow_reports_all_of_them(self):
+        """1949, 1950 and 1951 all continue the 1949 numbering. Three years is
+        the true answer and one would be a guess."""
+        self.assertEqual(describe("97HC139260").years, (1949, 1950, 1951))
+
+    def test_nothing_that_resolves_nothing_is_offered(self):
+        self.assertEqual(decode("ZZZZZZZZZZZ"), [])
+
+    def test_an_empty_vin_reads_as_nothing(self):
+        self.assertEqual(decode(""), [])
+        self.assertEqual(decode(None), [])
+
+
+class OtherMakesTests(TestCase):
+    def test_a_dodge_reads_from_its_own_sheet(self):
+        found = describe("D14AE5S000105")
+
+        self.assertEqual(found.make, "Dodge")
+        self.assertEqual(found.years, (1975,))
+        self.assertIn("Sweptline", found.summary)
+
+    def test_a_chevrolet_reads_from_its_own_sheet(self):
+        found = describe("CCL148Z100327")
+
+        self.assertEqual(found.make, "Chevrolet")
+        self.assertEqual(found.years, (1978,))
+        self.assertIn("Fremont", found.summary)
+
+    def test_the_division_letter_tells_a_gmc_from_a_chevrolet(self):
+        self.assertIn("GMC", describe("TCS142S500121").summary)
+
+    def test_a_seventeen_character_vin_is_left_to_vpic(self):
+        """These sheets stop at 1980 and vPIC is better at what comes after."""
+        self.assertEqual(decode("1M8GDM9AXKP042788"), [])
+
+
+class EveryMakeTests(TestCase):
+    """One VIN per make and per document, so a scheme cannot quietly go missing.
+
+    The examples above prove each scheme reads *itself*; these prove the makes
+    the sheets cover are actually reachable from a VIN somebody would type.
+    """
+
+    def test_every_document_in_the_folder_is_represented(self):
+        """A sheet that was read and never transcribed should be a decision,
+        not something nobody noticed. The gaps are named in the module."""
+        sources = {scheme["source"] for scheme in SCHEMES}
+
+        for name in (
+            "FA_VIN-Chassis_ID.pdf", "FB_VIN-Chassis_ID.pdf",
+            "FC_VIN-Chassis_ID.pdf", "FD_VIN-Chassis_ID.pdf",
+            "FBR_VIN-Chassis_ID.pdf", "ford-van-vin.pdf",
+            "CA_VIN-Chassis_ID.pdf", "CB_VIN-Chassis_ID.pdf",
+            "CBE_VIN-Chassis_ID.pdf", "CC_VIN-Chassis_ID.pdf",
+            "chevy-van-vin.pdf", "DC_VIN-Chassis_ID.pdf", "dodge-van-vin.pdf",
+        ):
+            with self.subTest(source=name):
+                self.assertIn(name, sources)
+
+    def test_all_four_makes_decode(self):
+        for vin, make in (
+            ("F26SVAE1234", "Ford"),
+            ("CCL148Z100327", "Chevrolet"),
+            ("FC15225889", "GMC"),
+            ("D14AE5S000105", "Dodge"),
+        ):
+            with self.subTest(vin=vin):
+                self.assertEqual(describe(vin).make, make)
+
+    def test_a_ford_van_reads_from_the_scanned_sheet(self):
+        found = describe("E04JKAE0021")
+
+        self.assertEqual(found.scheme, "ford-van-1975-1980")
+        self.assertIn("E-100 Cargo Van", found.summary)
+
+    def test_a_1980_ford_is_the_last_year_before_the_standard(self):
+        """1980 has no model-year position and no serial block of its own. The
+        scheme covers one year, so the year is not in doubt."""
+        found = describe("F10EU100001")
+
+        self.assertEqual(found.years, (1980,))
+        self.assertNotIn("year", [r.role for r in found.readings])
+
+    def test_the_1980_engine_codes_are_what_separate_it_from_1973_79(self):
+        """Same eleven characters, same field layout, disjoint engine letters.
+
+        A 1978 truck is still *offered* as a 1980 with an engine code the 1980
+        table does not have, because two of its three positions do resolve —
+        and a partial reading is worth showing when it is all there is. What
+        settles it is that the 1973–79 reading is complete and this one is not."""
+        self.assertEqual(describe("F10EU100001").scheme, "ford-truck-1980")
+
+        readings = {c.scheme: c for c in decode("F26SVAE1234")}
+
+        self.assertTrue(readings["ford-truck-1973-1979"].is_complete)
+        self.assertFalse(readings["ford-truck-1980"].is_complete)
+
+    def test_a_seventeen_character_tail_is_not_a_production_number(self):
+        """Without a cap on the open-ended field, a modern VIN came back as a
+        1949 Chevrolet: two of four positions landed in a table and the other
+        thirteen characters were read as a running number."""
+        self.assertEqual(decode("1M8GDM9AXKP042788"), [])
+
+    def test_the_two_ford_sheets_agree_on_the_serial_blocks(self):
+        """The only independent check available on any of this: the truck sheet
+        and the van sheet print the same 1975–79 blocks, so the trucks and the
+        vans share one list here rather than two transcriptions of it."""
+        blocks = {
+            scheme["id"]: scheme["serial_blocks"]
+            for scheme in SCHEMES
+            if scheme["id"] in ("ford-truck-1973-1979", "ford-van-1975-1980")
+        }
+
+        self.assertEqual(len(blocks), 2)
+        self.assertEqual(*blocks.values())
+
+    def test_a_suburban_and_a_pickup_differ_only_in_the_body_digit(self):
+        """`CSB_VIN-Chassis_ID.pdf` is the same scheme as the pickup sheet with
+        two more body codes, so it is two codes here rather than a second
+        scheme that would double every pickup's candidates."""
+        self.assertIn("Suburban", describe("CCL168Z100327").summary)
+        self.assertIn("Pickup", describe("CCL148Z100327").summary)
+
+    def test_a_gmc_of_1967_reports_no_year_because_the_sheet_gives_none(self):
+        """Its serial rule starts 1968 and 1969 at the same number. Saying
+        "1967–71" and stopping is the whole of what is known."""
+        found = describe("CE134S113045")
+
+        self.assertEqual(found.make, "GMC")
+        self.assertEqual(found.years, ())
+        self.assertIn("Fleetside", found.summary)
+
+    def test_a_running_production_number_has_no_fixed_length(self):
+        """GM stamped a number as long as the plant had got to that year, so a
+        scheme that demanded a width would reject most of them."""
+        for tail in ("292", "0292", "00292", "000292"):
+            with self.subTest(tail=tail):
+                self.assertEqual(describe("5GRB" + tail).years, (1949,))
+
+    def test_a_v8_is_a_different_length_not_a_different_value(self):
+        """The position is blank for a six, so the two are separate schemes."""
+        self.assertEqual(describe("3E57S7552").scheme, "chevrolet-truck-1955-1959")
+        self.assertEqual(
+            describe("V3E57S7552").scheme, "chevrolet-truck-1955-1959-v8"
+        )
+
+    def test_a_dodge_van_reads_despite_its_year_table_not_surviving_the_scan(self):
+        """Those codes are read across from the truck sheet of the same years,
+        which prints them legibly — and the module says so where it does it."""
+        found = describe("B12AB2U100001")
+
+        self.assertEqual(found.years, (1972,))
+        self.assertIn("Sportsman Wagon", found.summary)
+
+    def test_a_gm_van_reads_despite_its_engine_table_not_surviving(self):
+        found = describe("CGL2594100001")
+
+        self.assertEqual(found.years, (1979,))
+        self.assertIn("350 CID", found.summary)
+
+
+class UnitNumberTests(TestCase):
+    """Reported against a 1979 F-100: `DH6036 — not in the table`.
+
+    Two things wrong with one line. The consecutive unit number holds a number,
+    not a code, so there is no table for it to be missing from — and on a Ford
+    of these years it is the field that *determines* the model year. Calling
+    the one position that answered the question a gap inverted its meaning.
+    """
+
+    def sequence_row(self, vin, **kwargs):
+        found = next(
+            c for c in decode(vin, **kwargs) if c.scheme == "ford-truck-1973-1979"
+        )
+        return next(r for r in found.readings if r.role == "sequence")
+
+    def test_the_unit_number_says_which_block_it_falls_in(self):
+        row = self.sequence_row("F10BLDH6036", year=1979)
+
+        self.assertIn("1979", row.text)
+        self.assertIn("DC0001", row.text)
+        self.assertIn("FK9000", row.text)
+
+    def test_it_is_never_reported_as_a_missing_code(self):
+        self.assertTrue(self.sequence_row("F10BLDH6036", year=1979).free)
+
+    def test_the_page_shows_the_block_instead_of_calling_it_missing(self):
+        user = User.objects.create_user(
+            username="andy", password="x" * 16, role=Role.ADMIN
+        )
+        self.client.force_login(user)
+        asset = Asset.objects.create(nickname="Old Ford", vin=TRUCK, year=1978)
+
+        page = self.client.get(reverse("asset_detail", args=[asset.pk]))
+
+        self.assertContains(page, "in the 1978 block")
+        # Nothing on this vehicle's readings is unrecognised, so the phrase
+        # should not be on the page at all.
+        self.assertNotContains(page, "not in the table")
+
+    def test_where_the_blocks_overlap_it_names_both(self):
+        """Showing only the year that survived the other checks would hide why
+        anything needed checking."""
+        text = self.sequence_row("F26SVAE1234").text
+
+        self.assertIn("1976", text)
+        self.assertIn("1978", text)
+
+    def test_a_scheme_with_no_blocks_says_nothing_about_its_sequence(self):
+        found = describe("D14AE5S000105")
+        row = next(r for r in found.readings if r.role == "sequence")
+
+        self.assertEqual(row.text, "")
+        self.assertTrue(row.free)
+
+    def test_a_weaker_reading_is_marked_as_weaker(self):
+        """This VIN also reads as a van, because the van tables recognise its
+        engine and its plant but not its series. It is offered, ranked below
+        the complete reading, and labelled — rather than hidden, since the
+        tables have documented gaps and the second answer is sometimes right."""
+        readings = decode("F10BLDH6036", year=1979)
+
+        self.assertEqual(readings[0].scheme, "ford-truck-1973-1979")
+        self.assertTrue(readings[0].is_complete)
+        self.assertFalse(readings[1].is_complete)
+        self.assertEqual(readings[1].unknown[0].role, "series")
+
+
+class ReadingItOnScreenTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="andy", password="x" * 16, role=Role.ADMIN
+        )
+        self.client.force_login(self.user)
+
+    def test_the_form_reads_it_while_it_is_being_typed(self):
+        page = self.client.get(reverse("vin_validate"), {"vin": TRUCK})
+
+        self.assertContains(page, "F-250 4WD")
+        self.assertContains(page, "1978")
+
+    def test_the_vehicle_page_says_what_the_vin_means(self):
+        asset = Asset.objects.create(nickname="Old Ford", vin=TRUCK, year=1978)
+
+        page = self.client.get(reverse("asset_detail", args=[asset.pk]))
+
+        self.assertContains(page, "Kentucky Truck")
+        self.assertContains(page, "400 CID")
+
+    def test_it_names_the_sheet_it_read_the_vin_against(self):
+        """Provenance, for the same reason a decoded field carries it: somebody
+        checking the claim needs to know what it was read off."""
+        asset = Asset.objects.create(nickname="Old Ford", vin=TRUCK, year=1978)
+
+        page = self.client.get(reverse("asset_detail", args=[asset.pk]))
+
+        self.assertContains(page, "FC_VIN-Chassis_ID.pdf")
+
+    def test_the_model_year_hint_is_dropped_once_the_year_is_known(self):
+        """It was printed unconditionally, so a vehicle whose year was filled
+        in was advised to fill in the year."""
+        asset = Asset.objects.create(nickname="Old Ford", vin="F10BLDH6036", year=1979)
+
+        page = self.client.get(reverse("asset_detail", args=[asset.pk]))
+
+        self.assertNotContains(page, "Filling in the model year")
+
+    def test_but_offered_while_it_is_still_open(self):
+        page = self.client.get(reverse("vin_validate"), {"vin": "F10BLDH6036"})
+        self.assertContains(page, "Filling in the model year")
+
+    def test_a_vin_it_cannot_read_says_nothing_rather_than_guessing(self):
+        asset = Asset.objects.create(nickname="Mystery", vin="ZZZZZZZZZZZ")
+
+        page = self.client.get(reverse("asset_detail", args=[asset.pk]))
+
+        self.assertNotContains(page, "Kentucky Truck")
+
+    def test_the_masked_vin_is_still_what_is_shown(self):
+        """Reading the VIN out loud must not print the VIN (NFR-S-5)."""
+        asset = Asset.objects.create(nickname="Old Ford", vin=TRUCK, year=1978)
+
+        page = self.client.get(reverse("asset_detail", args=[asset.pk]))
+
+        self.assertNotContains(page, TRUCK)

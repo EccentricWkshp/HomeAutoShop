@@ -165,6 +165,14 @@
         {% if asset.serial_number %}<tr><th>{% translate "Serial" %}</th><td class="mono">{{ asset.serial_number }}</td></tr>{% endif %}
       </table>
 
+      {% if vin_check.is_pre_1981 %}
+        <h3 class="small" style="margin:.75rem 0 0">{% translate "What the VIN says" %}</h3>
+        <p class="small muted">
+          {% translate "Read here against the manufacturer's own tables, because no service decodes a VIN this old." %}
+        </p>
+        {% include "assets/_vin_reading.html" with vin_readings=vin_readings vin_year=vin_year %}
+      {% endif %}
+
       {% comment %}
       Not offered for a pre-1981 VIN: vPIC only knows the 17-character format,
       so the button could only ever come back empty. Hidden rather than

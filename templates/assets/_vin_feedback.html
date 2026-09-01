@@ -15,6 +15,7 @@
     </p>
   {% endif %}
   {% for warning in check.warnings %}<p class="small muted">{{ warning }}</p>{% endfor %}
+  {% include "assets/_vin_reading.html" with vin_readings=vin_readings vin_year=vin_year %}
   {% if check.possible_years %}
     <p class="small muted">{% translate "Model year could be" %}
       {% for year in check.possible_years %}<strong>{{ year }}</strong>{% if not forloop.last %} {% translate "or" %} {% endif %}{% endfor %}

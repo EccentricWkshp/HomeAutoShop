@@ -23,6 +23,7 @@ from homeautoshop.mediafiles.services import ingest
 from homeautoshop.work.models import WorkOrder
 
 from . import vin as vinlib
+from . import vindecode
 from . import vpic_fields
 from .models import (
     Asset,
@@ -164,7 +165,12 @@ def asset_detail(request, pk):
             "reading_form": ReadingForm(),
             "providers": shown,
             "hidden_providers": hidden,
-            "vin_check": vinlib.validate(asset.vin) if asset.vin else None,
+            "vin_check": vinlib.validate(asset.vin, year=asset.year) if asset.vin else None,
+            # What the VIN says, read against the manufacturer's own tables —
+            # the only route to this for a vehicle vPIC will not decode.
+            # Named apart from `readings` above, which is the odometer.
+            "vin_readings": vindecode.decode(asset.vin, year=asset.year),
+            "vin_year": asset.year,
             # NFR-S-5 — the page carries the mask, and revealing costs a second
             # request. A client-side toggle would put the full VIN in the HTML
             # of every page view, which is masking as decoration: the value is
@@ -462,7 +468,19 @@ def vin_validate(request):
     except ValueError:
         year = None
     check = vinlib.validate(request.GET.get("vin", ""), year=year)
-    return render(request, "assets/_vin_feedback.html", {"check": check})
+    return render(
+        request,
+        "assets/_vin_feedback.html",
+        {
+            "check": check,
+            # Only for the era the sheets cover; a 17-character VIN is vPIC's
+            # job and asking both would print two different answers.
+            "vin_readings": (
+                vindecode.decode(check.vin, year=year) if check.is_pre_1981 else []
+            ),
+            "vin_year": year,
+        },
+    )
 
 
 @require_POST
