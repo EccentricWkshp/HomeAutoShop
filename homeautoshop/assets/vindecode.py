@@ -49,10 +49,26 @@ class Reading:
     #: unit number means itself, and GMC's state-designation position is a
     #: dash on nearly every truck ever built.
     free: bool = False
+    #: How many table entries the code matched. More than one is an honest
+    #: reading — Ford's `H` is a 390 through 1976 and a 351M after it, and with
+    #: the year still open it is both — but it is not a fact anything may act
+    #: on: two engines is a question, and a vehicle has one engine.
+    options: int = 1
+    #: Worked out from the rest of the reading rather than read off a position
+    #: — see `_derived_engine`. True is a fact about the vehicle and not
+    #: evidence about the scheme, so it is excluded from `Candidate.known`:
+    #: crediting a scheme with explaining a character it never looked at would
+    #: let it outrank a scheme that really did.
+    derived: bool = False
 
     @property
     def known(self) -> bool:
         return bool(self.text)
+
+    @property
+    def settled(self) -> bool:
+        """Resolved to exactly one meaning, so a caller may write it down."""
+        return self.known and self.options == 1
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,6 +100,18 @@ class Candidate:
 
     @property
     def known(self) -> tuple[Reading, ...]:
+        """Positions of the number this scheme actually resolved.
+
+        How well a scheme read a VIN, and therefore how it ranks against the
+        others — so a derived reading is not one of these. It explains no
+        character; counting it would let a scheme that read half the number
+        and inferred a fact tie with one that read all of it.
+        """
+        return tuple(r for r in self.readings if r.known and not r.derived)
+
+    @property
+    def stated(self) -> tuple[Reading, ...]:
+        """Everything the reading has to say, what it worked out included."""
         return tuple(reading for reading in self.readings if reading.known)
 
     @property
@@ -98,7 +126,7 @@ class Candidate:
     def summary(self) -> str:
         """The one-line reading, for a page that has room for one line."""
         # The year leads the line, so the model-year field does not repeat it.
-        parts = [r.text for r in self.known if r.role != "year"]
+        parts = [r.text for r in self.stated if r.role != "year"]
         if self.years:
             parts.insert(0, self.year_text)
         return " · ".join(parts)
@@ -192,6 +220,12 @@ def _read(scheme: dict, vin: str, *, year: int | None) -> Candidate | None:
         readings = _fields(scheme, vin, year=years[0], fallback=readings)
     readings = _explain_sequence(scheme, readings)
 
+    # Last, because it is derived from the year the readings above settled and
+    # must not be counted among the evidence that settled it.
+    engine = _derived_engine(scheme, years)
+    if engine is not None:
+        readings = [*readings, engine]
+
     return Candidate(
         scheme=scheme["id"],
         label=str(scheme["label"]),
@@ -249,14 +283,14 @@ def _fields(
         table = tables.get(spec.get("table", role), {})
         # A model-year table maps a code to years rather than to prose, so it
         # renders itself: "1978", or "1949, 1950 or 1951" where the scheme
-        # genuinely cannot narrow it.
-        text = (
-            _year_text(table.get(code))
-            if role == "year"
-            else _lookup(table, code, year=year)
-        )
+        # genuinely cannot narrow it — one meaning, however many years it names.
+        if role == "year":
+            texts = [t for t in (_year_text(table.get(code)),) if t]
+        else:
+            texts = _lookup(table, code, year=year)
+        text, options = " / ".join(texts), len(texts)
         if not text and fallback:
-            text = fallback[index].text
+            text, options = fallback[index].text, fallback[index].options
         readings.append(
             Reading(
                 role=role,
@@ -264,6 +298,7 @@ def _fields(
                 code=code,
                 text=text,
                 free=bool(spec.get("free")) or role in FREE_ROLES,
+                options=options,
             )
         )
     return readings
@@ -379,6 +414,70 @@ def _explain_sequence(scheme: dict, readings: list[Reading]) -> list[Reading]:
     ]
 
 
+def _entry_allows(entry: dict, years: tuple[int, ...]) -> bool:
+    """Whether an entry is still possible given the years the reading left open."""
+    span = entry.get("years")
+    if not span or not years:
+        return True
+    return bool(set(range(span[0], span[1] + 1)) & set(years))
+
+
+def _derived_engine(scheme: dict, years: tuple[int, ...]) -> Reading | None:
+    """The engine this scheme's trucks left the factory with, that year.
+
+    GM stamped no engine code. What the number carries is a *flag* — a leading
+    `V` on a Chevrolet, an `8` before the plant on a GMC — and its absence is
+    the six, which is why those are separate schemes of a different length.
+    So the plate says six-or-eight and the year, and `CA_Engine_ID.pdf` says
+    which six and which eight: a 1958 Chevrolet 3100 with no `V` had the 235,
+    and there was nothing else it could have had.
+
+    That makes this a reading of the number and not a guess, but it is a
+    reading of one position that is not there — so it is marked `free`, it has
+    no code to print, and its label says where it came from. A code stamped on
+    the plate and a fact about every truck built that year are both true and
+    are not the same claim.
+
+    Kept out of `_permitted` deliberately: this is a consequence of the year,
+    never evidence for it, and letting it narrow the year it was derived from
+    would be the decoder agreeing with itself.
+    """
+    entries = scheme.get("engine_by_year")
+    if not entries:
+        return None
+
+    # Filtered against every year still open rather than only against a single
+    # settled one. GMC's `S` means 1958 *or* 1959 and its six was the same
+    # engine in both, so a reading that cannot name the year can still name the
+    # engine — and offering the 1955 248 beside it would be listing an engine
+    # the reading has already ruled out.
+    kept = [e for e in entries if _entry_allows(e, years)]
+    if not kept:
+        return None
+    texts = [
+        str(entry["text"])
+        if len(kept) == 1 or not entry.get("years")
+        else str(
+            _("%(text)s (%(from)d–%(to)d)")
+            % {
+                "text": entry["text"],
+                "from": entry["years"][0],
+                "to": entry["years"][1],
+            }
+        )
+        for entry in kept
+    ]
+    return Reading(
+        role="engine",
+        label=str(_("Engine (standard that year)")),
+        code="",
+        text=" / ".join(texts),
+        free=True,
+        options=len(texts),
+        derived=True,
+    )
+
+
 def _block_text(blocks: list[dict], sequence: str) -> str:
     """Which production block a unit number falls in, named so it can be checked.
 
@@ -398,7 +497,7 @@ def _block_text(blocks: list[dict], sequence: str) -> str:
     )
 
 
-def _lookup(table: dict, code: str, *, year: int | None) -> str:
+def _lookup(table: dict, code: str, *, year: int | None) -> list[str]:
     """What a table says about a code, with year-dependent entries filtered.
 
     A code can mean two things in one scheme — Ford's `H` is a 390 through 1976
@@ -406,10 +505,14 @@ def _lookup(table: dict, code: str, *, year: int | None) -> str:
     several entries may share a code. Knowing the year picks one; not knowing
     it reports both, because a truck is not two engines and saying so is the
     reader's cue that something else has to settle it.
+
+    Returns every meaning that survived, rather than a joined string, so a
+    caller can tell one meaning from several without reading punctuation back
+    out of prose.
     """
     entry = table.get(code)
     if entry is None:
-        return ""
+        return []
     # Tested for the container rather than for `str`, because a plain reading is
     # a lazy translation proxy and `isinstance(proxy, str)` is False — which
     # would send every single-reading entry down the multi-reading path.
@@ -418,7 +521,7 @@ def _lookup(table: dict, code: str, *, year: int | None) -> str:
     elif isinstance(entry, (list, tuple)):
         options = list(entry)
     else:
-        return str(entry)
+        return [str(entry)]
 
     texts = []
     for option in options:
@@ -436,7 +539,7 @@ def _lookup(table: dict, code: str, *, year: int | None) -> str:
                 % {"text": option["text"], "from": span[0], "to": span[1]}
             )
         )
-    return " / ".join(texts)
+    return texts
 
 
 def _year_text(entry) -> str:

@@ -233,6 +233,7 @@ class EveryMakeTests(TestCase):
         """A sheet that was read and never transcribed should be a decision,
         not something nobody noticed. The gaps are named in the module."""
         sources = {scheme["source"] for scheme in SCHEMES}
+        sources |= {s["also"] for s in SCHEMES if s.get("also")}
 
         for name in (
             "FA_VIN-Chassis_ID.pdf", "FB_VIN-Chassis_ID.pdf",
@@ -241,6 +242,12 @@ class EveryMakeTests(TestCase):
             "CA_VIN-Chassis_ID.pdf", "CB_VIN-Chassis_ID.pdf",
             "CBE_VIN-Chassis_ID.pdf", "CC_VIN-Chassis_ID.pdf",
             "chevy-van-vin.pdf", "DC_VIN-Chassis_ID.pdf", "dodge-van-vin.pdf",
+            # The engine sheets, which are cross-checks rather than schemes of
+            # their own. Every one of the five was read; the GM one was the
+            # last, and was for a while the only sheet in the folder that had
+            # been opened and never applied to anything.
+            "FA_Engine_ID.pdf", "FB_Engine_ID.pdf", "FC_Engine_ID.pdf",
+            "FD_Engine_ID.pdf", "CA_Engine_ID.pdf",
         ):
             with self.subTest(source=name):
                 self.assertIn(name, sources)
@@ -483,6 +490,12 @@ class EngineSheetTests(TestCase):
             with self.subTest(scheme=scheme["id"]):
                 self.assertTrue(scheme["also"].endswith("_Engine_ID.pdf"))
                 self.assertNotEqual(scheme["also"], scheme["source"])
+                # And it is that make's own sheet. LMC's first letter is the
+                # make — F Ford, C Chevrolet and GMC, D Dodge — so checking a
+                # Ford's engine table against `CA_Engine_ID.pdf` would be
+                # reading one manufacturer's tables into another's numbers.
+                # Nothing stopped that; the data was right by hand alone.
+                self.assertEqual(scheme["also"][0], scheme["source"][0])
 
     def test_the_page_says_it_was_checked_against_a_second_sheet(self):
         user = User.objects.create_user(
@@ -561,3 +574,133 @@ class ReadingItOnScreenTests(TestCase):
         page = self.client.get(reverse("asset_detail", args=[asset.pk]))
 
         self.assertNotContains(page, TRUCK)
+
+
+class GmEngineSheetTests(TestCase):
+    """`CA_Engine_ID.pdf`, and the question GM's numbering leaves open.
+
+    The Ford sheets were read against their engine sheets and this one was not,
+    which left the GM schemes saying `V8` and stopping there. GM stamped no
+    engine code: the number carries a *flag* — a leading `V` on a Chevrolet, an
+    `8` before the plant on a GMC — and the absence of it is the six, which is
+    why those are separate schemes of a different length.
+
+    So the plate says six-or-eight and the year, and this sheet says which six
+    and which eight. Neither half is a guess and neither half is enough alone,
+    which makes this the one place in the file where two documents are needed
+    to read one position.
+    """
+
+    def test_the_v8_flag_and_the_year_together_name_a_displacement(self):
+        self.assertIn("265 CID V8", describe("V3E57S7552").summary)
+        self.assertIn("283 CID V8", describe("V3E58S7552").summary)
+
+    def test_a_gmc_v8_was_a_different_engine_almost_every_year(self):
+        """Which is what makes the flag worth reading at all: four years, four
+        displacements, and the year code already says which."""
+        for vin, engine in (
+            ("1528PY5935", "288 CID V8"),
+            ("1528PX5935", "316 CID V8"),
+            ("1528PT5935", "347 CID V8"),
+            ("1528PS5935", "336 CID V8"),
+        ):
+            with self.subTest(vin=vin):
+                self.assertIn(engine, describe(vin).summary)
+
+    def test_the_absent_flag_is_a_reading_too(self):
+        """No `8` before the plant is not a gap in the number. It is the
+        positive statement that this truck left Pontiac with the six."""
+        found = describe("152PT5935")
+
+        self.assertEqual(found.make, "GMC")
+        self.assertIn("270 CID 6-cyl", found.summary)
+
+    def test_it_is_marked_as_coming_from_the_year_rather_than_the_plate(self):
+        """A code stamped on the door and a fact about every truck built that
+        year are both true and are not the same claim."""
+        found = describe("152PT5935")
+        engine = next(r for r in found.readings if r.role == "engine")
+
+        self.assertEqual(engine.code, "")
+        self.assertIn("standard", engine.label)
+
+    def test_the_engine_never_narrows_the_year_it_was_derived_from(self):
+        """It is a consequence of the year, never evidence for it — letting it
+        narrow would be the decoder agreeing with itself. A GMC of 1947–50 has
+        four open years and the 228 does not close one of them."""
+        found = describe("FC15225889")
+
+        self.assertEqual(found.years, (1947, 1948, 1949, 1950))
+        self.assertIn("228 CID 6-cyl", found.summary)
+
+    def test_an_open_year_can_still_settle_the_engine(self):
+        """`S` means 1958 or 1959 and the six was the same engine in both, so
+        the reading names the engine while still refusing to name the year."""
+        found = describe("152PS5935")
+        engine = next(r for r in found.readings if r.role == "engine")
+
+        self.assertEqual(found.years, (1958, 1959))
+        self.assertTrue(engine.settled)
+        self.assertIn("270 CID 6-cyl", engine.text)
+
+    def test_and_offers_both_where_it_cannot(self):
+        """The year unread, both engines stand, and the reading says so rather
+        than picking the likelier one."""
+        six = next(c for c in decode("1528PX5935") if "V8" not in c.label)
+        engine = next(r for r in six.readings if r.role == "engine")
+
+        self.assertEqual(engine.options, 2)
+        self.assertIn("248 CID", engine.text)
+        self.assertIn("270 CID", engine.text)
+
+    def test_the_two_sheets_disagree_about_a_1953_v8(self):
+        """The VIN sheet says a leading V marks a V8 across 1953–55 1st series.
+        The engine sheet lists no Chevrolet truck V8 before the 1955 2nd
+        series, which is a different scheme. Both cannot be right."""
+        found = describe("VH53S7552")
+
+        self.assertIn("V8", found.summary)
+        self.assertNotIn("CID", found.summary)
+
+    def test_and_the_era_is_left_as_the_vin_sheet_gives_it(self):
+        """The asymmetry that governs every disagreement here. Narrowing this
+        to 1955 would refuse a 1953 truck outright; declining to name the
+        displacement only declines to answer."""
+        found = describe("VH53S7552")
+
+        self.assertEqual(found.years, (1953,))
+        self.assertEqual(found.make, "Chevrolet")
+
+    def test_the_chevrolet_six_changed_with_the_1954_model_year(self):
+        self.assertIn("216.5 CID", describe("H53S7552").summary)
+        self.assertIn("235 CID", describe("H54S7552").summary)
+
+    def test_no_scheme_carries_both_a_stamped_engine_and_a_standard_one(self):
+        """Two engine readings in one candidate would make which one gets
+        written to a vehicle depend on field order."""
+        for scheme in SCHEMES:
+            if "engine_by_year" not in scheme:
+                continue
+            with self.subTest(scheme=scheme["id"]):
+                roles = {f["role"] for f in scheme["fields"]}
+                self.assertNotIn("engine", roles)
+
+    def test_every_gm_scheme_the_sheet_covers_names_it(self):
+        """1947–59 Chevrolet and GMC, both halves of each V8 split."""
+        checked = {
+            s["id"] for s in SCHEMES if s.get("also") == "CA_Engine_ID.pdf"
+        }
+
+        self.assertEqual(
+            checked,
+            {
+                "chevrolet-truck-1947-1952",
+                "chevrolet-truck-1953-1955",
+                "chevrolet-truck-1953-1955-v8",
+                "chevrolet-truck-1955-1959",
+                "chevrolet-truck-1955-1959-v8",
+                "gmc-truck-1947-1950",
+                "gmc-truck-1955-1959",
+                "gmc-truck-1955-1959-v8",
+            },
+        )

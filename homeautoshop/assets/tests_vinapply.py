@@ -214,3 +214,61 @@ class OnThePageTests(Base):
         self.assertEqual(response.status_code, 302)
         asset.refresh_from_db()
         self.assertIsNone(asset.year)
+
+
+class EngineFromTheYearTests(Base):
+    """An engine no position on the plate ever carried (`CA_Engine_ID.pdf`).
+
+    GM stamped six-or-eight as a flag and the year as a code, and the engine
+    sheet turns that pair into a displacement. It is a weaker-sounding claim
+    than a stamped engine letter and it is not a weaker one: both say what the
+    factory fitted, and the write-back holds the same line for it — blanks
+    only, never over a correction.
+    """
+
+    def test_an_engine_the_number_never_carried_is_still_filled_in(self):
+        asset = Asset.objects.create(nickname="Old GMC", vin="152PT5935")
+
+        self.assertTrue(read_vin_locally(asset).ok)
+
+        asset.refresh_from_db()
+        self.assertEqual(asset.make, "GMC")
+        self.assertEqual(asset.year, 1957)
+        self.assertIn("270 CID", asset.engine)
+
+    def test_a_year_it_could_not_narrow_does_not_stop_it(self):
+        """`S` is 1958 or 1959, and the six was the same engine in both. The
+        year stays blank because a range is not a year; the engine does not,
+        because there is only one of it."""
+        asset = Asset.objects.create(nickname="Old GMC", vin="152PS5935")
+
+        read_vin_locally(asset)
+
+        asset.refresh_from_db()
+        self.assertIsNone(asset.year)
+        self.assertIn("270 CID", asset.engine)
+
+    def test_but_two_engines_are_not_an_engine(self):
+        """Ford's `H` is a 390 through 1976 and a 351M after it, and this
+        serial falls in both blocks. The reading honestly says both — and
+        `390 CID V8 / 351M CID V8` in an engine column is not an engine, it is
+        the question still being asked."""
+        asset = Asset.objects.create(nickname="Barn find", vin="F26HVAE1234")
+
+        read_vin_locally(asset)
+
+        asset.refresh_from_db()
+        self.assertEqual(asset.make, "Ford")
+        self.assertEqual(asset.engine, "")
+
+    def test_a_disputed_displacement_is_not_invented_to_fill_the_box(self):
+        """The two sheets disagree about a 1953 Chevrolet V8, so the reading
+        says `V8` and no more. That is what lands in the column: what the
+        sheets agree on, and nothing added to round it out."""
+        asset = Asset.objects.create(nickname="Old Chev", vin="VH53S7552")
+
+        read_vin_locally(asset)
+
+        asset.refresh_from_db()
+        self.assertEqual(asset.engine, "V8")
+        self.assertEqual(asset.year, 1953)

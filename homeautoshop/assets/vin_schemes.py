@@ -20,11 +20,21 @@ A scheme is:
     fields          fixed-width, in order; widths must sum to the VIN's length
     tables          role -> {code: reading}
     serial_blocks   where the year is carried by the production run
+    engine_by_year  the engine a scheme's trucks had, where no position says
     notes           anything the reader deserves to know about the transcription
 
 A table entry is a string, or a list of `{"text": ..., "years": [from, to]}`
 where one code means different things in different years — Ford's `H` is a 390
 through 1976 and a 351M from 1977, and both are correct.
+
+`engine_by_year` takes the same entries and answers a question GM's numbers
+raise and Ford's do not. GM stamped no engine code: what the number carries is
+a *flag* — a leading `V` on a Chevrolet, an `8` before the plant on a GMC — and
+its absence is the six, which is why those are separate schemes of a different
+length. So the plate says six-or-eight and the year, and `CA_Engine_ID.pdf`
+says which six and which eight. It is derived from the year rather than read
+from a position, so it never narrows the year it came from, and it is labelled
+on screen as the engine standard that year rather than as a code off the plate.
 
 **Two sheets per era, and they do not always agree.** Alongside each
 `*_VIN-Chassis_ID.pdf` there is an `*_Engine_ID.pdf` listing every engine code
@@ -33,6 +43,12 @@ these tables have, and reading the two against each other found the engine
 table for 1953–56 claiming the 239 V8 was a 1955 only when it ran from 1954 —
 which made a real 1954 truck decode as a contradiction and be refused. Where a
 scheme has been checked this way it names both sheets, `source` and `also`.
+
+The GM sheet found the second one. `CA_VIN-Chassis_ID.pdf` says a leading V
+marks a V8 across 1953–55 1st series; `CA_Engine_ID.pdf` lists no Chevrolet
+truck V8 at all before the 1955 2nd series. Both cannot be right, and the rules
+below say what to do about it: the era stays as the VIN sheet gives it, and the
+displacement is not printed.
 
 Two rules govern a disagreement, and they differ because the costs differ.
 **On which years a code was offered, take the union.** Being a year too broad
@@ -1041,6 +1057,7 @@ _GM_PLANTS_1953 = {
 GM_EARLY = [
     {
         "id": "chevrolet-truck-1947-1952",
+        "also": "CA_Engine_ID.pdf",
         "model_from": "series",
         "label": _("Chevrolet truck, 1947–52"),
         "make": "Chevrolet",
@@ -1078,6 +1095,9 @@ GM_EARLY = [
                 "K": _("November"), "L": _("December"),
             },
         },
+        # One engine for the whole era, so it needs no years: the 216.5 ran
+        # from 1947 to 1953 and this scheme ends in 1952.
+        "engine_by_year": [{"text": _("216.5 CID 6-cyl, I-6")}],
         "notes": _(
             "The two-digit factory codes this sheet also lists — 12 Buffalo, "
             "14 Baltimore, 20 Los Angeles, 21 Janesville — cannot be told from "
@@ -1086,6 +1106,7 @@ GM_EARLY = [
     },
     {
         "id": "chevrolet-truck-1955-1959",
+        "also": "CA_Engine_ID.pdf",
         "model_from": "series",
         "label": _("Chevrolet truck, 1955–59"),
         "make": "Chevrolet",
@@ -1112,6 +1133,9 @@ GM_EARLY = [
             },
             "plant": _GM_PLANTS_1953,
         },
+        # No V, so this is the six, and the 235 was the only one offered right
+        # across the era.
+        "engine_by_year": [{"text": _("235 CID 6-cyl, I-6")}],
         "notes": _(
             "A leading V marks a V8 and is read by the scheme below. The "
             "one-letter series codes for 1953–55 1st series (H, J) are left "
@@ -1121,6 +1145,7 @@ GM_EARLY = [
     },
     {
         "id": "chevrolet-truck-1955-1959-v8",
+        "also": "CA_Engine_ID.pdf",
         "model_from": "series",
         "label": _("Chevrolet truck V8, 1955–59"),
         "make": "Chevrolet",
@@ -1138,8 +1163,14 @@ GM_EARLY = [
         "tables": {
             # Blank for the standard six, which is why this is a scheme of its
             # own: a position that is sometimes absent is a different length,
-            # not a different value.
-            "engine": {"V": _("V8")},
+            # not a different value. Which V8 comes from CA_Engine_ID.pdf: the
+            # flag says eight cylinders and the year says how many inches.
+            "engine": {
+                "V": [
+                    {"text": _("265 CID V8"), "years": [1955, 1957]},
+                    {"text": _("283 CID V8"), "years": [1958, 1959]},
+                ],
+            },
             "series": {
                 "H2": _("3100 (1955 2nd series)"),
                 "M2": _("3200 (1955 2nd series)"),
@@ -1152,9 +1183,16 @@ GM_EARLY = [
             },
             "plant": _GM_PLANTS_1953,
         },
+        "notes": _(
+            "The engine sheet lists the 265 for 1955 against the 3600 alone, "
+            "and against all three series from 1956. The displacement here "
+            "follows the year only, because the engine position is a flag "
+            "rather than a code and cannot be made to depend on the series."
+        ),
     },
     {
         "id": "gmc-truck-1947-1950",
+        "also": "CA_Engine_ID.pdf",
         "label": _("GMC truck, 1947–50"),
         "make": "GMC",
         "years": (1947, 1950),
@@ -1174,6 +1212,9 @@ GM_EARLY = [
             "series": {"10": _("1/2 ton"), "15": _("3/4 ton")},
             "wheelbase": {"1": _("116 in"), "2": _("125.25 in")},
         },
+        # The 228 ran from 1947 to 1953 and covers all four of this scheme's
+        # years, which is why it is the one thing here a year need not settle.
+        "engine_by_year": [{"text": _("228 CID 6-cyl, I-6")}],
         "notes": _(
             "One code covers all four years. The sheet narrows it with charts "
             "of production-number ranges per plant per year, which are ranges "
@@ -1182,6 +1223,7 @@ GM_EARLY = [
     },
     {
         "id": "gmc-truck-1955-1959",
+        "also": "CA_Engine_ID.pdf",
         "label": _("GMC truck, 1955–59 2nd series"),
         "make": "GMC",
         "years": (1955, 1959),
@@ -1203,6 +1245,12 @@ GM_EARLY = [
                 "Y": [1955], "X": [1956], "T": [1957], "S": [1958, 1959],
             },
         },
+        # GMC's six grew for 1956 and then stayed put, so unlike Chevrolet's
+        # this one does depend on the year — which the model-year code gives.
+        "engine_by_year": [
+            {"text": _("248 CID 6-cyl, I-6"), "years": [1955, 1955]},
+            {"text": _("270 CID 6-cyl, I-6"), "years": [1956, 1959]},
+        ],
         "notes": _(
             "An 8 before the plant marks a V8 and is read by the scheme below; "
             "the position is blank for a six, which makes it a length rather "
@@ -1211,6 +1259,7 @@ GM_EARLY = [
     },
     {
         "id": "gmc-truck-1955-1959-v8",
+        "also": "CA_Engine_ID.pdf",
         "label": _("GMC truck V8, 1955–59 2nd series"),
         "make": "GMC",
         "years": (1955, 1959),
@@ -1228,7 +1277,17 @@ GM_EARLY = [
         "tables": {
             "series": {"10": _("1/2 ton"), "15": _("3/4 ton")},
             "wheelbase": {"1": _("114 in"), "2": _("123.25 in")},
-            "engine": {"8": _("V8")},
+            # GMC changed its V8 almost every year, so the flag plus the year
+            # code names one displacement outright — the closest thing in this
+            # file to a GM engine code.
+            "engine": {
+                "8": [
+                    {"text": _("288 CID V8"), "years": [1955, 1955]},
+                    {"text": _("316 CID V8"), "years": [1956, 1956]},
+                    {"text": _("347 CID V8"), "years": [1957, 1957]},
+                    {"text": _("336 CID V8"), "years": [1958, 1959]},
+                ],
+            },
             "plant": {"P": _("Pontiac, MI"), "C": _("Oakland, CA")},
             "year": {
                 "Y": [1955], "X": [1956], "T": [1957], "S": [1958, 1959],
@@ -1371,6 +1430,7 @@ GM_LAST = [
     },
     {
         "id": "chevrolet-truck-1953-1955",
+        "also": "CA_Engine_ID.pdf",
         "label": _("Chevrolet truck, 1953–55 1st series"),
         "make": "Chevrolet",
         "vehicle_class": "truck",
@@ -1389,6 +1449,12 @@ GM_LAST = [
             "year": {"53": 1953, "54": 1954, "55": 1955},
             "plant": _GM_PLANTS_1953,
         },
+        # The 216.5 gave way to the 235 for 1954, and the two-digit year code
+        # here says which side of that a truck falls on.
+        "engine_by_year": [
+            {"text": _("216.5 CID 6-cyl, I-6"), "years": [1953, 1953]},
+            {"text": _("235 CID 6-cyl, I-6"), "years": [1954, 1955]},
+        ],
         "notes": _(
             "Its series code is one letter where the 2nd series uses two, so "
             "the two are different lengths and read as different schemes. A "
@@ -1397,6 +1463,7 @@ GM_LAST = [
     },
     {
         "id": "chevrolet-truck-1953-1955-v8",
+        "also": "CA_Engine_ID.pdf",
         "label": _("Chevrolet truck V8, 1953–55 1st series"),
         "make": "Chevrolet",
         "vehicle_class": "truck",
@@ -1412,11 +1479,22 @@ GM_LAST = [
             {"role": "sequence", "width": 0, "label": _("Production number")},
         ],
         "tables": {
+            # Deliberately still just "V8". The two sheets disagree about this
+            # scheme, and this is the disagreement being honoured rather than
+            # resolved — see the note.
             "engine": {"V": _("V8")},
             "series": {"H": _("3100"), "J": _("3600")},
             "year": {"53": 1953, "54": 1954, "55": 1955},
             "plant": _GM_PLANTS_1953,
         },
+        "notes": _(
+            "The VIN sheet says a leading V marks a V8; the engine sheet lists "
+            "no Chevrolet truck V8 before the 1955 2nd series, which is a "
+            "different scheme. Which displacement is therefore left blank "
+            "rather than guessed, and the era is left as the VIN sheet gives "
+            "it: a range too narrow refuses a real truck, while a missing "
+            "displacement only declines to answer."
+        ),
     },
 ]
 

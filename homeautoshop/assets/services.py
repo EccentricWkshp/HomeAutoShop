@@ -275,13 +275,20 @@ def read_vin_locally(
 def _readable_fields(reading) -> dict[str, object]:
     """The asset columns a reading can honestly fill.
 
-    Conservative on purpose. The make is stated by the scheme and the engine is
-    a code straight off the plate, so both are facts. The model is only taken
-    where a scheme says which of its positions names one — Ford's series code
-    is `F-250 4WD`, while GM's is `1/2 ton`, which is a weight rather than a
-    model and would be a poor thing to find in the model column. The year is
-    taken only when the reading settled on exactly one; anything else is a
-    range, and a range is not a year.
+    Conservative on purpose. The make is stated by the scheme, and the engine
+    is either a code off the plate or the only engine the sheet offers for that
+    scheme in that year, so both are facts. The model is only taken where a
+    scheme says which of its positions names one — Ford's series code is
+    `F-250 4WD`, while GM's is `1/2 ton`, which is a weight rather than a model
+    and would be a poor thing to find in the model column. The year is taken
+    only when the reading settled on exactly one; anything else is a range, and
+    a range is not a year.
+
+    A position that resolved to *two* meanings is not written either, for the
+    same reason. Ford's `H` is a 390 through 1976 and a 351M after it, and with
+    the year still open the reading honestly says both — but `390 CID V8 /
+    351M CID V8` in an engine column is not an engine, it is the question still
+    being asked, and a vehicle record is no place to ask it.
     """
     fields: dict[str, object] = {"make": reading.make}
 
@@ -292,7 +299,7 @@ def _readable_fields(reading) -> dict[str, object]:
         if not role:
             continue
         found = next(
-            (r for r in reading.readings if r.role == role and r.known), None
+            (r for r in reading.readings if r.role == role and r.settled), None
         )
         if found:
             fields[target] = found.text
