@@ -1,0 +1,69 @@
+name: Bringing it out of storage
+slug: out-of-storage
+author: HomeAutoShop
+description: >-
+  The other half of a winter prep: what to look at before a vehicle that has
+  sat for months goes back on the road. Most of these happen because it sat
+  rather than because it was driven, which is why an ordinary service checklist
+  misses them. Generic.
+asset_kinds:
+  - vehicle
+version: 1
+points:
+  - area: tires_wheels
+    name: Tire pressure and flat spots
+    guidance: >-
+      Months on one spot leaves a flat that may or may not roll out. Check
+      pressure first, then drive slowly and feel for a thump that fades.
+    result_type: measurement
+    measurement_unit: psi
+    positions: [LF, RF, LR, RR]
+    is_safety_critical: true
+  - area: brakes
+    name: Brake drag and surface rust
+    guidance: >-
+      Rotors surface-rust in weeks and clean up in a few stops. A caliper or
+      shoe seized to the drum does not, and it will smell hot.
+    result_type: status
+    photo_required: on_attention
+    is_safety_critical: true
+  - area: under_hood
+    name: Rodent damage
+    guidance: >-
+      Wiring, air box, cabin filter, and on top of the engine. The single most
+      common expensive surprise after storage.
+    result_type: status
+    photo_required: on_attention
+    is_safety_critical: true
+  - area: under_hood
+    name: Fluid levels and condition
+    guidance: Oil, coolant, brake, power steering. Look for milky or low.
+    result_type: status
+  - area: under_vehicle
+    name: Fresh leaks underneath
+    guidance: >-
+      Look at the floor where it was parked as well as under it. A stain that
+      was not there in the autumn is the useful signal.
+    result_type: status
+    photo_required: on_attention
+  - area: under_hood
+    name: Battery state and terminals
+    result_type: status
+  - area: exhaust_emissions
+    name: Fuel condition
+    guidance: >-
+      Stale fuel makes a rough start and a stumble under load. Untreated fuel
+      over six months old is worth diluting or draining.
+    result_type: status
+  - area: body_glass
+    name: Wipers, glass and seals
+    guidance: Rubber that sat in the cold takes a set and tears on first use.
+    result_type: status
+  - area: interior
+    name: Insurance and registration current
+    result_type: status
+  - area: road_test
+    name: Road test for brakes, steering and noises
+    guidance: Somewhere quiet, at low speed, before committing to a journey.
+    result_type: status
+    is_safety_critical: true

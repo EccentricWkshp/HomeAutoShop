@@ -3,10 +3,18 @@
   "entries": [
     {
       "kind": "checklist",
-      "slug": "pre-purchase-inspection",
-      "name": "Pre-purchase inspection",
-      "path": "checklists/pre-purchase-inspection.yaml",
-      "description": "Walk a vehicle you are considering buying. Designed to be completed offline, in someone else's driveway, in about thirty minutes. Generic on purpose and not a substitute for a mechanic's inspection — the thresholds are common guidance, so check anything marginal against the standards where you live.",
+      "slug": "out-of-storage",
+      "name": "Bringing it out of storage",
+      "path": "checklists/out-of-storage.yaml",
+      "description": "The other half of a winter prep: what to look at before a vehicle that has sat for months goes back on the road. Most of these happen because it sat rather than because it was driven, which is why an ordinary service checklist misses them. Generic.",
+      "author": "HomeAutoShop"
+    },
+    {
+      "kind": "checklist",
+      "slug": "pre-tow-check",
+      "name": "Before hitching up",
+      "path": "checklists/pre-tow-check.yaml",
+      "description": "Five minutes in the driveway before towing anything. Short on purpose: a check nobody completes is worse than a shorter one everybody does, and every item here is something that fails at highway speed with a trailer attached. Generic, and a trailer with electric or surge brakes will want items of its own added.",
       "author": "HomeAutoShop"
     },
     {
@@ -19,34 +27,34 @@
     },
     {
       "kind": "schedule",
-      "slug": "gasoline-normal",
-      "name": "Gasoline engine, normal service",
-      "path": "schedules/gasoline-normal.yaml",
-      "description": "A starting point for a modern gasoline car or light truck driven mostly on longer trips. Generic and conservative — check every interval against your own owner's manual, which is the only source that knows your engine.",
+      "slug": "four-wheel-drive",
+      "name": "Four-wheel drive extras",
+      "path": "schedules/four-wheel-drive.yaml",
+      "description": "The driveline items a two-wheel-drive schedule has no reason to mention: transfer case, front differential, front axle and hubs. Meant to be applied alongside a normal or severe schedule rather than instead of one, since it covers what the others leave out. Generic intervals; check them against your own owner's manual, and shorten all of them if the vehicle sees water, mud or salt, every one of which gets into a transfer case.",
       "author": "HomeAutoShop"
     },
     {
       "kind": "schedule",
-      "slug": "gasoline-severe",
-      "name": "Gasoline engine, severe service",
-      "path": "schedules/gasoline-severe.yaml",
-      "description": "The same vehicle used the way most people actually use one — short trips, cold starts, towing, dust, or heavy idling. Most manufacturers publish a severe schedule and most owners qualify for it without realizing. Generic; check against your owner's manual.",
+      "slug": "stored-or-seasonal",
+      "name": "Stored or seasonal vehicle",
+      "path": "schedules/stored-or-seasonal.yaml",
+      "description": "A classic, a convertible, a project, or anything that spends most of the year parked. Deliberately has no distance intervals at all: a vehicle covering four hundred miles a year will never reach a mileage service, while its brake fluid still absorbs water, its tires still age out, and its fuel still goes stale on exactly the same calendar as everybody else's. Generic; check against your owner's manual.",
       "author": "HomeAutoShop"
     },
     {
       "kind": "schedule",
-      "slug": "generic-diesel-severe",
-      "name": "Generic diesel, severe service",
-      "path": "schedules/generic-diesel-severe.yaml",
-      "description": "A short-interval schedule for a light diesel truck that tows, idles, or runs dusty roads. Intervals are conservative on purpose; check them against your own owner's manual before applying.",
+      "slug": "towing-heavy-use",
+      "name": "Towing and heavy hauling",
+      "path": "schedules/towing-heavy-use.yaml",
+      "description": "For a truck or SUV that tows a trailer, carries a camper, or spends its life loaded. Heat is what shortens these intervals — automatic transmission fluid and differential oil age far faster under load than mileage alone suggests, and brakes do the work of a much heavier vehicle. Generic and conservative; check against your own owner's manual, which will usually have a towing column of its own.",
       "author": "HomeAutoShop"
     },
     {
       "kind": "schedule",
-      "slug": "small-engine-equipment",
-      "name": "Small engine equipment",
-      "path": "schedules/small-engine-equipment.yaml",
-      "description": "Generators, mowers, pressure washers and similar four-stroke equipment, scheduled on running hours rather than distance. Intervals follow the pattern common to small air-cooled engines; check the equipment's own manual, which will be shorter than you expect.",
+      "slug": "trailer",
+      "name": "Trailer",
+      "path": "schedules/trailer.yaml",
+      "description": "A utility, boat, or equipment trailer. No engine, so nothing here is an engine service. What fails on a trailer is bearings, brakes, tires and lights, and it fails at speed with somebody's boat behind it. Distance is towed miles. Generic; check against the axle manufacturer's figures, which are usually stricter than the trailer builder's.",
       "author": "HomeAutoShop"
     }
   ]

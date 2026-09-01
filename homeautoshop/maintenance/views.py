@@ -85,7 +85,13 @@ def asset_schedule(request, pk):
     items = asset.service_items.select_related("definition").all()
     for item in items:
         recalculate(item)
-    templates = [t for t in ScheduleTemplate.objects.filter(is_active=True) if t.applies_to(asset)]
+    # Prefetched: the picker counts each template's items so two similarly
+    # named ones can be told apart, and that is a query per option otherwise.
+    templates = [
+        t
+        for t in ScheduleTemplate.objects.filter(is_active=True).prefetch_related("items")
+        if t.applies_to(asset)
+    ]
     return render(
         request,
         "maintenance/schedule.html",

@@ -1,0 +1,59 @@
+name: Before hitching up
+slug: pre-tow-check
+author: HomeAutoShop
+description: >-
+  Five minutes in the driveway before towing anything. Short on purpose: a
+  check nobody completes is worse than a shorter one everybody does, and every
+  item here is something that fails at highway speed with a trailer attached.
+  Generic, and a trailer with electric or surge brakes will want items of its
+  own added.
+asset_kinds:
+  - vehicle
+version: 1
+points:
+  - area: under_vehicle
+    name: Coupler seated and latched
+    guidance: >-
+      Latch closed, pin or lock through it. A coupler that looks seated and is
+      not will lift off the ball at the first dip.
+    result_type: status
+    photo_required: never
+    is_safety_critical: true
+  - area: under_vehicle
+    name: Safety chains crossed and attached
+    guidance: Crossed under the tongue, so a dropped coupler lands in them.
+    result_type: status
+    is_safety_critical: true
+  - area: lighting_electrical
+    name: Trailer lights
+    guidance: Running, brake, left, right, and the plug seated with slack.
+    result_type: status
+    is_safety_critical: true
+  - area: brakes
+    name: Breakaway cable and battery
+    guidance: >-
+      Cable to the tow vehicle, not to the chains or the coupler, and the
+      battery holding charge.
+    result_type: status
+    is_safety_critical: true
+  - area: tires_wheels
+    name: Trailer tire pressure
+    result_type: measurement
+    measurement_unit: psi
+    positions: [LF, RF, LR, RR]
+    is_safety_critical: true
+  - area: tires_wheels
+    name: Lug nuts tight
+    guidance: Torqued, and re-checked after the first fifty miles on new wheels.
+    result_type: status
+    is_safety_critical: true
+  - area: body_glass
+    name: Load secured and within rating
+    guidance: >-
+      Tied down, tongue weight roughly ten to fifteen percent of the load, and
+      under the lower of the trailer, hitch and vehicle ratings.
+    result_type: status
+    is_safety_critical: true
+  - area: interior
+    name: Mirrors adjusted for trailer width
+    result_type: status

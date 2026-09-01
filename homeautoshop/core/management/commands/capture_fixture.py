@@ -31,6 +31,15 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("pdf", help="The report to capture.")
+        parser.add_argument(
+            "--tool",
+            required=True,
+            help=(
+                "Which scanner produced it, as a folder name — `xtool d8`. "
+                "The corpus is filed per tool, because a flat pile of reports "
+                "stops saying what made them the moment there are two."
+            ),
+        )
 
     def handle(self, *args, **options):
         from homeautoshop.scantools import capture, fixtures
@@ -40,7 +49,7 @@ class Command(BaseCommand):
             raise CommandError(f"{source} is not a file.")
 
         try:
-            written, produced = capture.write(source)
+            written, produced = capture.write(source, options["tool"])
         except Exception as exc:
             raise CommandError(f"That report could not be read: {exc}") from exc
 

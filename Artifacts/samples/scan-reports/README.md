@@ -18,23 +18,27 @@ row are all preserved exactly.
 
 ```text
 scan-reports/
-  <report>.pdf            ← yours, git-ignored, never committed
-  <report>.words.json     ← redacted capture, committed
-  <report>.expected.json  ← golden fixture, committed
+  tool-model/
+    <report>.pdf            ← yours, git-ignored, never committed
+    <report>.words.json     ← redacted capture, committed
+    <report>.expected.json  ← golden fixture, committed
   synthetic-vins.json     ← the stand-ins in use, so the guard knows them
 ```
 
 ## Adding a sample
 
 ```bash
-python -m homeautoshop.scantools.capture path/to/report.pdf
-python -m homeautoshop.scantools.fixtures --write
+python manage.py capture_fixture path/to/report.pdf --tool "xtool d8"
 python manage.py test homeautoshop.scantools
 ```
 
-Drop the PDF in this folder and the first command takes it as-is. Read the
-fixture diff before committing: a fixture regenerated without looking is a test
-that has been switched off.
+One command writes both halves — the redacted capture and the expected output —
+into the folder `--tool` names, creating it if this is the first report from
+that scanner. The folder is the only record of what produced a report, so it is
+required rather than guessed.
+
+Read the fixture diff before committing: a fixture regenerated without looking
+is a test that has been switched off.
 
 **Redaction is a rule, not a list**, so a new sample is protected the moment it
 is captured rather than when somebody remembers. Anything VIN-shaped whose ISO
@@ -47,6 +51,13 @@ original.
 
 Make and model stay visible. They are in the file names and the report bodies,
 and hiding them would stop the corpus exercising make-specific parsing.
+
+A second test asserts the corpus is **there** and filed this way — at least
+five captures, each under a tool folder, each with its expected output beside
+it. That guard exists because the layout above was specified here long before
+the code followed it: the reports were moved into per-tool folders and
+`fixtures.samples()` kept using a flat pattern, so it matched nothing, and the
+whole suite stayed green while every parser test in it iterated an empty list.
 
 A test walks the whole tree on every run and fails on any VIN that validates and
 is not a known stand-in. It has already caught two mistakes: a substitution

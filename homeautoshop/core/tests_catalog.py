@@ -1135,20 +1135,28 @@ class CapturingAFixtureTests(TestCase):
         path.write_bytes(buffer.getvalue())
         return path
 
+    #: The corpus is filed one folder per scanner, so a capture has to say
+    #: which one it came from. A throwaway name keeps the test out of the
+    #: real tool folders.
+    TOOL = "test scanner"
+
     def run_it(self, path):
         out = io.StringIO()
-        call_command("capture_fixture", str(path), stdout=out, stderr=out)
+        call_command("capture_fixture", str(path), tool=self.TOOL, stdout=out, stderr=out)
         return out.getvalue()
 
     def written(self, path):
         from homeautoshop.scantools import capture, fixtures
 
-        made = capture.capture_path(path)
+        made = capture.capture_path(path, self.TOOL)
         return made, fixtures.fixture_path(made)
 
     def cleanup(self, *paths):
         for path in paths:
             path.unlink(missing_ok=True)
+        folder = paths[0].parent if paths else None
+        if folder is not None and folder.is_dir() and not any(folder.iterdir()):
+            folder.rmdir()
 
     def test_it_writes_both_halves_of_a_fixture(self):
         source = self.report("DTC P0301 cylinder 1 misfire")
@@ -1222,3 +1230,407 @@ class CapturingAFixtureTests(TestCase):
     def test_a_missing_file_says_so(self):
         with self.assertRaises(CommandError):
             self.run_it(pathlib.Path("nowhere/at/all.pdf"))
+
+
+@override_settings(CATALOG_URL=BASE)
+class WhenTheCatalogIsNotThereTests(Base):
+    """What a failure says, which is the only part of a failure that helps.
+
+    Written after the real one: the address was right, the files were right,
+    and the repository was private — so the catalog served 404 to everybody
+    and the screen said `HTTP 404`. That is the literal truth and close to
+    useless, because a raw file host answers 404 for a repository it will not
+    admit exists, and a private fork looks exactly like a working one until
+    something reads from it.
+    """
+
+    def failing(self, status):
+        from homeautoshop.core.outbound import OutboundFailed
+
+        return mock.patch(
+            "homeautoshop.core.catalog.fetch_json",
+            side_effect=OutboundFailed("HTTP %d" % status, status=status),
+        )
+
+    def test_a_404_names_the_likely_causes(self):
+        with self.failing(404):
+            with self.assertRaises(catalog_lib.CatalogUnavailable) as caught:
+                catalog_lib.index(force=True)
+
+        message = str(caught.exception)
+        self.assertIn("public", message)
+        self.assertIn("pushed", message)
+
+    def test_another_failure_is_reported_as_itself(self):
+        """A 500 is the server's problem and inventing causes for it would be
+        guessing at somebody else's outage."""
+        with self.failing(500):
+            with self.assertRaises(catalog_lib.CatalogUnavailable) as caught:
+                catalog_lib.index(force=True)
+
+        self.assertIn("500", str(caught.exception))
+        self.assertNotIn("public", str(caught.exception))
+
+    def test_the_screen_shows_it_rather_than_breaking(self):
+        with self.failing(404):
+            page = self.client.get(reverse("catalog_browse"))
+
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "public")
+
+    def test_a_missing_file_explains_itself_too(self):
+        """An entry can be listed and its file absent — a half-pushed commit,
+        which is the same confusion one level down."""
+        from homeautoshop.core.outbound import OutboundFailed
+
+        entry = catalog_lib.Entry(
+            kind="schedule", slug="x", name="x", path="schedules/gone.yaml"
+        )
+        with mock.patch(
+            "homeautoshop.core.catalog.fetch_text",
+            side_effect=OutboundFailed("HTTP 404", status=404),
+        ):
+            with self.assertRaises(catalog_lib.CatalogUnavailable) as caught:
+                catalog_lib.fetch_file(entry)
+
+        self.assertIn("schedules/gone.yaml", str(caught.exception))
+
+
+class RemovingATemplateTests(Base):
+    """Templates could be added and never taken away.
+
+    Reported as: *"there doesn't seem to be any way to remove templates now,
+    even if bad, out of date, not needed"* — and *"they should be removeable
+    both from the templates page and the catalog, the two obvious places
+    someone would check."*
+
+    The second half is the same lesson the cores screen taught: a control that
+    exists in one of the two places somebody looks is a control they hunt for.
+    """
+
+    def schedule(self):
+        return templatelib.load(GOOD)
+
+    def test_a_schedule_is_removed_from_the_list(self):
+        template = self.schedule()
+
+        self.client.post(reverse("template_delete", args=[template.pk]))
+
+        self.assertFalse(ScheduleTemplate.objects.filter(pk=template.pk).exists())
+
+    def test_it_is_soft_so_the_trash_still_has_it(self):
+        template = self.schedule()
+
+        self.client.post(reverse("template_delete", args=[template.pk]))
+
+        self.assertTrue(ScheduleTemplate.all_objects.filter(pk=template.pk).exists())
+
+    def test_what_was_already_scheduled_is_untouched(self):
+        """Applying materializes the items onto the vehicle, pointing at
+        service definitions rather than at the template. Saying so is what
+        makes the button pressable."""
+        from homeautoshop.maintenance.services import apply_template
+
+        asset = Asset.objects.create(nickname="Aero")
+        template = self.schedule()
+        apply_template(asset, template)
+        before = AssetServiceItem.objects.filter(asset=asset).count()
+
+        response = self.client.post(
+            reverse("template_delete", args=[template.pk]), follow=True
+        )
+
+        self.assertEqual(AssetServiceItem.objects.filter(asset=asset).count(), before)
+        self.assertGreater(before, 0)
+        self.assertContains(response, "untouched")
+
+    def test_a_checklist_goes_the_same_way(self):
+        template = checklistlib.load(CHECKLIST)
+
+        self.client.post(reverse("checklist_delete", args=[template.pk]))
+
+        self.assertFalse(InspectionTemplate.objects.filter(pk=template.pk).exists())
+
+    def test_a_built_in_may_go_too(self):
+        """Somebody who runs no diesels should not scroll past a diesel
+        schedule forever."""
+        from homeautoshop.maintenance import seed
+
+        seed.install()
+        builtin = ScheduleTemplate.objects.filter(source="builtin").first()
+
+        self.client.post(reverse("template_delete", args=[builtin.pk]))
+
+        self.assertFalse(ScheduleTemplate.objects.filter(pk=builtin.pk).exists())
+
+    def test_and_seeding_again_does_not_bring_it_back(self):
+        """The trap under the whole feature. `slug` is uniquely constrained
+        without regard to `deleted_at`, so the alive manager would miss the
+        soft-deleted row and the create would fail on the constraint —
+        re-seeding would crash, not merely argue with the operator."""
+        from homeautoshop.maintenance import seed
+
+        seed.install()
+        builtin = ScheduleTemplate.objects.filter(source="builtin").first()
+        slug = builtin.slug
+        self.client.post(reverse("template_delete", args=[builtin.pk]))
+
+        seed.install()  # must not raise
+
+        self.assertFalse(ScheduleTemplate.objects.filter(slug=slug).exists())
+
+    def test_the_same_holds_for_a_built_in_checklist(self):
+        from homeautoshop.inspections import seed as inspection_seed
+
+        inspection_seed.install()
+        builtin = InspectionTemplate.objects.filter(source="builtin").first()
+        slug = builtin.slug
+        self.client.post(reverse("checklist_delete", args=[builtin.pk]))
+
+        inspection_seed.install()
+
+        self.assertFalse(InspectionTemplate.objects.filter(slug=slug).exists())
+
+    def test_the_templates_page_offers_it(self):
+        template = self.schedule()
+
+        page = self.client.get(reverse("template_list"))
+
+        self.assertContains(page, reverse("template_delete", args=[template.pk]))
+
+    def test_and_so_does_the_catalog(self):
+        """The other of the two obvious places."""
+        template = self.schedule()
+        index = {"entries": [{
+            "kind": "schedule", "slug": template.slug, "name": template.name,
+            "path": "schedules/x.yaml",
+        }]}
+
+        with override_settings(CATALOG_URL=BASE):
+            with mock.patch(
+                "homeautoshop.core.catalog.fetch_json",
+                return_value=Response(200, index, 5),
+            ):
+                page = self.client.get(reverse("catalog_browse"))
+
+        self.assertContains(page, reverse("template_delete", args=[template.pk]))
+
+    def test_a_catalog_entry_knows_which_local_row_it_is(self):
+        template = self.schedule()
+        index = {"entries": [{
+            "kind": "schedule", "slug": template.slug, "name": "A different name",
+            "path": "schedules/x.yaml",
+        }]}
+
+        with override_settings(CATALOG_URL=BASE):
+            with mock.patch(
+                "homeautoshop.core.catalog.fetch_json",
+                return_value=Response(200, index, 5),
+            ):
+                entry = catalog_lib.index(force=True).schedules[0]
+
+        self.assertTrue(entry.installed)
+        self.assertEqual(entry.installed_pk, str(template.pk))
+
+    def test_something_in_the_trash_does_not_count_as_installed(self):
+        """Offering to remove it again would be offering to do nothing."""
+        template = self.schedule()
+        template.delete()
+        index = {"entries": [{
+            "kind": "schedule", "slug": template.slug, "name": template.name,
+            "path": "schedules/x.yaml",
+        }]}
+
+        with override_settings(CATALOG_URL=BASE):
+            with mock.patch(
+                "homeautoshop.core.catalog.fetch_json",
+                return_value=Response(200, index, 5),
+            ):
+                entry = catalog_lib.index(force=True).schedules[0]
+
+        self.assertFalse(entry.installed)
+
+    def test_it_takes_a_post(self):
+        template = self.schedule()
+        self.assertEqual(
+            self.client.get(reverse("template_delete", args=[template.pk])).status_code,
+            405,
+        )
+
+    def test_a_member_cannot_remove_one(self):
+        template = self.schedule()
+        member = User.objects.create_user(
+            username="pat", password="x" * 16, role=Role.MEMBER
+        )
+        self.client.force_login(member)
+
+        response = self.client.post(reverse("template_delete", args=[template.pk]))
+
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(ScheduleTemplate.objects.filter(pk=template.pk).exists())
+
+
+class ThePublishedSetComplementsTheBuiltInsTests(TestCase):
+    """A catalog entry that duplicates a shipped template is worse than none.
+
+    Reported from a screenshot: the Apply dropdown showed `Small engine /
+    equipment` beside `Small engine equipment`, one shipped and one published
+    by me, covering the same ground. Four more of the seed entries turned out
+    to be near-twins of built-ins for the same reason — they were written
+    without checking what already ships.
+
+    A duplicate does not merely add noise. It makes somebody choose between
+    two things that are the same, and there is no information anywhere on the
+    screen that would let them choose correctly.
+    """
+
+    def builtins(self):
+        from homeautoshop.inspections.seed import TEMPLATES as CHECKLISTS
+        from homeautoshop.maintenance.seed import TEMPLATES as SCHEDULES
+
+        slugs = set(SCHEDULES) | set(CHECKLISTS)
+        names = {v[0] for v in SCHEDULES.values()} | {v[0] for v in CHECKLISTS.values()}
+        return slugs, names
+
+    def published(self):
+        root = pathlib.Path(settings.BASE_DIR) / "catalog"
+        return json.loads((root / "index.json").read_text(encoding="utf-8"))["entries"]
+
+    def test_no_published_entry_repeats_a_built_in(self):
+        slugs, names = self.builtins()
+
+        for entry in self.published():
+            with self.subTest(entry=entry["slug"]):
+                self.assertNotIn(entry["slug"], slugs)
+                self.assertNotIn(entry["name"], names)
+
+    def test_and_none_repeats_another(self):
+        entries = self.published()
+        slugs = [e["slug"] for e in entries]
+        names = [e["name"] for e in entries]
+
+        self.assertEqual(len(slugs), len(set(slugs)))
+        self.assertEqual(len(names), len(set(names)))
+
+    def test_the_shipped_seed_is_still_reachable_by_name(self):
+        """The guard above compares against the seed module, so it only means
+        anything while that module is what actually seeds an instance."""
+        from homeautoshop.maintenance import seed
+
+        seed.install()
+
+        self.assertTrue(
+            ScheduleTemplate.objects.filter(source="builtin", slug="gas-normal").exists()
+        )
+
+
+class GettingABuiltInBackTests(Base):
+    """What happens after somebody removes a shipped template.
+
+    Asked directly: *"they aren't in the catalog so there is no way to get it
+    back unless someone has exported it previously."* Correct, and worse than
+    stated — templates were soft-deleted and absent from the trash screen, so
+    a removal was permanent **and** invisible at the same time.
+
+    Two ways home now, because they cover different lengths of time. Inside
+    thirty days it is in the trash with everything else. After that the trash
+    has aged out, and the shipped set is still in the image — so an explicit
+    action puts it back. The catalog deliberately publishes nothing that
+    duplicates a built-in, so it was never going to be the answer here.
+    """
+
+    def a_builtin(self):
+        from homeautoshop.maintenance import seed
+
+        seed.install()
+        return ScheduleTemplate.objects.filter(source="builtin").first()
+
+    def test_a_removed_template_is_in_the_trash(self):
+        template = self.a_builtin()
+        self.client.post(reverse("template_delete", args=[template.pk]))
+
+        page = self.client.get(reverse("trash"))
+
+        self.assertContains(page, template.name)
+
+    def test_and_can_be_restored_from_there(self):
+        template = self.a_builtin()
+        self.client.post(reverse("template_delete", args=[template.pk]))
+
+        self.client.post(reverse("trash_restore", args=["schedule_template", template.pk]))
+
+        self.assertTrue(ScheduleTemplate.objects.filter(pk=template.pk).exists())
+
+    def test_a_removed_checklist_is_there_too(self):
+        from homeautoshop.inspections import seed as checklist_seed
+
+        checklist_seed.install()
+        template = InspectionTemplate.objects.filter(source="builtin").first()
+        self.client.post(reverse("checklist_delete", args=[template.pk]))
+
+        self.assertContains(self.client.get(reverse("trash")), template.name)
+
+    def test_the_shipped_set_can_be_put_back_at_any_time(self):
+        """The path that still works after the trash has aged out."""
+        template = self.a_builtin()
+        slug = template.slug
+        self.client.post(reverse("template_delete", args=[template.pk]))
+        # Past the trash: the row is gone for good, as a purge would leave it.
+        ScheduleTemplate.all_objects.filter(pk=template.pk).delete()
+
+        self.client.post(reverse("restore_builtins"), follow=True)
+
+        self.assertTrue(ScheduleTemplate.objects.filter(slug=slug).exists())
+
+    def test_it_revives_one_still_sitting_in_the_trash(self):
+        template = self.a_builtin()
+        self.client.post(reverse("template_delete", args=[template.pk]))
+
+        self.client.post(reverse("restore_builtins"))
+
+        self.assertTrue(ScheduleTemplate.objects.filter(pk=template.pk).exists())
+
+    def test_it_leaves_what_you_wrote_alone(self):
+        """It restores the shipped set, not everything ever deleted."""
+        mine = templatelib.load(GOOD)
+        self.client.post(reverse("template_delete", args=[mine.pk]))
+
+        self.client.post(reverse("restore_builtins"))
+
+        self.assertFalse(ScheduleTemplate.objects.filter(pk=mine.pk).exists())
+
+    def test_and_says_when_there_was_nothing_to_do(self):
+        # Both seeders, because the action covers both and a shop missing its
+        # checklists genuinely does have something put back.
+        from homeautoshop.inspections import seed as checklist_seed
+        from homeautoshop.maintenance import seed
+
+        seed.install()
+        checklist_seed.install()
+
+        response = self.client.post(reverse("restore_builtins"), follow=True)
+
+        self.assertContains(response, "already here")
+
+    def test_restarting_still_does_not_bring_one_back(self):
+        """The distinction the whole design rests on: booting respects the
+        removal, and only somebody pressing the button overrides it."""
+        from homeautoshop.maintenance import seed
+
+        template = self.a_builtin()
+        slug = template.slug
+        self.client.post(reverse("template_delete", args=[template.pk]))
+
+        seed.install()
+
+        self.assertFalse(ScheduleTemplate.objects.filter(slug=slug).exists())
+
+    def test_a_member_cannot_restore(self):
+        member = User.objects.create_user(
+            username="pat", password="x" * 16, role=Role.MEMBER
+        )
+        self.client.force_login(member)
+
+        self.assertEqual(
+            self.client.post(reverse("restore_builtins")).status_code, 403
+        )

@@ -1,0 +1,65 @@
+name: Towing and heavy hauling
+slug: towing-heavy-use
+author: HomeAutoShop
+description: >-
+  For a truck or SUV that tows a trailer, carries a camper, or spends its life
+  loaded. Heat is what shortens these intervals — automatic transmission fluid
+  and differential oil age far faster under load than mileage alone suggests,
+  and brakes do the work of a much heavier vehicle. Generic and conservative;
+  check against your own owner's manual, which will usually have a towing
+  column of its own.
+asset_kinds:
+  - vehicle
+vehicle_classes:
+  - truck
+  - suv
+items:
+  - name: Engine oil and filter
+    translation_key: svc.engine_oil
+    category: engine
+    interval_distance: 4000
+    interval_unit: mi
+    interval_months: 6
+  - name: Transmission fluid
+    category: driveline
+    interval_distance: 25000
+    interval_unit: mi
+    interval_months: 24
+  - name: Differential fluid
+    category: driveline
+    interval_distance: 25000
+    interval_unit: mi
+    interval_months: 24
+  - name: Transfer case fluid
+    category: driveline
+    interval_distance: 30000
+    interval_unit: mi
+  - name: Coolant
+    category: cooling
+    interval_distance: 40000
+    interval_unit: mi
+    interval_months: 36
+  - name: Brake inspection
+    category: brakes
+    severity: safety
+    interval_distance: 7500
+    interval_unit: mi
+    interval_months: 6
+  - name: Brake fluid
+    translation_key: svc.brake_fluid
+    category: brakes
+    severity: safety
+    interval_months: 24
+  - name: Hitch and receiver inspection
+    category: towing
+    severity: safety
+    interval_months: 12
+  - name: Trailer wiring and connector check
+    category: towing
+    severity: safety
+    interval_months: 12
+  - name: Wheel bearing inspection
+    category: driveline
+    severity: safety
+    interval_distance: 30000
+    interval_unit: mi

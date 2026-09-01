@@ -31,7 +31,7 @@ DEFINITIONS = [
     ("Spark plug (small engine)", "svc.small_engine_plug", "routine", None, "mi", 24, 100),
     ("Air filter (small engine)", "svc.small_engine_air", "routine", None, "mi", 12, 25),
     ("Blade sharpening", "svc.blade", "safety", None, "mi", 12, 25),
-    ("Fuel stabiliser / winterise", "svc.winterise", "routine", None, "mi", 12, None),
+    ("Fuel stabilizer / winterize", "svc.winterise", "routine", None, "mi", 12, None),
 ]
 
 # template slug -> (name, asset_kinds, vehicle_classes, [(definition, distance, months, hours)])
@@ -134,13 +134,13 @@ TEMPLATES = {
             ("Spark plug (small engine)", None, 24, 100),
             ("Air filter (small engine)", None, 12, 25),
             ("Blade sharpening", None, 12, 25),
-            ("Fuel stabiliser / winterise", None, 12, None),
+            ("Fuel stabilizer / winterize", None, 12, None),
         ],
     ),
 }
 
 
-def install(*, refresh: bool = False) -> tuple[int, int]:
+def install(*, refresh: bool = False, revive: bool = False) -> tuple[int, int]:
     """Create or refresh the built-in definitions and templates. Idempotent."""
     from .models import ScheduleTemplate, ServiceDefinition, TemplateItem
 
@@ -161,6 +161,22 @@ def install(*, refresh: bool = False) -> tuple[int, int]:
 
     template_count = 0
     for slug, (name, kinds, classes, entries) in TEMPLATES.items():
+        # Looked up through `all_objects`, and a deleted one is left deleted.
+        # Two reasons, and the second is the sharp one. An operator who removed
+        # a shipped template meant it, and having it reappear on the next boot
+        # would be the application arguing with them. And `slug` is uniquely
+        # constrained without regard to `deleted_at`, so the alive manager
+        # would not find the soft-deleted row and the create would fail on the
+        # constraint — seeding would crash, not merely resurrect.
+        existing = ScheduleTemplate.all_objects.filter(slug=slug).first()
+        if existing is not None and existing.deleted_at is not None:
+            # Booting respects the deletion; `revive` is somebody
+            # asking for the shipped set back, which is a different
+            # intent and the only way home once the trash has aged out.
+            if not revive:
+                continue
+            existing.deleted_at = None
+            existing.save(update_fields=["deleted_at"])
         template, _created = ScheduleTemplate.objects.update_or_create(
             slug=slug,
             defaults={

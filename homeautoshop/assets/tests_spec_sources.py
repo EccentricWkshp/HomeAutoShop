@@ -27,7 +27,9 @@ from homeautoshop.accounts.models import User
 from homeautoshop.assets.models import Asset, AssetSpec
 
 CORPUS = pathlib.Path(__file__).resolve().parents[2] / "Artifacts" / "samples" / "scan-reports"
-SILVERADO = CORPUS / "Silverado202504120859.pdf"
+# Resolved rather than joined: the corpus is filed one folder per scanner, and
+# a flat join silently pointed at nothing when the folders arrived.
+SILVERADO = next(iter(sorted(CORPUS.rglob("Silverado202504120859.pdf"))), CORPUS / "missing.pdf")
 
 
 class PromoteFromDecodeTests(TestCase):

@@ -355,6 +355,12 @@ TRASHABLE = {
     # Removable only with an empty drawer, so a restored one never comes back
     # to stock that moved on without it.
     "part": ("homeautoshop.parts.models", "Part"),
+    # Templates were soft-deleted and listed nowhere, which made a delete
+    # permanent and invisible at the same time — the worst pair. Restoring one
+    # is safe: applying a template materializes its items onto the vehicle, so
+    # a restored template rejoins a list rather than reattaching to anything.
+    "schedule_template": ("homeautoshop.maintenance.models", "ScheduleTemplate"),
+    "inspection_template": ("homeautoshop.inspections.models", "InspectionTemplate"),
 }
 
 

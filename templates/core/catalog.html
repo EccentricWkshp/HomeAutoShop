@@ -67,7 +67,25 @@ a vehicle.
               {% if entry.description %}<div class="muted">{{ entry.description }}</div>{% endif %}
             </div>
             {% if entry.installed %}
-              <span class="pill ok">{% translate "Installed" %}</span>
+              {% comment %}
+              Removal is offered here as well as on the list. Realizing you do
+              not want a template happens as often while browsing as while
+              looking at what you have, and a control that exists in only one
+              of the two places is one somebody hunts for.
+              {% endcomment %}
+              <div class="row">
+                <span class="pill ok">{% translate "Installed" %}</span>
+                {% if entry.installed_pk and entry.kind != 'profile' %}
+                  <form method="post" action="{% if entry.kind == 'schedule' %}{% url 'template_delete' entry.installed_pk %}{% else %}{% url 'checklist_delete' entry.installed_pk %}{% endif %}">
+                    {% csrf_token %}<input type="hidden" name="_anchor" value="{{ entry.kind }}s">
+                    <input type="hidden" name="back" value="{% url 'catalog_browse' %}">
+                    <button type="submit" class="linkish small"
+                            data-confirm="{% translate 'Remove this from your shop? Anything already applied stays.' %}">
+                      {% translate "Remove" %}
+                    </button>
+                  </form>
+                {% endif %}
+              </div>
             {% else %}
               <form method="post" action="{% url 'catalog_install' %}">
                 {% csrf_token %}<input type="hidden" name="_anchor" value="{{ entry.kind }}s">
@@ -94,7 +112,25 @@ a vehicle.
               {% if entry.description %}<div class="muted">{{ entry.description }}</div>{% endif %}
             </div>
             {% if entry.installed %}
-              <span class="pill ok">{% translate "Installed" %}</span>
+              {% comment %}
+              Removal is offered here as well as on the list. Realizing you do
+              not want a template happens as often while browsing as while
+              looking at what you have, and a control that exists in only one
+              of the two places is one somebody hunts for.
+              {% endcomment %}
+              <div class="row">
+                <span class="pill ok">{% translate "Installed" %}</span>
+                {% if entry.installed_pk and entry.kind != 'profile' %}
+                  <form method="post" action="{% if entry.kind == 'schedule' %}{% url 'template_delete' entry.installed_pk %}{% else %}{% url 'checklist_delete' entry.installed_pk %}{% endif %}">
+                    {% csrf_token %}<input type="hidden" name="_anchor" value="{{ entry.kind }}s">
+                    <input type="hidden" name="back" value="{% url 'catalog_browse' %}">
+                    <button type="submit" class="linkish small"
+                            data-confirm="{% translate 'Remove this from your shop? Anything already applied stays.' %}">
+                      {% translate "Remove" %}
+                    </button>
+                  </form>
+                {% endif %}
+              </div>
             {% else %}
               <form method="post" action="{% url 'catalog_install' %}">
                 {% csrf_token %}<input type="hidden" name="_anchor" value="checklists">
@@ -134,7 +170,25 @@ a vehicle.
               {% if entry.description %}<div class="muted">{{ entry.description }}</div>{% endif %}
             </div>
             {% if entry.installed %}
-              <span class="pill ok">{% translate "Installed" %}</span>
+              {% comment %}
+              Removal is offered here as well as on the list. Realizing you do
+              not want a template happens as often while browsing as while
+              looking at what you have, and a control that exists in only one
+              of the two places is one somebody hunts for.
+              {% endcomment %}
+              <div class="row">
+                <span class="pill ok">{% translate "Installed" %}</span>
+                {% if entry.installed_pk and entry.kind != 'profile' %}
+                  <form method="post" action="{% if entry.kind == 'schedule' %}{% url 'template_delete' entry.installed_pk %}{% else %}{% url 'checklist_delete' entry.installed_pk %}{% endif %}">
+                    {% csrf_token %}<input type="hidden" name="_anchor" value="{{ entry.kind }}s">
+                    <input type="hidden" name="back" value="{% url 'catalog_browse' %}">
+                    <button type="submit" class="linkish small"
+                            data-confirm="{% translate 'Remove this from your shop? Anything already applied stays.' %}">
+                      {% translate "Remove" %}
+                    </button>
+                  </form>
+                {% endif %}
+              </div>
             {% else %}
               <form method="post" action="{% url 'catalog_install' %}">
                 {% csrf_token %}<input type="hidden" name="_anchor" value="{{ entry.kind }}s">

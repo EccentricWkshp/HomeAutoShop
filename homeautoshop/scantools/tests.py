@@ -39,7 +39,7 @@ SAMPLES = fixtures.samples()
 @lru_cache(maxsize=None)
 def report_for(name: str) -> ScanReport:
     """Parsing is not cheap and most tests here read the whole corpus."""
-    return parse_pages(fixtures.pages(fixtures.CORPUS / name))
+    return parse_pages(fixtures.pages(fixtures.find(name)))
 
 
 def _named(stem: str) -> str:
@@ -274,3 +274,54 @@ class ShapeTests(unittest.TestCase):
         import json
 
         json.dumps(ScanReport().to_dict())
+
+
+class TheCorpusIsWhereItSaysItIsTests(unittest.TestCase):
+    """The corpus exists, and is filed the way the README says.
+
+    Written after it silently was not. The reports were reorganized into the
+    per-tool folders this README has always specified — `scan-reports/
+    tool-model/` — and `fixtures.samples()` still used a flat `glob`, so it
+    found **nothing**. Most tests here take `SAMPLES` and iterate, and a loop
+    over an empty list passes; the profile-verification tests skip politely
+    when the corpus is thin. The suite stayed green while every corpus-backed
+    check in it had quietly stopped running.
+
+    That is the failure worth a test of its own: not "is the parser right" but
+    "is anything actually being parsed".
+    """
+
+    def test_the_corpus_is_not_empty(self):
+        self.assertGreaterEqual(
+            len(fixtures.samples()),
+            5,
+            "no captured reports were found — the parser tests are passing "
+            "over an empty corpus",
+        )
+
+    def test_every_capture_is_filed_under_a_tool(self):
+        """A flat pile of reports stops saying what produced them the moment
+        there is a second scanner, which is why the README specifies a folder
+        per tool. A capture at the root is loose, not merely untidy."""
+        for capture in fixtures.samples():
+            with self.subTest(capture=capture.name):
+                self.assertTrue(
+                    fixtures.tool(capture),
+                    "sits at the corpus root rather than under a tool folder",
+                )
+
+    def test_every_capture_has_its_expected_output_beside_it(self):
+        """Half a fixture is a test that cannot fail."""
+        for capture in fixtures.samples():
+            with self.subTest(capture=capture.name):
+                self.assertTrue(fixtures.fixture_path(capture).exists())
+
+    def test_a_capture_can_be_found_by_name(self):
+        """What the rest of the suite relies on now that paths are nested."""
+        first = fixtures.samples()[0]
+
+        self.assertEqual(fixtures.find(first.name), first)
+
+    def test_and_a_name_that_is_not_there_says_so(self):
+        with self.assertRaises(FileNotFoundError):
+            fixtures.find("NoSuchReport.words.json")

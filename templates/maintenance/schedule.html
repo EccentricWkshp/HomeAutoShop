@@ -102,8 +102,20 @@
       </p>
       <form method="post" action="{% url 'apply_schedule_template' asset.pk %}" class="stack">
         {% csrf_token %}
+        {% comment %}
+        Each option says where it came from and how many items it carries. The
+        name alone was not enough the moment the catalog could add a second
+        template covering the same ground: `Small engine / equipment` and
+        `Small engine equipment` sat next to each other in this list, and
+        nothing on screen told anybody which was the shipped one or which was
+        larger. A picker whose entries cannot be told apart is a coin toss.
+        {% endcomment %}
         <select name="template" class="select" required aria-label="{% translate 'Schedule template' %}">
-          {% for template in templates %}<option value="{{ template.pk }}">{{ template.name }}</option>{% endfor %}
+          {% for template in templates %}
+            <option value="{{ template.pk }}">
+              {{ template.name }} — {{ template.get_source_display }}{% if template.author %}, {{ template.author }}{% endif %}, {% blocktranslate count n=template.items.count %}{{ n }} item{% plural %}{{ n }} items{% endblocktranslate %}
+            </option>
+          {% endfor %}
         </select>
         <button class="primary" type="submit">{% translate "Apply" %}</button>
       </form>

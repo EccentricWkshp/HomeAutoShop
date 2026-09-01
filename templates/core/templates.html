@@ -6,9 +6,26 @@
     <h1>{% translate "Templates" %}</h1>
     <p class="muted">{% translate "Service schedules and inspection checklists this shop can apply" %}</p>
   </div>
-  {% if catalog_configured %}
-    <a class="btn" href="{% url 'catalog_browse' %}">{% translate "Browse the catalog" %}</a>
-  {% endif %}
+  <div class="row">
+    {% comment %}
+    Offered beside Browse because the two answer the same question from
+    opposite ends: the catalog is where you get somebody else's templates, and
+    this is where you get back the ones that shipped. Without it, removing a
+    built-in was a one-way door once the trash aged out — nothing in the
+    catalog replaces them, deliberately, since publishing twins of the shipped
+    set is what caused the confusion in the first place.
+    {% endcomment %}
+    <form method="post" action="{% url 'restore_builtins' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn"
+              data-confirm="{% translate 'Put back any shipped templates you have removed?' %}">
+        {% translate "Restore shipped templates" %}
+      </button>
+    </form>
+    {% if catalog_configured %}
+      <a class="btn" href="{% url 'catalog_browse' %}">{% translate "Browse the catalog" %}</a>
+    {% endif %}
+  </div>
 </div>
 
 {% comment %}
@@ -32,7 +49,7 @@ unfindable. Nothing here reaches the network; it is a sentence about a setting.
 {% endif %}
 
 <div class="cols two">
-  <section class="card">
+  <section class="card" id="schedules" data-live="schedules">
     <h2>{% translate "Service schedules" %}</h2>
     <ul class="list small">
       {% for template in templates %}
@@ -46,7 +63,23 @@ unfindable. Nothing here reaches the network; it is a sentence about a setting.
               {% if template.description %} · {{ template.description|truncatewords:14 }}{% endif %}
             </div>
           </div>
-          <a class="btn small" href="{% url 'template_export' template.pk %}">{% translate "Export" %}</a>
+          <div class="row">
+            <a class="btn small" href="{% url 'template_export' template.pk %}">{% translate "Export" %}</a>
+            {% comment %}
+            Removal was missing entirely: the catalog could add a template and
+            nothing could take one away, so a schedule that turned out to be
+            wrong, stale or simply unwanted was permanent. Built-ins included —
+            somebody who runs no diesels should not scroll past a diesel
+            schedule forever, and the seeders now leave a deleted one deleted.
+            {% endcomment %}
+            <form method="post" action="{% url 'template_delete' template.pk %}">
+              {% csrf_token %}<input type="hidden" name="_anchor" value="schedules">
+              <button type="submit" class="linkish small"
+                      data-confirm="{% translate 'Remove this schedule? Anything already scheduled from it stays.' %}">
+                {% translate "Remove" %}
+              </button>
+            </form>
+          </div>
         </li>
       {% empty %}
         <li class="muted">{% translate "None yet." %}</li>
@@ -64,6 +97,7 @@ unfindable. Nothing here reaches the network; it is a sentence about a setting.
     {% endcomment %}
     <p class="small muted">
       {% translate "A YAML file exported from another instance. It is checked before anything is written, and nothing is scheduled on a vehicle until you apply it." %}
+      {% translate "Anything you remove goes to the trash for 30 days; shipped templates can be restored at any time." %}
     </p>
     <form method="post" action="{% url 'template_import' %}" enctype="multipart/form-data" class="stack">
       {% csrf_token %}
@@ -83,7 +117,7 @@ unfindable. Nothing here reaches the network; it is a sentence about a setting.
 </div>
 
 <div class="cols two">
-  <section class="card">
+  <section class="card" id="checklists" data-live="checklists">
     <h2>{% translate "Inspection checklists" %}</h2>
     <ul class="list small">
       {% for checklist in checklists %}
@@ -97,7 +131,16 @@ unfindable. Nothing here reaches the network; it is a sentence about a setting.
               · v{{ checklist.version }}
             </div>
           </div>
-          <a class="btn small" href="{% url 'checklist_export' checklist.pk %}">{% translate "Export" %}</a>
+          <div class="row">
+            <a class="btn small" href="{% url 'checklist_export' checklist.pk %}">{% translate "Export" %}</a>
+            <form method="post" action="{% url 'checklist_delete' checklist.pk %}">
+              {% csrf_token %}<input type="hidden" name="_anchor" value="checklists">
+              <button type="submit" class="linkish small"
+                      data-confirm="{% translate 'Remove this checklist? Inspections already done with it stay.' %}">
+                {% translate "Remove" %}
+              </button>
+            </form>
+          </div>
         </li>
       {% empty %}
         <li class="muted">{% translate "None yet." %}</li>

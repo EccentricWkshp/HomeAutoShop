@@ -194,12 +194,24 @@ TEMPLATES = {
 }
 
 
-def install(*, refresh: bool = False) -> int:
+def install(*, refresh: bool = False, revive: bool = False) -> int:
     """Create or refresh the built-in inspection templates. Idempotent."""
     from .models import InspectionPoint, InspectionTemplate
 
     count = 0
     for slug, (name, kinds, classes, description, points) in TEMPLATES.items():
+        # A deleted checklist stays deleted — see the same note in
+        # `maintenance/seed.py`. `slug` is uniquely constrained regardless of
+        # `deleted_at`, so resurrecting is not merely unwanted, it fails.
+        existing = InspectionTemplate.all_objects.filter(slug=slug).first()
+        if existing is not None and existing.deleted_at is not None:
+            # Booting respects the deletion; `revive` is somebody
+            # asking for the shipped set back, which is a different
+            # intent and the only way home once the trash has aged out.
+            if not revive:
+                continue
+            existing.deleted_at = None
+            existing.save(update_fields=["deleted_at"])
         template, _created = InspectionTemplate.objects.update_or_create(
             slug=slug,
             defaults={

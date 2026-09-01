@@ -1,0 +1,47 @@
+name: Stored or seasonal vehicle
+slug: stored-or-seasonal
+author: HomeAutoShop
+description: >-
+  A classic, a convertible, a project, or anything that spends most of the year
+  parked. Deliberately has no distance intervals at all: a vehicle covering
+  four hundred miles a year will never reach a mileage service, while its brake
+  fluid still absorbs water, its tires still age out, and its fuel still goes
+  stale on exactly the same calendar as everybody else's. Generic; check
+  against your owner's manual.
+asset_kinds:
+  - vehicle
+items:
+  - name: Engine oil and filter
+    translation_key: svc.engine_oil
+    category: engine
+    interval_months: 12
+  - name: Brake fluid
+    translation_key: svc.brake_fluid
+    category: brakes
+    severity: safety
+    interval_months: 24
+  - name: Coolant
+    category: cooling
+    interval_months: 48
+  - name: Fuel stabilizer / winterize
+    translation_key: svc.winterise
+    category: fuel
+    interval_months: 6
+  - name: Battery check
+    category: electrical
+    interval_months: 6
+  - name: Tire age and pressure check
+    category: tires
+    severity: safety
+    interval_months: 6
+  - name: Tire replacement by age
+    category: tires
+    severity: safety
+    interval_months: 120
+  - name: Brake inspection
+    category: brakes
+    severity: safety
+    interval_months: 12
+  - name: Registration renewal
+    category: admin
+    interval_months: 12

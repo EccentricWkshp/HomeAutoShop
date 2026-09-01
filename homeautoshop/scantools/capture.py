@@ -110,8 +110,18 @@ def _color(value):
         return [round(float(value), 4)]
 
 
-def capture_path(pdf_path: pathlib.Path) -> pathlib.Path:
-    return CORPUS / (pdf_path.stem + ".words.json")
+def capture_path(pdf_path: pathlib.Path, tool: str = "") -> pathlib.Path:
+    """Where a capture belongs: under its tool's folder in the corpus.
+
+    The corpus is filed one folder per scanner, because a flat pile of reports
+    stops saying what produced them the moment there is a second tool — the
+    same convention the parts-order corpus already uses. `tool` defaults to
+    empty only so an older caller keeps working; a capture at the root is
+    still found, since the walk is recursive, and still says nothing about
+    where it came from.
+    """
+    folder = CORPUS / tool if tool else CORPUS
+    return folder / (pdf_path.stem + ".words.json")
 
 
 def synthetic_vins() -> set[str]:
@@ -120,9 +130,10 @@ def synthetic_vins() -> set[str]:
     return set(json.loads(MANIFEST.read_text(encoding="utf-8")))
 
 
-def write(pdf_path: pathlib.Path) -> tuple[pathlib.Path, set[str]]:
+def write(pdf_path: pathlib.Path, tool: str = "") -> tuple[pathlib.Path, set[str]]:
     data, produced = capture(pdf_path)
-    target = capture_path(pdf_path)
+    target = capture_path(pdf_path, tool)
+    target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(data, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     return target, produced
 

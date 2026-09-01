@@ -105,6 +105,11 @@ class Entry:
     #: ran the profile and it passed.
     verified: bool = False
     installed: bool = False
+    #: The local record this entry corresponds to, where it is installed. The
+    #: browse screen is one of the two places somebody realizes they do not
+    #: want a template — the other being the list itself — so it offers
+    #: removal rather than only reporting that it is here.
+    installed_pk: str = ""
 
     @property
     def is_schedule(self) -> bool:
@@ -171,6 +176,33 @@ def resolve(path: str) -> str:
     return resolved
 
 
+def _explain(exc: OutboundFailed, what: str) -> str:
+    """Say what a failure from a raw-file host usually means.
+
+    `HTTP 404` is the literal truth and close to useless. GitHub answers 404
+    for a repository it will not admit exists, so the same status covers a
+    typo, a branch that has not been pushed, and a repository that is private
+    — and only the last of those is a surprise, because a private fork looks
+    exactly like a working one until something tries to read it.
+
+    Written after doing it: the catalog was configured correctly and served
+    nothing until the repository was made public.
+    """
+    if getattr(exc, "status", 0) == 404:
+        return str(
+            _(
+                "The catalog answered 404 for %(what)s. A raw file host says that "
+                "for a repository it will not admit exists — so check the address, "
+                "that the branch has been pushed, and that the repository is "
+                "public. A private one answers 404 to everybody."
+            )
+            % {"what": what}
+        )
+    return str(
+        _("The catalog did not answer: %(detail)s") % {"detail": exc}
+    )
+
+
 def index(*, force: bool = False, user=None) -> Catalog:
     """The published list, fetched on request and cached (never on a schedule)."""
     if not is_configured():
@@ -187,9 +219,7 @@ def index(*, force: bool = False, user=None) -> Catalog:
         except OutboundBlocked as exc:
             raise CatalogUnavailable(str(exc))
         except OutboundFailed as exc:
-            raise CatalogUnavailable(
-                _("The catalog did not answer: %(detail)s") % {"detail": exc}
-            )
+            raise CatalogUnavailable(_explain(exc, "index.json"))
         cached = response.data
         cache.set(CACHE_KEY, cached, INDEX_TTL)
 
@@ -233,24 +263,40 @@ def _mark_installed(catalog: Catalog) -> Catalog:
     from homeautoshop.inspections.models import InspectionTemplate
     from homeautoshop.maintenance.models import ScheduleTemplate
 
-    have = {
-        "schedule": set(ScheduleTemplate.all_objects.values_list("name", flat=True))
-        | set(ScheduleTemplate.all_objects.values_list("slug", flat=True)),
-        "profile": set(ParserProfile.all_objects.values_list("name", flat=True)),
-        "checklist": set(InspectionTemplate.all_objects.values_list("name", flat=True))
-        | set(InspectionTemplate.all_objects.values_list("slug", flat=True)),
-    }
+    # Keyed by name *and* slug, to the local row, so the screen can offer to
+    # remove exactly the thing it is pointing at. Alive rows only: something
+    # in the trash is not installed, and offering to remove it again would be
+    # offering to do nothing.
+    have: dict = {"schedule": {}, "profile": {}, "checklist": {}}
+    for kind, model, has_slug in (
+        ("schedule", ScheduleTemplate, True),
+        ("checklist", InspectionTemplate, True),
+        ("profile", ParserProfile, False),
+    ):
+        for row in model.objects.all():
+            have[kind][row.name] = str(row.pk)
+            if has_slug and row.slug:
+                have[kind][row.slug] = str(row.pk)
 
-    catalog.entries = [
-        Entry(
-            **{
-                **{f: getattr(entry, f) for f in Entry.__slots__ if f != "installed"},
-                "installed": entry.name in have[entry.kind]
-                or (bool(entry.slug) and entry.slug in have[entry.kind]),
-            }
+    found = []
+    for entry in catalog.entries:
+        local = have[entry.kind].get(entry.name) or (
+            have[entry.kind].get(entry.slug) if entry.slug else None
         )
-        for entry in catalog.entries
-    ]
+        found.append(
+            Entry(
+                **{
+                    **{
+                        f: getattr(entry, f)
+                        for f in Entry.__slots__
+                        if f not in ("installed", "installed_pk")
+                    },
+                    "installed": bool(local),
+                    "installed_pk": local or "",
+                }
+            )
+        )
+    catalog.entries = found
     return catalog
 
 
@@ -270,9 +316,7 @@ def fetch_file(entry: Entry, *, user=None) -> str:
     except OutboundBlocked as exc:
         raise CatalogUnavailable(str(exc))
     except OutboundFailed as exc:
-        raise CatalogUnavailable(
-            _("That file could not be read: %(detail)s") % {"detail": exc}
-        )
+        raise CatalogUnavailable(_explain(exc, entry.path))
 
     if not body.strip():
         raise CatalogUnavailable(_("That catalog file is empty."))

@@ -1,0 +1,50 @@
+name: Trailer
+slug: trailer
+author: HomeAutoShop
+description: >-
+  A utility, boat, or equipment trailer. No engine, so nothing here is an
+  engine service. What fails on a trailer is bearings, brakes, tires and
+  lights, and it fails at speed with somebody's boat behind it. Distance is
+  towed miles. Generic; check against the axle manufacturer's figures, which
+  are usually stricter than the trailer builder's.
+asset_kinds:
+  - equipment
+items:
+  - name: Wheel bearing repack
+    category: driveline
+    severity: safety
+    interval_distance: 12000
+    interval_unit: mi
+    interval_months: 12
+  - name: Trailer brake inspection
+    category: brakes
+    severity: safety
+    interval_distance: 6000
+    interval_unit: mi
+    interval_months: 12
+  - name: Breakaway battery test
+    category: brakes
+    severity: safety
+    interval_months: 6
+  - name: Tire age and pressure check
+    category: tires
+    severity: safety
+    interval_months: 3
+  - name: Tire replacement by age
+    category: tires
+    severity: safety
+    interval_months: 72
+  - name: Lights and wiring check
+    category: electrical
+    severity: safety
+    interval_months: 6
+  - name: Coupler, chains and safety cables
+    category: towing
+    severity: safety
+    interval_months: 12
+  - name: Frame and floor inspection
+    category: structure
+    interval_months: 12
+  - name: Registration renewal
+    category: admin
+    interval_months: 12

@@ -31,8 +31,18 @@ FIXTURE_SUFFIX = ".expected.json"
 
 
 def samples() -> list[pathlib.Path]:
-    """Every captured report in the corpus."""
-    return sorted(CORPUS.glob("*" + CAPTURE_SUFFIX))
+    """Every captured report in the corpus, whichever tool folder it is in.
+
+    The corpus is filed one folder per tool — `xtool d8/`, and whatever comes
+    next — because a flat pile of reports stops saying which scanner produced
+    them the moment there is a second one. The same convention the parts-order
+    corpus already uses.
+
+    Walked rather than globbed for that reason: a flat `glob` found nothing at
+    all once the folders appeared, and found it silently, because every test
+    that uses the corpus skips politely when it is absent.
+    """
+    return sorted(CORPUS.rglob("*" + CAPTURE_SUFFIX))
 
 
 def stem(capture: pathlib.Path) -> str:
@@ -40,7 +50,35 @@ def stem(capture: pathlib.Path) -> str:
 
 
 def fixture_path(capture: pathlib.Path) -> pathlib.Path:
-    return CORPUS / (stem(capture) + FIXTURE_SUFFIX)
+    """The expected output for a capture, which lives beside it.
+
+    Beside, not at the corpus root: the two halves of a fixture belong in the
+    same tool folder, and a reviewer reading one should not have to go looking
+    for the other.
+    """
+    return capture.parent / (stem(capture) + FIXTURE_SUFFIX)
+
+
+def find(name: str) -> pathlib.Path:
+    """A corpus file by its bare name, wherever it is filed.
+
+    Callers used to join `CORPUS / name` and got a path that simply did not
+    exist once the reports moved into per-tool folders. One resolver means the
+    next reorganization is one function rather than a hunt.
+    """
+    for path in sorted(CORPUS.rglob(name)):
+        return path
+    raise FileNotFoundError(f"{name} is not in {CORPUS}")
+
+
+def tool(capture: pathlib.Path) -> str:
+    """Which scanner a capture came from, read off the folder it is filed in.
+
+    The folder is the answer rather than anything inside the file: a report
+    that a parser cannot yet read still has to say what produced it, which is
+    the whole reason somebody contributed it.
+    """
+    return capture.parent.name if capture.parent != CORPUS else ""
 
 
 def pages(capture: pathlib.Path) -> list[list[dict]]:

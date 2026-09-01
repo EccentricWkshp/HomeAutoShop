@@ -185,3 +185,94 @@ def checklist_import(request):
         request, _("Imported %(name)s.") % {"name": template.name}
     )
     return redirect("template_list")
+
+
+def _removed(request, template, kind: str):
+    """Soft-delete a template and say what that did and did not touch.
+
+    Applying a template **materializes** it: the schedule items land on the
+    vehicle as rows of their own, pointing at service definitions rather than
+    at the template. So removing a template changes nothing that is already
+    scheduled, and saying so is the difference between a button somebody
+    presses and one they hover over and leave alone.
+
+    Soft, like every other delete here, so it is in the trash for thirty days.
+    """
+    name = template.name
+    template.delete()
+    messages.success(
+        request,
+        _("Removed %(name)s. Anything already scheduled from it is untouched.")
+        % {"name": name}
+        if kind == "schedule"
+        else _("Removed %(name)s. Inspections already done with it are untouched.")
+        % {"name": name},
+    )
+
+
+@require_POST
+@login_required
+def template_delete(request, pk):
+    """Remove a service schedule (FR-MAINT-11).
+
+    Built-in templates may go too. An operator who does not run diesels should
+    not have to scroll past a diesel schedule forever, and the seeders leave a
+    deleted template deleted rather than restoring it on the next boot.
+    """
+    require(request.user, "settings.manage")
+    _removed(request, get_object_or_404(ScheduleTemplate, pk=pk), "schedule")
+    return redirect(request.POST.get("back") or "template_list")
+
+
+@require_POST
+@login_required
+def checklist_delete(request, pk):
+    """Remove an inspection checklist (FR-DVI-13).
+
+    An inspection snapshots its points when it starts (FR-DVI-6), so past
+    inspections keep rendering exactly as they were performed.
+    """
+    require(request.user, "settings.manage")
+    _removed(request, get_object_or_404(InspectionTemplate, pk=pk), "checklist")
+    return redirect(request.POST.get("back") or "template_list")
+
+
+@require_POST
+@login_required
+def restore_builtins(request):
+    """Put the shipped templates back (FR-MAINT-11, FR-DVI-13).
+
+    The built-ins live in the image, so they are never actually lost — but
+    until this existed there was no way to say so. A removed built-in went to
+    the trash, and once thirty days had passed it was gone with nothing in the
+    catalog to replace it, because the catalog deliberately publishes nothing
+    that duplicates what ships.
+
+    Separate from what happens at boot on purpose. Seeding leaves a deleted
+    template deleted, because an operator who removed the diesel schedule
+    meant it and should not have to remove it again after every restart. This
+    is the same person changing their mind, which is a different intent and
+    deserves its own deliberate act rather than being inferred.
+    """
+    require(request.user, "settings.manage")
+
+    from homeautoshop.inspections import seed as checklist_seed
+    from homeautoshop.maintenance import seed as schedule_seed
+
+    before = (
+        ScheduleTemplate.objects.count() + InspectionTemplate.objects.count()
+    )
+    schedule_seed.install(revive=True)
+    checklist_seed.install(revive=True)
+    restored = (
+        ScheduleTemplate.objects.count() + InspectionTemplate.objects.count() - before
+    )
+
+    messages.success(
+        request,
+        _("Put back %(n)d shipped template(s). Nothing you wrote was touched.")
+        % {"n": restored}
+        if restored
+        else _("Every shipped template was already here."),
+    )
+    return redirect("template_list")

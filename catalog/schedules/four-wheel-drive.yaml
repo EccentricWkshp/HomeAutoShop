@@ -1,0 +1,45 @@
+name: Four-wheel drive extras
+slug: four-wheel-drive
+author: HomeAutoShop
+description: >-
+  The driveline items a two-wheel-drive schedule has no reason to mention:
+  transfer case, front differential, front axle and hubs. Meant to be applied
+  alongside a normal or severe schedule rather than instead of one, since it
+  covers what the others leave out. Generic intervals; check them against your
+  own owner's manual, and shorten all of them if the vehicle sees water, mud or
+  salt, every one of which gets into a transfer case.
+asset_kinds:
+  - vehicle
+vehicle_classes:
+  - truck
+  - suv
+items:
+  - name: Transfer case fluid
+    category: driveline
+    interval_distance: 30000
+    interval_unit: mi
+    interval_months: 36
+  - name: Front differential fluid
+    category: driveline
+    interval_distance: 30000
+    interval_unit: mi
+    interval_months: 36
+  - name: Rear differential fluid
+    category: driveline
+    interval_distance: 30000
+    interval_unit: mi
+    interval_months: 36
+  - name: Front axle joints and CV boots
+    category: driveline
+    severity: safety
+    interval_distance: 15000
+    interval_unit: mi
+    interval_months: 12
+  - name: Locking hub service
+    category: driveline
+    interval_distance: 30000
+    interval_unit: mi
+  - name: Driveshaft and slip yoke grease
+    category: driveline
+    interval_distance: 15000
+    interval_unit: mi
