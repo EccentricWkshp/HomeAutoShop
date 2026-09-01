@@ -19,6 +19,8 @@ from django.urls import reverse
 from django.utils.translation import gettext as _, ngettext
 from django.views.decorators.http import require_POST
 
+from homeautoshop.accounts.policy import visible_assets, visible_assets_for
+
 from homeautoshop.assets.models import Asset
 from homeautoshop.core.costs import inventory_value
 from homeautoshop.core.moneyform import MoneyFormMixin, parse_amount
@@ -468,7 +470,7 @@ def part_detail(request, pk):
             "lot_form": LotForm(part=part),
             # For "I fitted this, there was no job" — the vehicle is usually the
             # one thing that is remembered.
-            "vehicles": Asset.objects.all(),
+            "vehicles": visible_assets(request.user),
         },
     )
 

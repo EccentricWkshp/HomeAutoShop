@@ -11,6 +11,9 @@ from django.utils import timezone
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
 
+from homeautoshop.accounts.models import require
+from homeautoshop.accounts.policy import visible_assets, visible_assets_for
+
 from homeautoshop.assets.models import Asset
 
 from .models import (
@@ -63,7 +66,7 @@ class ComponentForm(forms.ModelForm):
 @login_required
 def due_list(request):
     """The landing view for 'what needs attention' (FR-MAINT-7)."""
-    rows = due_dashboard()
+    rows = due_dashboard(user=request.user)
     return render(
         request,
         "maintenance/due.html",
@@ -78,6 +81,7 @@ def due_list(request):
 @login_required
 def asset_schedule(request, pk):
     asset = get_object_or_404(Asset, pk=pk)
+    require(request.user, "maintenance.read", asset)
     items = asset.service_items.select_related("definition").all()
     for item in items:
         recalculate(item)

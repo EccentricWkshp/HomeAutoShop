@@ -20,7 +20,7 @@ from homeautoshop.core.models import uuid7
 class Role(models.TextChoices):
     ADMIN = "admin", _("Administrator")
     MEMBER = "member", _("Member")
-    # HELPER is intentionally absent in v1. See can() below and SPEC §17 R-2.
+    HELPER = "helper", _("Helper (named vehicles only)")
 
 
 class User(AbstractUser):
@@ -78,6 +78,12 @@ ADMIN_ONLY = {
 }
 
 
+def is_helper(user) -> bool:
+    from .policy import is_helper as _is_helper
+
+    return _is_helper(user)
+
+
 def can(user, action: str, resource=None) -> bool:
     """Return whether `user` may perform `action`, optionally on `resource`."""
     if user is None or not getattr(user, "is_authenticated", False):
@@ -88,8 +94,16 @@ def can(user, action: str, resource=None) -> bool:
         return True
     if action in ADMIN_ONLY:
         return False
-    # v1: members may do everything else. AssetAccess rows are not consulted
-    # because none are written — implied-allow, per SPEC §12.2.
+    if is_helper(user):
+        # Deny by default, and scoped to the vehicles they were given. The
+        # request gate in `middleware.py` has already refused any screen a
+        # helper has no business on; this is the object-level half.
+        from .policy import helper_can
+
+        return helper_can(user, action, resource)
+    # Members may do everything else — implied-allow, per SPEC §12.2. The
+    # `AssetAccess` rows a helper needs are simply not consulted for them, so
+    # an empty table is the normal state of a shop that has no helpers.
     return True
 
 
@@ -101,12 +115,13 @@ def require(user, action: str, resource=None) -> None:
 
 
 class AssetAccess(models.Model):
-    """Scaffolding only — unused in v1 (SPEC §12.2, OQ-7).
+    """Which vehicles a helper may work on (SPEC §12.2a, R-2).
 
-    No rows are written and no UI writes them; `can()` does not consult this
-    table while only `admin` and `member` exist. It is here so that granting a
-    helper access to one vehicle later is a data change, not a migration of
-    every authorization call site.
+    Written from the user page and read by `policy.granted`. The row *is* the
+    grant: no row means no access, and `level` says whether they may only
+    look. Members and admins never appear here — their access does not come
+    from this table — so an empty table is the normal state of a shop that has
+    no helpers.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid7, editable=False)

@@ -17,6 +17,8 @@ from django.utils import timezone
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_http_methods, require_POST
 
+from homeautoshop.accounts.policy import visible_assets, visible_assets_for
+
 from .runtime import allowlist, conf
 from homeautoshop.accounts.models import can
 from homeautoshop.assets.models import Asset
@@ -220,7 +222,10 @@ def dashboard(request):
     """Answers 'what needs attention?' in one screen, ordered by urgency."""
     from homeautoshop.work.parts_readiness import blocked_by_parts
 
-    open_orders = WorkOrder.objects.open().select_related("asset")
+    fleet = visible_assets(request.user, Asset.objects.fleet())
+    open_orders = visible_assets_for(
+        request.user, WorkOrder.objects.open().select_related("asset")
+    )
     blocked = open_orders.filter(status=WorkOrderStatus.WAITING_ON_PARTS)
     today = timezone.localdate()
     horizon = today + timedelta(days=30)
@@ -244,11 +249,11 @@ def dashboard(request):
             }
         )
 
-    expiring = Asset.objects.fleet().filter(
+    expiring = fleet.filter(
         plate_expires_on__isnull=False, plate_expires_on__lte=horizon
     )
 
-    due = due_dashboard(limit=10)
+    due = due_dashboard(limit=10, user=request.user)
     already_marked = set(blocked.values_list('pk', flat=True))
     short_of_parts = [
         (work_order, readiness)
@@ -261,7 +266,7 @@ def dashboard(request):
         {
             "due": [(item, project(item)) for item in due],
             "overdue_count": sum(1 for i in due if i.status == "overdue"),
-            "fleet_count": Asset.objects.fleet().count(),
+            "fleet_count": fleet.count(),
             "open_orders": open_orders[:12],
             "open_count": open_orders.count(),
             "blocked": blocked,
@@ -271,7 +276,7 @@ def dashboard(request):
             "short_of_parts": short_of_parts,
             "expiring": expiring,
             "alerts": alerts,
-            "recent_assets": Asset.objects.fleet().order_by("-updated_at")[:6],
+            "recent_assets": fleet.order_by("-updated_at")[:6],
             "failed_jobs": Job.objects.filter(state=Job.State.FAILED).count(),
         },
     )
@@ -280,7 +285,11 @@ def dashboard(request):
 @login_required
 def search_view(request):
     query = request.GET.get("q", "")
-    return render(request, "core/search.html", {"results": run_search(query), "q": query})
+    return render(
+        request,
+        "core/search.html",
+        {"results": run_search(query, user=request.user), "q": query},
+    )
 
 
 @login_required

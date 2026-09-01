@@ -325,19 +325,25 @@ def refresh_asset(asset, *, today: date | None = None) -> int:
     return asset.service_items.count()
 
 
-def due_dashboard(*, limit: int | None = None) -> list[AssetServiceItem]:
+def due_dashboard(*, limit: int | None = None, user=None) -> list[AssetServiceItem]:
     """Everything needing attention, most urgent first (FR-MAINT-7).
 
     Overdue safety items lead, because that is the ordering that matters when
     someone is deciding what to do with a Saturday.
+
+    `user` narrows the fleet to what that person may see (SPEC §12.2a). It is
+    optional because the reminder digest and the forecast run with nobody
+    signed in and are meant to see everything; a page passes the viewer.
     """
+    from homeautoshop.accounts.policy import visible_assets_for
     from homeautoshop.assets.models import Asset
 
-    rows = list(
-        AssetServiceItem.objects.filter(asset__in=Asset.objects.fleet())
-        .needing_attention()
-        .select_related("asset", "definition")
-    )
+    rows = AssetServiceItem.objects.filter(
+        asset__in=Asset.objects.fleet()
+    ).needing_attention().select_related("asset", "definition")
+    if user is not None:
+        rows = visible_assets_for(user, rows)
+    rows = list(rows)
     rows.sort(
         key=lambda i: (
             i.status != ServiceStatus.OVERDUE,

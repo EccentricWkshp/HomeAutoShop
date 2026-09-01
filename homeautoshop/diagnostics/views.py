@@ -14,6 +14,8 @@ from django.urls import reverse
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_GET, require_POST
 
+from homeautoshop.accounts.policy import visible_assets, visible_assets_for
+
 from homeautoshop.accounts.models import require
 from homeautoshop.assets import service_info
 from homeautoshop.assets import vin as vinlib
@@ -49,7 +51,10 @@ def queue(request):
     of what this application claims about the vehicle.
     """
     drafts = (
-        DiagnosticSession.objects.filter(review_status=ReviewStatus.DRAFT)
+        visible_assets_for(
+            request.user,
+            DiagnosticSession.objects.filter(review_status=ReviewStatus.DRAFT),
+        )
         .select_related("asset", "parser_profile")
         .order_by("-created_at")
     )
@@ -59,7 +64,7 @@ def queue(request):
         {
             "drafts": drafts,
             "profiles": ParserProfile.objects.all(),
-            "assets": Asset.objects.all(),
+            "assets": visible_assets(request.user),
         },
     )
 
@@ -68,6 +73,7 @@ def queue(request):
 def asset_diagnostics(request, pk):
     """A vehicle's scan history, and what its codes are doing."""
     asset = get_object_or_404(Asset, pk=pk)
+    require(request.user, "diagnostic.read", asset)
     sessions = (
         asset.diagnostic_sessions.filter(review_status=ReviewStatus.CONFIRMED)
         .prefetch_related("codes")
@@ -151,6 +157,7 @@ def session_detail(request, pk):
     session = get_object_or_404(
         DiagnosticSession.objects.select_related("asset", "parser_profile", "raw_media"), pk=pk
     )
+    require(request.user, "diagnostic.read", session)
     rows = []
     for name, found in sorted((session.extraction or {}).items()):
         if name.startswith("_"):

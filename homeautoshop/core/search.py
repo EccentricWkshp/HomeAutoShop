@@ -152,7 +152,17 @@ def _find(
     return found[:limit]
 
 
-def search(query: str, *, limit_per_group: int = 10) -> Results:
+def search(query: str, *, limit_per_group: int = 10, user=None) -> Results:
+    """Search, narrowed to what `user` may see (SPEC §12.2a).
+
+    Search is the back door into every other screen: a helper barred from a
+    vehicle's page who could still find its work orders by typing its name has
+    not been barred from anything. So the narrowing happens here, on the
+    querysets, rather than on the results — and the groups a helper has no
+    business in at all are not searched.
+    """
+    from homeautoshop.accounts.policy import is_helper, visible_assets, visible_assets_for
+
     from homeautoshop.assets.models import Asset
     from homeautoshop.mediafiles.models import Media
     from homeautoshop.parts.models import Part
@@ -173,7 +183,7 @@ def search(query: str, *, limit_per_group: int = 10) -> Results:
         _("Vehicles & equipment"),
         "asset",
         _find(
-            Asset.objects.all(),
+            visible_assets(user) if user is not None else Asset.objects.all(),
             query,
             identifiers=["vin", "plate", "serial_number", "model_number"],
             prose=["nickname", "make", "model", "trim", "notes"],
@@ -184,7 +194,9 @@ def search(query: str, *, limit_per_group: int = 10) -> Results:
         _("Work orders"),
         "work_order",
         _find(
-            WorkOrder.objects.select_related("asset"),
+            visible_assets_for(user, WorkOrder.objects.select_related("asset"))
+            if user is not None
+            else WorkOrder.objects.select_related("asset"),
             query,
             identifiers=["number"],
             prose=["title", "complaint", "cause", "correction"],
@@ -205,6 +217,10 @@ def search(query: str, *, limit_per_group: int = 10) -> Results:
             limit=limit_per_group,
         ),
     )
+    # The address book and the document shelf are not vehicle-scoped, so a
+    # helper gets neither rather than a filtered version of each.
+    if user is not None and is_helper(user):
+        return results
     add(
         _("People"),
         "person",
@@ -220,7 +236,13 @@ def search(query: str, *, limit_per_group: int = 10) -> Results:
         _("Notes"),
         "note",
         _find(
-            WorkOrderNote.objects.select_related("work_order", "work_order__asset"),
+            visible_assets_for(
+                user,
+                WorkOrderNote.objects.select_related("work_order", "work_order__asset"),
+                "work_order__asset",
+            )
+            if user is not None
+            else WorkOrderNote.objects.select_related("work_order", "work_order__asset"),
             query,
             prose=["body"],
             limit=limit_per_group,

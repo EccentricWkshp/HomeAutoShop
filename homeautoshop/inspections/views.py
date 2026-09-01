@@ -11,6 +11,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
 
+from homeautoshop.accounts.models import require
+from homeautoshop.accounts.policy import visible_assets, visible_assets_for
+
 from homeautoshop.assets.models import Asset
 from homeautoshop.mediafiles.models import MediaLink
 from homeautoshop.mediafiles.services import ingest
@@ -31,7 +34,9 @@ from .services import (
 
 @login_required
 def inspection_list(request):
-    inspections = Inspection.objects.select_related("asset", "performed_by")[:100]
+    inspections = visible_assets_for(
+        request.user, Inspection.objects.select_related("asset", "performed_by")
+    )[:100]
     return render(
         request,
         "inspections/list.html",
@@ -62,6 +67,7 @@ def inspection_detail(request, pk):
     inspection = get_object_or_404(
         Inspection.objects.select_related("asset", "performed_by", "work_order"), pk=pk
     )
+    require(request.user, "inspection.read", inspection)
     results = inspection.results.all()
 
     # Grouped by area so the walk follows the vehicle, not the database.

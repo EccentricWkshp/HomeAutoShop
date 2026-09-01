@@ -35,6 +35,66 @@
     </form>
   </section>
 
+  {% comment %}
+  Which vehicles this person may work on (SPEC §12.2a, FR-ADM-9).
+
+  Shown for everybody rather than only for helpers, because a role changed
+  away from helper leaves its rows behind: hiding them would make changing the
+  role back a surprise, and a permission nobody can see is a permission nobody
+  audits. What changes with the role is the sentence above the list, which
+  says plainly whether these grants are doing anything today.
+  {% endcomment %}
+  <section class="card" id="vehicles" data-live="vehicles">
+    <h2>{% translate "Vehicles they may work on" %}</h2>
+    {% if is_helper %}
+      <p class="small muted">
+        {% translate "A helper sees only the vehicles listed here, and nothing about the shop — no costs, no inventory, no suppliers, no other people." %}
+      </p>
+    {% else %}
+      <p class="small muted">
+        {% translate "This account is not a helper, so it can already see every vehicle. These grants take effect only if you change the role to Helper." %}
+      </p>
+    {% endif %}
+
+    <ul class="list small">
+      {% for grant in grants %}
+        <li class="spread">
+          <div>
+            <a href="{% url 'asset_detail' grant.asset.pk %}">{{ grant.asset.nickname }}</a>
+            <div class="muted">{{ grant.asset.descriptor }}</div>
+          </div>
+          <div class="row">
+            <span class="pill {% if grant.level == 'write' %}ok{% endif %}">{{ grant.get_level_display }}</span>
+            <form method="post" action="{% url 'user_access' person.pk %}">
+              {% csrf_token %}<input type="hidden" name="_anchor" value="vehicles">
+              <input type="hidden" name="asset" value="{{ grant.asset.pk }}">
+              <input type="hidden" name="revoke" value="1">
+              <button type="submit" data-confirm="{% translate 'Take this vehicle away from them?' %}">{% translate "Remove" %}</button>
+            </form>
+          </div>
+        </li>
+      {% empty %}
+        <li class="muted">{% translate "No vehicles yet." %}</li>
+      {% endfor %}
+    </ul>
+
+    {% if grantable %}
+      <form method="post" action="{% url 'user_access' person.pk %}" class="row" style="margin-top:.5rem">
+        {% csrf_token %}<input type="hidden" name="_anchor" value="vehicles">
+        <select name="asset" class="select" aria-label="{% translate 'Vehicle' %}">
+          {% for asset in grantable %}
+            <option value="{{ asset.pk }}">{{ asset.nickname }}</option>
+          {% endfor %}
+        </select>
+        <select name="level" class="select" aria-label="{% translate 'What they may do' %}">
+          <option value="read">{% translate "Read" %}</option>
+          <option value="write">{% translate "Write" %}</option>
+        </select>
+        <button class="primary" type="submit">{% translate "Give access" %}</button>
+      </form>
+    {% endif %}
+  </section>
+
   <aside class="stack">
     <section class="card">
       <h2>{% translate "Set a password" %}</h2>

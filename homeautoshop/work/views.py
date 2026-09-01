@@ -16,6 +16,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
 
+from homeautoshop.accounts.models import require
+from homeautoshop.accounts.policy import visible_assets, visible_assets_for
+
 from homeautoshop.assets.models import Asset
 from homeautoshop.assets.services import record_reading
 from homeautoshop.mediafiles.models import MediaLink
@@ -146,7 +149,7 @@ class JobItemEditForm(forms.ModelForm):
 @login_required
 def work_order_list(request):
     status = request.GET.get("status", "open")
-    qs = WorkOrder.objects.select_related("asset")
+    qs = visible_assets_for(request.user, WorkOrder.objects.select_related("asset"))
     if status == "open":
         qs = qs.open()
     elif status and status != "all":
@@ -174,6 +177,7 @@ def work_order_detail(request, pk):
         ),
         pk=pk,
     )
+    require(request.user, "work.read", wo)
     done, total = wo.job_item_progress
     parts_needed = parts_readiness.for_work_order(wo)
     return render(

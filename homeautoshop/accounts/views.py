@@ -27,7 +27,7 @@ from django.views.decorators.http import require_POST
 from homeautoshop.people.models import Person
 
 from .forms import PasswordPairMixin, password_fields
-from .models import Role, User, require
+from .models import AssetAccess, Role, User, require
 
 
 def _style(form) -> None:
@@ -186,6 +186,9 @@ def user_detail(request, pk):
         messages.success(request, _("Saved."))
         return redirect("user_detail", pk=person.pk)
 
+    from homeautoshop.assets.models import Asset
+
+    granted = person.asset_access.select_related("asset").order_by("asset__nickname")
     return render(
         request,
         "accounts/user.html",
@@ -195,8 +198,63 @@ def user_detail(request, pk):
             "password_form": SetPasswordForm(instance=person),
             "is_last_admin": last_admin(person),
             "is_you": person.pk == request.user.pk,
+            # Grants are shown for everybody, not only helpers: a role changed
+            # from helper to member leaves its rows behind, and a list that
+            # hides them would make changing the role back a surprise.
+            "is_helper": person.role == Role.HELPER,
+            "grants": granted,
+            "grantable": Asset.objects.exclude(
+                pk__in=granted.values_list("asset_id", flat=True)
+            ).order_by("nickname"),
         },
     )
+
+
+@require_POST
+@login_required
+def user_access(request, pk):
+    """Grant or revoke one vehicle for one helper (FR-ADM-9, SPEC §12.2a).
+
+    One endpoint for both directions, because a grant is a row: adding it is
+    the grant and deleting it is the revocation, and there is no third state
+    for a screen to get out of step with.
+    """
+    require(request.user, "user.manage")
+    person = get_object_or_404(User, pk=pk)
+    asset_id = (request.POST.get("asset") or "").strip()
+    level = request.POST.get("level") or "read"
+
+    if request.POST.get("revoke"):
+        removed, _detail = AssetAccess.objects.filter(
+            user=person, asset_id=asset_id
+        ).delete()
+        messages.success(
+            request,
+            _("Access removed.") if removed else _("They did not have that one."),
+        )
+        return redirect("user_detail", pk=person.pk)
+
+    from homeautoshop.assets.models import Asset
+
+    asset = Asset.objects.filter(pk=asset_id).first() if asset_id else None
+    if asset is None:
+        messages.warning(request, _("Choose a vehicle first."))
+        return redirect("user_detail", pk=person.pk)
+    if level not in ("read", "write"):
+        level = "read"
+
+    AssetAccess.objects.update_or_create(
+        user=person, asset=asset, defaults={"level": level}
+    )
+    messages.success(
+        request,
+        _("%(name)s can work on %(vehicle)s.")
+        % {"name": person.display_name, "vehicle": asset.nickname}
+        if level == "write"
+        else _("%(name)s can see %(vehicle)s.")
+        % {"name": person.display_name, "vehicle": asset.nickname},
+    )
+    return redirect("user_detail", pk=person.pk)
 
 
 @require_POST

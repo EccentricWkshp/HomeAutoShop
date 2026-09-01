@@ -16,6 +16,12 @@ from django.utils.translation import gettext as _
 from django.utils.translation import ngettext
 from django.views.decorators.http import require_GET, require_POST
 
+from homeautoshop.accounts.policy import (
+    is_helper,
+    visible_assets,
+    visible_assets_for,
+)
+
 from homeautoshop.accounts.models import require
 from homeautoshop.core.measurements import distance_unit_for
 from homeautoshop.mediafiles.models import MediaLink
@@ -102,7 +108,7 @@ class ReadingForm(forms.Form):
 def asset_list(request):
     kind = request.GET.get("kind", "")
     show_all = request.GET.get("all") == "1"
-    qs = Asset.objects.select_related("primary_photo")
+    qs = visible_assets(request.user, Asset.objects.select_related("primary_photo"))
     if kind:
         qs = qs.filter(asset_kind=kind)
     if not show_all:
@@ -128,6 +134,7 @@ def asset_detail(request, pk):
         ),
         pk=pk,
     )
+    require(request.user, "asset.read", asset)
     readings = asset.usage_readings.all()[:20]
     work_orders = asset.work_orders.select_related("asset")[:25]
     photos = MediaLink.for_entity(asset)
@@ -699,6 +706,7 @@ def asset_timeline(request, pk):
     history, "four photos" is the answer to a question nobody asked.
     """
     asset = get_object_or_404(Asset, pk=pk)
+    require(request.user, "asset.read", asset)
     return render(
         request,
         "assets/timeline.html",
@@ -710,8 +718,17 @@ def asset_timeline(request, pk):
 def asset_specs(request, pk):
     """The lookup that interrupts a job most often (FR-SPEC-1..4)."""
     asset = get_object_or_404(Asset, pk=pk)
+    require(request.user, "asset.read", asset)
+    specs = asset.specs.select_related("source_media")
+    # A helper is somebody let into the garage, not into the glovebox. The
+    # key code, the radio code and where the wheel-lock key lives are exactly
+    # what `is_sensitive` already marks and exactly what a vehicle report
+    # already withholds (C-5) — so the same line is held here rather than a
+    # new one invented for it.
+    if is_helper(request.user):
+        specs = specs.filter(is_sensitive=False)
     grouped: dict = {}
-    for spec in asset.specs.select_related("source_media"):
+    for spec in specs:
         grouped.setdefault(spec.get_group_display(), []).append(spec)
 
     # `?edit=<id>` swaps one row for a filled-in form. A round trip rather than
@@ -734,7 +751,7 @@ def asset_specs(request, pk):
             "form": SpecForm(),
             "editing": editing,
             "edit_form": edit_form,
-            "others": Asset.objects.exclude(pk=asset.pk),
+            "others": visible_assets(request.user).exclude(pk=asset.pk),
         },
     )
 
@@ -1058,6 +1075,7 @@ def spec_copy(request, pk):
 @login_required
 def asset_recalls(request, pk):
     asset = get_object_or_404(Asset, pk=pk)
+    require(request.user, "asset.read", asset)
     from . import recalls as recall_service
 
     return render(
