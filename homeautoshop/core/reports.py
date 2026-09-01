@@ -231,17 +231,24 @@ def report_sections(asset, *, include_costs: bool = True) -> list[Section]:
 
     if include_costs:
         rollup = asset_cost(asset)
+        rows = []
+        for line in rollup.lines:
+            rows.append([line.label, line.detail, str(line.money)])
+            # A category that is really a stack of jobs says which. A buyer
+            # reading `Parts — $1,240.00` learns a number; the same figure
+            # under a brake overhaul and a set of tyres is a history they can
+            # weigh, which is the whole point of handing them the document.
+            for part in line.breakdown:
+                rows.append([f"    {part.label}", part.detail, str(part.money)])
+        if rows:
+            rows.append([str(_("Total")), "", str(rollup.total)])
         sections.append(
             Section(
                 title=str(_("Cost of ownership recorded here")),
-                columns=[str(_("Category")), str(_("Amount"))],
-                rows=(
-                    [[line.label, str(line.money)] for line in rollup.lines]
-                    + [[str(_("Total")), str(rollup.total)]]
-                    if rollup.lines
-                    else []
-                ),
-                widths=[3.4, 2.0],
+                columns=[str(_("Category")), str(_("What for")), str(_("Amount"))],
+                rows=rows,
+                widths=[2.0, 3.0, 1.4],
+                wrap=(1,),
             )
         )
 

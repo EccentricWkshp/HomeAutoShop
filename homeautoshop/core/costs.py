@@ -26,6 +26,12 @@ class CostLine:
     label: str
     amount_minor: int
     detail: str = ""
+    #: What this line is made of, where a single figure would not say much.
+    #: `Parts — $1,240.00` is a true number and a useless one: the question
+    #: somebody has about it is always *on what*, and the answer is the jobs
+    #: it paid for. Carried on the line rather than fetched by each screen, so
+    #: the costs tab and the sale document cannot disagree about it.
+    breakdown: list["CostLine"] = field(default_factory=list)
 
     @property
     def money(self) -> Money:
@@ -51,9 +57,84 @@ class Rollup:
     def labour_hours(self) -> float:
         return round(self.labour_minutes / 60, 2)
 
-    def add(self, label: str, amount_minor: int, detail: str = "") -> None:
+    def add(self, label: str, amount_minor: int, detail: str = "", breakdown=None) -> None:
         if amount_minor:
-            self.lines.append(CostLine(label, amount_minor, detail))
+            self.lines.append(
+                CostLine(label, amount_minor, detail, list(breakdown or []))
+            )
+
+
+#: How many jobs to name before the rest become one line. Enough that a
+#: typical vehicle's whole history fits, short enough that a twenty-year-old
+#: truck does not bury the total it is supposed to explain.
+BREAKDOWN_ROWS = 8
+
+
+def parts_by_job(usages) -> list[CostLine]:
+    """What the parts money was spent on, biggest first (FR-COST-2).
+
+    Grouped by the job, because *the job is what the money bought*. A parts
+    total answers "how much" and immediately raises "on what", and the honest
+    answer is a list of the work it paid for — a brake overhaul and a set of
+    tyres are the reason the number is what it is, and reading them back is
+    the difference between a figure somebody trusts and one they squint at.
+
+    Biggest first rather than chronological on purpose. The costs screen is
+    asking where the money went, and the answer is at the top; the report
+    already lists the same work by date under Service history, so ordering
+    this one the same way would print the same list twice and answer the
+    question neither time.
+
+    Parts used with no job behind them get their own row rather than being
+    dropped. Plenty of what a home garage fits was never a work order
+    (FR-INV-10), that spend is as real as the rest, and a breakdown that
+    quietly omitted it would not add up to the total above it.
+    """
+    from django.utils.translation import gettext as _
+
+    grouped: dict = {}
+    for usage in usages.select_related("part", "work_order"):
+        key = usage.work_order_id
+        row = grouped.setdefault(key, {"order": usage.work_order, "minor": 0, "parts": []})
+        row["minor"] += usage.line_total_minor
+        row["parts"].append(usage)
+
+    lines: list[CostLine] = []
+    for row in grouped.values():
+        order = row["order"]
+        if order is not None:
+            when = (order.completed_at or order.opened_at)
+            label = order.title
+            detail = str(when.date()) if when else ""
+        else:
+            label = str(_("Not recorded against a job"))
+            detail = ""
+        named = ", ".join(
+            f"{usage.qty:g}× {usage.part.name}" for usage in row["parts"][:4]
+        )
+        if len(row["parts"]) > 4:
+            named += str(_(", and %(n)d more")) % {"n": len(row["parts"]) - 4}
+        lines.append(
+            CostLine(
+                label=label,
+                amount_minor=row["minor"],
+                detail=" · ".join(part for part in (detail, named) if part),
+            )
+        )
+
+    lines.sort(key=lambda line: -line.amount_minor)
+    if len(lines) <= BREAKDOWN_ROWS:
+        return lines
+
+    # The tail is summarised rather than cut, because a breakdown that stops
+    # short without saying so does not add up to the total it sits under, and
+    # somebody checking the arithmetic finds a hole instead of a footnote.
+    rest = lines[BREAKDOWN_ROWS:]
+    remainder = CostLine(
+        label=str(_("%(n)d more jobs")) % {"n": len(rest)},
+        amount_minor=sum(line.amount_minor for line in rest),
+    )
+    return lines[:BREAKDOWN_ROWS] + [remainder]
 
 
 def _add_months(anchor: date, months: int) -> date:
@@ -113,7 +194,7 @@ def asset_cost(asset, *, include_tooling: bool | None = None) -> Rollup:
         Q(work_order__asset=asset) | Q(work_order__isnull=True, asset=asset)
     )
     parts_minor = sum(usage.line_total_minor for usage in usages)
-    rollup.add(str(_("Parts")), parts_minor)
+    rollup.add(str(_("Parts")), parts_minor, breakdown=parts_by_job(usages))
 
     expenses = Expense.objects.filter(asset=asset)
     if not include_tooling:

@@ -12,10 +12,23 @@
   <section class="card">
     <h2>{% translate "Breakdown" %}</h2>
     <div class="tablewrap"><table>
+      {% comment %}
+      A line with a breakdown shows it underneath, indented. `Parts —
+      $1,240.00` is a true number and a useless one: the question anybody has
+      about it is *on what*, and the answer is the jobs it paid for. Biggest
+      first, so the reason the total is what it is sits at the top.
+      {% endcomment %}
       {% for line in rollup.lines %}
         <tr><th>{{ line.label }}</th>
             <td class="small muted">{{ line.detail }}</td>
             <td class="mono">{{ line.money }}</td></tr>
+        {% for part in line.breakdown %}
+          <tr>
+            <td style="padding-left:1.25rem" class="small">{{ part.label }}</td>
+            <td class="small muted">{{ part.detail }}</td>
+            <td class="mono small muted">{{ part.money }}</td>
+          </tr>
+        {% endfor %}
       {% empty %}<tr><td class="muted">{% translate "Nothing recorded yet." %}</td></tr>{% endfor %}
       <tr><th>{% translate "Total" %}</th><td></td><td class="mono"><strong>{{ rollup.total }}</strong></td></tr>
     </table></div>

@@ -559,7 +559,7 @@ Small powered equipment is in scope (OQ-15). It reuses the asset, work order, pa
 | ID | Requirement |
 | --- | --- |
 | FR-COST-1 | Roll up cost per work order: parts consumed (at lot cost) + expenses + optional labor value, itemized. |
-| FR-COST-2 | Roll up lifetime cost per vehicle, split by category, including acquisition and excluding disposal proceeds; show net position after a sale. |
+| FR-COST-2 | Roll up lifetime cost per vehicle, split by category, including acquisition and excluding disposal proceeds; show net position after a sale. **A category that is really a stack of jobs says which.** `Parts — $1,240.00` is a true figure and a useless one: the question anybody has about it is *on what*, so the parts line carries its own breakdown by job, largest first — the screen is asking where the money went and the answer belongs at the top. Parts fitted with no work order behind them (FR-INV-10) get their own row rather than being dropped, and a long history is **summarised rather than cut**, because a breakdown that stops short without saying so does not add up to the total it sits under. The breakdown lives on the rollup, so the costs screen and the sale document cannot disagree about it, and it goes when the report is printed without costs. |
 | FR-COST-3 | Compute cost per distance over any period from odometer history, stating the interval used. |
 | FR-COST-4 | Attach a receipt to any purchase, expense, or work order, and OCR it in the background so receipts are text-searchable. |
 | FR-COST-5 | Report spend by month, by category, by vendor, and by vehicle, with CSV export. |

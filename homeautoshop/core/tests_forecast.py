@@ -288,3 +288,133 @@ class OnThePageTests(Base):
         self.client.logout()
         response = self.client.get(reverse("export_csv", args=["forecast"]))
         self.assertEqual(response.status_code, 302)
+
+
+class PartsBreakdownTests(TestCase):
+    """What the parts money was spent on (FR-COST-2).
+
+    Reported as: *"a flat number by itself for a cost doesn't tell much."*
+    It does not. `Parts — $1,240.00` is a true figure and a useless one: the
+    question anybody has about it is *on what*, and until now neither the
+    costs screen nor the sale document could answer.
+
+    Grouped by the job, because the job is what the money bought, and ordered
+    biggest first — the costs screen is asking where the money went and the
+    answer belongs at the top. The report lists the same work by date under
+    Service history, so ordering this one the same way would print the list
+    twice and answer the question neither time.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="andy", password="x" * 16, role=Role.ADMIN
+        )
+        self.client.force_login(self.user)
+        self.asset = Asset.objects.create(nickname="Aero")
+
+    def job(self, title, *, parts):
+        order = WorkOrder.objects.create(asset=self.asset, title=title)
+        for name, cost in parts:
+            PartUsage.objects.create(
+                part=Part.objects.create(name=name),
+                qty=1,
+                work_order=order,
+                unit_cost_minor=cost,
+            )
+        return order
+
+    def parts_line(self):
+        from homeautoshop.core.costs import asset_cost
+
+        return next(
+            line for line in asset_cost(self.asset).lines if line.label == "Parts"
+        )
+
+    def test_the_parts_total_says_which_jobs_it_paid_for(self):
+        self.job("Brake overhaul", parts=[("Pads", 4000), ("Rotors", 12000)])
+        self.job("Oil change", parts=[("Filter", 900)])
+
+        line = self.parts_line()
+
+        self.assertEqual(line.amount_minor, 16900)
+        self.assertEqual([row.label for row in line.breakdown],
+                         ["Brake overhaul", "Oil change"])
+
+    def test_the_biggest_job_leads(self):
+        """The costs screen asks where the money went; the answer goes first."""
+        self.job("Oil change", parts=[("Filter", 900)])
+        self.job("Gearbox", parts=[("Gearbox", 90000)])
+
+        self.assertEqual(self.parts_line().breakdown[0].label, "Gearbox")
+
+    def test_each_row_names_the_parts(self):
+        self.job("Brake overhaul", parts=[("Pads", 4000), ("Rotors", 12000)])
+
+        detail = self.parts_line().breakdown[0].detail
+
+        self.assertIn("Pads", detail)
+        self.assertIn("Rotors", detail)
+
+    def test_parts_with_no_job_behind_them_get_their_own_row(self):
+        """FR-INV-10 — plenty of what a home garage fits was never a work
+        order, that spend is as real as the rest, and a breakdown that omitted
+        it would not add up to the total above it."""
+        PartUsage.objects.create(
+            part=Part.objects.create(name="Wiper"),
+            qty=1,
+            asset=self.asset,
+            unit_cost_minor=1500,
+        )
+
+        line = self.parts_line()
+
+        self.assertEqual(line.breakdown[0].label, "Not recorded against a job")
+        self.assertEqual(line.breakdown[0].amount_minor, 1500)
+
+    def test_the_breakdown_adds_up_to_the_line_above_it(self):
+        """The property that makes it checkable rather than decorative."""
+        for n in range(12):
+            self.job("Job %d" % n, parts=[("Part %d" % n, 1000 * (n + 1))])
+
+        line = self.parts_line()
+
+        self.assertEqual(
+            sum(row.amount_minor for row in line.breakdown), line.amount_minor
+        )
+
+    def test_a_long_history_is_summarised_rather_than_cut(self):
+        """Stopping short without saying so leaves somebody checking the
+        arithmetic with a hole instead of a footnote."""
+        for n in range(12):
+            self.job("Job %d" % n, parts=[("Part %d" % n, 1000 * (n + 1))])
+
+        labels = [row.label for row in self.parts_line().breakdown]
+
+        self.assertEqual(len(labels), 9)
+        self.assertEqual(labels[-1], "4 more jobs")
+
+    def test_the_costs_screen_shows_it(self):
+        self.job("Brake overhaul", parts=[("Pads", 4000)])
+
+        page = self.client.get(reverse("asset_costs", args=[self.asset.pk]))
+
+        self.assertContains(page, "Brake overhaul")
+        self.assertContains(page, "Pads")
+
+    def test_and_so_does_the_report(self):
+        self.job("Brake overhaul", parts=[("Pads", 4000)])
+
+        page = self.client.get(reverse("asset_report", args=[self.asset.pk]))
+
+        self.assertContains(page, "Brake overhaul")
+
+    def test_but_not_when_costs_are_left_out_of_the_report(self):
+        """The whole section goes when somebody prints it without costs, and
+        the breakdown is part of the section rather than an exception to it."""
+        self.job("Brake overhaul", parts=[("Pads", 4000)])
+
+        page = self.client.get(
+            reverse("asset_report", args=[self.asset.pk]), {"costs": "0"}
+        )
+
+        self.assertNotContains(page, "Cost of ownership")
