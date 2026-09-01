@@ -388,6 +388,17 @@ REGISTRY: tuple[Entry, ...] = (
     ),
     # -------------------------------------------------------- integrations
     Entry(
+        "CATALOG_URL", "integrations", "str",
+        _("Shared template catalog"),
+        _(
+            "Where to look for schedule templates and parser profiles other people "
+            "have published. Checked only when you press Browse — never in the "
+            "background, and never on start-up."
+        ),
+        placeholder="https://raw.githubusercontent.com/EccentricWkshp/HomeAutoShop/main/catalog/",
+        check=_a_url,
+    ),
+    Entry(
         "LUBELOGGER_URL", "integrations", "str",
         _("LubeLogger address"),
         _("Leave blank to disable. A LAN address is fine; it is allowed through automatically."),

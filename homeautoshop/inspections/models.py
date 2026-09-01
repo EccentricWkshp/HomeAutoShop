@@ -82,6 +82,11 @@ class InspectionTemplate(BaseModel):
     asset_kinds = models.JSONField(default=list, blank=True)
     vehicle_classes = models.JSONField(default=list, blank=True)
     source = models.CharField(max_length=12, choices=Source.choices, default=Source.BUILTIN)
+    author = models.CharField(
+        max_length=80,
+        blank=True,
+        help_text=_("Who published this, where it came from a shared catalog."),
+    )
     version = models.PositiveIntegerField(default=1)
     is_active = models.BooleanField(default=True)
 

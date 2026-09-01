@@ -1,0 +1,164 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Template catalog" %} — {{ shop_name }}{% endblock %}
+{% block content %}
+{% url 'template_list' as back_url %}
+{% include "partials/_back.html" with url=back_url label=_("Schedule templates") %}
+
+<div class="spread">
+  <div>
+    <h1>{% translate "Template catalog" %}</h1>
+    <p class="muted">{% translate "Schedules and parser profiles other people have published" %}</p>
+  </div>
+  {% if configured %}
+    <a class="btn" href="?refresh=1">{% translate "Check again" %}</a>
+  {% endif %}
+</div>
+
+{% comment %}
+Said on the screen rather than only in the code, because it is the part
+somebody deciding whether to press Install needs to know: the catalog is a
+postman. Nothing here has been vouched for, everything is checked by the same
+validator an uploaded file gets, and installing a schedule does not put it on
+a vehicle.
+{% endcomment %}
+<div class="card">
+  <h2>{% translate "What this is" %}</h2>
+  <ul class="small">
+    <li>{% translate "Checked only when you open this page or press Check again — never in the background, and never on start-up." %}</li>
+    <li>{% translate "Everything is read by the same checks a file you upload goes through, whichever address it came from." %}</li>
+    <li>{% translate "Installing a schedule adds it to your list. It is not applied to any vehicle until you choose to." %}</li>
+    <li>{% translate "Whether these intervals suit your vehicle is still yours to judge. Read one before you use it." %}</li>
+  </ul>
+  {% comment %}
+  The address is shown because it is what the assurances above are worth
+  against. Templates in the project's own repository are reviewed before they
+  are published, which raises the floor considerably — but the address is a
+  setting, so this page cannot assume it points there, and the checks are the
+  same either way.
+  {% endcomment %}
+  {% if source %}
+    <p class="small muted">{% translate "Reading from" %} <span class="mono">{{ source }}</span></p>
+  {% endif %}
+</div>
+
+{% if not configured %}
+  <div class="card">
+    <p class="msg warning">
+      {% translate "No catalog address is set. Add one under settings to browse published templates." %}
+    </p>
+  </div>
+{% elif problem %}
+  <div class="card">
+    <p class="msg warning">{{ problem }}</p>
+    <p class="small muted">
+      {% translate "Nothing here depends on the catalog — the templates you already have are unaffected." %}
+    </p>
+  </div>
+{% else %}
+  <div class="cols two">
+    <section class="card" id="schedules" data-live="schedules">
+      <h2>{% translate "Schedules" %}</h2>
+      <ul class="list small">
+        {% for entry in catalog.schedules %}
+          <li class="spread">
+            <div>
+              <strong>{{ entry.name }}</strong>
+              {% if entry.author %}<span class="muted"> · {{ entry.author }}</span>{% endif %}
+              {% if entry.description %}<div class="muted">{{ entry.description }}</div>{% endif %}
+            </div>
+            {% if entry.installed %}
+              <span class="pill ok">{% translate "Installed" %}</span>
+            {% else %}
+              <form method="post" action="{% url 'catalog_install' %}">
+                {% csrf_token %}<input type="hidden" name="_anchor" value="{{ entry.kind }}s">
+                <input type="hidden" name="kind" value="{{ entry.kind }}">
+                <input type="hidden" name="path" value="{{ entry.path }}">
+                <button type="submit">{% translate "Install" %}</button>
+              </form>
+            {% endif %}
+          </li>
+        {% empty %}
+          <li class="muted">{% translate "None published." %}</li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="card" id="checklists" data-live="checklists">
+      <h2>{% translate "Inspection checklists" %}</h2>
+      <ul class="list small">
+        {% for entry in catalog.checklists %}
+          <li class="spread">
+            <div>
+              <strong>{{ entry.name }}</strong>
+              {% if entry.author %}<span class="muted"> · {{ entry.author }}</span>{% endif %}
+              {% if entry.description %}<div class="muted">{{ entry.description }}</div>{% endif %}
+            </div>
+            {% if entry.installed %}
+              <span class="pill ok">{% translate "Installed" %}</span>
+            {% else %}
+              <form method="post" action="{% url 'catalog_install' %}">
+                {% csrf_token %}<input type="hidden" name="_anchor" value="checklists">
+                <input type="hidden" name="kind" value="{{ entry.kind }}">
+                <input type="hidden" name="path" value="{{ entry.path }}">
+                <button type="submit">{% translate "Install" %}</button>
+              </form>
+            {% endif %}
+          </li>
+        {% empty %}
+          <li class="muted">{% translate "None published." %}</li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="card" id="profiles" data-live="profiles">
+      <h2>{% translate "Parser profiles" %}</h2>
+      <ul class="list small">
+        {% for entry in catalog.profiles %}
+          <li class="spread">
+            <div>
+              <strong>{{ entry.name }}</strong>
+              {% if entry.author %}<span class="muted"> · {{ entry.author }}</span>{% endif %}
+              {% comment %}
+              A profile is regexes run over a scan report; unlike a schedule,
+              whose intervals you can read and judge, its correctness is only
+              knowable by running it against real hardware output. So the
+              badge is not decoration — it is the difference between a file
+              somebody proved and one somebody typed, and the name alone
+              cannot tell them apart.
+              {% endcomment %}
+              {% if entry.verified %}
+                <span class="pill ok">{% translate "Proven against real reports" %}</span>
+              {% else %}
+                <span class="pill warn">{% translate "Not proven" %}</span>
+              {% endif %}
+              {% if entry.description %}<div class="muted">{{ entry.description }}</div>{% endif %}
+            </div>
+            {% if entry.installed %}
+              <span class="pill ok">{% translate "Installed" %}</span>
+            {% else %}
+              <form method="post" action="{% url 'catalog_install' %}">
+                {% csrf_token %}<input type="hidden" name="_anchor" value="{{ entry.kind }}s">
+                <input type="hidden" name="kind" value="{{ entry.kind }}">
+                <input type="hidden" name="path" value="{{ entry.path }}">
+                <button type="submit">{% translate "Install" %}</button>
+              </form>
+            {% endif %}
+          </li>
+        {% empty %}
+          <li class="muted">{% translate "None published." %}</li>
+        {% endfor %}
+      </ul>
+    </section>
+  </div>
+  {% if catalog.skipped %}
+    {% comment %}
+    Counted out loud rather than hidden: an entry this instance cannot read is
+    usually a newer catalog than this version knows about, and silently
+    showing a short list would look like the catalog was smaller than it is.
+    {% endcomment %}
+    <p class="small muted">
+      {% blocktranslate count n=catalog.skipped %}One entry was published in a form this version does not recognize.{% plural %}{{ n }} entries were published in a form this version does not recognize.{% endblocktranslate %}
+    </p>
+  {% endif %}
+{% endif %}
+{% endblock %}

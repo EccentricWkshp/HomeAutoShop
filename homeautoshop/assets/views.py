@@ -1233,6 +1233,57 @@ def asset_report(request, pk):
 
 
 @login_required
+def asset_report_csv(request, pk):
+    """The same report as rows (FR-REP-2, FR-REP-4).
+
+    FR-REP-2 says this document is exportable as PDF *and CSV*, and only the
+    PDF existed. Built from `report_sections` like the other two, so the three
+    outputs cannot disagree about what the report contains — which was the
+    reason for pulling the content out of the renderer in the first place.
+
+    Each section is written as its own block with a blank line between, rather
+    than forced into one flat table. A vehicle report is six differently
+    shaped tables, and flattening them would produce a file with a header row
+    that lies about most of its contents.
+    """
+    import csv
+
+    from django.http import HttpResponse
+
+    from homeautoshop.core.reports import report_footer, report_sections
+
+    asset = get_object_or_404(Asset, pk=pk)
+    require(request.user, "asset.read", asset)
+    include_costs = request.GET.get("costs") != "0"
+
+    response = HttpResponse(content_type="text/csv")
+    slug = "".join(c if c.isalnum() else "-" for c in asset.nickname).strip("-").lower()
+    response["Content-Disposition"] = (
+        f'attachment; filename="{slug or "vehicle"}-history.csv"'
+    )
+    writer = csv.writer(response)
+    writer.writerow([asset.nickname, asset.descriptor])
+
+    for section in report_sections(asset, include_costs=include_costs):
+        if section.is_empty and not section.note:
+            continue
+        writer.writerow([])
+        writer.writerow([section.title])
+        if section.is_empty:
+            writer.writerow([section.note])
+            continue
+        writer.writerow(section.columns)
+        for row in section.rows:
+            writer.writerow(row)
+        if section.note:
+            writer.writerow([section.note])
+
+    writer.writerow([])
+    writer.writerow([report_footer()])
+    return response
+
+
+@login_required
 def asset_report_pdf(request, pk):
     """The file itself, once somebody has seen what is in it."""
     from django.http import HttpResponse

@@ -76,7 +76,7 @@ def parts_by_job(usages) -> list[CostLine]:
     Grouped by the job, because *the job is what the money bought*. A parts
     total answers "how much" and immediately raises "on what", and the honest
     answer is a list of the work it paid for — a brake overhaul and a set of
-    tyres are the reason the number is what it is, and reading them back is
+    tires are the reason the number is what it is, and reading them back is
     the difference between a figure somebody trusts and one they squint at.
 
     Biggest first rather than chronological on purpose. The costs screen is
@@ -126,7 +126,7 @@ def parts_by_job(usages) -> list[CostLine]:
     if len(lines) <= BREAKDOWN_ROWS:
         return lines
 
-    # The tail is summarised rather than cut, because a breakdown that stops
+    # The tail is summarized rather than cut, because a breakdown that stops
     # short without saying so does not add up to the total it sits under, and
     # somebody checking the arithmetic finds a hole instead of a footnote.
     rest = lines[BREAKDOWN_ROWS:]
@@ -446,11 +446,11 @@ def typical_costs() -> dict:
     on, and that work order already knows its own total.
 
     **Shared cost is split, not counted twice.** One Saturday's work order that
-    closed an oil change, an air filter and a tyre rotation is not three
+    closed an oil change, an air filter and a tire rotation is not three
     separate bills, so its total is divided by the number of services it
     completed. That under-attributes the expensive one and over-attributes the
     cheap ones; it is the best answer available without asking somebody to
-    itemise their weekend, and it is right in aggregate, which is what a
+    itemize their weekend, and it is right in aggregate, which is what a
     forecast is.
 
     The median is taken rather than the mean, so one brake job where the

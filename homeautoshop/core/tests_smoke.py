@@ -19,7 +19,7 @@ from django.test import TestCase, override_settings
 from django.urls import get_resolver
 from django.utils import timezone
 
-from homeautoshop.accounts.models import User
+from homeautoshop.accounts.models import Role, User
 from homeautoshop.assets.models import Asset, AssetSpec, Recall
 from homeautoshop.core.models import NotificationChannel
 from homeautoshop.diagnostics.models import DiagnosticSession, ParserProfile
@@ -43,6 +43,9 @@ SKIP = {
     "asset_report",      # a PDF, exercised in the reports tests
     "export_csv",        # streams a file, and needs a `kind`
     "profile_export",    # a file download, exercised in the profile tests
+    "template_export",   # a file download, exercised in tests_catalog
+    "checklist_export",  # likewise
+    "asset_report_csv",  # a file download; covered in tests_shelf
     "service_worker",    # not a page; has its own test
     "healthz",
     "readyz",
@@ -422,3 +425,44 @@ class WayBackTests(TestCase):
             and "Back to vehicle" in path.read_text(encoding="utf-8")
         ]
         self.assertEqual(offenders, [])
+
+
+class EveryScreenIsReachableTests(TestCase):
+    """A screen nobody can find is a screen that does not exist.
+
+    Reported twice now. The cores page was filed under Shelf and stumbled into
+    by accident; the Templates page was built with routes, views, tests and no
+    link at all, so the only way to reach it was to type the URL. The smoke
+    sweep above renders every route and says nothing about whether a person
+    could ever get to one.
+
+    So: every top-level screen is linked from somewhere a person navigates.
+    Detail pages are reached from their lists and are not the concern — the
+    failure is a *landing* screen with no route in.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="andy", password="x" * 16, role=Role.ADMIN
+        )
+        self.client.force_login(self.user)
+
+    def test_every_landing_screen_is_linked_from_the_chrome(self):
+        from django.urls import reverse
+
+        page = self.client.get(reverse("dashboard")).content.decode()
+
+        for name in (
+            "asset_list", "work_order_list", "due_list", "inspection_list",
+            "part_list", "inventory", "purchase_list", "reports", "person_list",
+            "user_list", "settings", "backups", "health", "reminders",
+            "diagnostic_queue", "tool_list", "integrations", "trash",
+            # The one this test was written for.
+            "template_list",
+        ):
+            with self.subTest(screen=name):
+                self.assertIn(
+                    'href="%s"' % reverse(name),
+                    page,
+                    "%s exists and nothing links to it" % name,
+                )

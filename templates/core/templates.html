@@ -1,0 +1,136 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Templates" %} — {{ shop_name }}{% endblock %}
+{% block content %}
+<div class="spread">
+  <div>
+    <h1>{% translate "Templates" %}</h1>
+    <p class="muted">{% translate "Service schedules and inspection checklists this shop can apply" %}</p>
+  </div>
+  {% if catalog_configured %}
+    <a class="btn" href="{% url 'catalog_browse' %}">{% translate "Browse the catalog" %}</a>
+  {% endif %}
+</div>
+
+{% comment %}
+The catalog has an address by default, so this branch is for an instance where
+somebody deliberately cleared it. It still says the feature exists rather than
+hiding the control, because a vanished button is how a feature becomes one
+nobody knows about — the same shape as the cores screen that was reachable and
+unfindable. Nothing here reaches the network; it is a sentence about a setting.
+{% endcomment %}
+{% if not catalog_configured %}
+  <div class="card">
+    <h2>{% translate "The shared catalog is switched off" %}</h2>
+    <p class="small">
+      {% translate "Other people publish service schedules, inspection checklists and scan-tool profiles you can install. This instance has no catalog address set, so there is nothing to browse." %}
+    </p>
+    <p class="small muted">
+      {% translate "Set an address under settings to turn it back on. Nothing is fetched until you press Browse — never in the background, and never on start-up." %}
+    </p>
+    <a class="btn" href="{% url 'settings' %}">{% translate "Settings" %}</a>
+  </div>
+{% endif %}
+
+<div class="cols two">
+  <section class="card">
+    <h2>{% translate "Service schedules" %}</h2>
+    <ul class="list small">
+      {% for template in templates %}
+        <li class="spread">
+          <div>
+            <strong>{{ template.name }}</strong>
+            <div class="muted">
+              {% blocktranslate count n=template.items.count %}{{ n }} item{% plural %}{{ n }} items{% endblocktranslate %}
+              · {{ template.get_source_display }}
+              {% if template.author %} · {{ template.author }}{% endif %}
+              {% if template.description %} · {{ template.description|truncatewords:14 }}{% endif %}
+            </div>
+          </div>
+          <a class="btn small" href="{% url 'template_export' template.pk %}">{% translate "Export" %}</a>
+        </li>
+      {% empty %}
+        <li class="muted">{% translate "None yet." %}</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <aside class="card">
+    <h2>{% translate "Import a template" %}</h2>
+    {% comment %}
+    The same validator the catalog uses, which is the point: a file handed
+    over on a memory stick and one pulled from a repository are checked
+    identically, so the repository gets no privilege a stranger's email would
+    not have.
+    {% endcomment %}
+    <p class="small muted">
+      {% translate "A YAML file exported from another instance. It is checked before anything is written, and nothing is scheduled on a vehicle until you apply it." %}
+    </p>
+    <form method="post" action="{% url 'template_import' %}" enctype="multipart/form-data" class="stack">
+      {% csrf_token %}
+      <label class="filepick">
+        <input type="file" name="template" accept=".yaml,.yml,text/yaml"
+               aria-label="{% translate 'Template file' %}">
+        <span>{% translate "Choose a file" %}</span>
+      </label>
+      <label class="field">
+        <span class="visually-hidden">{% translate "Or paste the template" %}</span>
+        <textarea name="yaml" rows="6" class="input"
+                  placeholder="{% translate 'or paste it here' %}"></textarea>
+      </label>
+      <div class="row"><button class="primary" type="submit">{% translate "Import" %}</button></div>
+    </form>
+  </aside>
+</div>
+
+<div class="cols two">
+  <section class="card">
+    <h2>{% translate "Inspection checklists" %}</h2>
+    <ul class="list small">
+      {% for checklist in checklists %}
+        <li class="spread">
+          <div>
+            <strong>{{ checklist.name }}</strong>
+            <div class="muted">
+              {% blocktranslate count n=checklist.points.count %}{{ n }} point{% plural %}{{ n }} points{% endblocktranslate %}
+              · {{ checklist.get_source_display }}
+              {% if checklist.author %} · {{ checklist.author }}{% endif %}
+              · v{{ checklist.version }}
+            </div>
+          </div>
+          <a class="btn small" href="{% url 'checklist_export' checklist.pk %}">{% translate "Export" %}</a>
+        </li>
+      {% empty %}
+        <li class="muted">{% translate "None yet." %}</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <aside class="card">
+    <h2>{% translate "Import a checklist" %}</h2>
+    {% comment %}
+    FR-DVI-13 promised this and SCHEMA-INSPECTION-TEMPLATES.md documented the
+    format in full; neither had ever been implemented. Thresholds get the
+    strictest checking here, because they decide the machine's opinion of a
+    measurement and a rule that reads wrong is a confident wrong answer about
+    a brake pad.
+    {% endcomment %}
+    <p class="small muted">
+      {% translate "A YAML checklist. Its thresholds are checked before anything is written — an unknown comparison or a bound that is not a number is refused with the point named." %}
+    </p>
+    <form method="post" action="{% url 'checklist_import' %}" enctype="multipart/form-data" class="stack">
+      {% csrf_token %}
+      <label class="filepick">
+        <input type="file" name="checklist" accept=".yaml,.yml,text/yaml"
+               aria-label="{% translate 'Checklist file' %}">
+        <span>{% translate "Choose a file" %}</span>
+      </label>
+      <label class="field">
+        <span class="visually-hidden">{% translate "Or paste the checklist" %}</span>
+        <textarea name="yaml" rows="6" class="input"
+                  placeholder="{% translate 'or paste it here' %}"></textarea>
+      </label>
+      <div class="row"><button class="primary" type="submit">{% translate "Import" %}</button></div>
+    </form>
+  </aside>
+</div>
+{% endblock %}

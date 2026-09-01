@@ -64,6 +64,11 @@ class ScheduleTemplate(BaseModel):
     description = models.TextField(blank=True)
     source = models.CharField(max_length=12, choices=Source.choices, default=Source.BUILTIN)
     asset_kinds = models.JSONField(default=list, blank=True)
+    author = models.CharField(
+        max_length=80,
+        blank=True,
+        help_text=_("Who published this, where it came from a shared catalog."),
+    )
     vehicle_classes = models.JSONField(default=list, blank=True)
     is_active = models.BooleanField(default=True)
 

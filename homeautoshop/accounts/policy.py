@@ -66,7 +66,7 @@ VEHICLE = frozenset({
     "work_order_time_add", "time_entry_edit", "time_entry_delete",
     "note_create", "job_item_create", "job_item_edit", "job_item_delete",
     "job_item_move", "job_item_toggle",
-    # Recording what went on the vehicle. The catalogue is readable and the
+    # Recording what went on the vehicle. The catalog is readable and the
     # shelf is not: a helper says "I fitted this filter", and what it cost and
     # how many are left are not their business.
     "work_order_part_use", "work_order_part_require",
@@ -88,7 +88,7 @@ VEHICLE = frozenset({
 
 HELPER_URLS = ALWAYS | VEHICLE
 
-#: Screens a helper may open but only read. The catalogue tells them which
+#: Screens a helper may open but only read. The catalog tells them which
 #: filter they are holding; it does not let them edit the shop's parts list.
 HELPER_READ_ONLY_URLS = frozenset({
     "part_list", "part_detail", "part_search", "part_by_code", "asset_list",

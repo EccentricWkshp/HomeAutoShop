@@ -683,10 +683,12 @@ def profile_export(request, pk):
 @login_required
 def profile_import(request):
     require(request.user, "integration.manage")
-    upload = request.FILES.get("profile")
-    text = upload.read().decode("utf-8", errors="replace") if upload else request.POST.get("yaml", "")
-    if not text.strip():
-        messages.warning(request, _("Paste a profile or choose a file."))
+    from homeautoshop.core.imports import NothingToImport, text_from
+
+    try:
+        text = text_from(request, "profile")
+    except NothingToImport as exc:
+        messages.warning(request, str(exc))
         return redirect("profile_list")
 
     try:

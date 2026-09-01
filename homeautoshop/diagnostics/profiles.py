@@ -25,6 +25,14 @@ from .models import MediaType, ParserProfile, ProfileSource
 
 FIELDS = (
     "name",
+    # Who wrote it, and what it was proven against. A profile is regexes run
+    # over somebody's scan report: unlike a schedule, whose intervals you can
+    # read and judge, its correctness is only knowable by running it against
+    # real hardware output. Two files both called "XTOOL D8" — one from
+    # somebody holding the tool, one guessed — are otherwise indistinguishable,
+    # and the name alone is far too thin a thing to trust.
+    "author",
+    "verified_against",
     "tool_vendor",
     "tool_model",
     "version",
@@ -35,6 +43,25 @@ FIELDS = (
     "table_extractor",
     "notes",
 )
+
+
+def _captures(raw) -> list[str]:
+    """The reports a profile claims, as a list however it was written.
+
+    A single string is accepted and wrapped, because somebody with one report
+    should not have to remember YAML list syntax to say so — and because the
+    difference between one and several is a judgment the publishing rules
+    make, not a thing to enforce with a parse error.
+    """
+    if raw in (None, "", []):
+        return []
+    if isinstance(raw, str):
+        return [raw[:120]]
+    if isinstance(raw, list) and all(isinstance(v, str) for v in raw):
+        return [v[:120] for v in raw][:20]
+    raise ProfileInvalid(
+        _("`verified_against` is a report name, or a list of them.")
+    )
 
 
 class ProfileInvalid(ValueError):
@@ -85,6 +112,8 @@ def from_yaml(text: str, *, source: str = ProfileSource.IMPORTED) -> ParserProfi
         field_extractors=data.get("field_extractors") or {},
         table_extractor=data.get("table_extractor") or {},
         notes=str(data.get("notes", "")),
+        author=str(data.get("author", ""))[:80],
+        verified_against=_captures(data.get("verified_against")),
         source=source,
     )
     for where, pattern in _patterns(profile):

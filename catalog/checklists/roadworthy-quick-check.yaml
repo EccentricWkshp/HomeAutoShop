@@ -1,0 +1,54 @@
+name: Roadworthy quick check
+slug: roadworthy-quick-check
+author: HomeAutoShop
+description: >-
+  A ten-minute walk around before a long drive. Deliberately short: a check
+  nobody completes is worse than a shorter one everybody does.
+asset_kinds:
+  - vehicle
+version: 1
+points:
+  - area: tires_wheels
+    name: Tire pressure
+    result_type: measurement
+    measurement_unit: psi
+    positions: [LF, RF, LR, RR]
+    photo_required: never
+    is_safety_critical: true
+  - area: tires_wheels
+    name: Tire tread depth
+    translation_key: point.tire_tread
+    guidance: >-
+      Measure at outer, center and inner. A large spread across one tire is
+      alignment or inflation, not wear.
+    result_type: measurement
+    measurement_unit: /32in
+    positions: [LF, RF, LR, RR]
+    thresholds:
+      fail: {lte: 2}
+      attention: {lte: 4}
+      pass: {gt: 4}
+    photo_required: on_attention
+    is_safety_critical: true
+  - area: lighting_electrical
+    name: Lights and indicators
+    guidance: Headlights both beams, brake lights, indicators, reverse, plate.
+    result_type: status
+    is_safety_critical: true
+  - area: under_hood
+    name: Engine oil level
+    result_type: status
+  - area: under_hood
+    name: Coolant level
+    result_type: status
+  - area: under_hood
+    name: Washer fluid and wiper condition
+    result_type: status
+  - area: brakes
+    name: Brake pedal feel
+    guidance: Firm, no sink under steady pressure, no pulling under braking.
+    result_type: status
+    is_safety_critical: true
+  - area: interior
+    name: Spare, jack and tools present
+    result_type: status

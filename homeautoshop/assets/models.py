@@ -493,7 +493,7 @@ class AssetSpec(RevisionedModel):
     name = models.CharField(max_length=120)
     value = models.CharField(max_length=200)
     #: The other end, when the spec is a range rather than a figure. Plenty are:
-    #: a refrigerant charge is 0.50–0.55 kg, a cold tyre pressure is 32–35 psi,
+    #: a refrigerant charge is 0.50–0.55 kg, a cold tire pressure is 32–35 psi,
     #: a valve lash is a window. Typed into `value` as "0.50-0.55" it reads
     #: correctly and compares to nothing, so a range stored as text is a range
     #: nothing can ever check a measurement against.

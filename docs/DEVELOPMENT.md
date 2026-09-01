@@ -202,9 +202,9 @@ python manage.py compilemessages --ignore venv
 The image installs gettext, so `docker compose exec app python manage.py makemessages ...`
 works without setting anything up locally. **Pass `--ignore venv` to
 `compilemessages`** or it walks into the virtualenv and tries to rebuild every
-catalogue Django ships, read-only, failing on all of them.
+catalog Django ships, read-only, failing on all of them.
 
-There is no `en_US` catalogue: it is the source language, so gettext falling
+There is no `en_US` catalog: it is the source language, so gettext falling
 through to the `msgid` is already correct, and an empty one would be 1,777
 blank entries churning on every extraction.
 
@@ -259,10 +259,10 @@ python manage.py import_lubelogger --commit --create-missing
 ### The one thing that will bite you
 
 LubeLogger returns **locale-formatted numbers** unless the `culture-invariant`
-header is honoured. A `1.234,56` fuel cost imported as `1.23` is a bug nobody
+header is honored. A `1.234,56` fuel cost imported as `1.23` is a bug nobody
 notices for months, and it corrupts every cost report downstream.
 
-Two defences are in place, because one is not enough:
+Two defenses are in place, because one is not enough:
 
 1. `--check` inspects a sample of the response and **refuses to import** if it
    sees comma-decimals.

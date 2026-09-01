@@ -1,0 +1,63 @@
+name: Pre-purchase inspection
+slug: pre-purchase-inspection
+translation_key: template.ppi
+author: HomeAutoShop
+description: >-
+  Walk a vehicle you are considering buying. Designed to be completed offline,
+  in someone else's driveway, in about thirty minutes. Generic on purpose and
+  not a substitute for a mechanic's inspection — the thresholds are common
+  guidance, so check anything marginal against the standards where you live.
+vehicle_classes:
+  - car
+  - truck
+version: 1
+points:
+  - area: tires_wheels
+    name: Tire tread depth
+    translation_key: point.tire_tread
+    guidance: >-
+      Measure at outer, center and inner across each tire. A large spread
+      across one tire means alignment or inflation, not just wear.
+    result_type: measurement
+    measurement_unit: /32in
+    positions: [LF, RF, LR, RR]
+    sub_positions: [outer, center, inner]
+    thresholds:
+      fail: {lte: 2}
+      attention: {lte: 4}
+      pass: {gt: 4}
+    photo_required: on_attention
+    is_safety_critical: true
+  - area: tires_wheels
+    name: Tire DOT date code
+    guidance: >-
+      Four digits: week and year of manufacture. Over six years is attention
+      regardless of tread; over ten is a fail regardless of tread.
+    result_type: status
+    positions: [LF, RF, LR, RR]
+    photo_required: always
+    is_safety_critical: true
+  - area: brakes
+    name: Brake pad thickness
+    result_type: measurement
+    measurement_unit: mm
+    positions: [LF, RF, LR, RR]
+    thresholds:
+      fail: {lte: 3}
+      attention: {lte: 5}
+    photo_required: on_attention
+    is_safety_critical: true
+  - area: under_vehicle
+    name: Frame and rocker corrosion
+    guidance: >-
+      Structural rust is the most common reason to walk away. Photograph
+      anything scaling or perforated.
+    result_type: status
+    photo_required: on_attention
+    is_safety_critical: true
+  - area: road_test
+    name: Cold start behavior
+    guidance: >-
+      Insist on a genuinely cold start. A seller who warmed the car up before
+      you arrived is worth a note of its own.
+    result_type: status

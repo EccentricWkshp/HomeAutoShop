@@ -1,5 +1,5 @@
 """
-The translation catalogues (SPEC §5.6, NFR-A-*).
+The translation catalogs (SPEC §5.6, NFR-A-*).
 
 Four languages were offered in the picker and none of them was translated, so
 choosing français (Canada) delivered English. These hold down the parts of
@@ -10,12 +10,12 @@ Two of them matter more than the rest:
 * **Placeholders.** Django interpolates `%(name)s` at render time, so a
   translation that drops one is a `KeyError` on a live page in a language the
   author does not read. This is the failure that does not announce itself.
-* **`.mo` against `.po`.** The compiled catalogue is what ships — `.po` is
+* **`.mo` against `.po`.** The compiled catalog is what ships — `.po` is
   excluded from the image by `.dockerignore` — so an edited `.po` that nobody
   recompiled means the running instance disagrees with the repository.
 
 Nothing here asserts that a translation is *good*; no test can. The
-catalogues say plainly that they are machine-drafted and want review.
+catalogs say plainly that they are machine-drafted and want review.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ from django.utils.translation import gettext, ngettext
 
 LOCALE_ROOT = Path(settings.BASE_DIR) / "locale"
 
-#: The source language. Its catalogue is deliberately absent: with no entries
+#: The source language. Its catalog is deliberately absent: with no entries
 #: to translate, gettext falls through to the msgid, which is already en-US.
 SOURCE_LANGUAGE = "en-us"
 
@@ -53,22 +53,22 @@ def catalogs():
             yield path, read_po(handle)
 
 
-class CataloguesExistTests(TestCase):
+class CatalogsExistTests(TestCase):
     def test_every_language_offered_can_be_delivered(self):
-        """A picker entry with no catalogue behind it is a lie."""
+        """A picker entry with no catalog behind it is a lie."""
         offered = {code for code, _name in settings.LANGUAGES}
         present = {path.parent.parent.name.lower().replace("_", "-") for path, _ in catalogs()}
         missing = offered - present - {SOURCE_LANGUAGE}
-        self.assertFalse(missing, f"offered with no catalogue: {sorted(missing)}")
+        self.assertFalse(missing, f"offered with no catalog: {sorted(missing)}")
 
-    def test_the_source_language_has_no_catalogue_of_its_own(self):
+    def test_the_source_language_has_no_catalog_of_its_own(self):
         """It would be 1,777 empty entries restated, and churn on every extract."""
         self.assertFalse((LOCALE_ROOT / "en_US").exists())
 
-    def test_each_catalogue_declares_its_plural_rule(self):
+    def test_each_catalog_declares_its_plural_rule(self):
         """Getting this wrong is silent: the wrong branch, forever."""
         for path, catalog in catalogs():
-            with self.subTest(catalogue=path.parent.parent.name):
+            with self.subTest(catalog=path.parent.parent.name):
                 self.assertTrue(catalog.plural_expr, "no Plural-Forms header")
                 self.assertEqual(catalog.num_plurals, 2)
 
@@ -93,7 +93,7 @@ class PlaceholderTests(TestCase):
                 for index, target in enumerate(targets):
                     if not target:
                         continue
-                    with self.subTest(catalogue=path.parent.parent.name, msgid=sources[0]):
+                    with self.subTest(catalog=path.parent.parent.name, msgid=sources[0]):
                         self.assertEqual(
                             sorted(PLACEHOLDER.findall(target)),
                             expected,
@@ -109,25 +109,25 @@ class PlaceholderTests(TestCase):
                     continue
                 if isinstance(message.id, (list, tuple)):
                     continue
-                with self.subTest(catalogue=path.parent.parent.name, msgid=message.id):
+                with self.subTest(catalog=path.parent.parent.name, msgid=message.id):
                     self.assertEqual(
                         sorted(brace.findall(message.string)),
                         sorted(brace.findall(message.id)),
                     )
 
 
-class CompiledCatalogueTests(TestCase):
+class CompiledCatalogTests(TestCase):
     """`.mo` is what ships; `.po` is what a person edits."""
 
-    def test_every_catalogue_is_compiled(self):
+    def test_every_catalog_is_compiled(self):
         for path, _catalog in catalogs():
-            with self.subTest(catalogue=path.parent.parent.name):
+            with self.subTest(catalog=path.parent.parent.name):
                 self.assertTrue(
                     path.with_suffix(".mo").exists(),
                     "run: docker compose exec app python manage.py compilemessages",
                 )
 
-    def test_the_compiled_catalogue_matches_its_source(self):
+    def test_the_compiled_catalog_matches_its_source(self):
         """An edited `.po` nobody recompiled ships the previous translation."""
         from babel.messages.mofile import read_mo
 
@@ -143,7 +143,7 @@ class CompiledCatalogueTests(TestCase):
                 if not any(forms(message.string)):
                     continue
                 key = message.id[0] if isinstance(message.id, (list, tuple)) else message.id
-                with self.subTest(catalogue=path.parent.parent.name, msgid=key):
+                with self.subTest(catalog=path.parent.parent.name, msgid=key):
                     self.assertIn(key, compiled, "in the .po and not in the .mo")
                     # Babel hands back a tuple from a .po and a list from a
                     # .mo for the same plural forms; compare the content.
@@ -157,7 +157,7 @@ class CompiledCatalogueTests(TestCase):
         """
         for path, catalog in catalogs():
             fuzzy = [m.id for m in catalog if m.id and "fuzzy" in m.flags]
-            with self.subTest(catalogue=path.parent.parent.name):
+            with self.subTest(catalog=path.parent.parent.name):
                 self.assertEqual(fuzzy, [], "needs review, then the flag removed")
 
 
@@ -188,6 +188,10 @@ class ItActuallyTranslatesTests(TestCase):
     def test_canadian_english_differs_only_where_the_spelling_does(self):
         with translation.override("en-ca"):
             self.assertEqual(gettext("Totaled"), "Totalled")
+            # The Canadian spelling is the subject of this assertion, not a
+            # lapse: en-CA exists precisely to differ here. A repo-wide sweep
+            # to American spelling must not touch it, which is what this line
+            # caught the one time somebody tried.
             self.assertEqual(gettext("Not cataloged"), "Not catalogued")
             # Everything else falls through to the source, which is already
             # correct Canadian English.
@@ -231,15 +235,15 @@ class ItActuallyTranslatesTests(TestCase):
 
 
 class MachineDraftedTests(TestCase):
-    """The catalogues have to say what they are."""
+    """The catalogs have to say what they are."""
 
     def test_each_one_says_it_wants_review(self):
         for path, _catalog in catalogs():
             head = path.read_text(encoding="utf-8")[:2000]
-            with self.subTest(catalogue=path.parent.parent.name):
+            with self.subTest(catalog=path.parent.parent.name):
                 self.assertIn("review", head.lower())
 
-    def test_no_catalogue_carries_a_personal_email(self):
+    def test_no_catalog_carries_a_personal_email(self):
         """These ship in an open repository."""
         address = re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+")
         for path, _catalog in catalogs():
@@ -248,5 +252,5 @@ class MachineDraftedTests(TestCase):
                 for hit in address.findall(path.read_text(encoding="utf-8"))
                 if not hit.endswith(("example.com", "example.invalid", "ejemplo.com"))
             }
-            with self.subTest(catalogue=path.parent.parent.name):
+            with self.subTest(catalog=path.parent.parent.name):
                 self.assertEqual(found, set())

@@ -559,7 +559,7 @@ def _lookup(table: dict, code: str, *, year: int | None) -> list[str]:
         if year is not None and span and not (span[0] <= year <= span[1]):
             continue
         # The span is only worth printing while the year is still open. Once
-        # it is settled, "400 CID V8 (1977–1979)" on a truck already labelled
+        # it is settled, "400 CID V8 (1977–1979)" on a truck already labeled
         # 1978 is noise about years this vehicle is not.
         texts.append(
             str(option["text"])

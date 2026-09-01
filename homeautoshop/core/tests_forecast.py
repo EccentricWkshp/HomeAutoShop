@@ -11,7 +11,7 @@ Two things it must not do, and both are load-bearing:
 * **Price an unknown at zero.** A service this shop has never performed has no
   price, and counting it as free would understate exactly the thing the report
   exists to warn about. It is counted, named, and left out of the total, and
-  the figure is labelled a floor.
+  the figure is labeled a floor.
 * **Count a recurring service once.** An oil change on a daily driver lands
   three times in a year. A forecast that counted each schedule item once would
   be roughly half of what actually happens, and wrong in the same direction for
@@ -101,18 +101,18 @@ class PricingTests(Base):
         """One Saturday that closed three services is not three bills. Charging
         the whole order to each would treble a year's forecast."""
         oil = self.scheduled()
-        tyres = self.scheduled(
-            ServiceDefinition.objects.create(name="Tyre rotation"), distance=6000
+        tires = self.scheduled(
+            ServiceDefinition.objects.create(name="Tire rotation"), distance=6000
         )
         air = self.scheduled(
             ServiceDefinition.objects.create(name="Air filter"), distance=15000
         )
-        self.performed(oil, cost_minor=9000, also=[tyres, air])
+        self.performed(oil, cost_minor=9000, also=[tires, air])
 
         prices = typical_costs()
 
         self.assertEqual(prices[self.oil.pk], 3000)
-        self.assertEqual(prices[tyres.definition_id], 3000)
+        self.assertEqual(prices[tires.definition_id], 3000)
         self.assertEqual(prices[air.definition_id], 3000)
 
     def test_the_median_is_taken_so_one_bad_day_does_not_set_the_price(self):
@@ -382,7 +382,7 @@ class PartsBreakdownTests(TestCase):
             sum(row.amount_minor for row in line.breakdown), line.amount_minor
         )
 
-    def test_a_long_history_is_summarised_rather_than_cut(self):
+    def test_a_long_history_is_summarized_rather_than_cut(self):
         """Stopping short without saying so leaves somebody checking the
         arithmetic with a hole instead of a footnote."""
         for n in range(12):

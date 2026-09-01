@@ -836,7 +836,7 @@ def tool_search(request):
 
 
 def search_tools(query: str, *, limit: int = 25) -> list[dict]:
-    """The shop's copy of the tool catalogue, searched here.
+    """The shop's copy of the tool catalog, searched here.
 
     Shared by the autocomplete on a job item and by the tools screen, because
     two searches over the same source are two chances to answer the same

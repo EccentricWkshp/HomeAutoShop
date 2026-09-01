@@ -85,7 +85,7 @@ def _overlay() -> dict[str, Any]:
     except DatabaseError:
         # Before the first migration, or with the database briefly away. The
         # environment is a complete configuration on its own, so this degrades
-        # to exactly the behaviour of the release before this one.
+        # to exactly the behavior of the release before this one.
         return _cache
 
     _cache = {key: payload.get("v") for key, payload in rows.items() if isinstance(payload, dict)}
@@ -155,7 +155,10 @@ def allowlist() -> list[str]:
     existed — the integration would be configured, enabled, and refused.
     """
     hosts = list(django_settings.OUTBOUND_ALLOWLIST)
-    for key in ("LUBELOGGER_URL", "WRENCHLEDGER_URL", "PLATE_LOOKUP_URL", "VPIC_BASE_URL"):
+    for key in (
+        "LUBELOGGER_URL", "WRENCHLEDGER_URL", "PLATE_LOOKUP_URL",
+        "VPIC_BASE_URL", "CATALOG_URL",
+    ):
         value = current(key) if key in BY_KEY else getattr(django_settings, key, "")
         if not value:
             continue
@@ -214,7 +217,7 @@ def credential_get(key: str) -> str | None:
         return _fernet().decrypt(blob.encode()).decode()
     except Exception:
         # Almost always `CREDENTIAL_KEY` having been rotated, which invalidates
-        # every stored credential at once — the intended emergency behaviour.
+        # every stored credential at once — the intended emergency behavior.
         # Treated as "not configured", which is the state the UI can explain.
         log.warning("stored credential %s could not be decrypted", key)
         return None

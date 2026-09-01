@@ -13,7 +13,7 @@ Two layers, and both are tested because both have to be true:
   region, so nothing navigates at all. It is tested here through its
   preconditions — that the regions it needs are marked, that the messages live
   region exists before anything is announced into it — because the swap itself
-  is browser behaviour this suite cannot execute.
+  is browser behavior this suite cannot execute.
 """
 
 from __future__ import annotations
@@ -221,7 +221,7 @@ class LiveRegionTests(Base):
         self.assertLess(
             page.index("forms.js"),
             page.index("liveform.js"),
-            "a cancelled confirmation must stop the post, not just the navigation",
+            "a canceled confirmation must stop the post, not just the navigation",
         )
 
     def test_the_page_still_works_with_the_script_absent(self):

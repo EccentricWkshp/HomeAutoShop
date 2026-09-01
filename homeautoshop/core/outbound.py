@@ -66,6 +66,101 @@ def _host_allowed(host: str) -> bool:
     return False
 
 
+def _get(url, *, accept, timeout=None, headers=None, purpose="", user=None):
+    """The guarded GET both fetchers share.
+
+    Every rule §12.3 and §12.4 impose lives here and nowhere else: Offline
+    Mode, the scheme check, the allowlist, the refusal to follow a redirect
+    across hosts, and the audit entry. A second copy of this was the thing
+    worth avoiding — not a second *decoder*, which is all `fetch_text` is.
+    """
+    import time
+
+    from .models import AuditLog
+
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise OutboundBlocked(_("Only http and https are permitted."))
+    if conf.OFFLINE_MODE:
+        raise OutboundBlocked(
+            _("Offline Mode is on, so no outbound requests are made. Enter the details by hand.")
+        )
+    if not _host_allowed(parsed.hostname or ""):
+        raise OutboundBlocked(
+            _("%(host)s is not on the outbound allowlist.") % {"host": parsed.hostname}
+        )
+
+    request = urllib.request.Request(
+        url,
+        headers={"Accept": accept, "User-Agent": "HomeAutoShop/1.0", **(headers or {})},
+        method="GET",
+    )
+
+    class _NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, hdrs, newurl):  # noqa: D102
+            raise OutboundBlocked(_("Redirect refused (%(url)s).") % {"url": newurl})
+
+    opener = urllib.request.build_opener(_NoRedirect)
+    started = time.monotonic()
+    status, raw, error = 0, b"", ""
+    try:
+        with opener.open(request, timeout=timeout or settings.VIN_DECODE_TIMEOUT) as resp:
+            status, raw = resp.status, resp.read()
+    except OutboundBlocked:
+        raise
+    except urllib.error.HTTPError as exc:
+        status, error = exc.code, f"HTTP {exc.code}"
+    except Exception as exc:
+        error = type(exc).__name__
+    finally:
+        elapsed = int((time.monotonic() - started) * 1000)
+        AuditLog.objects.create(
+            entity_type="Outbound",
+            action=AuditLog.Action.OUTBOUND,
+            user=user if getattr(user, "pk", None) else None,
+            summary=f"{parsed.hostname}{parsed.path}"[:255],
+            diff={
+                "purpose": purpose,
+                "status": status,
+                "elapsed_ms": elapsed,
+                "error": error,
+                "host": parsed.hostname,
+            },
+        )
+    if error:
+        raise OutboundFailed(error, status=status)
+    return status, raw, elapsed
+
+
+#: A body larger than this is not something this application asked for. Applied
+#: to text fetches, where the caller has no schema to fail against — a JSON
+#: document at least has to parse.
+MAX_TEXT_BYTES = 1024 * 1024
+
+
+def fetch_text(
+    url: str,
+    *,
+    timeout: int | None = None,
+    purpose: str = "",
+    user=None,
+) -> str:
+    """GET a plain document, under exactly the guardrails `fetch_json` uses.
+
+    Both go through `_get`, so Offline Mode, the allowlist, the redirect
+    refusal and the audit log are enforced once rather than twice. The
+    alternative was making every published catalog file a JSON envelope with
+    the real content escaped inside it, which put an implementation detail —
+    "this codebase happens to have a JSON fetcher" — in front of everybody who
+    wanted to contribute a template.
+    """
+    status, raw, elapsed = _get(url, accept="text/plain, */*", timeout=timeout,
+                                purpose=purpose, user=user)
+    if len(raw) > MAX_TEXT_BYTES:
+        raise OutboundFailed(_("That document is too large."), status=status)
+    return raw.decode("utf-8", errors="replace")
+
+
 def fetch_json(
     url: str,
     *,

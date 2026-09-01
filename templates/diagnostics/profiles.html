@@ -24,7 +24,17 @@
               {% if profile.engine %}<span class="pill">{% translate "built-in parser" %}</span>{% endif %}
             </th>
             <td class="small">{{ profile.tool_vendor }} {{ profile.tool_model }}</td>
-            <td class="small muted">{{ profile.get_media_type_display }} · {{ profile.get_source_display }}</td>
+            <td class="small muted">{{ profile.get_media_type_display }} · {{ profile.get_source_display }}
+              {% if profile.author %} · {{ profile.author }}{% endif %}
+              {% comment %}
+              Kept visible after install, not only while browsing. Six months
+              on, "where did this parser come from and was it ever proven"
+              is exactly the question somebody asks when a scan reads oddly.
+              {% endcomment %}
+              {% if profile.verified_against %}
+                <div><span class="pill ok">{% translate "Proven against" %} <span class="mono">{{ profile.verified_against }}</span></span></div>
+              {% endif %}
+            </td>
             <td class="mono small">{{ profile.sessions.count }}</td>
             <td>
               <div class="row">

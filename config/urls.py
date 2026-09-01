@@ -8,6 +8,7 @@ from homeautoshop.accounts import views as accounts
 from homeautoshop.api.urls import api
 from homeautoshop.assets import views as assets
 from homeautoshop.core import views as core
+from homeautoshop.core import views_catalog as catalog
 from homeautoshop.core import views_integrations as integrations
 from homeautoshop.core import views_settings as instance_settings
 from homeautoshop.core import views_setup
@@ -37,6 +38,13 @@ urlpatterns = [
     # Who may sign in (FR-ADM-2). No delete route exists on purpose: see
     # the module docstring in homeautoshop/accounts/views.py.
     path("users/", accounts.user_list, name="user_list"),
+    path("templates/", catalog.template_list, name="template_list"),
+    path("templates/import/", catalog.template_import, name="template_import"),
+    path("templates/<uuid:pk>/export/", catalog.template_export, name="template_export"),
+    path("checklists/import/", catalog.checklist_import, name="checklist_import"),
+    path("checklists/<uuid:pk>/export/", catalog.checklist_export, name="checklist_export"),
+    path("templates/catalog/", catalog.catalog_browse, name="catalog_browse"),
+    path("templates/catalog/install/", catalog.catalog_install, name="catalog_install"),
     path("users/new/", accounts.user_create, name="user_create"),
     path("users/<uuid:pk>/", accounts.user_detail, name="user_detail"),
     path("users/<uuid:pk>/signin/", accounts.user_set_active, name="user_set_active"),
@@ -215,6 +223,7 @@ urlpatterns = [
     path("vehicles/<uuid:pk>/recalls/<uuid:recall_id>/", assets.recall_status, name="recall_status"),
     path("vehicles/<uuid:pk>/report/", assets.asset_report, name="asset_report"),
     path("vehicles/<uuid:pk>/report.pdf", assets.asset_report_pdf, name="asset_report_pdf"),
+    path("vehicles/<uuid:pk>/report.csv", assets.asset_report_csv, name="asset_report_csv"),
     # Inspections (DVI)
     path("inspections/", inspections.inspection_list, name="inspection_list"),
     path("inspections/start/", inspections.inspection_start, name="inspection_start"),
@@ -300,7 +309,7 @@ urlpatterns = [
     path("purchases/", purchasing.purchase_list, name="purchase_list"),
     path("purchases/new/", purchasing.purchase_create, name="purchase_create"),
     # A supplier order confirmation becomes a purchase, its lines, and the
-    # parts in the catalogue (FR-PUR-1, FR-PART-2).
+    # parts in the catalog (FR-PUR-1, FR-PART-2).
     path("purchases/import/", purchasing_import.order_import, name="order_import"),
     path("purchases/<uuid:pk>/", purchasing.purchase_detail, name="purchase_detail"),
     # Tax and shipping are not decoration: every lot received against this

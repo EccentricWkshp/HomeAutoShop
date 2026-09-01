@@ -27,6 +27,9 @@ this page cannot promise a section the document leaves out.
     {% else %}
       <a class="btn" href="?">{% translate "With costs" %}</a>
     {% endif %}
+    <a class="btn" href="{% url 'asset_report_csv' asset.pk %}{% if not include_costs %}?costs=0{% endif %}">
+      {% translate "CSV" %}
+    </a>
     <a class="btn primary" href="{% url 'asset_report_pdf' asset.pk %}{% if not include_costs %}?costs=0{% endif %}">
       {% translate "Download PDF" %}
     </a>

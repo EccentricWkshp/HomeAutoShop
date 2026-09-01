@@ -236,7 +236,7 @@ def report_sections(asset, *, include_costs: bool = True) -> list[Section]:
             rows.append([line.label, line.detail, str(line.money)])
             # A category that is really a stack of jobs says which. A buyer
             # reading `Parts — $1,240.00` learns a number; the same figure
-            # under a brake overhaul and a set of tyres is a history they can
+            # under a brake overhaul and a set of tires is a history they can
             # weigh, which is the whole point of handing them the document.
             for part in line.breakdown:
                 rows.append([f"    {part.label}", part.detail, str(part.money)])

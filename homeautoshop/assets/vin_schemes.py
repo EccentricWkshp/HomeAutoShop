@@ -33,7 +33,7 @@ a *flag* — a leading `V` on a Chevrolet, an `8` before the plant on a GMC — 
 its absence is the six, which is why those are separate schemes of a different
 length. So the plate says six-or-eight and the year, and `CA_Engine_ID.pdf`
 says which six and which eight. It is derived from the year rather than read
-from a position, so it never narrows the year it came from, and it is labelled
+from a position, so it never narrows the year it came from, and it is labeled
 on screen as the engine standard that year rather than as a code off the plate.
 
 **Two sheets per era, and they do not always agree.** Alongside each
@@ -732,7 +732,7 @@ FORD_LATER = [
         "notes": _(
             "This sheet was scanned rather than typeset, and the S-prefixed "
             "series codes came through with the S read as other symbols. They "
-            "are transcribed as S because every neighbour is one and the "
+            "are transcribed as S because every neighbor is one and the "
             "descriptions survived intact; the E-prefixed codes needed no such "
             "reading."
         ),
@@ -1510,7 +1510,7 @@ GM_LAST = [
         ],
         "tables": {
             # Deliberately still just "V8". The two sheets disagree about this
-            # scheme, and this is the disagreement being honoured rather than
+            # scheme, and this is the disagreement being honored rather than
             # resolved — see the note.
             "engine": {"V": _("V8")},
             "series": {"H": _("3100"), "J": _("3600")},

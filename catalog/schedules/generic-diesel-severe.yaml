@@ -1,0 +1,39 @@
+name: Generic diesel, severe service
+slug: generic-diesel-severe
+author: HomeAutoShop
+description: >-
+  A short-interval schedule for a light diesel truck that tows, idles, or runs
+  dusty roads. Intervals are conservative on purpose; check them against your
+  own owner's manual before applying.
+asset_kinds:
+  - vehicle
+vehicle_classes:
+  - truck
+items:
+  - name: Engine oil and filter
+    translation_key: engine_oil
+    category: engine
+    interval_distance: 5000
+    interval_unit: mi
+    interval_months: 6
+  - name: Fuel filter
+    category: fuel
+    interval_distance: 15000
+    interval_unit: mi
+    interval_months: 24
+  - name: Air filter
+    category: engine
+    interval_distance: 15000
+    interval_unit: mi
+  - name: Transmission fluid and filter
+    category: driveline
+    interval_distance: 30000
+    interval_unit: mi
+  - name: Coolant
+    category: cooling
+    interval_months: 24
+  - name: Brake fluid
+    translation_key: brake_fluid
+    category: brakes
+    severity: safety
+    interval_months: 24

@@ -126,7 +126,7 @@ class LinksTests(Base):
         self.add(label="The fix")
         self.assertContains(self.client.get(self.page), "The fix")
 
-    def test_an_unlabelled_link_is_named_by_where_it_goes(self):
+    def test_an_unlabeled_link_is_named_by_where_it_goes(self):
         """The bare URL is a poor label and a truncated one is worse."""
         self.add(url="https://www.ford-trucks.com/forums/12345-no-start")
 
@@ -246,4 +246,90 @@ class ReportPreviewTests(Base):
     def test_it_needs_a_login(self):
         self.client.logout()
         response = self.client.get(reverse("asset_report", args=[self.asset.pk]))
+        self.assertEqual(response.status_code, 302)
+
+
+class ReportCsvTests(Base):
+    """FR-REP-2 says PDF *and CSV*; only the PDF existed.
+
+    Found by sweeping the SPEC for claims of a portable format rather than by
+    tripping over it — the fourth such claim this session that described
+    something never built, after schedule template import/export, the
+    per-vehicle authorization scaffold, and inspection checklist YAML.
+    """
+
+    def rows(self, **params):
+        body = self.client.get(
+            reverse("asset_report_csv", args=[self.asset.pk]), params
+        ).content.decode()
+        return [line for line in body.splitlines()]
+
+    def test_it_is_a_csv(self):
+        response = self.client.get(reverse("asset_report_csv", args=[self.asset.pk]))
+
+        self.assertEqual(response["Content-Type"], "text/csv")
+        self.assertIn("attachment", response["Content-Disposition"])
+        self.assertIn(".csv", response["Content-Disposition"])
+
+    def test_it_carries_the_same_sections(self):
+        from homeautoshop.core.reports import report_sections
+
+        self.asset.vin = "1M8GDM9AXKP042788"
+        self.asset.save()
+        body = "\n".join(self.rows())
+
+        for section in report_sections(self.asset):
+            if section.is_empty and not section.note:
+                continue
+            with self.subTest(section=section.title):
+                self.assertIn(section.title, body)
+        self.assertIn("1M8GDM9AXKP042788", body)
+
+    def test_each_section_keeps_its_own_header_row(self):
+        """A vehicle report is six differently shaped tables. Flattening them
+        would produce a file whose header row lies about most of its rows."""
+        from django.utils import timezone
+
+        from homeautoshop.work.models import WorkOrder
+
+        WorkOrder.objects.create(
+            asset=self.asset,
+            title="Brakes",
+            status="complete",
+            completed_at=timezone.now(),
+        )
+        body = "\n".join(self.rows())
+
+        self.assertIn("Field,Value", body)
+        self.assertIn("Date,Meter,Work,Parts", body)
+
+    def test_an_empty_section_says_so_here_too(self):
+        """The same skip rule the page and the PDF apply: a section with
+        nothing in it and something to say prints the sentence, not a header
+        row describing rows that are not there."""
+        body = "\n".join(self.rows())
+
+        self.assertIn("No completed work recorded", body)
+        self.assertNotIn("Date,Meter,Work,Parts", body)
+
+    def test_leaving_costs_out_leaves_them_out_here_too(self):
+        body = "\n".join(self.rows(costs="0"))
+        self.assertNotIn("Cost of ownership", body)
+
+    def test_a_sensitive_spec_never_reaches_it(self):
+        """The exclusion lives in `report_sections`, so it holds for every
+        renderer rather than for the ones that remembered."""
+        AssetSpec.objects.create(
+            asset=self.asset, group=SpecGroup.ACCESS, name="Key code", value="X4192"
+        )
+
+        self.assertNotIn("X4192", "\n".join(self.rows()))
+
+    def test_the_page_offers_it(self):
+        page = self.client.get(reverse("asset_report", args=[self.asset.pk]))
+        self.assertContains(page, reverse("asset_report_csv", args=[self.asset.pk]))
+
+    def test_it_needs_a_login(self):
+        self.client.logout()
+        response = self.client.get(reverse("asset_report_csv", args=[self.asset.pk]))
         self.assertEqual(response.status_code, 302)

@@ -46,7 +46,7 @@ SECRET_KEY = env("SECRET_KEY", "dev-only-insecure-key-change-me")
 # protects is not a key. Blank derives it from SECRET_KEY, which keeps an
 # existing instance working without a new variable at the cost of one secret
 # protecting two things. Rotating it invalidates every stored credential at
-# once, which is the intended emergency behaviour.
+# once, which is the intended emergency behavior.
 CREDENTIAL_KEY = env("CREDENTIAL_KEY", "")
 # Written by gunicorn --pid, and the only thing that makes the "Apply and
 # restart" button in the pending-restart banner possible (§17.2). Absent — a
@@ -166,6 +166,11 @@ else:
             "TEST": {"NAME": BASE_DIR / "data" / "test-homeautoshop.sqlite3"},
         }
     }
+
+# The suite must not depend on somebody having a connection. A mock that
+# misses on a failing fetch is a confusing error; one that misses on a
+# succeeding fetch is a passing test that proves nothing (§8.1b).
+TEST_RUNNER = "homeautoshop.core.testrunner.Runner"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "accounts.User"
@@ -360,6 +365,17 @@ OUTBOUND_ALLOWLIST = [
     for h in env("OUTBOUND_ALLOWLIST", "vpic.nhtsa.dot.gov,api.nhtsa.gov").split(",")
     if h.strip()
 ]
+
+# The shared template catalog (SPEC §17 R-1). Defaults to this project's own,
+# because expecting somebody to stand up a repository before they can install a
+# schedule is expecting them not to bother.
+#
+# A default *address* is not a default *request*. Nothing here is contacted
+# until somebody presses Browse — no start-up call, no background poll, no
+# update check (§8.1b, and `test_nothing_is_fetched_without_being_asked`). An
+# instance that never opens that screen never talks to it, and Offline Mode
+# refuses it like everything else.
+CATALOG_URL = env("CATALOG_URL", "https://raw.githubusercontent.com/EccentricWkshp/HomeAutoShop/main/catalog/").rstrip("/")
 
 # LubeLogger (SPEC §8.6) — optional and additive, never a dependency. An
 # instance with none configured is not a degraded instance.

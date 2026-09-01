@@ -51,6 +51,11 @@ KNOWN_THIRD_PARTIES = {
     "www.alldatadiy.com",
     "alldatadiy.com",
     "github.com",
+    # Where the shared template catalog is served from, and the default
+    # value of CATALOG_URL (§8.1b). Named here because it is a real
+    # third party this project now points at out of the box — which is
+    # exactly the kind of thing this list exists to make deliberate.
+    "raw.githubusercontent.com",
     "docs.djangoproject.com",
     "www.djangoproject.com",
     "letsencrypt.org",

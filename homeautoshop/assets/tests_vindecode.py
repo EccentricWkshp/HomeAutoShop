@@ -412,7 +412,7 @@ class UnitNumberTests(TestCase):
         page = self.client.get(reverse("asset_detail", args=[asset.pk]))
 
         self.assertContains(page, "in the 1978 block")
-        # Nothing on this vehicle's readings is unrecognised, so the phrase
+        # Nothing on this vehicle's readings is unrecognized, so the phrase
         # should not be on the page at all.
         self.assertNotContains(page, "not in the table")
 
@@ -432,9 +432,9 @@ class UnitNumberTests(TestCase):
         self.assertTrue(row.free)
 
     def test_a_weaker_reading_is_marked_as_weaker(self):
-        """This VIN also reads as a van, because the van tables recognise its
+        """This VIN also reads as a van, because the van tables recognize its
         engine and its plant but not its series. It is offered, ranked below
-        the complete reading, and labelled — rather than hidden, since the
+        the complete reading, and labeled — rather than hidden, since the
         tables have documented gaps and the second answer is sometimes right."""
         readings = decode("F10BLDH6036", year=1979)
 

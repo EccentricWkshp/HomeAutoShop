@@ -1,0 +1,49 @@
+name: Gasoline engine, severe service
+slug: gasoline-severe
+author: HomeAutoShop
+description: >-
+  The same vehicle used the way most people actually use one — short trips,
+  cold starts, towing, dust, or heavy idling. Most manufacturers publish a
+  severe schedule and most owners qualify for it without realizing. Generic;
+  check against your owner's manual.
+asset_kinds:
+  - vehicle
+vehicle_classes:
+  - car
+  - truck
+  - suv
+items:
+  - name: Engine oil and filter
+    translation_key: engine_oil
+    category: engine
+    interval_distance: 5000
+    interval_unit: mi
+    interval_months: 6
+  - name: Tire rotation
+    category: tires
+    interval_distance: 5000
+    interval_unit: mi
+  - name: Engine air filter
+    category: engine
+    interval_distance: 15000
+    interval_unit: mi
+  - name: Cabin air filter
+    category: interior
+    interval_distance: 12000
+    interval_unit: mi
+    interval_months: 12
+  - name: Brake fluid
+    translation_key: brake_fluid
+    category: brakes
+    severity: safety
+    interval_months: 24
+  - name: Automatic transmission fluid
+    category: driveline
+    interval_distance: 30000
+    interval_unit: mi
+  - name: Brake inspection
+    category: brakes
+    severity: safety
+    interval_distance: 10000
+    interval_unit: mi
+    interval_months: 6

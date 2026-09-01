@@ -314,7 +314,7 @@ def lot_close_kit(request, pk, lot_id):
 
 @login_required
 def part_list(request):
-    """The catalogue, with kit contents shown as contents.
+    """The catalog, with kit contents shown as contents.
 
     Flat, a compressor kit and the three parts inside it are four peers, and
     nothing on the screen says the last three are in the first one's box. So a
@@ -331,7 +331,7 @@ def part_list(request):
     # hundred rows of the table and said nothing about the rest; searching took
     # `find`'s default twenty-five, so a search matching forty parts reported
     # thirty-nine and a half of them as not existing. A cap with no page
-    # numbers under it is not a limit, it is a lie about the catalogue.
+    # numbers under it is not a limit, it is a lie about the catalog.
     matched = find(query, limit=None) if query else Part.objects.all()
     page = Paginator(matched, PAGE_SIZE).get_page(request.GET.get("page"))
     found = list(page.object_list)
@@ -368,7 +368,7 @@ def part_list(request):
     for part in parts:
         part.kit_contents = inside.get(part.pk, [])
         part.boxed_in = within.get(part.pk, [])
-        _summarise(part)
+        _summarize(part)
         # Nested under its kit rather than listed twice — but only when that kit
         # is actually on this page to nest under.
         if part.boxed_in and not query:
@@ -391,7 +391,7 @@ def part_list(request):
     )
 
 
-#: How many parts a page of the catalogue holds. Large enough that a small
+#: How many parts a page of the catalog holds. Large enough that a small
 #: shop never sees a second page, and bounded so a large one still renders.
 PAGE_SIZE = 100
 
@@ -400,7 +400,7 @@ PAGE_SIZE = 100
 FITS_SHOWN = 3
 
 
-def _summarise(part) -> None:
+def _summarize(part) -> None:
     """Attach what a list row shows, all of it from data already fetched.
 
     Reading a `@property` here would be the wrong instinct: `on_hand` and
@@ -481,7 +481,7 @@ def part_search(request):
 
     The chooser used to be a `<select>` holding `Part.objects.all()[:500]` —
     every part ever bought, in one flat list, on four different screens. Parts
-    are never removed from the catalogue when they are used up, so that list
+    are never removed from the catalog when they are used up, so that list
     only ever grows: a second vehicle or a year of jobs turns choosing a part
     into scrolling past everything that was ever chosen before, and at five
     hundred it silently stopped listing them at all.
@@ -957,7 +957,7 @@ def location_edit(request, pk):
     """Rename a shelf, or move a bin into a different cabinet (FR-INV-2).
 
     Locations could be created and never touched, so a typo was permanent and a
-    cabinet could not be reorganised — on a shelf whose labels are *printed and
+    cabinet could not be reorganized — on a shelf whose labels are *printed and
     stuck to the bins*, which is exactly where a wrong name is most expensive.
     The label keeps working either way: it carries the primary key, not the name.
     """
@@ -1031,7 +1031,7 @@ def crossref_remove(request, pk, ref_id):
 @require_POST
 @login_required
 def part_delete(request, pk):
-    """Remove a part that should not be in the catalogue.
+    """Remove a part that should not be in the catalog.
 
     Refused while any of it is on the shelf, and while a kit lists it as one of
     its contents. Stock is the harder rule of the two: a part with a quantity is

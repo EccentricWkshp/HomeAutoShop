@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "kind": "checklist",
+      "slug": "pre-purchase-inspection",
+      "name": "Pre-purchase inspection",
+      "path": "checklists/pre-purchase-inspection.yaml",
+      "description": "Walk a vehicle you are considering buying. Designed to be completed offline, in someone else's driveway, in about thirty minutes. Generic on purpose and not a substitute for a mechanic's inspection — the thresholds are common guidance, so check anything marginal against the standards where you live.",
+      "author": "HomeAutoShop"
+    },
+    {
+      "kind": "checklist",
+      "slug": "roadworthy-quick-check",
+      "name": "Roadworthy quick check",
+      "path": "checklists/roadworthy-quick-check.yaml",
+      "description": "A ten-minute walk around before a long drive. Deliberately short: a check nobody completes is worse than a shorter one everybody does.",
+      "author": "HomeAutoShop"
+    },
+    {
+      "kind": "schedule",
+      "slug": "gasoline-normal",
+      "name": "Gasoline engine, normal service",
+      "path": "schedules/gasoline-normal.yaml",
+      "description": "A starting point for a modern gasoline car or light truck driven mostly on longer trips. Generic and conservative — check every interval against your own owner's manual, which is the only source that knows your engine.",
+      "author": "HomeAutoShop"
+    },
+    {
+      "kind": "schedule",
+      "slug": "gasoline-severe",
+      "name": "Gasoline engine, severe service",
+      "path": "schedules/gasoline-severe.yaml",
+      "description": "The same vehicle used the way most people actually use one — short trips, cold starts, towing, dust, or heavy idling. Most manufacturers publish a severe schedule and most owners qualify for it without realizing. Generic; check against your owner's manual.",
+      "author": "HomeAutoShop"
+    },
+    {
+      "kind": "schedule",
+      "slug": "generic-diesel-severe",
+      "name": "Generic diesel, severe service",
+      "path": "schedules/generic-diesel-severe.yaml",
+      "description": "A short-interval schedule for a light diesel truck that tows, idles, or runs dusty roads. Intervals are conservative on purpose; check them against your own owner's manual before applying.",
+      "author": "HomeAutoShop"
+    },
+    {
+      "kind": "schedule",
+      "slug": "small-engine-equipment",
+      "name": "Small engine equipment",
+      "path": "schedules/small-engine-equipment.yaml",
+      "description": "Generators, mowers, pressure washers and similar four-stroke equipment, scheduled on running hours rather than distance. Intervals follow the pattern common to small air-cooled engines; check the equipment's own manual, which will be shorter than you expect.",
+      "author": "HomeAutoShop"
+    }
+  ]
+}

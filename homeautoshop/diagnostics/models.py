@@ -99,6 +99,21 @@ class ParserProfile(BaseModel):
         max_length=10, choices=ProfileSource.choices, default=ProfileSource.USER
     )
     is_active = models.BooleanField(default=True)
+    author = models.CharField(
+        max_length=80,
+        blank=True,
+        help_text=_("Who published this profile."),
+    )
+    verified_against = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=_(
+            "Captured reports this profile was run against and read correctly. "
+            "Checked when published, so it is a fact rather than a claim — and "
+            "several rather than one, because a single report proves only that "
+            "the profile fits that report."
+        ),
+    )
     notes = models.TextField(blank=True)
 
     class Meta(BaseModel.Meta):

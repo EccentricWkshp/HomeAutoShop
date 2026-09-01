@@ -46,7 +46,7 @@ class HelperGateMiddleware:
         if not name or name not in HELPER_URLS:
             raise PermissionDenied(name or request.path)
 
-        # The catalogue is readable and not writable, and that is a property
+        # The catalog is readable and not writable, and that is a property
         # of the screen rather than of the object on it — so it is checked
         # here, where the screen is known, instead of being left to each view.
         if request.method not in ("GET", "HEAD", "OPTIONS") and name in HELPER_READ_ONLY_URLS:

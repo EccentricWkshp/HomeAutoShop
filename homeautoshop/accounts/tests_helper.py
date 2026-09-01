@@ -35,7 +35,7 @@ from homeautoshop.work.models import JobItem, WorkOrder
 #: already refused, and this is the record that keeps the refusal visible.
 CLOSED_TO_HELPERS = frozenset({
     "asset_costs", "asset_create", "asset_delete", "asset_edit",
-    "asset_report", "asset_report_pdf", "backup_delete", "backup_download", "backup_now",
+    "asset_report", "asset_report_csv", "asset_report_pdf", "backup_delete", "backup_download", "backup_now",
     "backups", "core_list", "core_update", "crossref_add",
     "crossref_remove", "data_import", "dismiss_product_link",
     "expense_delete", "expense_edit", "export_csv", "fitment_add",
@@ -58,6 +58,9 @@ CLOSED_TO_HELPERS = frozenset({
     "service_info_visibility", "settings", "settings_restart", "setup",
     "spec_add", "spec_copy", "spec_delete", "spec_edit",
     "spec_from_decode", "spec_from_scan", "sync_queue", "tool_delete",
+    "template_list", "template_import", "template_export",
+    "checklist_import", "checklist_export",
+    "catalog_browse", "catalog_install",
     "tool_list", "tool_search", "trash", "trash_restore", "user_access",
     "user_create", "user_delete", "user_detail", "user_list", "user_set_active",
     "user_set_password", "vendor_create", "vendor_delete", "vendor_edit",
@@ -131,7 +134,7 @@ class TheGateTests(Base):
         has cost its owner."""
         self.grant()
 
-        for name in ("asset_costs", "asset_report", "asset_report_pdf"):
+        for name in ("asset_costs", "asset_report", "asset_report_pdf", "asset_report_csv"):
             with self.subTest(url=name):
                 response = self.client.get(reverse(name, args=[self.mine.pk]))
                 self.assertEqual(response.status_code, 403)
@@ -144,7 +147,7 @@ class TheGateTests(Base):
 
         self.assertEqual(self.client.get(reverse("inventory")).status_code, 200)
 
-    def test_the_catalogue_is_readable_and_not_writable(self):
+    def test_the_catalog_is_readable_and_not_writable(self):
         """A helper says which filter they fitted. That is not the same as
         editing the shop's parts list."""
         part = Part.objects.create(name="Oil filter")
