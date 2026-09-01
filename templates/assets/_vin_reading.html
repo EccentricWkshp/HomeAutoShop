@@ -57,7 +57,9 @@ against, for the same reason a decoded field carries its provenance.
           {% endfor %}
         </table>
         {% if reading.notes %}<p class="small muted">{{ reading.notes }}</p>{% endif %}
-        <p class="small muted">{% translate "Read against" %} <span class="mono">{{ reading.source }}</span></p>
+        <p class="small muted">{% translate "Read against" %}
+          <span class="mono">{{ reading.source }}</span>{% if reading.also %},
+          {% translate "checked against" %} <span class="mono">{{ reading.also }}</span>{% endif %}</p>
       </details>
     {% endfor %}
   </div>

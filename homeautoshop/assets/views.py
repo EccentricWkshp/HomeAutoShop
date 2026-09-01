@@ -39,7 +39,7 @@ from .models import (
 )
 
 log = logging.getLogger(__name__)
-from .services import decode_vin, mark_override, record_reading
+from .services import decode_vin, mark_override, read_vin_locally, record_reading
 
 
 class AssetForm(forms.ModelForm):
@@ -502,6 +502,33 @@ def vin_decode(request, pk):
             )
     else:
         messages.warning(request, result.message)
+    return redirect("asset_detail", pk=asset.pk)
+
+
+@require_POST
+@login_required
+def vin_read(request, pk):
+    """Fill in what a pre-1981 VIN says, from the local tables (FR-VEH-12).
+
+    A separate action from `vin_decode` rather than a fallback inside it. They
+    answer from different places — one asks NHTSA, one reads a table in this
+    repository — and a button that silently changed which would make the
+    provenance on the resulting fields a coincidence of what was reachable.
+    """
+    asset = get_object_or_404(Asset, pk=pk)
+    require(request.user, "asset.edit", asset)
+
+    result = read_vin_locally(asset, user=request.user)
+    if not result.ok:
+        messages.warning(request, result.message)
+    else:
+        messages.success(request, result.summary)
+        if result.skipped_overridden:
+            messages.info(
+                request,
+                _("Left your edits alone: %(fields)s.")
+                % {"fields": ", ".join(result.skipped_overridden)},
+            )
     return redirect("asset_detail", pk=asset.pk)
 
 

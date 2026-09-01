@@ -181,20 +181,25 @@ def fits(asset) -> list[Part]:
     return [f.part for f in ordered]
 
 
-def find(query: str, limit: int = 25) -> list[Part]:
-    """One search box, every identifier (FR-PART-1)."""
+def find(query: str, limit: int | None = 25) -> list[Part]:
+    """One search box, every identifier (FR-PART-1).
+
+    `limit=None` returns everything that matched. The default suits a chooser,
+    where twenty-five rows is already more than anybody scrolls; the parts
+    screen passes `None` and paginates, because a search there that quietly
+    stopped at twenty-five would be a search that lies about what it found.
+    """
     query = (query or "").strip()
     if len(query) < 2:
         return []
-    return list(
-        Part.objects.filter(
-            Q(name__icontains=query)
-            | Q(manufacturer__icontains=query)
-            | Q(part_number__icontains=query)
-            | Q(category__icontains=query)
-            | Q(cross_refs__value__icontains=query)
-        ).distinct()[:limit]
-    )
+    matched = Part.objects.filter(
+        Q(name__icontains=query)
+        | Q(manufacturer__icontains=query)
+        | Q(part_number__icontains=query)
+        | Q(category__icontains=query)
+        | Q(cross_refs__value__icontains=query)
+    ).distinct()
+    return list(matched if limit is None else matched[:limit])
 
 
 # --------------------------------------------------------------------------

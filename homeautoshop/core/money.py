@@ -21,6 +21,14 @@ from .measurements import Money, minor_units
 from homeautoshop.core.runtime import conf
 
 
+#: The storage note every money column carries. It is aimed at whoever is
+#: reading the schema or typing into the Django admin, both of which really do
+#: deal in minor units — and it must never reach an ordinary form, where the
+#: box takes dollars. `MoneyFormMixin` drops it by identity, which is why it is
+#: a named constant rather than a string repeated at each call site.
+MINOR_UNITS_HELP = _("Minor units (e.g. cents). Never a float.")
+
+
 def money_columns(name: str, *, verbose_name=None, null: bool = False, default: int | None = 0):
     """Return the (amount, currency) field pair for `name`.
 
@@ -33,7 +41,7 @@ def money_columns(name: str, *, verbose_name=None, null: bool = False, default: 
         null=null,
         blank=null,
         default=None if null else default,
-        help_text=_("Minor units (e.g. cents). Never a float."),
+        help_text=MINOR_UNITS_HELP,
     )
     currency = models.CharField(max_length=3, default="USD", blank=True)
     return amount, currency

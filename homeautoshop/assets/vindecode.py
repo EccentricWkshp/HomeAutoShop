@@ -68,7 +68,19 @@ class Candidate:
     #: for the same problem in the 17-character era.
     years: tuple[int, ...] = ()
     source: str = ""
+    #: A second sheet the scheme was checked against, where one exists. Named
+    #: rather than merged, because "these two documents agree" is a stronger
+    #: claim than either alone and the reader should be able to see it.
+    also: str = ""
     notes: str = ""
+    #: Which position names the vehicle's model, where one does. Ford's series
+    #: code is `F-250 4WD`; GM's is `1/2 ton`, which is a weight and would be a
+    #: poor thing to find in a model column — so the scheme says, rather than
+    #: this guessing from the text.
+    model_from: str = ""
+    #: What kind of vehicle the sheet covers. These are all light trucks; a
+    #: scheme that covered cars would say so.
+    vehicle_class: str = ""
 
     @property
     def known(self) -> tuple[Reading, ...]:
@@ -187,7 +199,10 @@ def _read(scheme: dict, vin: str, *, year: int | None) -> Candidate | None:
         readings=tuple(readings),
         years=years,
         source=scheme.get("source", ""),
+        also=scheme.get("also", ""),
         notes=str(scheme.get("notes", "")),
+        model_from=scheme.get("model_from", ""),
+        vehicle_class=scheme.get("vehicle_class", ""),
     )
 
 

@@ -22,7 +22,8 @@ from django.urls import reverse
 from homeautoshop.accounts.models import Role, User
 from homeautoshop.core.measurements import Money
 from homeautoshop.core.moneyform import MoneyFormField, parse_amount
-from homeautoshop.parts.models import Part
+from homeautoshop.parts.models import Part, StockLot
+from homeautoshop.work.models import WorkOrder
 from homeautoshop.purchasing.models import Expense, Purchase, PurchaseLine, Vendor
 from homeautoshop.work.models import WorkOrder
 
@@ -198,13 +199,29 @@ class NoRawMinorUnitsOnScreenTests(TestCase):
         self.asset = Asset.objects.create(nickname="Red truck", vin=VIN)
 
     def test_no_screen_asks_the_reader_to_think_in_minor_units(self):
+        """Case-insensitively, which is the whole reason this was reopened.
+
+        This sweep existed, covered the part form, and passed for months while
+        that form printed *"Minor units (e.g. cents). Never a float."* under
+        the core charge. It matched `"minor units"` against a page that said
+        `"Minor units"`, so a guard written against exactly this failure was
+        blind to it over one capital letter.
+        """
         vendor = Vendor.objects.create(name="RockAuto")
         purchase = Purchase.objects.create(vendor=vendor)
-        part = Part.objects.create(name="Brake pads")
+        part = Part.objects.create(name="Brake pads", has_core=True)
+        work_order = WorkOrder.objects.create(asset=self.asset, title="Brakes")
+        lot = StockLot.objects.create(part=part, qty_on_hand=0)
         screens = {
             "purchase": reverse("purchase_detail", args=[purchase.pk]),
             "purchase form": reverse("purchase_create"),
+            "purchase edit": reverse("purchase_edit", args=[purchase.pk]),
             "part form": reverse("part_edit", args=[part.pk]),
+            # Carries the add-stock form, whose unit cost had the same note.
+            "part": reverse("part_detail", args=[part.pk]),
+            "stock lot": reverse("lot_edit", args=[part.pk, lot.pk]),
+            # Carries the other-costs form.
+            "work order": reverse("work_order_detail", args=[work_order.pk]),
             "cost settings": reverse("settings", args=["costs"]),
             "outbound settings": reverse("settings", args=["outbound"]),
             "vehicle costs": reverse("asset_costs", args=[self.asset.pk]),
@@ -212,4 +229,25 @@ class NoRawMinorUnitsOnScreenTests(TestCase):
         for name, url in screens.items():
             with self.subTest(screen=name):
                 page = self.client.get(url).content.decode()
-                self.assertNotIn("minor units", page)
+                self.assertNotIn("minor unit", page.lower())
+
+    def test_the_note_still_reaches_the_places_that_do_take_minor_units(self):
+        """It is not wrong, only misplaced. The column keeps it for the schema
+        and for the Django admin, both of which really do deal in cents."""
+        from homeautoshop.core.money import MINOR_UNITS_HELP
+        from homeautoshop.parts.models import Part as PartModel
+
+        field = PartModel._meta.get_field("core_value_minor")
+
+        self.assertEqual(str(field.help_text), str(MINOR_UNITS_HELP))
+
+    def test_a_column_with_something_useful_to_say_keeps_saying_it(self):
+        """Dropped by identity, not by pattern: the note goes and a real
+        explanation stays."""
+        from homeautoshop.parts.views import PartForm
+
+        self.assertIn(
+            "divide a kit",
+            str(PartForm().fields["typical_cost_minor"].help_text),
+        )
+        self.assertEqual(str(PartForm().fields["core_value_minor"].help_text), "")

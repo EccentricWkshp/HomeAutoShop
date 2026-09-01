@@ -26,6 +26,21 @@ A table entry is a string, or a list of `{"text": ..., "years": [from, to]}`
 where one code means different things in different years — Ford's `H` is a 390
 through 1976 and a 351M from 1977, and both are correct.
 
+**Two sheets per era, and they do not always agree.** Alongside each
+`*_VIN-Chassis_ID.pdf` there is an `*_Engine_ID.pdf` listing every engine code
+against the years and models it was fitted to. It is the only independent check
+these tables have, and reading the two against each other found the engine
+table for 1953–56 claiming the 239 V8 was a 1955 only when it ran from 1954 —
+which made a real 1954 truck decode as a contradiction and be refused. Where a
+scheme has been checked this way it names both sheets, `source` and `also`.
+
+Two rules govern a disagreement, and they differ because the costs differ.
+**On which years a code was offered, take the union.** Being a year too broad
+costs one more check; being a year too narrow refuses a vehicle that exists.
+**On a detail the two simply contradict — a carburettor, a horsepower — print
+neither**, or print the year-split sheet's figure and record the conflict beside
+it. None of it decodes anything; a disputed number is worth less than a blank.
+
 **On the examples printed by LMC**: several do not decode under their own
 scheme — `CCS148F100043` carries a manufacturer position the sheet says is 1972
 only, alongside a model-year digit meaning 1968. They are illustrations of the
@@ -35,24 +50,28 @@ run. That is the guard that keeps a transcription slip from becoming a confident
 wrong answer about somebody's truck.
 
 Coverage, and the gaps in it. Ford trucks, Bronco and vans 1948-80; Chevrolet
-and GMC trucks and vans 1947-80; Dodge trucks and vans 1971-80. Not here, each
-for a stated reason:
+and GMC trucks and vans 1947-80; Dodge trucks and vans 1971-80. Not here:
 
-* **Chevrolet 1953-55 1st series** - its series codes are a single letter, which
-  leaves four characters and a running number to identify a vehicle by. That
-  matches too much to mean anything.
-* **GMC 1951-55 1st series** - the model-year position is documented only from
-  1954, and before that the year lives in the production-number charts.
-* **GMC 1960-66** - the leading position is blank for two-wheel drive, and the
-  vehicle number is followed by a GVW letter, so the number is neither a fixed
-  length nor one this can pick apart. The sheet also says the model code alone
-  does not give the year.
-* **The production-number charts** wherever a sheet offers them - ranges of a
-  running number per plant per year, which narrow a year the codes leave open.
-  They are transcribable and would sharpen several schemes above; they are not
-  transcribed yet.
+* **GMC 1951-55 1st series** - the model-year position exists only from 1954
+  and the plant codes only from 1952, so the same characters mean different
+  things at three different lengths within one sheet. Transcribing that
+  safely needs the production-number charts below, which are not transcribed.
+* **The production-number charts** several sheets carry - ranges of a running
+  number that narrow a year the codes leave open. They are legible and would
+  sharpen three schemes above, GMC 1960-66 most of all. They are not here
+  because a year read off them depends on the plant, the drive and the tonnage
+  at once, and this file has no way to say that a block applies only when
+  three other positions read a certain way. That mechanism is the next thing
+  worth building here.
 * **1981 and later** - 17-character VINs, which vPIC decodes with more detail
   than these sheets carry (§8.1).
+
+GMC 1960-66 and Chevrolet 1953-55 were both listed here as impossible and were
+not: the first was said to have a vehicle number of no fixed length, when it is
+four digits followed by a GVW letter, and the second was said to be too short
+to identify, when its two-digit model year is the most identifying thing on any
+of these sheets. Both are transcribed. The note is left in because a wrong
+reason for leaving something out lives exactly as long as nobody rereads it.
 """
 
 from __future__ import annotations
@@ -109,10 +128,12 @@ _FORD_SERIES_1961 = {
 FORD = [
     {
         "id": "ford-truck-1948-1951",
+        "also": "FA_Engine_ID.pdf",
         "label": _("Ford truck, 1948–51"),
         "make": "Ford",
         "years": (1948, 1951),
         "source": "FA_VIN-Chassis_ID.pdf",
+        "vehicle_class": "truck",
         "example": "87HC139260",
         "fields": [
             {"role": "year", "width": 1, "label": _("Model year")},
@@ -122,9 +143,19 @@ FORD = [
         ],
         "tables": {
             "year": {"8": 1948, "9": [1949, 1950, 1951]},
+            # Years from FA_Engine_ID.pdf, which lists each code against the
+            # trucks it was fitted to. Both were gone after 1950, so a 9 in the
+            # year position — which alone means 1949, 1950 or 1951 — narrows to
+            # the first two.
             "engine": {
-                "7H": _("226 CID 6-cyl, 1-bbl"),
-                "8R": _("239 CID V8, 2-bbl"),
+                "7H": {
+                    "text": _("226 CID 6-cyl, 1-bbl, 90 hp"),
+                    "years": [1948, 1950],
+                },
+                "8R": {
+                    "text": _("239 CID V8, 2-bbl, 100 hp"),
+                    "years": [1948, 1950],
+                },
             },
             "line": {
                 "C": _("1/2 ton pickup"),
@@ -139,10 +170,13 @@ FORD = [
     },
     {
         "id": "ford-truck-1951-1952",
+        "also": "FA_Engine_ID.pdf",
+        "model_from": "series",
         "label": _("Ford truck, 1951–52"),
         "make": "Ford",
         "years": (1951, 1952),
         "source": "FA_VIN-Chassis_ID.pdf",
+        "vehicle_class": "truck",
         "example": "F1D2LU100001",
         "fields": [
             {"role": "series", "width": 2, "label": _("Series")},
@@ -157,10 +191,20 @@ FORD = [
                 "F3": _("F-3, 3/4 ton heavy duty / 1 ton"),
                 "F4": _("F-4, 1-1/4 ton"),
             },
+            # Years and outputs from FA_Engine_ID.pdf.
             "engine": {
-                "D": _("215 CID 6-cyl, 1-bbl"),
-                "H": _("226 CID 6-cyl, 1-bbl"),
-                "R": _("239 CID V8, 2-bbl"),
+                "D": {
+                    "text": _("215 CID 6-cyl, 1-bbl, 101 hp"),
+                    "years": [1952, 1954],
+                },
+                "H": {
+                    "text": _("226 CID 6-cyl, 1-bbl, 95 hp"),
+                    "years": [1951, 1951],
+                },
+                "R": {
+                    "text": _("239 CID V8, 2-bbl, 110 hp"),
+                    "years": [1951, 1953],
+                },
             },
             # The sheet documents only 1952 here, so 1951 is left unmapped
             # rather than assumed to be a 1.
@@ -179,10 +223,13 @@ FORD = [
     },
     {
         "id": "ford-truck-1953-1956",
+        "also": "FA_Engine_ID.pdf",
+        "model_from": "series",
         "label": _("Ford truck, 1953–56"),
         "make": "Ford",
         "years": (1953, 1956),
         "source": "FA_VIN-Chassis_ID.pdf",
+        "vehicle_class": "truck",
         "example": "F25D3U100001",
         "fields": [
             {"role": "series", "width": 3, "label": _("Series")},
@@ -200,17 +247,27 @@ FORD = [
                     {"text": _("F-350, 1 ton"), "years": [1956, 1956]},
                 ],
             },
+            # Corrected against FA_Engine_ID.pdf, which lists every code
+            # against the years it was actually fitted. **The 239 V8 was wrong
+            # here**: this table gave code V as 1955 only, and the engine sheet
+            # has it in 1954 as well, so a genuine 1954 truck was being read as
+            # a contradiction and refused. The two open-ended entries are now
+            # bounded, which is what lets the engine narrow a year rather than
+            # merely agree with one.
             "engine": {
                 "D": [
-                    {"text": _("215 CID 6-cyl, 1-bbl"), "years": [1953, 1954]},
-                    {"text": _("223 CID 6-cyl, 1-bbl"), "years": [1955, 1956]},
+                    {"text": _("215 CID 6-cyl, 1-bbl, 101 hp"), "years": [1952, 1954]},
+                    {"text": _("223 CID 6-cyl, 1-bbl, 114 hp"), "years": [1955, 1956]},
                 ],
-                "R": _("239 CID V8, 2-bbl"),
+                "R": {
+                    "text": _("239 CID V8, 2-bbl, 110 hp"),
+                    "years": [1951, 1953],
+                },
                 "V": [
-                    {"text": _("239 CID V8, 2-bbl"), "years": [1955, 1955]},
-                    {"text": _("272 CID V8, 2-bbl"), "years": [1956, 1956]},
+                    {"text": _("239 CID V8, 2-bbl, 106 hp"), "years": [1954, 1955]},
+                    {"text": _("272 CID V8, 2-bbl, 167 hp"), "years": [1956, 1956]},
                 ],
-                "Z": _("256 CID V8, 2-bbl"),
+                "Z": {"text": _("256 CID V8, 2-bbl, 140 hp"), "years": [1955, 1955]},
             },
             "year": {"3": 1953, "4": 1954, "5": 1955, "6": 1956},
             "plant": _FORD_PLANTS_1953,
@@ -218,10 +275,20 @@ FORD = [
     },
     {
         "id": "ford-truck-1957-1958",
+        "also": "FB_Engine_ID.pdf",
+        "model_from": "series",
         "label": _("Ford truck, 1957–58"),
         "make": "Ford",
         "years": (1957, 1958),
+        # FB_VIN-Chassis_ID.pdf and FB_Engine_ID.pdf disagree about this era's
+        # 272 V8: the VIN sheet gives K as 145 hp across 1957-58 and L as 153
+        # hp in 1957, while the engine sheet gives K as 176 hp in 1957 and 145
+        # in 1958, and L as 145 in 1957. The engine sheet is taken because it
+        # splits by year where the VIN sheet does not — which is both why it is
+        # likelier right and how the disagreement became visible. Neither is
+        # load-bearing: horsepower decodes nothing.
         "source": "FB_VIN-Chassis_ID.pdf",
+        "vehicle_class": "truck",
         "example": "F25J7U100001",
         "fields": [
             {"role": "series", "width": 3, "label": _("Series")},
@@ -236,10 +303,23 @@ FORD = [
                 "F25": _("F-250"), "F26": _("F-250 light duty"),
                 "F35": _("F-350"), "F36": _("F-350 light duty"),
             },
+            # The two sheets disagree here, and this takes the engine one —
+            # see the scheme's note. It splits by year where the VIN sheet does
+            # not, which is the reason for preferring it and also what makes
+            # the disagreement visible in the first place.
             "engine": {
-                "J": _("223 CID 6-cyl, 1-bbl"),
-                "K": _("272 CID V8, 2-bbl, 145 hp"),
-                "L": _("272 CID V8, 2-bbl, 153 hp"),
+                "J": {
+                    "text": _("223 CID 6-cyl, 1-bbl, 126 hp"),
+                    "years": [1957, 1959],
+                },
+                "K": [
+                    {"text": _("272 CID V8, 2-bbl, 176 hp"), "years": [1957, 1957]},
+                    {"text": _("272 CID V8, 2-bbl, 145 hp"), "years": [1958, 1958]},
+                ],
+                "L": {
+                    "text": _("272 CID V8, 2-bbl, 145 hp"),
+                    "years": [1957, 1957],
+                },
             },
             "year": {"7": 1957, "8": 1958},
             # The sheet's two plant columns are interleaved by the text
@@ -258,10 +338,13 @@ FORD = [
     },
     {
         "id": "ford-truck-1959-1960",
+        "also": "FB_Engine_ID.pdf",
+        "model_from": "series",
         "label": _("Ford truck, 1959–60"),
         "make": "Ford",
         "years": (1959, 1960),
         "source": "FB_VIN-Chassis_ID.pdf",
+        "vehicle_class": "truck",
         "example": "F25J9U100001",
         "fields": [
             {"role": "series", "width": 3, "label": _("Series")},
@@ -276,10 +359,28 @@ FORD = [
                 "F26": _("F-250 4WD"), "F35": _("F-350"),
                 "F36": _("F-350 light duty"),
             },
+            # Split by year from FB_Engine_ID.pdf. The 292 changed output
+            # between the two years and the four-barrel was a 1959 only, so a
+            # C or a D here now says which year it is rather than merely
+            # agreeing with whichever the year digit gave.
             "engine": {
-                "J": _("223 CID 6-cyl, 1-bbl"),
-                "C": _("292 CID V8, 2-bbl, 158 hp"),
-                "D": _("292 CID V8, 2-bbl, 160 hp"),
+                "J": _("223 CID 6-cyl, 1-bbl, 126 hp"),
+                "C": [
+                    {"text": _("292 CID V8, 2-bbl, 158 hp"), "years": [1959, 1959]},
+                    {"text": _("292 CID V8, 2-bbl, 146 hp"), "years": [1960, 1960]},
+                ],
+                # The sheets disagree twice about this one, and the two are
+                # handled differently on purpose. On **years** the union is
+                # taken — the VIN sheet has it in 1959–60 and the engine sheet
+                # only in 1959, and being a year too broad costs a check while
+                # being a year too narrow refuses somebody's actual truck. On
+                # the **carburettor** they simply contradict each other, 2-bbl
+                # against 4-bbl, so neither is printed: a disputed detail is
+                # worth less than no detail.
+                "D": {
+                    "text": _("292 CID V8, 160 hp"),
+                    "years": [1959, 1960],
+                },
             },
             "year": {"9": 1959, "0": 1960},
             "plant": {
@@ -294,10 +395,13 @@ FORD = [
     },
     {
         "id": "ford-truck-1961-1966",
+        "also": "FB_Engine_ID.pdf",
+        "model_from": "series",
         "label": _("Ford truck, 1961–66"),
         "make": "Ford",
         "years": (1961, 1966),
         "source": "FB_VIN-Chassis_ID.pdf",
+        "vehicle_class": "truck",
         "example": "F25BR350001",
         "fields": [
             {"role": "series", "width": 3, "label": _("Series")},
@@ -329,10 +433,13 @@ FORD = [
     },
     {
         "id": "ford-truck-1967-1972",
+        "also": "FB_Engine_ID.pdf",
+        "model_from": "series",
         "label": _("Ford truck, 1967–72"),
         "make": "Ford",
         "years": (1967, 1972),
         "source": "FB_VIN-Chassis_ID.pdf",
+        "vehicle_class": "truck",
         "example": "F25BR746001",
         "fields": [
             {"role": "series", "width": 3, "label": _("Series")},
@@ -365,10 +472,13 @@ FORD = [
     },
     {
         "id": "ford-truck-1973-1979",
+        "also": "FC_Engine_ID.pdf",
+        "model_from": "series",
         "label": _("Ford truck, 1973–79"),
         "make": "Ford",
         "years": (1973, 1979),
         "source": "FC_VIN-Chassis_ID.pdf",
+        "vehicle_class": "truck",
         "example": "F26SVAE1234",
         "fields": [
             {"role": "series", "width": 3, "label": _("Series")},
@@ -416,10 +526,12 @@ FORD = [
     },
     {
         "id": "ford-bronco-1966-1977",
+        "model_from": "series",
         "label": _("Ford Bronco, 1966–77"),
         "make": "Ford",
         "years": (1966, 1977),
         "source": "FBR_VIN-Chassis_ID.pdf",
+        "vehicle_class": "truck",
         "example": "U15SLQ00500",
         "fields": [
             {"role": "series", "width": 3, "label": _("Series")},
@@ -474,10 +586,13 @@ FORD = [
 FORD_LATER = [
     {
         "id": "ford-truck-1980",
+        "also": "FD_Engine_ID.pdf",
+        "model_from": "series",
         "label": _("Ford truck, 1980"),
         "make": "Ford",
         "years": (1980, 1980),
         "source": "FD_VIN-Chassis_ID.pdf",
+        "vehicle_class": "truck",
         "example": "F10EU100001",
         "fields": [
             {"role": "series", "width": 3, "label": _("Series")},
@@ -522,10 +637,12 @@ FORD_LATER = [
     },
     {
         "id": "ford-van-1975-1980",
+        "model_from": "series",
         "label": _("Ford van, 1975–80"),
         "make": "Ford",
         "years": (1975, 1980),
         "source": "ford-van-vin.pdf",
+        "vehicle_class": "truck",
         "example": "E04JKAE0021",
         "fields": [
             {"role": "series", "width": 3, "label": _("Series")},
@@ -680,6 +797,7 @@ CHEVROLET = [
         "make": "Chevrolet",
         "years": (1960, 1964),
         "source": "CBE_VIN-Chassis_ID.pdf",
+        "vehicle_class": "truck",
         "example": "1C154F103455",
         "fields": [
             {"role": "year", "width": 1, "label": _("Model year")},
@@ -703,6 +821,7 @@ CHEVROLET = [
         "make": "Chevrolet",
         "years": (1965, 1966),
         "source": "CBE_VIN-Chassis_ID.pdf",
+        "vehicle_class": "truck",
         "example": "C1446S107722",
         "fields": [
             {"role": "chassis", "width": 1, "label": _("Drive")},
@@ -726,6 +845,7 @@ CHEVROLET = [
         "make": "Chevrolet",
         "years": (1967, 1971),
         "source": "CB_VIN-Chassis_ID.pdf",
+        "vehicle_class": "truck",
         "example": "CS148F100043",
         "fields": [
             {"role": "chassis", "width": 1, "label": _("Chassis")},
@@ -759,6 +879,7 @@ CHEVROLET = [
         "make": "Chevrolet",
         "years": (1972, 1972),
         "source": "CB_VIN-Chassis_ID.pdf",
+        "vehicle_class": "truck",
         "example": "TCS142S500121",
         "fields": [
             {"role": "division", "width": 1, "label": _("Make")},
@@ -792,6 +913,7 @@ CHEVROLET = [
         "make": "Chevrolet",
         "years": (1973, 1980),
         "source": "CC_VIN-Chassis_ID.pdf",
+        "vehicle_class": "truck",
         "example": "CCL148Z100327",
         "fields": [
             {"role": "division", "width": 1, "label": _("Make")},
@@ -848,6 +970,7 @@ DODGE = [
         "make": "Dodge",
         "years": (1972, 1980),
         "source": "DC_VIN-Chassis_ID.pdf",
+        "vehicle_class": "truck",
         "example": "D14AE5S000105",
         "fields": [
             {"role": "model", "width": 1, "label": _("Model")},
@@ -918,10 +1041,12 @@ _GM_PLANTS_1953 = {
 GM_EARLY = [
     {
         "id": "chevrolet-truck-1947-1952",
+        "model_from": "series",
         "label": _("Chevrolet truck, 1947–52"),
         "make": "Chevrolet",
         "years": (1947, 1952),
         "source": "CA_VIN-Chassis_ID.pdf",
+        "vehicle_class": "truck",
         "example": "5GRB292",
         "fields": [
             {"role": "plant", "width": 1, "label": _("Factory")},
@@ -961,10 +1086,12 @@ GM_EARLY = [
     },
     {
         "id": "chevrolet-truck-1955-1959",
+        "model_from": "series",
         "label": _("Chevrolet truck, 1955–59"),
         "make": "Chevrolet",
         "years": (1955, 1959),
         "source": "CA_VIN-Chassis_ID.pdf",
+        "vehicle_class": "truck",
         "example": "3E57S7552",
         "fields": [
             {"role": "series", "width": 2, "label": _("Series")},
@@ -994,10 +1121,12 @@ GM_EARLY = [
     },
     {
         "id": "chevrolet-truck-1955-1959-v8",
+        "model_from": "series",
         "label": _("Chevrolet truck V8, 1955–59"),
         "make": "Chevrolet",
         "years": (1955, 1959),
         "source": "CA_VIN-Chassis_ID.pdf",
+        "vehicle_class": "truck",
         "example": "V3E57S7552",
         "fields": [
             {"role": "engine", "width": 1, "label": _("Engine")},
@@ -1030,6 +1159,7 @@ GM_EARLY = [
         "make": "GMC",
         "years": (1947, 1950),
         "source": "CA_VIN-Chassis_ID.pdf",
+        "vehicle_class": "truck",
         "example": "FC15225889",
         "fields": [
             {"role": "year", "width": 1, "label": _("Model year")},
@@ -1056,6 +1186,7 @@ GM_EARLY = [
         "make": "GMC",
         "years": (1955, 1959),
         "source": "CA_VIN-Chassis_ID.pdf",
+        "vehicle_class": "truck",
         "example": "152PT5935",
         "fields": [
             {"role": "series", "width": 2, "label": _("Chassis rating")},
@@ -1084,6 +1215,7 @@ GM_EARLY = [
         "make": "GMC",
         "years": (1955, 1959),
         "source": "CA_VIN-Chassis_ID.pdf",
+        "vehicle_class": "truck",
         "example": "1528PT5935",
         "fields": [
             {"role": "series", "width": 2, "label": _("Chassis rating")},
@@ -1109,6 +1241,7 @@ GM_EARLY = [
         "make": "GMC",
         "years": (1967, 1971),
         "source": "CB_VIN-Chassis_ID.pdf",
+        "vehicle_class": "truck",
         "example": "CE134S113045",
         "fields": [
             {"role": "chassis", "width": 1, "label": _("Drive")},
@@ -1158,6 +1291,136 @@ GM_EARLY = [
 ]
 
 
+#: GMC's model code names a span rather than a year. The sheet narrows N and F
+#: further with charts of vehicle-number ranges per plant, per drive and per
+#: tonnage — legible, and not transcribed here: they are the only place in this
+#: file where a year would depend on three other positions at once, and the
+#: mechanism for that does not exist yet. The span is reported instead.
+_GMC_MODEL_YEARS = {
+    "N": [1960, 1961],
+    "J": [1962],
+    "G": [1963],
+    "F": [1964, 1965, 1966],
+    "D": [1966],
+}
+
+_GMC_1960_FIELDS = [
+    {"role": "series", "width": 2, "label": _("Series")},
+    {"role": "wheelbase", "width": 2, "label": _("Wheelbase")},
+    {"role": "plant", "width": 1, "label": _("Assembly plant")},
+    {"role": "year", "width": 1, "label": _("Model code")},
+    {"role": "sequence", "width": 4, "label": _("Vehicle number")},
+    {"role": "gvw", "width": 1, "label": _("GVW rating")},
+]
+
+_GMC_1960_TABLES = {
+    "series": {"10": _("1/2 ton"), "15": _("3/4 ton")},
+    "wheelbase": {"01": _("115 in"), "02": _("127 in")},
+    "plant": {
+        "P": _("Pontiac, MI"), "H": _("Oakland, CA"),
+        "C": _("Oakland, CA"), "Z": _("Fremont, CA"),
+    },
+    "year": _GMC_MODEL_YEARS,
+    "gvw": {"A": _("5,000 lb"), "B": _("7,000 lb")},
+}
+
+GM_LAST = [
+    {
+        "id": "gmc-truck-1960-1966",
+        "label": _("GMC truck 2WD, 1960–66"),
+        "make": "GMC",
+        "vehicle_class": "truck",
+        "years": (1960, 1966),
+        "source": "CBE_VIN-Chassis_ID.pdf",
+        "example": "1502PN2611A",
+        "fields": _GMC_1960_FIELDS,
+        "tables": _GMC_1960_TABLES,
+        "notes": _(
+            "The leading position is blank on a two-wheel-drive truck, which "
+            "makes the drive a length rather than a value — the two schemes "
+            "below carry it."
+        ),
+    },
+    {
+        "id": "gmc-truck-1960-1966-4wd",
+        "label": _("GMC truck 4WD, 1960–66"),
+        "make": "GMC",
+        "vehicle_class": "truck",
+        "years": (1960, 1966),
+        "source": "CBE_VIN-Chassis_ID.pdf",
+        "example": "K1502PN2611A",
+        "fields": [
+            {"role": "chassis", "width": 1, "label": _("Drive")},
+            *_GMC_1960_FIELDS,
+        ],
+        "tables": {"chassis": {"K": _("4WD")}, **_GMC_1960_TABLES},
+    },
+    {
+        "id": "gmc-truck-1960-1966-six",
+        "label": _("GMC truck inline-six, 1960–66"),
+        "make": "GMC",
+        "vehicle_class": "truck",
+        "years": (1960, 1966),
+        "source": "CBE_VIN-Chassis_ID.pdf",
+        "example": "I1502PN2611A",
+        "fields": [
+            {"role": "engine", "width": 1, "label": _("Engine")},
+            *_GMC_1960_FIELDS,
+        ],
+        "tables": {"engine": {"I": _("inline 6-cylinder")}, **_GMC_1960_TABLES},
+    },
+    {
+        "id": "chevrolet-truck-1953-1955",
+        "label": _("Chevrolet truck, 1953–55 1st series"),
+        "make": "Chevrolet",
+        "vehicle_class": "truck",
+        "model_from": "series",
+        "years": (1953, 1955),
+        "source": "CA_VIN-Chassis_ID.pdf",
+        "example": "H53S7552",
+        "fields": [
+            {"role": "series", "width": 1, "label": _("Series")},
+            {"role": "year", "width": 2, "label": _("Model year")},
+            {"role": "plant", "width": 1, "label": _("Assembly plant")},
+            {"role": "sequence", "width": 0, "label": _("Production number")},
+        ],
+        "tables": {
+            "series": {"H": _("3100"), "J": _("3600")},
+            "year": {"53": 1953, "54": 1954, "55": 1955},
+            "plant": _GM_PLANTS_1953,
+        },
+        "notes": _(
+            "Its series code is one letter where the 2nd series uses two, so "
+            "the two are different lengths and read as different schemes. A "
+            "leading V marks a V8, as it does on the later sheet."
+        ),
+    },
+    {
+        "id": "chevrolet-truck-1953-1955-v8",
+        "label": _("Chevrolet truck V8, 1953–55 1st series"),
+        "make": "Chevrolet",
+        "vehicle_class": "truck",
+        "model_from": "series",
+        "years": (1953, 1955),
+        "source": "CA_VIN-Chassis_ID.pdf",
+        "example": "VH53S7552",
+        "fields": [
+            {"role": "engine", "width": 1, "label": _("Engine")},
+            {"role": "series", "width": 1, "label": _("Series")},
+            {"role": "year", "width": 2, "label": _("Model year")},
+            {"role": "plant", "width": 1, "label": _("Assembly plant")},
+            {"role": "sequence", "width": 0, "label": _("Production number")},
+        ],
+        "tables": {
+            "engine": {"V": _("V8")},
+            "series": {"H": _("3100"), "J": _("3600")},
+            "year": {"53": 1953, "54": 1954, "55": 1955},
+            "plant": _GM_PLANTS_1953,
+        },
+    },
+]
+
+
 GM_VANS = [
     {
         "id": "chevrolet-gmc-van-1971-1972",
@@ -1165,6 +1428,7 @@ GM_VANS = [
         "make": "Chevrolet",
         "years": (1971, 1972),
         "source": "chevy-van-vin.pdf",
+        "vehicle_class": "truck",
         "example": "CGS251F100001",
         "fields": [
             {"role": "division", "width": 1, "label": _("Make")},
@@ -1199,6 +1463,7 @@ GM_VANS = [
         "make": "Chevrolet",
         "years": (1973, 1980),
         "source": "chevy-van-vin.pdf",
+        "vehicle_class": "truck",
         "example": "CGL2594100001",
         "fields": [
             {"role": "division", "width": 1, "label": _("Make")},
@@ -1244,6 +1509,7 @@ DODGE_VAN = [
         "make": "Dodge",
         "years": (1971, 1980),
         "source": "dodge-van-vin.pdf",
+        "vehicle_class": "truck",
         "example": "B12AB2U100001",
         "fields": [
             {"role": "line", "width": 1, "label": _("Vehicle type")},
@@ -1338,6 +1604,6 @@ DODGE_VAN = [
 #: Every scheme the matcher knows, in no meaningful order — `decode` ranks.
 SCHEMES = [
     *FORD, *FORD_LATER,
-    *GM_EARLY, *CHEVROLET, *GM_VANS,
+    *GM_EARLY, *GM_LAST, *CHEVROLET, *GM_VANS,
     *DODGE, *DODGE_VAN,
 ]

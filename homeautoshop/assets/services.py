@@ -23,6 +23,7 @@ from django.utils.translation import gettext_lazy as _
 from homeautoshop.core.outbound import OutboundBlocked, OutboundFailed, fetch_json
 
 from . import vin as vinlib
+from . import vindecode
 from .models import Asset, UsageReading
 from homeautoshop.core.runtime import conf
 
@@ -198,6 +199,107 @@ def decode_vin(asset: Asset, *, user=None, force: bool = False, save: bool = Tru
             )
         )
     return result
+
+
+#: What `decode_source` says when the details came from the transcribed sheets
+#: rather than from vPIC. Distinct on purpose: a field filled from a table
+#: somebody typed out of a scan and one filled from NHTSA are not the same
+#: claim, and the page that shows provenance should be able to tell them apart.
+LOCAL_DECODE_SOURCE = "vin-tables"
+
+
+def read_vin_locally(
+    asset: Asset, *, force: bool = False, save: bool = True, user=None
+) -> DecodeResult:
+    """Fill in what a pre-1981 VIN says, from the transcribed tables (FR-VEH-12).
+
+    The same contract as `decode_vin` and deliberately so: blanks only, never
+    over an operator's correction, and every field it writes recorded in
+    `field_overrides` terms so a later read leaves human edits alone. What
+    differs is where the answer comes from — a lookup table in this repository
+    rather than a service — and that the answer is refused outright unless one
+    reading stands alone.
+
+    **Ambiguity is not resolved by writing.** Several schemes share a shape, so
+    a VIN can have two honest readings; picking one and stamping it on the
+    vehicle would turn a question the screen was asking into a fact the record
+    asserts. Where `describe` will not choose, neither will this.
+    """
+    if asset.asset_kind != "vehicle":
+        return DecodeResult(False, message=str(_("Equipment does not carry a VIN.")))
+
+    reading = vindecode.describe(asset.vin, year=asset.year)
+    if reading is None:
+        # Either nothing reads it, or more than one thing does. Both are worth
+        # saying differently, because one is a dead end and the other is a
+        # question the operator can answer.
+        several = len(vindecode.decode(asset.vin, year=asset.year))
+        return DecodeResult(
+            False,
+            message=str(
+                _(
+                    "More than one scheme reads this VIN. Fill in the model year "
+                    "and try again — that is usually what separates them."
+                )
+                if several > 1
+                else _("Nothing here reads this VIN, so there is nothing to fill in.")
+            ),
+        )
+
+    overrides = asset.field_overrides or {}
+    applied: dict[str, object] = {}
+    skipped: list[str] = []
+
+    for target, value in _readable_fields(reading).items():
+        if target in overrides and not force:
+            skipped.append(target)
+            continue
+        if getattr(asset, target) in ("", None) or force:
+            setattr(asset, target, value)
+            applied[target] = value
+
+    if applied:
+        asset.decode_source = LOCAL_DECODE_SOURCE
+        asset.decoded_at = timezone.now()
+    if save and (applied or skipped):
+        asset.save()
+
+    result = DecodeResult(True, applied=applied, skipped_overridden=skipped)
+    if not applied:
+        result.message = str(
+            _("Nothing new to fill in — the details already on file were kept.")
+        )
+    return result
+
+
+def _readable_fields(reading) -> dict[str, object]:
+    """The asset columns a reading can honestly fill.
+
+    Conservative on purpose. The make is stated by the scheme and the engine is
+    a code straight off the plate, so both are facts. The model is only taken
+    where a scheme says which of its positions names one — Ford's series code
+    is `F-250 4WD`, while GM's is `1/2 ton`, which is a weight rather than a
+    model and would be a poor thing to find in the model column. The year is
+    taken only when the reading settled on exactly one; anything else is a
+    range, and a range is not a year.
+    """
+    fields: dict[str, object] = {"make": reading.make}
+
+    if len(reading.years) == 1:
+        fields["year"] = reading.years[0]
+
+    for role, target in (("engine", "engine"), (reading.model_from, "model")):
+        if not role:
+            continue
+        found = next(
+            (r for r in reading.readings if r.role == role and r.known), None
+        )
+        if found:
+            fields[target] = found.text
+
+    if reading.vehicle_class:
+        fields["vehicle_class"] = reading.vehicle_class
+    return fields
 
 
 def mark_override(asset: Asset, field_name: str, value) -> None:

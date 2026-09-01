@@ -1,0 +1,40 @@
+{% load i18n %}
+{% comment %}
+Page numbers under a list that has more than one page, and a count on every
+one of them.
+
+The count is the part that matters. A list that silently stopped at two hundred
+rows looked exactly like a shop that owned two hundred parts, and the only way
+to discover otherwise was to go looking for something that should have been
+there. Saying how many there are costs one line and makes the truncation
+visible rather than invisible.
+
+Any other query the page carries — a search, a filter — is preserved, so paging
+through search results does not quietly drop the search.
+{% endcomment %}
+{% if page %}
+  <p class="small muted">
+    {% blocktranslate count n=page.paginator.count trimmed %}
+      One part.
+    {% plural %}
+      {{ n }} parts.
+    {% endblocktranslate %}
+    {% if page.paginator.num_pages > 1 %}
+      {% blocktranslate with number=page.number of=page.paginator.num_pages trimmed %}
+        Page {{ number }} of {{ of }}.
+      {% endblocktranslate %}
+    {% endif %}
+  </p>
+  {% if page.paginator.num_pages > 1 %}
+    <nav class="row" aria-label="{% translate 'Pages' %}">
+      {% if page.has_previous %}
+        <a class="btn small" href="?{% if q %}q={{ q|urlencode }}&amp;{% endif %}page={{ page.previous_page_number }}">
+          <span aria-hidden="true">←</span> {% translate "Previous" %}</a>
+      {% endif %}
+      {% if page.has_next %}
+        <a class="btn small" href="?{% if q %}q={{ q|urlencode }}&amp;{% endif %}page={{ page.next_page_number }}">
+          {% translate "Next" %} <span aria-hidden="true">→</span></a>
+      {% endif %}
+    </nav>
+  {% endif %}
+{% endif %}

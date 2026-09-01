@@ -10,6 +10,7 @@ from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from django.core.paginator import Paginator
 from django.db.models import Prefetch, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -323,7 +324,14 @@ def part_list(request):
     only row they asked for.
     """
     query = request.GET.get("q", "")
-    found = find(query) if query else list(Part.objects.all()[:200])
+    # Both halves of this used to stop silently. Browsing took the first two
+    # hundred rows of the table and said nothing about the rest; searching took
+    # `find`'s default twenty-five, so a search matching forty parts reported
+    # thirty-nine and a half of them as not existing. A cap with no page
+    # numbers under it is not a limit, it is a lie about the catalogue.
+    matched = find(query, limit=None) if query else Part.objects.all()
+    page = Paginator(matched, PAGE_SIZE).get_page(request.GET.get("page"))
+    found = list(page.object_list)
 
     # Everything each row shows, in four queries rather than six per part. The
     # list previously answered "how many on hand?" with an aggregate per part
@@ -368,9 +376,13 @@ def part_list(request):
     return render(
         request,
         "parts/list.html",
-        {"parts": rows, "q": query, "low": restock_list()},
+        {"parts": rows, "q": query, "low": restock_list(), "page": page},
     )
 
+
+#: How many parts a page of the catalogue holds. Large enough that a small
+#: shop never sees a second page, and bounded so a large one still renders.
+PAGE_SIZE = 100
 
 #: How many vehicles a row names before it stops naming them. Three fits the
 #: line; the rest become a count, which is still an answer.

@@ -171,6 +171,20 @@
           {% translate "Read here against the manufacturer's own tables, because no service decodes a VIN this old." %}
         </p>
         {% include "assets/_vin_reading.html" with vin_readings=vin_readings vin_year=vin_year %}
+        {% comment %}
+        Offered only where one reading stands alone. With two on the screen the
+        button would have to choose between them, and choosing silently is how
+        a question the page is asking becomes a fact the record asserts.
+        {% endcomment %}
+        {% if vin_readings|length == 1 %}
+          <form method="post" action="{% url 'vin_read' asset.pk %}" style="margin-top:.5rem">
+            {% csrf_token %}
+            <button type="submit">{% translate "Fill in from the VIN" %}</button>
+          </form>
+          <p class="small muted">
+            {% translate "Fills only the boxes you have left empty, and never over an edit of yours." %}
+          </p>
+        {% endif %}
       {% endif %}
 
       {% comment %}

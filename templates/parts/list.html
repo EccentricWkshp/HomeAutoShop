@@ -120,5 +120,6 @@ nothing like it has answered the wrong question.
       <li class="empty">{% if q %}{% translate "Nothing matched." %}{% else %}{% translate "No parts yet." %}{% endif %}</li>
     {% endfor %}
   </ul>
+  {% include "partials/_pager.html" with page=page q=q %}
 </section>
 {% endblock %}

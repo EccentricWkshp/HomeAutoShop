@@ -182,9 +182,14 @@ class AmbiguityTests(TestCase):
         self.assertEqual(describe("F25BR350001", year=1970).scheme, "ford-truck-1967-1972")
 
     def test_a_year_the_scheme_cannot_narrow_reports_all_of_them(self):
-        """1949, 1950 and 1951 all continue the 1949 numbering. Three years is
-        the true answer and one would be a guess."""
-        self.assertEqual(describe("97HC139260").years, (1949, 1950, 1951))
+        """GMC's `F` covers 1947 through 1950 and the sheet narrows it only
+        with production-number charts that are not transcribed. Four years is
+        the true answer and one would be a guess.
+
+        This used to be asserted against Ford's `9`, which meant 1949, 1950 or
+        1951 — until the engine sheet took a year off it. A test of "cannot be
+        narrowed" needs a case that genuinely cannot."""
+        self.assertEqual(describe("FC15225889").years, (1947, 1948, 1949, 1950))
 
     def test_nothing_that_resolves_nothing_is_offered(self):
         self.assertEqual(decode("ZZZZZZZZZZZ"), [])
@@ -335,6 +340,28 @@ class EveryMakeTests(TestCase):
         self.assertEqual(found.years, (1972,))
         self.assertIn("Sportsman Wagon", found.summary)
 
+    def test_the_last_two_gaps_were_closed_after_the_reason_was_rechecked(self):
+        """Both had been written off. GMC 1960–66 was said to have a vehicle
+        number of no fixed length — it is four digits and a GVW letter — and
+        Chevrolet 1953–55 was said to be too short to identify, when its
+        two-digit model year is the most identifying field on any sheet here."""
+        self.assertEqual(describe("K1502PN2611A").make, "GMC")
+        self.assertEqual(describe("H53S7552").years, (1953,))
+
+    def test_a_blank_drive_position_is_read_as_its_own_scheme(self):
+        """A two-wheel-drive GMC has nothing in front of the series, so it is a
+        length rather than a value — the same shape as the V8 prefixes."""
+        self.assertEqual(describe("1502PN2611A").scheme, "gmc-truck-1960-1966")
+        self.assertEqual(
+            describe("K1502PN2611A").scheme, "gmc-truck-1960-1966-4wd"
+        )
+
+    def test_a_gmc_model_code_reports_the_span_it_names(self):
+        """`N` is 1960 or 1961. The sheet narrows it with charts keyed on the
+        plant, the drive and the tonnage at once, which the data format cannot
+        express — so the span is reported rather than a guess at one end."""
+        self.assertEqual(describe("1502PN2611A").years, (1960, 1961))
+
     def test_a_gm_van_reads_despite_its_engine_table_not_surviving(self):
         found = describe("CGL2594100001")
 
@@ -407,6 +434,74 @@ class UnitNumberTests(TestCase):
         self.assertTrue(readings[0].is_complete)
         self.assertFalse(readings[1].is_complete)
         self.assertEqual(readings[1].unknown[0].role, "series")
+
+
+class EngineSheetTests(TestCase):
+    """The second sheet per era, and what reading it against the first found.
+
+    `*_Engine_ID.pdf` lists every engine code against the years and models it
+    was fitted to. It is the only independent check these tables have, and it
+    disagrees with the VIN sheets in several places — once in a way that was
+    refusing a real vehicle.
+    """
+
+    def test_a_1954_with_the_239_v8_decodes(self):
+        """The bug it found. The VIN sheet has code V as a 1955 only; the
+        engine sheet has it from 1954. Against a 1954 year digit the narrow
+        table made a real truck a contradiction, and it was refused."""
+        found = describe("F10V4U100001")
+
+        self.assertIsNotNone(found)
+        self.assertEqual(found.years, (1954,))
+        self.assertIn("239 CID", found.summary)
+
+    def test_the_union_is_taken_where_the_sheets_disagree_on_years(self):
+        """Both directions, because that is the point: being a year too broad
+        costs a check, being a year too narrow refuses a vehicle. The VIN sheet
+        has the 292 four-barrel in 1959–60 and the engine sheet only in 1959."""
+        self.assertEqual(describe("F25D9U100001").years, (1959,))
+        self.assertEqual(describe("F25D0U100001").years, (1960,))
+
+    def test_a_flatly_contradicted_detail_is_printed_by_neither_sheet(self):
+        """One says 2-bbl and the other 4-bbl. Nothing decodes off it, so the
+        carburettor is dropped rather than picked."""
+        summary = describe("F25D9U100001").summary
+
+        self.assertIn("160 hp", summary)
+        self.assertNotIn("bbl", summary)
+
+    def test_the_engine_sheet_narrows_a_year_the_vin_sheet_left_open(self):
+        """A 9 in the year position means 1949, 1950 or 1951 on its own. The
+        226 was gone after 1950, so the two together mean one less year."""
+        self.assertEqual(describe("97HC139260").years, (1949, 1950))
+
+    def test_a_scheme_names_both_sheets_it_was_read_against(self):
+        checked = [s for s in SCHEMES if s.get("also")]
+
+        self.assertGreaterEqual(len(checked), 9)
+        for scheme in checked:
+            with self.subTest(scheme=scheme["id"]):
+                self.assertTrue(scheme["also"].endswith("_Engine_ID.pdf"))
+                self.assertNotEqual(scheme["also"], scheme["source"])
+
+    def test_the_page_says_it_was_checked_against_a_second_sheet(self):
+        user = User.objects.create_user(
+            username="andy", password="x" * 16, role=Role.ADMIN
+        )
+        self.client.force_login(user)
+        asset = Asset.objects.create(nickname="Old Ford", vin=TRUCK, year=1978)
+
+        page = self.client.get(reverse("asset_detail", args=[asset.pk]))
+
+        self.assertContains(page, "FC_VIN-Chassis_ID.pdf")
+        self.assertContains(page, "FC_Engine_ID.pdf")
+
+    def test_the_1973_79_engine_table_was_confirmed_unchanged(self):
+        """Not every check finds something. The engine sheet for these years
+        agrees with the VIN sheet on every code, which is worth asserting: it
+        is the era the decoder is used for most."""
+        self.assertEqual(describe(TRUCK).years, (1978,))
+        self.assertIn("400 CID", describe(TRUCK).summary)
 
 
 class ReadingItOnScreenTests(TestCase):

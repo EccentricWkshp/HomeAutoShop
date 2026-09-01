@@ -92,6 +92,27 @@ class MoneyFormField(forms.Field):
         return parse_amount(value, self.currency)
 
 
+def help_without_minor(help_text):
+    """Drop the storage note; keep anything written for the reader.
+
+    Reported as: a core charge field labelled "Core charge" — correctly — above
+    the words *"Minor units (e.g. cents). Never a float."* The label had been
+    cleaned up and the help text underneath it had not, so the box that takes
+    `$35.00` was telling people to type `3500`. Nobody has ever expected to
+    enter cents, and a form that asks for them is the exact failure this whole
+    module exists to prevent, reintroduced one line below the fix.
+
+    Dropped by identity rather than by pattern: `money_columns` sets one known
+    string, and a column that says something useful of its own — "what one
+    costs, used to divide a kit's price" — must survive untouched.
+    """
+    from .money import MINOR_UNITS_HELP
+
+    if help_text and str(help_text) == str(MINOR_UNITS_HELP):
+        return ""
+    return help_text
+
+
 def label_without_minor(label) -> str:
     """`Tax minor` and `Tax (minor units)` are both just `Tax` now."""
     text = str(label or "")
@@ -123,7 +144,7 @@ class MoneyFormMixin:
                 currency=currency,
                 required=field.required,
                 label=label_without_minor(field.label),
-                help_text=field.help_text,
+                help_text=help_without_minor(field.help_text),
                 initial=field.initial,
             )
 

@@ -99,6 +99,7 @@ urlpatterns = [
     # its history, and `status = sold` is what says so.
     path("vehicles/<uuid:pk>/delete/", assets.asset_delete, name="asset_delete"),
     path("vehicles/<uuid:pk>/decode/", assets.vin_decode, name="vin_decode"),
+    path("vehicles/<uuid:pk>/read-vin/", assets.vin_read, name="vin_read"),
     path("vehicles/<uuid:pk>/readings/", assets.reading_create, name="reading_create"),
     path("vehicles/<uuid:pk>/photos/", assets.photo_upload, name="asset_photo_upload"),
     path(
