@@ -5,9 +5,10 @@
 | **Document** | `Artifacts/SPEC.md` |
 | **Companion documents** | [README.md](README.md) · [REFERENCE.md](REFERENCE.md) · [SCHEMA-PARSER-PROFILES.md](SCHEMA-PARSER-PROFILES.md) · [SCHEMA-INSPECTION-TEMPLATES.md](SCHEMA-INSPECTION-TEMPLATES.md) · [INTEGRATION-LUBELOGGER.md](INTEGRATION-LUBELOGGER.md) · [INTEGRATION-WRENCHLEDGER.md](INTEGRATION-WRENCHLEDGER.md) |
 | **Status** | Draft for review |
-| **Version** | 0.6.5 |
-| **Date** | 2026-08-31 |
+| **Version** | 0.6.6 |
+| **Date** | 2026-09-01 |
 | **Scope decisions** | Docker Compose deployment · all four feature modules in scope · household multi-user with garage PWA · four external integrations |
+| **v0.6.6 changes** | **The second scan tool arrived, and thirteen more with it.** 171 reports published on the public web are now in the corpus as redacted captures, and four parser profiles came out of them — Ross-Tech VCDS, Autel MaxiSys, BlueDriver, Car Scanner ELM OBD2 — **published in the catalog rather than bundled in the image**, because there are hundreds of scan tools and an operator owns one. §15.1 records what the profile contract could not express and now can, and the one thing it still cannot: attribute a code to its module. Two findings are load-bearing. §8.3a's "word geometry is necessary" is a fact about the D8, not about scan reports — three of the four new profiles read text, one of them from a PDF. And NFR-S-5's redaction rule, which keys off the ISO 3779 check digit, would have published every **European** VIN in the corpus unredacted: position 9 is a check digit only where a regulator requires one. A VIN is now also anything VIN-shaped following a VIN label, and licence plates, shop details and workshop codes are redacted by rule, with an audit pass over what was written because a rule cannot know that a technician signed page four. |
 | **v0.6.5 changes** | **No object store in the stack.** Media lives under `MEDIA_ROOT`, which is what §13.1 backs up; the earlier design put it in MinIO, where no backup reached it. That container had been justified by a presigned URL streaming photos straight to the browser, and v0.6.2 had already turned that off for good reason — such a link works for anyone who copies it, so `app` serves the bytes and reading a photo requires a login (§5.1, §12.3). Four services instead of five, and the measured idle footprint is now 338 MB against NFR-P-6's 900. The `s3` driver stays, vendor-neutral, for media on a NAS or on rented storage, with `manage.py migrate_storage` to move files either direction without touching the database. Backup and restore now say out loud when media is somewhere they cannot reach. |
 | **v0.6.4 changes** | Follow-ups from using the parts-order import. The preview now **leads to the import**: a browser clears a file input on submit, so previewing and then importing meant uploading the same file twice — which is how a preview stops being used. The document is stored on the way past (deduplicated by SHA-256) and the review screen carries a signed reference to it. Money is shown as money: the review screen and the purchase screens printed minor units, so a $155.87 order read as `15587`. And **every full-page form has a Cancel beside its Save** — without one the only exits were the browser's back button, which re-posts, or saving changes nobody wanted. |
 | **v0.6.3 changes** | **Supplier order confirmations are read into the catalog** (FR-PUR-1, FR-PART-2/3). A RockAuto order PDF becomes a purchase with its lines, the parts in it — brand, manufacturer part number, part type, price, core charge, quantity — and fitment against the vehicle each was looked up under, recorded as *stated by vendor* rather than confirmed (FR-PART-4). Read by word geometry for the same reason §8.3a needs it: both text columns wrap, and they wrap above as well as below their own row. Kits are charged once and their contents catalogd but not billed; a rebate is money, not part of a part number. It rehearses before it writes, and `external_ref` makes a second read of the same file update rather than duplicate (§6.2). Also: the main navigation is reachable on a phone, where it had been hidden entirely below 800px with no route to seven of the nine sections. |
@@ -1383,7 +1384,46 @@ profile and which version read it, so re-parse and regression triage work
 identically either way.
 [SCHEMA-PARSER-PROFILES.md](SCHEMA-PARSER-PROFILES.md) already predicted this
 and declined to freeze the contract until a second tool's reports arrive. That
-judgment was right, and the contract stays open.
+judgment was right, and it has now been tested — see below.
+
+**The second tool arrived, and fourteen more with it.** 171 reports and exports
+published on the public web were gathered into the corpus (`fetch_scan_samples`,
+`capture_scan_samples`), and **four working profiles came out of them**: Ross-Tech
+VCDS, Autel MaxiSys, BlueDriver and Car Scanner ELM OBD2. Three of the four read
+*text*, one of those from a PDF — so §8.3a's finding that word geometry is
+necessary turns out to be a fact about the D8 rather than about scan reports.
+Word geometry is what a format costs you, not what a parser deserves.
+
+Four things the contract could not express, each added because a format demanded
+it and each recorded in SCHEMA-PARSER-PROFILES.md §1a: a row that spans lines
+(`multiline`), a column that falls back between capture groups, `map` as a closed
+vocabulary rather than a set of shortcuts, and a *generic* profile that no longer
+outranks a specific one on score alone. That last was not cosmetic — the bundled
+`Generic code list` scored 1.0 on a VCDS Auto-Scan where the VCDS profile scored
+0.85, and read nothing out of reports holding 61, 14 and 0 faults.
+
+What the profiles still cannot do is attribute a code to its module: every PDF
+format here prints the module as a heading above a group of rows, and a
+row-at-a-time extractor has no notion of the section it is inside. A nine-module
+all-system scan therefore imports as one list. Two formats — THINKCAR's newer
+report and TOPDON's — interleave their columns badly enough that no profile is
+published for them at all; half-reading a diagnostic report is worse than not
+reading it. Their captures are in the corpus, marked unread.
+
+**The profiles are published, not bundled** (§8.1b). The image still ships two —
+the D8 and the generic text reader — and the rest live in the catalog, because
+there are hundreds of scan tools and an operator owns one. A built-in list of
+eighty formats is eighty claims this project cannot check, presented to somebody
+who needs exactly one of them.
+
+**Redaction needed a second rule, and it needed it urgently.** NFR-S-5's rule
+keyed off the ISO 3779 check digit, which is exact for the North American
+vehicles the original corpus came from and silently wrong everywhere else:
+position 9 is a check digit only where a regulator requires one, so every
+European VIN in a public report would have been committed unredacted. A VIN is
+now also anything VIN-shaped that follows a VIN label, and a stand-in preserves
+a filler where it found one, so the corpus keeps the case §5.5's validation
+exists to tolerate.
 
 **Web Push is the one thing that cannot be local-first.** §9.4 asks for web
 push; P-1 and NFR-S-1 say your data lives on your hardware and nothing phones

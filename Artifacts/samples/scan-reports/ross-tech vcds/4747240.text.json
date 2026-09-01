@@ -1,0 +1,5 @@
+{
+ "source": "4747240.txt",
+ "media_type": "text",
+ "text": "Chassis Type: 5J - Skoda Fabia II (manual gearbox, no navigation, no phone, no bluetooth)\nScan: 01 03 08 09 15 17 19 25 44 56\n\nAddress 01: Engine (J623-CBZB)\nAddress 03: ABS Brakes (J104)\nAddress 08: Auto HVAC (J255)\nAddress 09: Cent. Elect. (J519)\nAddress 15: Airbags (J234)\nAddress 17: Instruments (J285)\nAddress 19: CAN Gateway (J533)\nAddress 25: Immobilizer (J334)\nAddress 44: Steering Assist\nAddress 56: Radio (J503)\n"
+}

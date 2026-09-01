@@ -1,0 +1,70 @@
+{
+  "profile": "Autel MaxiSys - Vehicle Diagnostic Report",
+  "score": 1.0,
+  "fields": {
+    "vin": {
+      "value": "V1DGN5C0129820250",
+      "confidence": 0.28,
+      "page": 0,
+      "label": "VIN"
+    },
+    "odometer": {
+      "value": "279722",
+      "confidence": 0.8,
+      "page": 0,
+      "label": "Odometer Reading"
+    },
+    "odometer_unit": {
+      "value": "mi",
+      "confidence": 0.8,
+      "page": 0,
+      "label": "Odometer Reading"
+    },
+    "performed_on": {
+      "value": "2025-07-23T18:13:39",
+      "confidence": 0.9,
+      "page": 0,
+      "label": "Test Time"
+    },
+    "tool_vendor": {
+      "value": "autel",
+      "confidence": 0.9,
+      "page": 0,
+      "label": ""
+    },
+    "tool_model": {
+      "value": "MaxiSys Ultra",
+      "confidence": 0.9,
+      "page": 0,
+      "label": "Scanner"
+    },
+    "tool_version": {
+      "value": "V6.80",
+      "confidence": 0.8,
+      "page": 0,
+      "label": "Version"
+    }
+  },
+  "codes": [
+    {
+      "code": "P0135",
+      "description": "Oxygen sensor heater circuit (bank 1 sensor 1)",
+      "state_raw": "Current",
+      "state": "stored"
+    },
+    {
+      "code": "B0101",
+      "description": "Driving side squib circuit open",
+      "state_raw": "Current",
+      "state": "stored"
+    },
+    {
+      "code": "B0101",
+      "description": "Driving side squib circuit open",
+      "state_raw": "History",
+      "state": "history"
+    }
+  ],
+  "live_data": [],
+  "warnings": []
+}

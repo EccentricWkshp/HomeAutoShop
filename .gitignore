@@ -34,3 +34,13 @@ Artifacts/samples/backups/
 # would break the link the entry exists for, and keeping it would put somebody's
 # VIN in a public repository. It stays on the machine that gathered it.
 Artifacts/samples/**/automotive_scan_tool_public_examples*.json
+
+# Samples fetched from the public web by `manage.py fetch_scan_samples`. Other
+# people's reports, published to be read rather than for us to redistribute,
+# and several carry a VIN. Ignored as a whole directory rather than by
+# extension: the operator's own reports are a PDF from a scan tool or a JPEG
+# from a phone, so a list of extensions covers them, but a file off the public
+# web has whatever extension its publisher felt like and one unanticipated
+# `.dat` would be in a public repository forever. What ships is the redacted
+# capture beside it and the provenance in sources.json.
+Artifacts/samples/**/originals/

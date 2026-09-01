@@ -1,0 +1,147 @@
+# Ross-Tech VCDS -- Auto-Scan
+#
+# An Auto-Scan is the closest thing the VAG world has to a whole-vehicle
+# report: every controller on the bus, its part numbers and coding, and every
+# fault it is holding. It is plain text, and unlike a PDF report the labels and
+# their values survive extraction in the order a person reads them -- which is
+# exactly the case the declarative engine was written for, and why this is data
+# rather than code.
+#
+# Two code vocabularies appear per fault and both matter. VCDS prints its own
+# five- or six-digit VAG fault number with a description, then the OBD-II code
+# underneath with a three-digit fault-type byte:
+#
+#     000772 - Cylinder 4
+#                    P0304 - 000 - Misfire Detected - Intermittent
+#
+# The table reads the OBD-II line, because that is the code this application
+# stores and the one a person can look up. The VAG number is on the line above
+# and is not lost -- it is in the capture, and a later version of this profile
+# can claim it once the schema has somewhere to put it.
+name: Ross-Tech VCDS - Auto-Scan
+author: HomeAutoShop
+tool_vendor: Ross-Tech
+tool_model: VCDS
+version: 1
+media_type: text
+
+fingerprint:
+  threshold: 0.6
+  signals:
+    # The application names itself twice in the first three lines, and one of
+    # those lines is absent from the older Beta builds in the corpus -- so both
+    # are signals rather than one being trusted.
+    - kind: doc_text
+      pattern: '(?i)VCDS\s+Version\s*:'
+      weight: 0.3
+    - kind: doc_text
+      pattern: '(?i)Ross-Tech'
+      weight: 0.15
+    # The shape of an Auto-Scan itself: a controller list where every line is
+    # an address, a name and a status word.
+    - kind: doc_text
+      pattern: '(?m)^[0-9A-F]{2}-.+--\s*Status:'
+      weight: 0.3
+    - kind: doc_text
+      pattern: '(?m)^Address\s+[0-9A-F]{2}:'
+      weight: 0.25
+
+field_extractors:
+  # Not every Auto-Scan carries a VIN: the older Beta builds print the chassis
+  # type and go straight to the controller list. Declared anyway, and the
+  # reports named below are the ones that have one -- `build_catalog` requires
+  # every declared field to extract from every report a profile claims, which
+  # is what stops a profile from claiming a report it only half reads.
+  vin:
+    strategy: label_anchored
+    labels: ['VIN']
+    pattern: '([A-HJ-NPR-Z0-9]{17})'
+    validate: vin_check_digit
+    confidence: 0.7
+  odometer:
+    strategy: label_anchored
+    labels: ['Mileage']
+    # `46280km-28757mi` -- both units on one line, kilometres first. Taking the
+    # number alone and letting `odometer_unit` say which would be tidier and
+    # wrong: the pair is what the tool printed and the review screen should
+    # show the operator what it printed.
+    pattern: '([\d,.]+\s*km-[\d,.]+\s*mi)'
+    confidence: 0.8
+  odometer_km:
+    strategy: label_anchored
+    labels: ['Mileage']
+    pattern: '([\d,.]+)\s*km'
+    coerce: { type: number }
+    confidence: 0.8
+  performed_on:
+    # `Friday,27,May,2016,20:08:24:25415` -- the trailing number is a session
+    # counter, not seconds, so it is left out of the parse rather than fed to
+    # a format string that would reject the whole line.
+    strategy: regex
+    pattern: '(?m)^[A-Za-z]+,(\d{1,2},[A-Za-z]+,\d{4},\d{2}:\d{2}:\d{2})'
+    coerce: { type: datetime, formats: ['%d,%B,%Y,%H:%M:%S'] }
+    confidence: 0.9
+  tool_version:
+    strategy: regex
+    pattern: '(?i)VCDS\s+Version\s*:\s*(\S+(?:\s+[\d.]+)?)'
+    confidence: 0.9
+  vehicle_description:
+    strategy: label_anchored
+    labels: ['Chassis Type']
+    confidence: 0.6
+
+table_extractor:
+  locate:
+    # No heading and no stop marker: the row pattern is the discriminator, and
+    # the whole document is the table.
+    #
+    # A heading was tried and is a trap here. VCDS writes `4 Faults Found:` and
+    # `1 Fault Found:` -- singular for one -- so anchoring on `Faults Found`
+    # silently discarded every controller whose block appeared before the first
+    # plural one. It cost four faults in the corpus and the count still looked
+    # plausible, which is exactly how a table extractor loses rows without
+    # anybody noticing.
+    headings: []
+    stop_at: []
+  # A fault is two lines, so a row is two lines. Ross-Tech's own fault number
+  # and the description come first; the J2012 code, where the controller has
+  # one, is indented underneath in either of two shapes -- `P0304 - 000` on the
+  # older KWP controllers, `U1011 00 [008]` on UDS.
+  multiline: true
+  row_pattern: '^(\d{5,8})[ \t]*-[ \t]*(.+?)[ \t]*\r?\n[ \t]*(?:([PBCU][0-9A-F]{4})(?:[ \t]*-[ \t]*[0-9A-F]{3}|[ \t]+[0-9A-F]{2}[ \t]*\[[0-9A-F]+\])[ \t]*-[ \t]*(.+?)[ \t]*$)?'
+  columns:
+    # The J2012 code where there is one, Ross-Tech's number where there is not.
+    # Measured across nine Auto-Scans: 191 faults, 30 of them with a J2012
+    # code. A profile that read only the J2012 line would report five faults
+    # in six as absent.
+    - { role: code, group: [3, 1] }
+    - { role: description, group: 2 }
+  row_filters:
+    drop_if_matches:
+      - '(?i)no fault code found'
+
+notes: >
+  Developed against eleven Auto-Scans from four vehicles and five VCDS
+  releases, 2014 to 2018, published on the public web; the captures in the
+  corpus are redacted - VIN replaced by a stand-in, licence plate removed,
+  workshop code and VCID zeroed - so this was written against the shape of the
+  report and not against anybody's vehicle.
+
+  Two things to know before trusting what it reads. **Most faults are not
+  J2012 codes.** Across those Auto-Scans, 191 faults carried 30 OBD-II codes
+  between them; the rest are numbered in Ross-Tech's own vocabulary - `01520 -
+  Rain and Light Recognition Sensor (G397)` - because the controller that
+  reported them speaks KWP rather than OBD. Both are read, the J2012 code
+  preferred where a fault has one. **And the older Beta builds print no VIN
+  and no mileage at all**, only the chassis type, so a scan from one is
+  recognized and read but cannot fill those fields. That is why the reports
+  listed below are seven rather than eleven: a profile is only allowed to
+  claim a report it reads completely.
+verified_against:
+  - golf-mk6-auto-scan
+  - golf-mk6-auto-scan-2016-06-02
+  - golf-mk6-after-bcm-factory-mode-change
+  - golf-mk6-before-bcm-factory-mode-change
+  - golf-mk6-lighting-related-auto-scan
+  - audi-vcds-auto-scan
+  - log-wvwhd7aj0dw-23600km

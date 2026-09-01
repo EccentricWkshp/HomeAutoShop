@@ -1,0 +1,24 @@
+{
+ "version": 1,
+ "tool": "ecutools swcomm",
+ "note": "Where these samples came from. The files themselves are not committed - they are somebody else's reports, published for people to read rather than for us to redistribute. What ships is the redacted capture beside this file, and this record, so the corpus survives the link going dead and the attribution survives with it.",
+ "sources": [
+  {
+   "file": "originals/swcomm.csv",
+   "vendor": "ECUTools / SWComm",
+   "product": "SWComm",
+   "artifact_kind": "live_data_export",
+   "parser_scope": "live_data",
+   "format": "csv",
+   "media_type": "csv",
+   "sha256": "beb5517442c907d9f34e61ef6b898a22198bd060c2079014467273297c41a240",
+   "bytes": 1266,
+   "retrieved_on": "2026-09-01",
+   "listed_on": "2026-09-01",
+   "manifest_id": "scanex_cd970da17b57",
+   "title": "swcomm.csv",
+   "direct_url": "https://raw.githubusercontent.com/nyetwurk/ecuxplot/master/test-data/swcomm.csv",
+   "source_url": "https://github.com/nyetwurk/ecuxplot/blob/master/test-data/swcomm.csv"
+  }
+ ]
+}

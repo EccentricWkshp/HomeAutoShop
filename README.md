@@ -91,6 +91,10 @@ Then add your own hostname and trust the certificate — full walkthrough in
 [docs/INSTALL.md](docs/INSTALL.md), including how to reach the instance from
 another machine on the LAN.
 
+For day-to-day use, see the implementation-grounded [HomeAutoShop help
+guide](docs/HELP.md). It covers the workflows and limitations of the features
+that are present in the application now.
+
 Or without Docker — see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md), which also
 covers the two `.env` values that need changing for a laptop.
 

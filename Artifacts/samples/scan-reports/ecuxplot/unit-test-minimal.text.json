@@ -1,0 +1,5 @@
+{
+ "source": "unit-test-minimal.csv",
+ "media_type": "csv",
+ "text": "TIME,RPM,VehicleSpeed,BoostPressureActual\n0,800,50,1013\n1,900,55,1015\n2,1000,60,1020\n3,1100,65,1025\n4,1200,70,1030\n5,1300,75,1035\n6,1400,80,1040\n7,1500,85,1045\n8,1600,90,1050\n9,1700,95,1055\n10,1800,100,1060\n\n"
+}

@@ -1,0 +1,24 @@
+{
+ "version": 1,
+ "tool": "topdon unspecified",
+ "note": "Where these samples came from. The files themselves are not committed - they are somebody else's reports, published for people to read rather than for us to redistribute. What ships is the redacted capture beside this file, and this record, so the corpus survives the link going dead and the attribution survives with it.",
+ "sources": [
+  {
+   "file": "originals/topdon1751925479.pdf",
+   "vendor": "TOPDON",
+   "product": "unknown",
+   "artifact_kind": "diagnostic_report",
+   "parser_scope": "diagnostic_report",
+   "format": "pdf",
+   "media_type": "pdf",
+   "sha256": "ae6283740dd5a16806ae28696bc728bd38c37192e451a1ae90c6459db1491d61",
+   "bytes": 230298,
+   "retrieved_on": "2026-09-01",
+   "listed_on": "2026-09-01",
+   "manifest_id": "scanex_c98a69f9ca57",
+   "title": "TOPDON1751925479",
+   "direct_url": "https://www.6speedonline.com/forums/attachment.php?attachmentid=545290&d=1751938795&download=1",
+   "source_url": "https://www.6speedonline.com/forums/attachment.php?attachmentid=545290&d=1751938795&download=1"
+  }
+ ]
+}

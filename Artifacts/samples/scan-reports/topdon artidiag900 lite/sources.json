@@ -1,0 +1,23 @@
+{
+ "version": 1,
+ "tool": "topdon artidiag900 lite",
+ "note": "Where these samples came from. The files themselves are not committed - they are somebody else's reports, published for people to read rather than for us to redistribute. What ships is the redacted capture beside this file, and this record, so the corpus survives the link going dead and the attribution survives with it.",
+ "sources": [
+  {
+   "file": "originals/bmw-335ixdrive-2014-post-scan-fullsystemreport-2024-02-28-16-28-18.pdf",
+   "vendor": "TOPDON",
+   "product": "ArtiDiag900 Lite",
+   "artifact_kind": "pre_post_full_system_report",
+   "parser_scope": "diagnostic_report",
+   "format": "pdf",
+   "media_type": "pdf",
+   "sha256": "aeec9666cafce1ca2f002cabcc779b6a04ec5e3470b3a3664f36e11c4a62ba15",
+   "bytes": 439199,
+   "retrieved_on": "2026-09-01",
+   "listed_on": "2026-09-01",
+   "manifest_id": "scanex_3f5d32b0d064",
+   "direct_url": "https://topdon-plat.oss-us-west-1.aliyuncs.com/diagnostic_report_file/202403/BMW-335ixDrive-2014_Post-Scan_FullSystemReport_2024-02-28_16-28-18.pdf",
+   "source_url": "https://topdon-plat.oss-us-west-1.aliyuncs.com/diagnostic_report_file/202403/BMW-335ixDrive-2014_Post-Scan_FullSystemReport_2024-02-28_16-28-18.pdf"
+  }
+ ]
+}

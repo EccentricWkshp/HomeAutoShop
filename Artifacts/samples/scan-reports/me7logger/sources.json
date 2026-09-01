@@ -1,0 +1,58 @@
+{
+ "version": 1,
+ "tool": "me7logger",
+ "note": "Where these samples came from. The files themselves are not committed - they are somebody else's reports, published for people to read rather than for us to redistribute. What ships is the redacted capture beside this file, and this record, so the corpus survives the link going dead and the attribution survives with it.",
+ "sources": [
+  {
+   "file": "originals/me7l-1.csv",
+   "vendor": "ME7Logger",
+   "product": "ME7Logger",
+   "artifact_kind": "live_data_export",
+   "parser_scope": "live_data",
+   "format": "csv",
+   "media_type": "binary",
+   "sha256": "778aa931103a68b25a3f12276f8f48bb11a651936890e3cf4d5924f558acd5b2",
+   "bytes": 6273,
+   "retrieved_on": "2026-09-01",
+   "listed_on": "2026-09-01",
+   "manifest_id": "scanex_a7516b0e9927",
+   "title": "me7l-1.csv",
+   "direct_url": "https://raw.githubusercontent.com/nyetwurk/ecuxplot/master/test-data/me7l-1.csv",
+   "source_url": "https://github.com/nyetwurk/ecuxplot/blob/master/test-data/me7l-1.csv"
+  },
+  {
+   "file": "originals/me7l-semicolons.csv",
+   "vendor": "ME7Logger",
+   "product": "ME7Logger",
+   "artifact_kind": "live_data_export",
+   "parser_scope": "live_data",
+   "format": "csv",
+   "media_type": "csv",
+   "sha256": "00814a57afb950159e9bf25d657277d39a5510dca55c06eb4fa7024a415dcc86",
+   "bytes": 6248,
+   "retrieved_on": "2026-09-01",
+   "listed_on": "2026-09-01",
+   "manifest_id": "scanex_1b6b631b2165",
+   "title": "me7l-semicolons.csv",
+   "direct_url": "https://raw.githubusercontent.com/nyetwurk/ecuxplot/master/test-data/me7l-semicolons.csv",
+   "source_url": "https://github.com/nyetwurk/ecuxplot/blob/master/test-data/me7l-semicolons.csv"
+  },
+  {
+   "file": "originals/me7l.csv",
+   "vendor": "ME7Logger",
+   "product": "ME7Logger",
+   "artifact_kind": "live_data_export",
+   "parser_scope": "live_data",
+   "format": "csv",
+   "media_type": "binary",
+   "sha256": "ba9611e7745376fa7f338d048829b19af32faff83dd21d19f88fe6c5aea33161",
+   "bytes": 6266,
+   "retrieved_on": "2026-09-01",
+   "listed_on": "2026-09-01",
+   "manifest_id": "scanex_c67a01aee42f",
+   "title": "me7l.csv",
+   "direct_url": "https://raw.githubusercontent.com/nyetwurk/ecuxplot/master/test-data/me7l.csv",
+   "source_url": "https://github.com/nyetwurk/ecuxplot/blob/master/test-data/me7l.csv"
+  }
+ ]
+}

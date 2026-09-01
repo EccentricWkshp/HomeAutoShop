@@ -1,0 +1,24 @@
+{
+ "version": 1,
+ "tool": "dynamic ebl what s up",
+ "note": "Where these samples came from. The files themselves are not committed - they are somebody else's reports, published for people to read rather than for us to redistribute. What ships is the redacted capture beside this file, and this record, so the corpus survives the link going dead and the attribution survives with it.",
+ "sources": [
+  {
+   "file": "originals/20251006-0834-toworknewcap.csv",
+   "vendor": "Dynamic EFI",
+   "product": "EBL / What's Up",
+   "artifact_kind": "live_data_export",
+   "parser_scope": "live_data",
+   "format": "csv",
+   "media_type": "csv",
+   "sha256": "9c35b615aeee4da5a498e0b14e3f3fb897a9018c17a9065ffc04444377481973",
+   "bytes": 199174,
+   "retrieved_on": "2026-09-01",
+   "listed_on": "2026-09-01",
+   "manifest_id": "scanex_9e965b8f96bb",
+   "title": "20251006_0834_toWorkNewCap.csv",
+   "direct_url": "https://raw.githubusercontent.com/ClassicMiniDIY/UltraLog/main/exampleLogs/dynamicEFI/20251006_0834_toWorkNewCap.csv",
+   "source_url": "https://github.com/ClassicMiniDIY/UltraLog/blob/main/exampleLogs/dynamicEFI/20251006_0834_toWorkNewCap.csv"
+  }
+ ]
+}

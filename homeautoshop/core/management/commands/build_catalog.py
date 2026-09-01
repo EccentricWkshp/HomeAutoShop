@@ -63,12 +63,34 @@ def _read(kind: str, text: str) -> tuple[str, str, str, str]:
         # Refused rather than downgraded: a file claiming a verification it
         # cannot pass is the one thing worse than one claiming nothing.
         verify(profile)
-    return (
-        profile.name,
-        "",
-        f"{profile.tool_vendor} {profile.tool_model}".strip(),
-        profile.author,
-    )
+    return (profile.name, "", _describes(profile), profile.author)
+
+
+#: How much of a profile's notes reach the browse screen. Enough for what the
+#: reader is deciding — is this the tool I own, and what will it not read —
+#: and not the whole file, which is in the file.
+DESCRIPTION_CHARS = 400
+
+
+def _describes(profile) -> str:
+    """What the catalog says a profile is.
+
+    The vendor and model alone were what shipped here first, and on a browse
+    screen that reads as `Autel MaxiSys` under the heading `Autel MaxiSys -
+    Vehicle Diagnostic Report` — the name twice and no information. The point
+    of publishing profiles rather than bundling every one is that somebody
+    picks the one for the tool in their hand, and picking needs the thing the
+    profile knows about itself: what it was written against, and what it will
+    not read.
+    """
+    tool = f"{profile.tool_vendor} {profile.tool_model}".strip()
+    summary = " ".join((profile.notes or "").split())
+    if not summary:
+        return tool
+    if len(summary) > DESCRIPTION_CHARS:
+        cut = summary.rfind(". ", 0, DESCRIPTION_CHARS)
+        summary = summary[: cut + 1] if cut > 0 else summary[:DESCRIPTION_CHARS].rstrip() + "…"
+    return f"{tool} — {summary}" if tool else summary
 
 
 class NotVerified(Exception):
@@ -132,18 +154,13 @@ def verify(profile) -> None:
 
 
 def _prove_one(profile, capture, name, engine, fixtures) -> None:
-    pages = fixtures.pages(capture)
-    # Built the way `engine.read` builds one from a PDF: scoring matches on
-    # `text` and extraction uses `pages`, so a document carrying only one of
-    # the two fails for a reason that has nothing to do with the profile.
-    document = engine.Document(
-        text=chr(10).join(
-            " ".join(engine.normalize(str(w.get("text", ""))) for w in page)
-            for page in pages
-        ),
-        pages=pages,
-        media_type="pdf",
-    )
+    # Built by the corpus rather than here. This assembled its own document and
+    # stamped every one `pdf`, which was true while the corpus held nothing but
+    # PDFs and became a lie the moment a VCDS Auto-Scan arrived: a text profile
+    # was being proven against a document claiming to be a PDF. One builder
+    # means the badge is earned against the same document the import screen
+    # would build.
+    document = fixtures.document(capture)
 
     threshold = float((profile.fingerprint or {}).get("threshold", 0.7))
     score = engine.score(profile, document)

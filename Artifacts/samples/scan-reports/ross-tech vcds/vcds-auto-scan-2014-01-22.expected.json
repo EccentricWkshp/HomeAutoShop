@@ -1,0 +1,27 @@
+{
+  "profile": "Ross-Tech VCDS - Auto-Scan",
+  "score": 0.85,
+  "fields": {
+    "performed_on": {
+      "value": "2014-01-22T20:27:24",
+      "confidence": 0.9,
+      "page": 0,
+      "label": ""
+    },
+    "tool_version": {
+      "value": "Beta 12.10.3",
+      "confidence": 0.9,
+      "page": 0,
+      "label": ""
+    },
+    "vehicle_description": {
+      "value": "1K0",
+      "confidence": 0.6,
+      "page": 0,
+      "label": "Chassis Type"
+    }
+  },
+  "codes": [],
+  "live_data": [],
+  "warnings": []
+}

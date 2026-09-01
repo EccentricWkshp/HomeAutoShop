@@ -1,0 +1,61 @@
+{
+  "profile": "Ross-Tech VCDS - Auto-Scan",
+  "score": 1.0,
+  "fields": {
+    "vin": {
+      "value": "WVWZZZ1KZAW037321",
+      "confidence": 0.28,
+      "page": 0,
+      "label": "VIN"
+    },
+    "odometer": {
+      "value": "47070km-29247mi",
+      "confidence": 0.8,
+      "page": 0,
+      "label": "Mileage"
+    },
+    "odometer_km": {
+      "value": "47070",
+      "confidence": 0.8,
+      "page": 0,
+      "label": "Mileage"
+    },
+    "performed_on": {
+      "value": "2016-06-12T08:55:24",
+      "confidence": 0.9,
+      "page": 0,
+      "label": ""
+    },
+    "tool_version": {
+      "value": "16.5.1.2",
+      "confidence": 0.9,
+      "page": 0,
+      "label": ""
+    },
+    "vehicle_description": {
+      "value": "1K (1K0)",
+      "confidence": 0.6,
+      "page": 0,
+      "label": "Chassis Type"
+    }
+  },
+  "codes": [
+    {
+      "code": "P0304",
+      "description": "Cylinder 4",
+      "state": "stored"
+    },
+    {
+      "code": "01304",
+      "description": "Radio",
+      "state": "stored"
+    },
+    {
+      "code": "01316",
+      "description": "ABS Control Module",
+      "state": "stored"
+    }
+  ],
+  "live_data": [],
+  "warnings": []
+}

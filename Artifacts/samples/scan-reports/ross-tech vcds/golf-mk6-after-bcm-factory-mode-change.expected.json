@@ -1,0 +1,206 @@
+{
+  "profile": "Ross-Tech VCDS - Auto-Scan",
+  "score": 1.0,
+  "fields": {
+    "vin": {
+      "value": "WVWZZZ1KZAW037321",
+      "confidence": 0.28,
+      "page": 0,
+      "label": "VIN"
+    },
+    "odometer": {
+      "value": "46870km-29123mi",
+      "confidence": 0.8,
+      "page": 0,
+      "label": "Mileage"
+    },
+    "odometer_km": {
+      "value": "46870",
+      "confidence": 0.8,
+      "page": 0,
+      "label": "Mileage"
+    },
+    "performed_on": {
+      "value": "2016-06-07T18:05:19",
+      "confidence": 0.9,
+      "page": 0,
+      "label": ""
+    },
+    "tool_version": {
+      "value": "16.5.1.2",
+      "confidence": 0.9,
+      "page": 0,
+      "label": ""
+    },
+    "vehicle_description": {
+      "value": "1K (1K0)",
+      "confidence": 0.6,
+      "page": 0,
+      "label": "Chassis Type"
+    }
+  },
+  "codes": [
+    {
+      "code": "P0562",
+      "description": "System Voltage",
+      "state": "stored"
+    },
+    {
+      "code": "00668",
+      "description": "Supply Voltage Terminal 30",
+      "state": "stored"
+    },
+    {
+      "code": "U1113",
+      "description": "Function Restriction due to Faults in Other Modules",
+      "state": "stored"
+    },
+    {
+      "code": "00153",
+      "description": "Windshield Wiper Motor;  Driver Side (V216)",
+      "state": "stored"
+    },
+    {
+      "code": "00446",
+      "description": "Function Limitation due to Under-Voltage",
+      "state": "stored"
+    },
+    {
+      "code": "01299",
+      "description": "Diagnostic Interface for Data Bus (J533)",
+      "state": "stored"
+    },
+    {
+      "code": "01493",
+      "description": "Bulb for Blinkers; Front Left (M5)",
+      "state": "stored"
+    },
+    {
+      "code": "01495",
+      "description": "Bulb for High-Beams; Left (M30)",
+      "state": "stored"
+    },
+    {
+      "code": "01499",
+      "description": "Bulb for High-Beams; Right (M32)",
+      "state": "stored"
+    },
+    {
+      "code": "02896",
+      "description": "Control Circuit for LED Module for DRL and Parking Light; Left",
+      "state": "stored"
+    },
+    {
+      "code": "02898",
+      "description": "Control Circuit for LED Module for DRL and Parking Light; Right",
+      "state": "stored"
+    },
+    {
+      "code": "U1011",
+      "description": "Supply voltage",
+      "state": "stored"
+    },
+    {
+      "code": "U1111",
+      "description": "Function Restricted due to Missing Message(s)",
+      "state": "stored"
+    },
+    {
+      "code": "U1111",
+      "description": "Function Restricted due to Missing Message(s)",
+      "state": "stored"
+    },
+    {
+      "code": "U1011",
+      "description": "Supply voltage",
+      "state": "stored"
+    },
+    {
+      "code": "01300",
+      "description": "Control Module for Navigation with CD-Rom (J401)",
+      "state": "stored"
+    },
+    {
+      "code": "01304",
+      "description": "Radio",
+      "state": "stored"
+    },
+    {
+      "code": "00446",
+      "description": "Function Limitation due to Under-Voltage",
+      "state": "stored"
+    },
+    {
+      "code": "00532",
+      "description": "Supply Voltage B+",
+      "state": "stored"
+    },
+    {
+      "code": "01811",
+      "description": "Supply Voltage for Door Controller; Drivers Side (J386)",
+      "state": "stored"
+    },
+    {
+      "code": "01316",
+      "description": "ABS Control Module",
+      "state": "stored"
+    },
+    {
+      "code": "01812",
+      "description": "Supply Voltage for Door Controller; Pass. Side (J387)",
+      "state": "stored"
+    },
+    {
+      "code": "01042",
+      "description": "Control Module; Not Coded",
+      "state": "stored"
+    },
+    {
+      "code": "02656",
+      "description": "Power Output Stage for Left Headlight (J667); Not Coded",
+      "state": "stored"
+    },
+    {
+      "code": "02657",
+      "description": "Power Output Stage for Right Headlight (J668); Not Coded",
+      "state": "stored"
+    },
+    {
+      "code": "01539",
+      "description": "Headlights Not Adjusted",
+      "state": "stored"
+    },
+    {
+      "code": "02233",
+      "description": "Left Headlight Power Output Stage (J667)",
+      "state": "stored"
+    },
+    {
+      "code": "02234",
+      "description": "Right Headlight Power Output Stage (J668)",
+      "state": "stored"
+    },
+    {
+      "code": "02629",
+      "description": "Sensor for Swivel Module Position; Left",
+      "state": "stored"
+    },
+    {
+      "code": "02628",
+      "description": "Sensor for Swivel Module Position; Right",
+      "state": "stored"
+    },
+    {
+      "code": "01813",
+      "description": "Supply Voltage for Door Controller; Rear Left (J388)",
+      "state": "stored"
+    },
+    {
+      "code": "01814",
+      "description": "Supply Voltage for Door Controller; Rear Right (J389)",
+      "state": "stored"
+    }
+  ],
+  "live_data": [],
+  "warnings": []
+}

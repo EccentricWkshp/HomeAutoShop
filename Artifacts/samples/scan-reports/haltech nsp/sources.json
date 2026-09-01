@@ -1,0 +1,24 @@
+{
+ "version": 1,
+ "tool": "haltech nsp",
+ "note": "Where these samples came from. The files themselves are not committed - they are somebody else's reports, published for people to read rather than for us to redistribute. What ships is the redacted capture beside this file, and this record, so the corpus survives the link going dead and the attribution survives with it.",
+ "sources": [
+  {
+   "file": "originals/2025-07-18-0215pm-log1118.csv",
+   "vendor": "Haltech",
+   "product": "NSP",
+   "artifact_kind": "live_data_export",
+   "parser_scope": "live_data",
+   "format": "csv",
+   "media_type": "csv",
+   "sha256": "b10d648b18b64013bdefe03e8c8ef7a29359c55e83241b06bbaf4a07da888e1f",
+   "bytes": 338849,
+   "retrieved_on": "2026-09-01",
+   "listed_on": "2026-09-01",
+   "manifest_id": "scanex_5d81812a0b7c",
+   "title": "2025-07-18_0215pm_Log1118.csv",
+   "direct_url": "https://raw.githubusercontent.com/ClassicMiniDIY/UltraLog/main/exampleLogs/haltech/2025-07-18_0215pm_Log1118.csv",
+   "source_url": "https://github.com/ClassicMiniDIY/UltraLog/blob/main/exampleLogs/haltech/2025-07-18_0215pm_Log1118.csv"
+  }
+ ]
+}

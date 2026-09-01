@@ -1,0 +1,58 @@
+{
+ "version": 1,
+ "tool": "autel maxisys ultra",
+ "note": "Where these samples came from. The files themselves are not committed - they are somebody else's reports, published for people to read rather than for us to redistribute. What ships is the redacted capture beside this file, and this record, so the corpus survives the link going dead and the attribution survives with it.",
+ "sources": [
+  {
+   "file": "originals/2022-nissan-altima-vehicle-diagnostic-report.pdf",
+   "vendor": "Autel",
+   "product": "MaxiSys Ultra",
+   "artifact_kind": "vehicle_diagnostic_report",
+   "parser_scope": "diagnostic_report",
+   "format": "pdf",
+   "media_type": "pdf",
+   "sha256": "f610d37fef58e7666f52d27e3748f0c91436f66d309acf627269bd45ddf829f9",
+   "bytes": 532959,
+   "retrieved_on": "2026-09-01",
+   "listed_on": "2026-09-01",
+   "manifest_id": "scanex_9cc3593bc4ad",
+   "title": "2022 Nissan Altima Vehicle Diagnostic Report",
+   "direct_url": "https://gateway-prodeu.autel.com/api/pdf-report-manage/pdf-report/download/5e17f6f2e6f541d5bbb62447e8f306bb",
+   "source_url": "https://gateway-prodeu.autel.com/api/pdf-report-manage/pdf-report/download/5e17f6f2e6f541d5bbb62447e8f306bb"
+  },
+  {
+   "file": "originals/geely-emgrand-coolray-belgee-2025-vehicle-diagnostic-report.pdf",
+   "vendor": "Autel",
+   "product": "MaxiSys Ultra",
+   "artifact_kind": "vehicle_diagnostic_report",
+   "parser_scope": "diagnostic_report",
+   "format": "pdf",
+   "media_type": "pdf",
+   "sha256": "f9bf3fc468b8f5ea305f6fe57fb4345903c6fe81d53a6c0ec89f9646b644428f",
+   "bytes": 334351,
+   "retrieved_on": "2026-09-01",
+   "listed_on": "2026-09-01",
+   "manifest_id": "scanex_dc2671132886",
+   "title": "Geely Emgrand/Coolray/Belgee 2025 Vehicle Diagnostic Report",
+   "direct_url": "https://gateway-prodeu.autel.com/api/pdf-report-manage/pdf-report/download/c0f00518be844aa2bae24308a8efc8ff",
+   "source_url": "https://gateway-prodeu.autel.com/api/pdf-report-manage/pdf-report/download/c0f00518be844aa2bae24308a8efc8ff"
+  },
+  {
+   "file": "originals/toyota-land-cruiser-vehicle-diagnostic-report.pdf",
+   "vendor": "Autel",
+   "product": "MaxiSys Ultra",
+   "artifact_kind": "vehicle_diagnostic_report",
+   "parser_scope": "diagnostic_report",
+   "format": "pdf",
+   "media_type": "pdf",
+   "sha256": "d4bf62767d665977f77d0fc72f4ce990991f812471f58e0c868d77e2261d9557",
+   "bytes": 165979,
+   "retrieved_on": "2026-09-01",
+   "listed_on": "2026-09-01",
+   "manifest_id": "scanex_aa9ac36c3ee9",
+   "title": "Toyota Land Cruiser Vehicle Diagnostic Report",
+   "direct_url": "https://gateway-prodeu.autel.com/api/pdf-report-manage/pdf-report/download/54153102a81b417486b483a95324c6cd",
+   "source_url": "https://gateway-prodeu.autel.com/api/pdf-report-manage/pdf-report/download/54153102a81b417486b483a95324c6cd"
+  }
+ ]
+}

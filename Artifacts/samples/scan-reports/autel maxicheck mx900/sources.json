@@ -1,0 +1,24 @@
+{
+ "version": 1,
+ "tool": "autel maxicheck mx900",
+ "note": "Where these samples came from. The files themselves are not committed - they are somebody else's reports, published for people to read rather than for us to redistribute. What ships is the redacted capture beside this file, and this record, so the corpus survives the link going dead and the attribution survives with it.",
+ "sources": [
+  {
+   "file": "originals/lexus-lx570-2012-2015-vehicle-diagnostic-report.pdf",
+   "vendor": "Autel",
+   "product": "MaxiCheck MX900",
+   "artifact_kind": "vehicle_diagnostic_report",
+   "parser_scope": "diagnostic_report",
+   "format": "pdf",
+   "media_type": "pdf",
+   "sha256": "81a3fa96044d2012c5db6d7714399abb15763525b3280329f5f26838aa645ddd",
+   "bytes": 608194,
+   "retrieved_on": "2026-09-01",
+   "listed_on": "2026-09-01",
+   "manifest_id": "scanex_75d2a3e7e82f",
+   "title": "Lexus LX570 2012-2015 Vehicle Diagnostic Report",
+   "direct_url": "https://gateway-prodeu.autel.com/api/pdf-report-manage/pdf-report/download/cdedd5dc6f8a43528cb387afb33c68be",
+   "source_url": "https://gateway-prodeu.autel.com/api/pdf-report-manage/pdf-report/download/cdedd5dc6f8a43528cb387afb33c68be"
+  }
+ ]
+}

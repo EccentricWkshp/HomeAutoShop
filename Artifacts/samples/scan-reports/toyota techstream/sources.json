@@ -1,0 +1,24 @@
+{
+ "version": 1,
+ "tool": "toyota techstream",
+ "note": "Where these samples came from. The files themselves are not committed - they are somebody else's reports, published for people to read rather than for us to redistribute. What ships is the redacted capture beside this file, and this record, so the corpus survives the link going dead and the attribution survives with it.",
+ "sources": [
+  {
+   "file": "originals/techstream-sample-diagnostic-report-2004-sienna.pdf",
+   "vendor": "Toyota",
+   "product": "Techstream",
+   "artifact_kind": "diagnostic_report_sample",
+   "parser_scope": "diagnostic_report",
+   "format": "pdf",
+   "media_type": "pdf",
+   "sha256": "0afd164e9d28f090d58492ba86ab7d323eb033231c00ad13edf6bdace126ae9d",
+   "bytes": 1755941,
+   "retrieved_on": "2026-09-01",
+   "listed_on": "2026-09-01",
+   "manifest_id": "scanex_20691b166130",
+   "title": "Techstream Sample Diagnostic Report (2004 Sienna)",
+   "direct_url": "https://static.nhtsa.gov/odi/rcl/2010/RCMN-10V039-6261.pdf",
+   "source_url": "https://static.nhtsa.gov/odi/rcl/2010/RCMN-10V039-6261.pdf"
+  }
+ ]
+}

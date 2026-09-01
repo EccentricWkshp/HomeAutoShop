@@ -1,0 +1,84 @@
+# Car Scanner ELM OBD2 -- DTC report
+#
+# The text report the Car Scanner app shares from a phone. It states one fault
+# per block, one field per line, and it is the single most parseable thing in
+# the corpus -- which is the point SPEC 8.3b makes about preferring a tool's
+# text export to its PDF whenever it offers one.
+#
+# It is also the format that shows why the status word is kept verbatim. Car
+# Scanner does not report a state; it reports the DTC status *bits* in prose:
+# `Confirmed, Test failed since last DTC clear, Warning indicator requested`.
+# Flattening that to `stored` throws away the fact that the light is on now.
+name: Car Scanner ELM OBD2 - DTC report
+author: HomeAutoShop
+tool_vendor: Car Scanner
+tool_model: ELM OBD2
+version: 1
+media_type: text
+
+fingerprint:
+  threshold: 0.6
+  signals:
+    - kind: doc_text
+      pattern: '(?i)Car Scanner ELM OBD2'
+      weight: 0.4
+    - kind: doc_text
+      pattern: '(?im)^DTC report\s*$'
+      weight: 0.25
+    - kind: doc_text
+      pattern: '(?m)^={6,}\d+={6,}$'
+      weight: 0.25
+    - kind: doc_text
+      pattern: '(?m)^Raw code:'
+      weight: 0.1
+
+field_extractors:
+  vin:
+    strategy: label_anchored
+    labels: ['VIN']
+    pattern: '([A-HJ-NPR-Z0-9]{17})'
+    validate: vin_check_digit
+    confidence: 0.8
+  vehicle_description:
+    strategy: label_anchored
+    labels: ['Selected brand']
+    confidence: 0.7
+  tool_vendor:
+    strategy: regex
+    pattern: '(Car Scanner)'
+    confidence: 0.9
+
+table_extractor:
+  locate:
+    headings: ['DTC report']
+    stop_at: []
+  # A fault is a block of labelled lines, so a row is a block. The separator
+  # line is the anchor -- it is the only thing in the file that cannot appear
+  # inside a description.
+  multiline: true
+  row_pattern: '={6,}\d+={6,}\s*\r?\n([PBCU][0-9A-F]{4})(?:\((\w+)\))?[ \t]*\r?\n(?:Raw code:[^\r\n]*\r?\n)?(?:ECU:[ \t]*([^\r\n]*)\r?\n)?(?:Status:[ \t]*([^\r\n]*)\r?\n)?(?:OBDII:[ \t]*([^\r\n]*))?'
+  columns:
+    - { role: code, group: 1 }
+    - { role: module, group: 3 }
+    - { role: state_raw, group: 4 }
+    - { role: description, group: 5 }
+    # Mapped from the leading word of the status prose, which is the part that
+    # names a state; the rest of the line describes the bits and stays in
+    # `state_raw` where a person can read it.
+    - role: state
+      group: 4
+      map:
+        Confirmed: stored
+        Pending: pending
+        Permanent: permanent
+
+notes: >
+  Written against one shared DTC report - a Mazda with twenty fault blocks
+  holding nineteen distinct codes, two of them the same code recorded at
+  different status. Unproven: the catalog's verified badge needs two reports
+  from different vehicles.
+
+  The block layout means this reads the module for every code, which the PDF
+  profiles in this catalog cannot: `ECU: Engine control unit` is on its own
+  line inside the fault, rather than being a heading above a group of rows.
+  A tool that exports text is worth using for that reason alone.

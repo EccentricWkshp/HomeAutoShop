@@ -1,0 +1,110 @@
+{
+  "profile": "Ross-Tech VCDS - Auto-Scan",
+  "score": 0.85,
+  "fields": {
+    "vin": {
+      "value": "3VWPL7AJ7BMxxxxxx",
+      "confidence": 1.0,
+      "page": 0,
+      "label": "VIN"
+    },
+    "odometer_km": {
+      "value": "75890",
+      "confidence": 0.8,
+      "page": 0,
+      "label": "Mileage"
+    },
+    "performed_on": {
+      "value": "2014-06-20T08:20:57",
+      "confidence": 0.9,
+      "page": 0,
+      "label": ""
+    },
+    "tool_version": {
+      "value": "12.12.2.0",
+      "confidence": 0.9,
+      "page": 0,
+      "label": ""
+    },
+    "vehicle_description": {
+      "value": "AJ (7N0)",
+      "confidence": 0.6,
+      "page": 0,
+      "label": "Chassis Type"
+    }
+  },
+  "codes": [
+    {
+      "code": "00927",
+      "description": "Terminal 30 (Right)",
+      "state": "stored"
+    },
+    {
+      "code": "00979",
+      "description": "Lamp for Low Beam; Right (M31)",
+      "state": "stored"
+    },
+    {
+      "code": "00985",
+      "description": "Right Tail Light (M2)",
+      "state": "stored"
+    },
+    {
+      "code": "00987",
+      "description": "Lamp for Brake Light; Left (M9)",
+      "state": "stored"
+    },
+    {
+      "code": "01497",
+      "description": "Bulb for Blinkers; Front Right (M7)",
+      "state": "stored"
+    },
+    {
+      "code": "01499",
+      "description": "Bulb for High-Beams; Right (M32)",
+      "state": "stored"
+    },
+    {
+      "code": "01501",
+      "description": "Bulb for Blinkers; Rear Left (M6)",
+      "state": "stored"
+    },
+    {
+      "code": "01504",
+      "description": "Bulb for License-Plate Light (X)",
+      "state": "stored"
+    },
+    {
+      "code": "01519",
+      "description": "Bulb for Back-Up Lights; Right (M17)",
+      "state": "stored"
+    },
+    {
+      "code": "02092",
+      "description": "Enabling Heated Seat",
+      "state": "stored"
+    },
+    {
+      "code": "02394",
+      "description": "Parking Light Left Front (M1)",
+      "state": "stored"
+    },
+    {
+      "code": "B1101",
+      "description": "CD Changer",
+      "state": "stored"
+    },
+    {
+      "code": "01512",
+      "description": "Control Module for Sliding Roof",
+      "state": "stored"
+    },
+    {
+      "code": "02907",
+      "description": "Control Module for Roof Shade (J394)",
+      "state": "stored"
+    }
+  ],
+  "live_data": [],
+  "warnings": []
+}

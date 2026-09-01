@@ -26,7 +26,14 @@ import pathlib
 
 CORPUS = pathlib.Path(__file__).resolve().parents[2] / "Artifacts" / "samples" / "scan-reports"
 
+#: A capture is word geometry or it is text, and the name says which. Both are
+#: `.json`, so a reader can open either; the difference is what the parser for
+#: that tool needs. A PDF whose layout carries meaning in colour and position
+#: keeps its words; an auto-scan log keeps its text, because text is the whole
+#: of what a declarative profile reads.
 CAPTURE_SUFFIX = ".words.json"
+TEXT_SUFFIX = ".text.json"
+CAPTURE_SUFFIXES = (CAPTURE_SUFFIX, TEXT_SUFFIX)
 FIXTURE_SUFFIX = ".expected.json"
 
 
@@ -42,11 +49,20 @@ def samples() -> list[pathlib.Path]:
     all once the folders appeared, and found it silently, because every test
     that uses the corpus skips politely when it is absent.
     """
-    return sorted(CORPUS.rglob("*" + CAPTURE_SUFFIX))
+    found = [path for suffix in CAPTURE_SUFFIXES for path in CORPUS.rglob("*" + suffix)]
+    return sorted(found)
+
+
+def kind(capture: pathlib.Path) -> str:
+    """`words` or `text` — what this capture holds."""
+    return "text" if capture.name.endswith(TEXT_SUFFIX) else "words"
 
 
 def stem(capture: pathlib.Path) -> str:
-    return capture.name[: -len(CAPTURE_SUFFIX)]
+    for suffix in CAPTURE_SUFFIXES:
+        if capture.name.endswith(suffix):
+            return capture.name[: -len(suffix)]
+    return capture.stem
 
 
 def fixture_path(capture: pathlib.Path) -> pathlib.Path:
@@ -82,13 +98,136 @@ def tool(capture: pathlib.Path) -> str:
 
 
 def pages(capture: pathlib.Path) -> list[list[dict]]:
-    return json.loads(capture.read_text(encoding="utf-8"))["pages"]
+    """The word geometry in a capture. Empty for a text capture, which has none."""
+    return json.loads(capture.read_text(encoding="utf-8")).get("pages") or []
+
+
+def text(capture: pathlib.Path) -> str:
+    """A capture as flat text, whichever kind it is.
+
+    Word geometry is joined the way `engine._read_pdf` joins it, so a profile
+    scored against a capture and the same profile scored against the PDF it
+    came from see the same string. They did not, once: `build_catalog` built
+    its own document and reached a different answer from the import screen for
+    the same report, which is the kind of disagreement that makes a badge
+    meaningless.
+    """
+    from homeautoshop.diagnostics.engine import normalize
+
+    data = json.loads(capture.read_text(encoding="utf-8"))
+    if "text" in data:
+        return normalize(data["text"])
+    return "\n".join(
+        " ".join(normalize(str(word.get("text", ""))) for word in page)
+        for page in data.get("pages") or []
+    )
+
+
+#: Tops within this far apart were printed on the same line. The same figure
+#: `capture.LINE_TOLERANCE` uses, and for the same reason.
+LINE_TOLERANCE = 2.0
+
+
+def lines(capture: pathlib.Path) -> list[str]:
+    """A capture as the lines it was *printed* as, not as extraction order.
+
+    :func:`text` joins a whole page into one string, which is what a profile
+    reads and is wrong for anything asking whether two words belong together.
+    An audit looking for `Customer: <name>` over that string finds
+    `Customer: Sub` — `Customer:` ending one line with nothing after it, and
+    `Sub Model:` beginning the next, forty points down the page and two hundred
+    to the left. Reconstructing the lines is what lets the check see what the
+    redaction rules see, and an audit that disagrees with the redactor about
+    the shape of the page reports the absence of a name as a name.
+    """
+    if kind(capture) == "text":
+        return text(capture).splitlines()
+
+    from homeautoshop.diagnostics.engine import normalize
+
+    out: list[str] = []
+    for page in pages(capture):
+        rows: list[tuple[float, list[tuple[float, str]]]] = []
+        for word in sorted(page, key=lambda w: (float(w.get("top", 0)), float(w.get("x0", 0)))):
+            top, x0 = float(word.get("top", 0)), float(word.get("x0", 0))
+            if rows and abs(rows[-1][0] - top) <= LINE_TOLERANCE:
+                rows[-1][1].append((x0, str(word.get("text", ""))))
+            else:
+                rows.append((top, [(x0, str(word.get("text", "")))]))
+        out.extend(normalize(" ".join(t for _, t in row)) for _, row in rows)
+    return out
+
+
+def media_type(capture: pathlib.Path) -> str:
+    """What the original was, so a profile is matched against its own format."""
+    data = json.loads(capture.read_text(encoding="utf-8"))
+    return data.get("media_type") or "pdf"
+
+
+def document(capture: pathlib.Path):
+    """A capture as the :class:`engine.Document` the parsers actually take."""
+    from homeautoshop.diagnostics import engine
+
+    return engine.Document(
+        text=text(capture),
+        pages=pages(capture),
+        media_type=media_type(capture),
+    )
+
+
+#: Tool folders whose reports a **built-in** parser reads, and the fixture
+#: shape that parser produces. Only one format has ever needed this and the
+#: reason is in `engine.py`: the D8 draws its section boundaries in colour and
+#: prints a cell's first line above its own row, neither of which survives text
+#: extraction. Every other tool in the corpus is read by a declarative profile.
+#:
+#: Keyed on the folder rather than fingerprinted, because the folder is already
+#: the corpus's answer to *what produced this* — and because a fixture that
+#: silently changed shape when a profile's score moved would be a regression
+#: test that rewrites its own expectations.
+BUILT_IN_PARSERS = {"xtool d8": "xtool_d8"}
 
 
 def build(capture: pathlib.Path) -> dict:
-    from .xtool_d8 import parse_pages
+    """The expected output for a capture, from whatever reads its tool.
 
-    return parse_pages(pages(capture)).to_dict()
+    Two shapes, because there are two kinds of parser and each is recorded as
+    what it actually produces. A built-in parser yields a whole
+    :class:`report.ScanReport` — vehicle, modules, codes, live data. A
+    declarative profile yields an extraction: named fields with confidence, and
+    a code table. Flattening them into one shape would mean throwing away most
+    of the first to match the second.
+    """
+    if BUILT_IN_PARSERS.get(tool(capture)) == "xtool_d8":
+        from .xtool_d8 import parse_pages
+
+        return parse_pages(pages(capture)).to_dict()
+    return extraction(capture)
+
+
+def extraction(capture: pathlib.Path) -> dict:
+    """What the best-scoring available profile makes of a capture."""
+    from homeautoshop.diagnostics import engine
+    from homeautoshop.diagnostics import profiles as profilelib
+
+    doc = document(capture)
+    profile, score = engine.detect(profilelib.available(), doc)
+    if profile is None:
+        # Recorded rather than raised. A capture nobody can read yet is a
+        # legitimate thing to have — it is how a corpus gets contributed before
+        # the profile that reads it does — and the fixture saying so out loud
+        # is what turns "somebody should write this" into a visible gap.
+        return {"profile": "", "score": 0.0, "unread": True}
+
+    found = engine.apply(profile, doc)
+    return {
+        "profile": profile.name,
+        "score": round(score, 2),
+        "fields": found.as_dict(),
+        "codes": found.codes,
+        "live_data": found.live_data,
+        "warnings": [str(w) for w in found.warnings],
+    }
 
 
 def load(capture: pathlib.Path) -> dict:

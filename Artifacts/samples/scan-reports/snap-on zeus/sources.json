@@ -1,0 +1,24 @@
+{
+ "version": 1,
+ "tool": "snap-on zeus",
+ "note": "Where these samples came from. The files themselves are not committed - they are somebody else's reports, published for people to read rather than for us to redistribute. What ships is the redacted capture beside this file, and this record, so the corpus survives the link going dead and the attribution survives with it.",
+ "sources": [
+  {
+   "file": "originals/zeus-pre--and-post-scan-reports-training-document.pdf",
+   "vendor": "Snap-on",
+   "product": "ZEUS",
+   "artifact_kind": "vehicle_system_report_training_example",
+   "parser_scope": "diagnostic_report",
+   "format": "pdf",
+   "media_type": "pdf",
+   "sha256": "621559305ab7ffddd5034b49e0afd400a475da7108acdd0e08455549a7316cf9",
+   "bytes": 1634228,
+   "retrieved_on": "2026-09-01",
+   "listed_on": "2026-09-01",
+   "manifest_id": "scanex_92f188bd6bc4",
+   "title": "ZEUS Pre- and Post-Scan Reports training document",
+   "direct_url": "https://www.snapon.com/display/1068/Pre-and-Post-Scan-Reports/ZEUSModule-PreandPostScans.pdf",
+   "source_url": "https://www.snapon.com/display/1068/Pre-and-Post-Scan-Reports/ZEUSModule-PreandPostScans.pdf"
+  }
+ ]
+}

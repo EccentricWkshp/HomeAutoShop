@@ -1,0 +1,116 @@
+{
+  "profile": "Ross-Tech VCDS - Auto-Scan",
+  "score": 1.0,
+  "fields": {
+    "vin": {
+      "value": "WAUZZZ8P05A979536",
+      "confidence": 1.0,
+      "page": 0,
+      "label": "VIN"
+    },
+    "odometer": {
+      "value": "268300km-166713mi",
+      "confidence": 0.8,
+      "page": 0,
+      "label": "Mileage"
+    },
+    "odometer_km": {
+      "value": "268300",
+      "confidence": 0.8,
+      "page": 0,
+      "label": "Mileage"
+    },
+    "performed_on": {
+      "value": "2018-05-24T19:32:03",
+      "confidence": 0.9,
+      "page": 0,
+      "label": ""
+    },
+    "tool_version": {
+      "value": "17.1.3.0",
+      "confidence": 0.9,
+      "page": 0,
+      "label": ""
+    },
+    "vehicle_description": {
+      "value": "8P (1K0)",
+      "confidence": 0.6,
+      "page": 0,
+      "label": "Chassis Type"
+    }
+  },
+  "codes": [
+    {
+      "code": "P0671",
+      "description": "Cylinder 1 Glow Plug Circuit (Q10)",
+      "state": "stored"
+    },
+    {
+      "code": "P0672",
+      "description": "Cylinder 2 Glow Plug Circuit (Q11)",
+      "state": "stored"
+    },
+    {
+      "code": "P0673",
+      "description": "Cylinder 3 Glow Plug Circuit (Q12)",
+      "state": "stored"
+    },
+    {
+      "code": "P0674",
+      "description": "Cylinder 4 Glow Plug Circuit (Q13)",
+      "state": "stored"
+    },
+    {
+      "code": "00483",
+      "description": "Control Module for Auxiliary Air Heater",
+      "state": "stored"
+    },
+    {
+      "code": "00526",
+      "description": "Brake Light Switch (F)",
+      "state": "stored"
+    },
+    {
+      "code": "01304",
+      "description": "Radio",
+      "state": "stored"
+    },
+    {
+      "code": "00913",
+      "description": "Window Regulator Switch; Front Right Driver (E81)",
+      "state": "stored"
+    },
+    {
+      "code": "00914",
+      "description": "Window Regulator Switch; Rear Left; Driver (E53)",
+      "state": "stored"
+    },
+    {
+      "code": "01317",
+      "description": "Control Module in Instrument Cluster (J285)",
+      "state": "stored"
+    },
+    {
+      "code": "01299",
+      "description": "Diagnostic Interface for Data Bus (J533)",
+      "state": "stored"
+    },
+    {
+      "code": "00858",
+      "description": "Connection; Radio Intermediate Frequency (IF) Output to Antenna Amplifier",
+      "state": "stored"
+    },
+    {
+      "code": "00931",
+      "description": "Locking Module for Central Locking; Rear Right (F223)",
+      "state": "stored"
+    },
+    {
+      "code": "00361",
+      "description": "Heater Element for Auxiliary Heater (Z35)",
+      "state": "stored"
+    }
+  ],
+  "live_data": [],
+  "warnings": []
+}

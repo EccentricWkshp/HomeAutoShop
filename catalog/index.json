@@ -26,6 +26,40 @@
       "author": "HomeAutoShop"
     },
     {
+      "kind": "profile",
+      "slug": "autel-maxisys-vehicle-diagnostic-report",
+      "name": "Autel MaxiSys - Vehicle Diagnostic Report",
+      "path": "profiles/autel-maxisys-vehicle-diagnostic-report.yaml",
+      "description": "Autel MaxiSys — Written against five reports from three Autel tablets - MaxiCheck MX900, MaxiSys MS909 EV, MaxiSys Ultra - covering a Lexus, a Ford, a Nissan, a Toyota and a Geely, 2024 to 2025, published on the public web.",
+      "author": "HomeAutoShop",
+      "verified": true
+    },
+    {
+      "kind": "profile",
+      "slug": "bluedriver-scan-report",
+      "name": "BlueDriver - Scan Report",
+      "path": "profiles/bluedriver-scan-report.yaml",
+      "description": "Lemur Vehicle Monitors BlueDriver — Written against the sample scan report Lemur publishes at bluedriver.com - a 2006 Dodge with codes in four sections: confirmed, pending, anti-lock brakes and powertrain. Unproven: the catalog's verified badge needs two reports from different vehicles and only one exists here.",
+      "author": "HomeAutoShop"
+    },
+    {
+      "kind": "profile",
+      "slug": "car-scanner-elm-obd2-dtc-report",
+      "name": "Car Scanner ELM OBD2 - DTC report",
+      "path": "profiles/car-scanner-elm-obd2-dtc-report.yaml",
+      "description": "Car Scanner ELM OBD2 — Written against one shared DTC report - a Mazda with twenty fault blocks holding nineteen distinct codes, two of them the same code recorded at different status. Unproven: the catalog's verified badge needs two reports from different vehicles.",
+      "author": "HomeAutoShop"
+    },
+    {
+      "kind": "profile",
+      "slug": "ross-tech-vcds-auto-scan",
+      "name": "Ross-Tech VCDS - Auto-Scan",
+      "path": "profiles/ross-tech-vcds-auto-scan.yaml",
+      "description": "Ross-Tech VCDS — Developed against eleven Auto-Scans from four vehicles and five VCDS releases, 2014 to 2018, published on the public web; the captures in the corpus are redacted - VIN replaced by a stand-in, licence plate removed, workshop code and VCID zeroed - so this was written against the shape of the report and not against anybody's vehicle. Two things to know before trusting what it reads.",
+      "author": "HomeAutoShop",
+      "verified": true
+    },
+    {
       "kind": "schedule",
       "slug": "four-wheel-drive",
       "name": "Four-wheel drive extras",

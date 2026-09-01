@@ -1,0 +1,166 @@
+{
+  "profile": "Car Scanner ELM OBD2 - DTC report",
+  "score": 1.0,
+  "fields": {
+    "vin": {
+      "value": "JMZGJ621391906510",
+      "confidence": 1.0,
+      "page": 0,
+      "label": "VIN"
+    },
+    "vehicle_description": {
+      "value": "Mazda",
+      "confidence": 0.7,
+      "page": 0,
+      "label": "Selected brand"
+    },
+    "tool_vendor": {
+      "value": "Car Scanner",
+      "confidence": 0.9,
+      "page": 0,
+      "label": ""
+    }
+  },
+  "codes": [
+    {
+      "code": "P2262",
+      "module": "Engine control unit",
+      "state_raw": "Confirmed",
+      "description": "Turbocharger (TC) boost pressure not detected",
+      "state": "stored"
+    },
+    {
+      "code": "P2262",
+      "module": "Engine control unit",
+      "state_raw": "Confirmed, Test failed since last DTC clear, Warning indicator requested",
+      "description": "Turbocharger (TC) boost pressure not detected",
+      "state": "stored"
+    },
+    {
+      "code": "P007B",
+      "module": "Engine control unit",
+      "state_raw": "Test not completed during this operation cycle",
+      "description": "Turbocharger (TC) intercooler temperature sensor, bank 1 - circuit range/performance",
+      "state": "stored"
+    },
+    {
+      "code": "P0111",
+      "module": "Engine control unit",
+      "state_raw": "Test not completed during this operation cycle",
+      "description": "Intake air temperature (IAT) sensor - range/performance problem",
+      "state": "stored"
+    },
+    {
+      "code": "P0181",
+      "module": "Engine control unit",
+      "state_raw": "Test not completed during this operation cycle",
+      "description": "Fuel temperature sensor A - range/performance problem",
+      "state": "stored"
+    },
+    {
+      "code": "P0106",
+      "module": "Engine control unit",
+      "state_raw": "Test not completed during this operation cycle",
+      "description": "Manifold absolute pressure (MAP) sensor/barometric pressure (BARO) sensor - range/performance problem",
+      "state": "stored"
+    },
+    {
+      "code": "P2227",
+      "module": "Engine control unit",
+      "state_raw": "Test not completed during this operation cycle",
+      "description": "Barometric pressure (BARO) sensor - range/performance problem",
+      "state": "stored"
+    },
+    {
+      "code": "P0101",
+      "module": "Engine control unit",
+      "state_raw": "Test not completed during this operation cycle",
+      "description": "Mass air flow (MAF) sensor/volume air flow (VAF) sensor - range/performance problem",
+      "state": "stored"
+    },
+    {
+      "code": "P0133",
+      "module": "Engine control unit",
+      "state_raw": "Test not completed during this operation cycle",
+      "description": "Heated oxygen sensor (HO2S) 1, bank 1 - slow response",
+      "state": "stored"
+    },
+    {
+      "code": "P2456",
+      "module": "Engine control unit",
+      "state_raw": "Test not completed during this operation cycle",
+      "description": "Diesel particulate filter (DPF) pressure sensor A - circuit malfunction",
+      "state": "stored"
+    },
+    {
+      "code": "P244A",
+      "module": "Engine control unit",
+      "state_raw": "Test not completed during this operation cycle",
+      "description": "Diesel particulate filter (DPF) - differential pressure too low",
+      "state": "stored"
+    },
+    {
+      "code": "P0154",
+      "module": "Engine control unit",
+      "state_raw": "Test not completed during this operation cycle",
+      "description": "Heated oxygen sensor (HO2S) 1, bank 2 - no activity detected",
+      "state": "stored"
+    },
+    {
+      "code": "P1303",
+      "module": "Engine control unit",
+      "state_raw": "Test not completed during this operation cycle",
+      "description": "EGR Calibration Fault",
+      "state": "stored"
+    },
+    {
+      "code": "P009B",
+      "module": "Engine control unit",
+      "state_raw": "Test not completed during this operation cycle",
+      "description": "Fuel pressure relief system - control circuit open",
+      "state": "stored"
+    },
+    {
+      "code": "P009F",
+      "module": "Engine control unit",
+      "state_raw": "Test not completed during this operation cycle",
+      "description": "Fuel pressure relief system - valve stuck",
+      "state": "stored"
+    },
+    {
+      "code": "P2002",
+      "module": "Engine control unit",
+      "state_raw": "Test not completed during this operation cycle",
+      "description": "Particulate trap, bank 1 - efficiency below threshold",
+      "state": "stored"
+    },
+    {
+      "code": "P0488",
+      "module": "Engine control unit",
+      "state_raw": "Test not completed during this operation cycle",
+      "description": "Exhaust gas recirculation (EGR) system, throttle position control - range/performance problem",
+      "state": "stored"
+    },
+    {
+      "code": "P0421",
+      "module": "Engine control unit",
+      "state_raw": "Test not completed since last DTC clear, Test not completed during this operation cycle",
+      "description": "Warm up catalytic converter, bank 1 - efficiency below threshold",
+      "state": "stored"
+    },
+    {
+      "code": "P0401",
+      "module": "Engine control unit",
+      "state_raw": "Test not completed during this operation cycle",
+      "description": "Exhaust gas recirculation (EGR) system - insufficient flow detected",
+      "state": "stored"
+    },
+    {
+      "code": "P0402",
+      "module": "Engine control u",
+      "state": "stored"
+    }
+  ],
+  "live_data": [],
+  "warnings": []
+}

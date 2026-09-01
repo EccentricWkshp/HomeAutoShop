@@ -1,0 +1,129 @@
+{
+  "profile": "Autel MaxiSys - Vehicle Diagnostic Report",
+  "score": 1.0,
+  "fields": {
+    "vin": {
+      "value": "WF0YXXTTGYK484389",
+      "confidence": 0.28,
+      "page": 0,
+      "label": "VIN"
+    },
+    "odometer": {
+      "value": "163518.0",
+      "confidence": 0.8,
+      "page": 0,
+      "label": "Odometer Reading"
+    },
+    "odometer_unit": {
+      "value": "km",
+      "confidence": 0.8,
+      "page": 0,
+      "label": "Odometer Reading"
+    },
+    "performed_on": {
+      "value": "2024-09-30T18:57:29",
+      "confidence": 0.9,
+      "page": 0,
+      "label": "Test Time"
+    },
+    "tool_vendor": {
+      "value": "autel",
+      "confidence": 0.9,
+      "page": 0,
+      "label": ""
+    },
+    "tool_model": {
+      "value": "MaxiSys MS909&EV",
+      "confidence": 0.9,
+      "page": 0,
+      "label": "Scanner"
+    },
+    "tool_version": {
+      "value": "V5.21",
+      "confidence": 0.8,
+      "page": 0,
+      "label": "Version"
+    }
+  },
+  "codes": [
+    {
+      "code": "U0100:00-28",
+      "state_raw": "CMDTCs",
+      "state": "stored"
+    },
+    {
+      "code": "U300A:64-08",
+      "description": "Ignition Switch",
+      "state_raw": "CMDTCs",
+      "state": "stored"
+    },
+    {
+      "code": "B1A01:13-0A",
+      "description": "Speaker #1",
+      "state_raw": "CMDTCs",
+      "state": "stored"
+    },
+    {
+      "code": "B1A02:13-0A",
+      "description": "Speaker #2",
+      "state_raw": "CMDTCs",
+      "state": "stored"
+    },
+    {
+      "code": "B1D21:88-28",
+      "description": "Remote Control Switch",
+      "state_raw": "CMDTCs",
+      "state": "stored"
+    },
+    {
+      "code": "B1D26:19-28",
+      "description": "Combustion Air Blower",
+      "state_raw": "CMDTCs",
+      "state": "stored"
+    },
+    {
+      "code": "B1247:11-08",
+      "description": "Left Rear Turn Indicator",
+      "state_raw": "CMDTCs",
+      "state": "stored"
+    },
+    {
+      "code": "B1C98:13-08",
+      "description": "Left Corner Lamp Circuit",
+      "state_raw": "CMDTCs",
+      "state": "stored"
+    },
+    {
+      "code": "B1086:07-08",
+      "description": "Air Distribution Damper Motor",
+      "state_raw": "CMDTCs",
+      "state": "stored"
+    },
+    {
+      "code": "C1001:97-68",
+      "description": "Vision System Camera",
+      "state_raw": "CMDTCs",
+      "state": "stored"
+    },
+    {
+      "code": "U0418:86-28",
+      "description": "Invalid Data Received from Brake System Control Module A",
+      "state_raw": "CMDTCs",
+      "state": "stored"
+    },
+    {
+      "code": "B129C:14-2A",
+      "description": "Left Front Side Sensor",
+      "state_raw": "CMDTCs",
+      "state": "stored"
+    },
+    {
+      "code": "B10AD:9A-28",
+      "description": "Rain Sensor",
+      "state_raw": "CMDTCs",
+      "state": "stored"
+    }
+  ],
+  "live_data": [],
+  "warnings": []
+}

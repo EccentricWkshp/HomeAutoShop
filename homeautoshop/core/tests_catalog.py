@@ -851,14 +851,20 @@ class TheShippedExamplesTests(TestCase):
         self.assertGreaterEqual(len(self.examples()), 4)
 
     def test_every_one_imports(self):
-        """Through the real validator, one at a time, each in its own right."""
+        """Through the real validator, one at a time, each in its own right.
+
+        *The* real validator — the one `build_catalog` picks for that folder.
+        This used to read "schedules go to the schedule parser, everything else
+        is a checklist", which was true of a catalog holding two kinds and
+        started handing parser profiles to the checklist validator the moment a
+        third kind was published.
+        """
+        build_catalog = build_catalog_module()
         for path in self.examples():
             with self.subTest(file=path.name):
-                text = path.read_text(encoding="utf-8")
-                if path.parent.name == "schedules":
-                    templatelib.parse(text)
-                else:
-                    checklistlib.parse(text)
+                kind = build_catalog.FOLDERS.get(path.parent.name)
+                self.assertIsNotNone(kind, f"{path.parent.name}/ is not a catalog folder")
+                build_catalog._read(kind, path.read_text(encoding="utf-8"))
 
     def test_every_one_names_its_author(self):
         for path in self.examples():
@@ -924,9 +930,18 @@ class ProvingAProfileTests(TestCase):
         from homeautoshop.diagnostics import profiles as profilelib
         from homeautoshop.scantools import fixtures
 
-        samples = fixtures.samples()
+        # The D8's own captures, not simply the first two in the corpus. These
+        # tests build a profile out of the shipped D8 row and then ask whether
+        # verification passes, so the reports have to be ones a D8 wrote — and
+        # `samples()[:2]` stopped being that when the corpus grew reports from
+        # a dozen other tools and sorted an Autel to the front.
+        samples = [
+            s
+            for s in fixtures.samples()
+            if fixtures.BUILT_IN_PARSERS.get(fixtures.tool(s)) == "xtool_d8"
+        ]
         if len(samples) < build_catalog_module().PROVEN_AT_LEAST:
-            self.skipTest("the captured corpus is not in this checkout")
+            self.skipTest("the captured D8 corpus is not in this checkout")
 
         profilelib.seed()
         shipped = ParserProfile.objects.get(tool_model="D8")

@@ -1,0 +1,39 @@
+{
+ "version": 1,
+ "tool": "car scanner custom pid import",
+ "note": "Where these samples came from. The files themselves are not committed - they are somebody else's reports, published for people to read rather than for us to redistribute. What ships is the redacted capture beside this file, and this record, so the corpus survives the link going dead and the attribution survives with it.",
+ "sources": [
+  {
+   "file": "originals/carscanner-7e5.csv",
+   "vendor": "Car Scanner / Torque ecosystem",
+   "product": "Car Scanner custom PID import",
+   "artifact_kind": "custom_pid_definition",
+   "parser_scope": "configuration",
+   "format": "csv",
+   "media_type": "csv",
+   "sha256": "7f792975cc7605837d101a0c4e4b4ea177201223dd9a9757f35758539d05d265",
+   "bytes": 1414,
+   "retrieved_on": "2026-09-01",
+   "listed_on": "2026-09-01",
+   "manifest_id": "scanex_4feb39207f1a",
+   "direct_url": "https://raw.githubusercontent.com/sharkcow/VW-e-UP-OBD-CAN-logs/master/carscanner_7E5.csv",
+   "source_url": "https://github.com/sharkcow/VW-e-UP-OBD-CAN-logs/blob/master/carscanner_7E5.csv"
+  },
+  {
+   "file": "originals/carscanner.csv",
+   "vendor": "Car Scanner / Torque ecosystem",
+   "product": "Car Scanner custom PID import",
+   "artifact_kind": "custom_pid_definition",
+   "parser_scope": "configuration",
+   "format": "csv",
+   "media_type": "csv",
+   "sha256": "ee4482be1cd80abf4c60c29c665d140898b5244b06472d01d6dba13ff2e13146",
+   "bytes": 2511,
+   "retrieved_on": "2026-09-01",
+   "listed_on": "2026-09-01",
+   "manifest_id": "scanex_aa901ee39781",
+   "direct_url": "https://raw.githubusercontent.com/sharkcow/VW-e-UP-OBD-CAN-logs/master/carscanner.csv",
+   "source_url": "https://github.com/sharkcow/VW-e-UP-OBD-CAN-logs/blob/master/carscanner.csv"
+  }
+ ]
+}

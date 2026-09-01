@@ -110,37 +110,59 @@ class Document:
         return len(self.pages) or 1
 
 
-def read(upload, *, filename: str = "") -> Document:
-    """Turn an uploaded file into a :class:`Document`.
+def media_type(raw: bytes, *, filename: str = "") -> str:
+    """What a file is, decided from its *content* rather than its extension.
 
-    The media type is decided from the *content*, not the extension: a scan
-    tool that names its CSV export `report.txt` is common, and refusing it on
-    the strength of three characters would be silly.
+    A scan tool that names its CSV export `report.txt` is common, and refusing
+    it on the strength of three characters would be silly. The extension only
+    breaks a tie: a single-column CSV has no commas to count, so `.csv` on the
+    name is the only evidence there is.
+
+    Separate from :func:`read` because the corpus fetcher needs the answer
+    without paying for the document — reading a PDF means parsing it and
+    reading an image means OCR, and neither is worth doing to fill in a field
+    in a provenance record.
     """
-    name = (filename or getattr(upload, "name", "") or "").lower()
-    raw = upload.read() if hasattr(upload, "read") else bytes(upload)
-    if hasattr(upload, "seek"):
-        upload.seek(0)
-
     if raw[:5] == b"%PDF-":
-        return _read_pdf(raw)
-
+        return "pdf"
     if _is_image(raw):
-        return _read_image(raw)
+        return "image"
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return "binary"
 
-    text = normalize(raw.decode("utf-8", errors="replace"))
-    stripped = text.lstrip()
-    if stripped[:1] in "{[":
+    if text.lstrip()[:1] in "{[":
         try:
             json.loads(text)
         except ValueError:
             pass
         else:
-            return Document(text=text, media_type="json")
+            return "json"
 
-    if _looks_delimited(text) or name.endswith(".csv"):
-        return Document(text=text, media_type="csv")
-    return Document(text=text, media_type="text")
+    if _looks_delimited(text) or (filename or "").lower().endswith((".csv", ".tsv")):
+        return "csv"
+    return "text"
+
+
+def read(upload, *, filename: str = "") -> Document:
+    """Turn an uploaded file into a :class:`Document`."""
+    name = (filename or getattr(upload, "name", "") or "").lower()
+    raw = upload.read() if hasattr(upload, "read") else bytes(upload)
+    if hasattr(upload, "seek"):
+        upload.seek(0)
+
+    kind = media_type(raw, filename=name)
+    if kind == "pdf":
+        return _read_pdf(raw)
+    if kind == "image":
+        return _read_image(raw)
+
+    text = normalize(raw.decode("utf-8", errors="replace"))
+    # Bytes that are not valid UTF-8 are still shown to the operator rather
+    # than refused — a mis-encoded export is readable enough to review, and
+    # `text` is the honest name for what is left after replacement.
+    return Document(text=text, media_type="text" if kind == "binary" else kind)
 
 
 #: Magic bytes, because the extension is not to be trusted here either — a
@@ -326,7 +348,8 @@ def detect(profiles, document: Document) -> tuple[object | None, float]:
     signal and a format with four weak ones need different bars, and a single
     global number would either admit junk or reject the D8.
     """
-    best, best_score = None, 0.0
+    best, best_rank = None, ()
+    best_score = 0.0
     for profile in profiles:
         if not profile.is_active:
             continue
@@ -334,9 +357,32 @@ def detect(profiles, document: Document) -> tuple[object | None, float]:
             continue
         value = score(profile, document)
         threshold = float((profile.fingerprint or {}).get("threshold", 0.7))
-        if value >= threshold and value > best_score:
-            best, best_score = profile, value
+        if value < threshold:
+            continue
+        rank = (_names_a_tool(profile), value, bool(profile.tool_model))
+        if rank > best_rank:
+            best, best_rank, best_score = profile, rank, value
     return best, best_score
+
+
+def _names_a_tool(profile) -> bool:
+    """Whether this profile is *for* a tool, or is a fallback for anything.
+
+    Ranked above the score, and that ordering decides real imports rather than
+    being tidiness. `Generic code list` claims any text with a trouble code in
+    it — deliberately; that is what generic means — and it scores **1.0** on a
+    VCDS Auto-Scan, where the VCDS profile scores 0.85 because the older Beta
+    builds omit one of its four signals. Score alone therefore handed three
+    real Auto-Scans to the fallback, which read *nothing* out of reports
+    holding 61, 14 and 0 faults.
+
+    A fallback is not in competition with a profile written for the hardware.
+    It is what happens when nothing else recognizes the file, so it only wins
+    when nothing else clears its own threshold — and clearing its own threshold
+    is exactly the claim a profile's author makes. Between two profiles that
+    both name a tool, the score decides as before.
+    """
+    return bool(profile.tool_vendor or profile.tool_model)
 
 
 # --------------------------------------------------------------------------
@@ -480,6 +526,9 @@ def _extract_table(rule: dict, text: str) -> list[dict]:
         {"role": "description", "group": 2},
     ]
 
+    if rule.get("multiline"):
+        return _rows_from_blocks(body, row_pattern, columns, drop)
+
     rows: list[dict] = []
     for line in body.splitlines():
         if any(pattern.search(line) for pattern in drop):
@@ -487,19 +536,96 @@ def _extract_table(rule: dict, text: str) -> list[dict]:
         match = re.search(row_pattern, line, re.I)
         if not match:
             continue
-        row: dict = {}
-        for column in columns:
-            try:
-                raw = (match.group(int(column.get("group", 1))) or "").strip()
-            except (IndexError, ValueError):
-                continue
-            mapping = column.get("map") or {}
-            role = column.get("role", "description")
-            row[role] = mapping.get(raw, raw)
-        if row.get("code"):
-            row.setdefault("state", "stored")
+        if row := _row_from(match, columns):
             rows.append(row)
     return rows
+
+
+def _rows_from_blocks(body, row_pattern, columns, drop) -> list[dict]:
+    """One row per *fault*, where a fault is printed across several lines.
+
+    A VCDS Auto-Scan states a fault as a block: Ross-Tech's own five- to
+    eight-digit fault number and a description on one line, and — for the
+    controllers that have one — the J2012 code underneath it:
+
+        000772 - Cylinder 4
+                       P0304 - 000 - Misfire Detected - Intermittent
+
+    A line-at-a-time reader has to pick one of those two lines and is wrong
+    either way: take the first and the J2012 code is lost, take the second and
+    five faults in six vanish, because across nine real Auto-Scans only 30 of
+    191 faults carry a J2012 code at all. Neither is a parser being clever
+    about a quirk — it is a format that states one fact on two lines, which is
+    common enough to be worth a mode rather than a special case.
+    """
+    rows: list[dict] = []
+    for match in re.finditer(row_pattern, body, re.I | re.M):
+        if any(pattern.search(match.group(0)) for pattern in drop):
+            continue
+        if row := _row_from(match, columns):
+            rows.append(row)
+    return rows
+
+
+def _row_from(match: re.Match, columns: list[dict]) -> dict | None:
+    row: dict = {}
+    for column in columns:
+        raw = _first_group(match, column.get("group", 1))
+        if raw is None:
+            continue
+        role = column.get("role", "description")
+        value = _mapped(column, raw)
+        if value is not None:
+            row[role] = value
+    if not row.get("code"):
+        return None
+    row.setdefault("state", "stored")
+    return row
+
+
+def _mapped(column: dict, raw: str) -> str | None:
+    """A column's value, confined to its vocabulary if it declares one.
+
+    **A `map` is a closed list, not a set of shortcuts.** It used to pass an
+    unrecognized value straight through, which is fine until the column it
+    fills is `state` — a four-value field twelve characters wide. Car Scanner
+    reports a status as the DTC status bits in prose, so `Confirmed, Test
+    failed since last DTC clear, Warning indicator requested` went in as a
+    state, sixty characters into a field that has four legal values.
+
+    Unrecognized now yields nothing, so the row's own default stands and the
+    tool's wording survives where it belongs — in `state_raw`, which is
+    deliberately not mapped. `map_default` names a different fallback for a
+    profile that has a better answer than the default.
+    """
+    mapping = column.get("map") or {}
+    if not mapping:
+        return raw
+    if raw in mapping:
+        return mapping[raw]
+    lowered = {str(k).lower(): v for k, v in mapping.items()}
+    if raw.lower() in lowered:
+        return lowered[raw.lower()]
+    return column.get("map_default")
+
+
+def _first_group(match: re.Match, group) -> str | None:
+    """The first of these groups that matched, so a column can have a fallback.
+
+    A fault block names its code in the vendor's vocabulary and, where one
+    exists, in J2012's. Both are the code; which one is *available* varies per
+    controller. A column that can say `group: [3, 1]` — prefer the J2012 code,
+    fall back to the vendor's — reads that correctly, where a single group has
+    to be wrong for one of the two shapes.
+    """
+    for index in group if isinstance(group, (list, tuple)) else [group]:
+        try:
+            value = match.group(int(index))
+        except (IndexError, ValueError):
+            continue
+        if value and value.strip():
+            return value.strip()
+    return None
 
 
 # --------------------------------------------------------------------------

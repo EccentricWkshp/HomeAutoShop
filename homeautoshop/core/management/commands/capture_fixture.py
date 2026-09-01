@@ -60,9 +60,17 @@ class Command(BaseCommand):
         )
 
         if produced:
+            # Recorded, not merely announced. The redaction guard tells a
+            # deliberate stand-in from a stranger's vehicle by looking it up in
+            # `synthetic-vins.json`, and this command used to print the
+            # replacements and write them nowhere — so a fixture captured
+            # through it failed the guard that exists to protect it, and the
+            # only path that recorded them was a developer script.
+            total = capture.remember(produced)
             self.stdout.write(
                 f"Replaced {len(produced)} VIN(s) with synthetic stand-ins: "
-                f"{', '.join(sorted(produced))}"
+                f"{', '.join(sorted(produced))} ({total} recorded in "
+                f"{capture.MANIFEST.name})"
             )
         else:
             # Said out loud rather than passed over in silence. No VIN found

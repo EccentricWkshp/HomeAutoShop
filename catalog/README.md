@@ -37,22 +37,44 @@ shipping. That check is worth more than the index-writing: it moves the first
 failure from somebody's garage to the pull request, while the person who wrote
 it is still looking at it.
 
+## Why parser profiles are published rather than bundled
+
+There are hundreds of scan tools and you own one. Shipping a profile for every
+format anybody has ever written would mean an operator scrolling an expansive,
+almost entirely inapplicable list to find the two lines that matter to them —
+and every profile in it would be a claim this project could not check.
+
+So the image ships **two**: the XTOOL D8, and a generic plain-text reader that
+is the worked example of "a profile is data". Everything else lives here, and
+an operator installs the one for the tool in their hand. That also means a
+profile can be contributed by whoever owns the hardware, which is the only
+person in a position to prove it reads their reports.
+
 ## What is already here
 
-Six entries, and they are meant to be read as examples as much as installed:
+Seven templates and four parser profiles. They are meant to be read as
+examples as much as installed:
 
 | File | What it shows |
 | --- | --- |
-| `schedules/gasoline-normal.yaml` | The simplest useful shape — distance and time intervals side by side. |
-| `schedules/gasoline-severe.yaml` | The same vehicle on the schedule most owners actually qualify for. |
-| `schedules/generic-diesel-severe.yaml` | A light diesel that tows, with `severity: safety` on the brake item. |
-| `schedules/small-engine-equipment.yaml` | Scheduling on **running hours** rather than distance, for `asset_kind: equipment`. |
-| `checklists/pre-purchase-inspection.yaml` | The full checklist shape — positions, sub-positions, measurement thresholds. |
+| `schedules/towing-heavy-use.yaml` | Distance and time intervals side by side, shortened for heat. |
+| `schedules/four-wheel-drive.yaml` | A schedule meant to be applied *alongside* another rather than instead of one. |
+| `schedules/stored-or-seasonal.yaml` | Deliberately **no distance intervals at all** — a vehicle covering four hundred miles a year never reaches a mileage service, and its brake fluid ages anyway. |
+| `schedules/trailer.yaml` | No engine, so nothing here is an engine service. Distance is towed miles. |
 | `checklists/roadworthy-quick-check.yaml` | A deliberately short one; a check nobody finishes is worse than a shorter one everybody does. |
+| `checklists/pre-tow-check.yaml` | Five minutes in the driveway, every item something that fails at highway speed. |
+| `checklists/out-of-storage.yaml` | Faults that happen because a vehicle *sat*, which an ordinary service checklist misses. |
+| `profiles/ross-tech-vcds-auto-scan.yaml` | A fault stated across two lines, and a code column that falls back from J2012 to the vendor's own numbering. Verified against seven Auto-Scans. |
+| `profiles/autel-maxisys-vehicle-diagnostic-report.yaml` | A PDF read as text, with the status vocabulary ending each row. Verified against three reports from three tablets. |
+| `profiles/bluedriver-scan-report.yaml` | The simplest report shape there is — numbered lines, one code each. Unproven: one sample exists. |
+| `profiles/car-scanner-elm-obd2-dtc-report.yaml` | A text export, one fault per block, and the only profile here that reads the **module** for every code. Unproven. |
 
-Every one is generic and says so in its own description. None is transcribed
-from a manufacturer's schedule, and none should be treated as one — they are
-starting points to be adjusted against the manual for the actual vehicle.
+Every template is generic and says so in its own description. None is
+transcribed from a manufacturer's schedule, and none should be treated as one —
+they are starting points to be adjusted against the manual for the actual
+vehicle. Every profile says what it was written against and what it does *not*
+read, which is the equivalent honesty for a thing whose correctness you cannot
+judge by eye.
 
 ## Parser profiles need more than a name
 
@@ -92,22 +114,27 @@ same afternoon.
 
 To earn the badge you contribute the captures too:
 
-```
-python manage.py capture_fixture path/to/report.pdf
+```bash
+python manage.py capture_fixture path/to/report.pdf --tool "your scanner"
 ```
 
-That writes a `.words.json` (the extracted word geometry the parser actually
-reads) and a `.expected.json` beside it, **redacting as it goes**: every VIN
-whose check digit validates is replaced with a synthetic stand-in, and tool
-serials are masked. Keying off the check digit is what lets a part number or a
-calibration ID of the same shape survive unmangled.
+That writes a capture — `.words.json` for a PDF, the word geometry the parser
+actually reads; `.text.json` for anything else — and a `.expected.json` beside
+it, **redacting as it goes**. Two rules find a VIN: one that validates its
+check digit anywhere in the document, and one that follows a VIN label whatever
+its check digit says, because position 9 is a check digit only where a
+regulator requires one and a European VIN carries a filler there. Licence
+plates, customers, technicians, shop names and addresses are removed; workshop
+codes and tool serials are zeroed, keeping the shape a parser matches on.
 
-**Read the result before committing it.** The redactor handles VINs and
-serials; it does not know that a technician's name is in a header or that the
-customer's address is on page four. The corpus exists to prove parsers, not to
-publish anybody's vehicle, and it is going somewhere public and permanent — a
-contributor who cannot scrub a report should publish the profile **without**
-`verified_against` rather than publish the report.
+**Read the result before committing it.** The redactor handles what a rule can
+name. It does not know that a technician signed page four in handwriting, or
+that a note names the street the car broke down on. So `capture_scan_samples`
+ends by auditing what it wrote and printing anything that still looks like
+somebody's details — read that, and then read the diff. The corpus exists to
+prove parsers, not to publish anybody's vehicle, and it is going somewhere
+public and permanent: a contributor who cannot scrub a report should publish
+the profile **without** `verified_against` rather than publish the report.
 
 An unproven profile is still welcome and still installable. The browse screen
 says plainly which it is, and *"somebody wrote this and nobody has run it

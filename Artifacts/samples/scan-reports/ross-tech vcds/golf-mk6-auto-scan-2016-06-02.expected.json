@@ -1,0 +1,81 @@
+{
+  "profile": "Ross-Tech VCDS - Auto-Scan",
+  "score": 1.0,
+  "fields": {
+    "vin": {
+      "value": "WVWZZZ1KZAW037321",
+      "confidence": 0.28,
+      "page": 0,
+      "label": "VIN"
+    },
+    "odometer": {
+      "value": "46850km-29111mi",
+      "confidence": 0.8,
+      "page": 0,
+      "label": "Mileage"
+    },
+    "odometer_km": {
+      "value": "46850",
+      "confidence": 0.8,
+      "page": 0,
+      "label": "Mileage"
+    },
+    "performed_on": {
+      "value": "2016-06-02T17:24:42",
+      "confidence": 0.9,
+      "page": 0,
+      "label": ""
+    },
+    "tool_version": {
+      "value": "16.5.1.2",
+      "confidence": 0.9,
+      "page": 0,
+      "label": ""
+    },
+    "vehicle_description": {
+      "value": "1K (1K0)",
+      "confidence": 0.6,
+      "page": 0,
+      "label": "Chassis Type"
+    }
+  },
+  "codes": [
+    {
+      "code": "P0304",
+      "description": "Cylinder 4",
+      "state": "stored"
+    },
+    {
+      "code": "P068A",
+      "description": "ECM Power Relay Load Circuit",
+      "state": "stored"
+    },
+    {
+      "code": "01520",
+      "description": "Rain and Light Recognition Sensor (G397)",
+      "state": "stored"
+    },
+    {
+      "code": "00153",
+      "description": "Windshield Wiper Motor;  Driver Side (V216)",
+      "state": "stored"
+    },
+    {
+      "code": "00446",
+      "description": "Function Limitation due to Under-Voltage",
+      "state": "stored"
+    },
+    {
+      "code": "U1011",
+      "description": "Supply voltage",
+      "state": "stored"
+    },
+    {
+      "code": "01316",
+      "description": "ABS Control Module",
+      "state": "stored"
+    }
+  ],
+  "live_data": [],
+  "warnings": []
+}

@@ -1,0 +1,24 @@
+{
+ "version": 1,
+ "tool": "autel maxisys ms909 ev",
+ "note": "Where these samples came from. The files themselves are not committed - they are somebody else's reports, published for people to read rather than for us to redistribute. What ships is the redacted capture beside this file, and this record, so the corpus survives the link going dead and the attribution survives with it.",
+ "sources": [
+  {
+   "file": "originals/ford-transit-2019-75my-vehicle-diagnostic-report.pdf",
+   "vendor": "Autel",
+   "product": "MaxiSys MS909 & EV",
+   "artifact_kind": "vehicle_diagnostic_report",
+   "parser_scope": "diagnostic_report",
+   "format": "pdf",
+   "media_type": "pdf",
+   "sha256": "193471b1443c74d622b029e9946c5642854a4763fe2f7f9695183c558bfd13a4",
+   "bytes": 207335,
+   "retrieved_on": "2026-09-01",
+   "listed_on": "2026-09-01",
+   "manifest_id": "scanex_656445dd54b9",
+   "title": "Ford Transit 2019.75MY Vehicle Diagnostic Report",
+   "direct_url_withheld": "carries a VIN",
+   "source_url_withheld": "carries a VIN"
+  }
+ ]
+}

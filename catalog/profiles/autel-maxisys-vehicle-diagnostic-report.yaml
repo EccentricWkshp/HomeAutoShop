@@ -1,0 +1,145 @@
+# Autel MaxiSys / MaxiCheck -- Vehicle Diagnostic Report
+#
+# The PDF an Autel tablet produces after an all-system scan, and by some way
+# the most regular report format in the corpus: one block per module, a fixed
+# `DTC  Description  Status` header, and one row per code. Five reports from
+# three different tablets over eighteen months are laid out identically.
+#
+# Read from flattened text rather than word geometry. That is a real choice and
+# not laziness -- the D8 profile needs geometry because its sections are
+# *colours*, and this one does not, because Autel labels every section in words
+# and puts the status in a vocabulary rather than a colour. Where text is
+# enough, text is better: it is what a CSV export or a pasted report would also
+# give, so the same profile keeps working when the operator has something other
+# than the PDF.
+name: Autel MaxiSys - Vehicle Diagnostic Report
+author: HomeAutoShop
+tool_vendor: Autel
+tool_model: MaxiSys
+version: 1
+media_type: pdf
+
+fingerprint:
+  threshold: 0.6
+  signals:
+    - kind: doc_text
+      pattern: '(?i)vehicle\s+diagnostic\s+report'
+      weight: 0.2
+    - kind: doc_text
+      pattern: '(?i)www\.autel\.com|Autel is not liable'
+      weight: 0.3
+    # The tablet names itself in the device block on every report.
+    - kind: doc_text
+      pattern: '(?i)Scanner\s*:\s*Maxi'
+      weight: 0.3
+    - kind: doc_text
+      pattern: '(?i)System\s+Scanned\s*\('
+      weight: 0.2
+
+field_extractors:
+  vin:
+    strategy: label_anchored
+    labels: ['VIN']
+    pattern: '([A-HJ-NPR-Z0-9]{17})'
+    validate: vin_check_digit
+    confidence: 0.7
+  odometer:
+    strategy: label_anchored
+    labels: ['Odometer Reading', 'Odometer']
+    pattern: '([\d,.]+)'
+    coerce: { type: number }
+    confidence: 0.8
+  odometer_unit:
+    strategy: label_anchored
+    labels: ['Odometer Reading', 'Odometer']
+    # The unit is joined to the number -- `505242km`, `71527.903miles` -- so it
+    # is read as its own field rather than assumed. A report in kilometres
+    # recorded as miles moves every service interval on the vehicle.
+    pattern: '[\d,.]+\s*(km|kms|mi|miles)'
+    confidence: 0.8
+  performed_on:
+    strategy: label_anchored
+    labels: ['Test Time']
+    pattern: '(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})'
+    coerce: { type: datetime, formats: ['%Y-%m-%d %H:%M:%S'] }
+    confidence: 0.9
+  tool_vendor:
+    strategy: regex
+    pattern: '(Autel)'
+    confidence: 0.9
+  tool_model:
+    strategy: label_anchored
+    labels: ['Scanner']
+    pattern: '(Maxi\S+(?:\s+\S+)?)'
+    confidence: 0.9
+  tool_version:
+    strategy: label_anchored
+    labels: ['Version']
+    pattern: '(V[\d.]+)'
+    confidence: 0.8
+
+table_extractor:
+  locate:
+    headings: ['DTC Description Status']
+    stop_at: ['Technician Notes', 'Disclaimer:']
+  # Every page of a PDF flattens to a single line of text, so a row cannot be
+  # anchored to one -- `^` and `$` match once per page here, not once per row.
+  # Rows are found by shape instead, and the status word is what ends one.
+  multiline: true
+  # Autel prints the failure-type byte and the DTC-status byte on the code:
+  # `U0100:00-28`, `B1A01:13-0A`. They are kept, because `P0304:00` and
+  # `P0304:04` are different failures of the same circuit.
+  #
+  # Four to six code digits, not four. A Geely reports `U300616`, and a pattern
+  # fixed at four would read that as `U3006` and put `16` at the front of the
+  # description -- a code that never existed, described as something else.
+  #
+  # The description may be *empty*, which is why `(.*?)` and not `(.+?)`. Ford's
+  # reports wrap a long description above its own row, so the code and its
+  # status end up adjacent with the text somewhere else on the page - and a
+  # pattern demanding at least one character between them ran on to the next
+  # module's status word, swallowing a whole row and mis-describing another.
+  row_pattern: '([PBCU][0-9A-F]{4,6}(?::[0-9A-F]{2})?(?:-[0-9A-F]{2})?)\s+(.*?)\s*(Current|History|Past|Pending|Permanent|Stored|CMDTCs|ODDTCs|Read Codes/History DTCs)(?=\s|$)'
+  columns:
+    - { role: code, group: 1 }
+    - { role: description, group: 2 }
+    - { role: state_raw, group: 3 }
+    - role: state
+      group: 3
+      map:
+        Current: stored
+        Stored: stored
+        CMDTCs: stored
+        Permanent: permanent
+        Pending: pending
+        ODDTCs: pending
+        History: history
+        Past: history
+        Read Codes/History DTCs: history
+  row_filters:
+    drop_if_matches:
+      - '(?i)no (fault|trouble|dtc)s? (found|detected)'
+
+notes: >
+  Written against five reports from three Autel tablets - MaxiCheck MX900,
+  MaxiSys MS909 EV, MaxiSys Ultra - covering a Lexus, a Ford, a Nissan, a
+  Toyota and a Geely, 2024 to 2025, published on the public web. The captures
+  in the corpus are redacted: the shop block at the top of every Autel report
+  carries a name, a telephone number, an e-mail address and a street address,
+  and none of it survives capture.
+
+  What this does not read is which module a code came from. Autel prints the
+  module as a heading above each group of rows, and the declarative table
+  extractor matches a row at a time with no notion of the section it sits in -
+  so a code arrives correct and unattributed. Worth knowing before reading an
+  imported all-system scan: nine modules of codes come in as one list.
+
+  All five reports are recognized and their code tables read exactly - 13, 18,
+  13, 3 and an empty one, each agreeing with the count the report prints for
+  itself. Three are listed below rather than five because two of the tablets
+  scanned a vehicle whose VIN they could not read and printed `VIN: --`, and a
+  profile may only claim a report it fills every declared field from.
+verified_against:
+  - ford-transit-2019-75my-vehicle-diagnostic-report
+  - 2022-nissan-altima-vehicle-diagnostic-report
+  - geely-emgrand-coolray-belgee-2025-vehicle-diagnostic-report

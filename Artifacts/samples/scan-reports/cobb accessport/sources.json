@@ -1,0 +1,41 @@
+{
+ "version": 1,
+ "tool": "cobb accessport",
+ "note": "Where these samples came from. The files themselves are not committed - they are somebody else's reports, published for people to read rather than for us to redistribute. What ships is the redacted capture beside this file, and this record, so the corpus survives the link going dead and the attribution survives with it.",
+ "sources": [
+  {
+   "file": "originals/accessport-sample.csv",
+   "vendor": "COBB Tuning",
+   "product": "Accessport",
+   "artifact_kind": "live_data_export",
+   "parser_scope": "live_data",
+   "format": "csv",
+   "media_type": "csv",
+   "sha256": "4ee8ff2278fa03b8c557540c0b4aebfdc667bbb1e2af92e67f71c158a545f4bd",
+   "bytes": 1479213,
+   "retrieved_on": "2026-09-01",
+   "listed_on": "2026-09-01",
+   "manifest_id": "scanex_676e642c698e",
+   "title": "accessport_sample.csv",
+   "direct_url": "https://raw.githubusercontent.com/stevendaniluk/MotecLogGenerator/master/examples/accessport_sample.csv",
+   "source_url": "https://github.com/stevendaniluk/MotecLogGenerator/blob/master/examples/accessport_sample.csv"
+  },
+  {
+   "file": "originals/cobb-ap.csv",
+   "vendor": "COBB Tuning",
+   "product": "Accessport",
+   "artifact_kind": "live_data_export",
+   "parser_scope": "live_data",
+   "format": "csv",
+   "media_type": "csv",
+   "sha256": "184489e163118dde6b2ac616aa4ef950161b93a0ce9b1ae89781665575c56812",
+   "bytes": 1978,
+   "retrieved_on": "2026-09-01",
+   "listed_on": "2026-09-01",
+   "manifest_id": "scanex_0bb20dd86912",
+   "title": "cobb-ap.csv",
+   "direct_url": "https://raw.githubusercontent.com/nyetwurk/ecuxplot/master/test-data/cobb-ap.csv",
+   "source_url": "https://github.com/nyetwurk/ecuxplot/blob/master/test-data/cobb-ap.csv"
+  }
+ ]
+}

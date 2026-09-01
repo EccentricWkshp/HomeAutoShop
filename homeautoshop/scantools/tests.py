@@ -29,11 +29,28 @@ from functools import lru_cache
 
 from homeautoshop.assets import vin as vinlib
 
-from . import capture, fixtures
+from . import capture, fixtures, manifest
 from .report import ScanReport
 from .xtool_d8 import looks_like_xtool_d8, parse_pages
 
 SAMPLES = fixtures.samples()
+
+#: The reports the **D8 parser** reads, which is no longer the whole corpus.
+#:
+#: The corpus began as nine reports from one scanner and every test here could
+#: iterate all of it. It now holds a hundred and eighty captures from a dozen
+#: tools, and three of the invariants below are facts about the D8 rather than
+#: about scan reports: that it names its files `<vehicle><YYYYMMDDHHMM>`, that
+#: it identifies itself to `looks_like_xtool_d8`, and that the VINs in it
+#: satisfy their check digit — which a VIN issued in Europe does not, by
+#: design, as `capture.synthesise_vin` is careful to preserve.
+#:
+#: Applied to the whole corpus they failed 171 times each and every failure was
+#: the test being wrong about its own subject. Which parser reads a capture is
+#: the corpus's own answer, so it is asked rather than assumed.
+D8_SAMPLES = [
+    s for s in SAMPLES if fixtures.BUILT_IN_PARSERS.get(fixtures.tool(s)) == "xtool_d8"
+]
 
 
 @lru_cache(maxsize=None)
@@ -60,13 +77,23 @@ class FixtureTests(unittest.TestCase):
         self.assertEqual(missing, [])
 
 
-@unittest.skipIf(not SAMPLES, "no captured samples in the corpus")
+@unittest.skipIf(not D8_SAMPLES, "no captured D8 samples in the corpus")
 class InvariantTests(unittest.TestCase):
-    """Claims checkable without trusting the parser."""
+    """Claims checkable without trusting the parser.
+
+    About the D8 and its reports specifically, not about scan reports in
+    general — see `D8_SAMPLES`.
+    """
 
     def test_every_vin_passes_its_own_check_digit(self):
-        """A mis-read VIN almost never satisfies the ISO 3779 check digit."""
-        for sample in SAMPLES:
+        """A mis-read VIN almost never satisfies the ISO 3779 check digit.
+
+        True of every vehicle this scanner has seen, all of them North
+        American. It is not true of a VIN issued in Europe, which carries a
+        filler where the check digit goes — so this is a claim about the D8
+        corpus and not one to make of the corpus as a whole.
+        """
+        for sample in D8_SAMPLES:
             with self.subTest(report=sample.name):
                 found = report_for(sample.name).vehicle.vin
                 check = vinlib.validate(found)
@@ -75,7 +102,7 @@ class InvariantTests(unittest.TestCase):
 
     def test_the_timestamp_agrees_with_the_filename(self):
         """The tool names its own files `<vehicle><YYYYMMDDHHMM>`."""
-        for sample in SAMPLES:
+        for sample in D8_SAMPLES:
             with self.subTest(report=sample.name):
                 stamp = re.search(r"(\d{12})$", fixtures.stem(sample))
                 self.assertIsNotNone(stamp, "unexpected filename shape")
@@ -84,18 +111,18 @@ class InvariantTests(unittest.TestCase):
                 self.assertEqual(generated.strftime("%Y%m%d%H%M"), stamp.group(1))
 
     def test_nothing_is_left_unrecognized(self):
-        for sample in SAMPLES:
+        for sample in D8_SAMPLES:
             with self.subTest(report=sample.name):
                 self.assertEqual(report_for(sample.name).warnings, [])
 
     def test_the_tools_own_hyphens_never_survive(self):
         """U+2011 renders as a hyphen and matches none of the usual patterns."""
-        for sample in SAMPLES:
+        for sample in D8_SAMPLES:
             with self.subTest(report=sample.name):
                 self.assertNotIn("‑", repr(report_for(sample.name).to_dict()))
 
     def test_a_report_identifies_itself(self):
-        for sample in SAMPLES:
+        for sample in D8_SAMPLES:
             with self.subTest(report=sample.name):
                 text = "\n".join(
                     " ".join(word["text"] for word in page)
@@ -189,7 +216,22 @@ ALLOWED_VINS = capture.synthetic_vins() | {
     "1HGCR2F3XFA027534",
 }
 
-VIN_SHAPED = re.compile(r"\b[A-HJ-NPR-Z0-9]{17}\b")
+#: The same rule `capture.VIN_SHAPED` uses, and for the same reason: `\b`
+#: counts an underscore as a word character, so a VIN published as
+#: `<VIN>_Aug_17` was invisible to the guard as well as to the redactor.
+VIN_SHAPED = re.compile(r"(?<![A-Z0-9])[A-HJ-NPR-Z0-9]{17}(?![A-Z0-9])")
+
+
+def _is_mask(token: str) -> bool:
+    """Seventeen of the same character is a mask, not somebody's vehicle.
+
+    `00000000000000000` satisfies the ISO 3779 check digit — the weighted sum
+    of nothing is nothing, and nothing modulo eleven is zero — so the
+    equipment rules, which zero a serial to keep its shape, produce something
+    this guard reported as a real VIN. That is the redaction working, and a
+    guard that fails on its own successes is one somebody learns to ignore.
+    """
+    return len(set(token)) == 1
 
 
 def _ignored() -> set[pathlib.Path]:
@@ -253,7 +295,7 @@ class RedactionTests(unittest.TestCase):
             except (UnicodeDecodeError, OSError):
                 continue
             for candidate in set(VIN_SHAPED.findall(text)):
-                if candidate in ALLOWED_VINS:
+                if candidate in ALLOWED_VINS or _is_mask(candidate):
                     continue
                 if vinlib.validate(candidate).check_digit_valid:
                     offenders.append(f"{path.relative_to(REPO)}: {candidate}")
@@ -304,6 +346,8 @@ class RedactionTests(unittest.TestCase):
         for sample in SAMPLES:
             with self.subTest(report=sample.name):
                 for found in VIN_SHAPED.findall(sample.read_text(encoding="utf-8")):
+                    if _is_mask(found):
+                        continue
                     if vinlib.validate(found).check_digit_valid:
                         self.assertIn(found, ALLOWED_VINS, f"{found} is not a stand-in")
 
@@ -364,3 +408,284 @@ class TheCorpusIsWhereItSaysItIsTests(unittest.TestCase):
     def test_and_a_name_that_is_not_there_says_so(self):
         with self.assertRaises(FileNotFoundError):
             fixtures.find("NoSuchReport.words.json")
+
+
+class RedactingAVinTests(unittest.TestCase):
+    """The two rules, and why one was never enough.
+
+    The corpus began as reports from one North American garage, where every
+    VIN satisfies its ISO 3779 check digit and keying off that is exact. It now
+    holds reports gathered from the public web, and position 9 is a check digit
+    only where a regulator requires one — a VIN issued in Europe carries a
+    filler there. The check-digit rule alone would have published every
+    European VIN in the corpus.
+    """
+
+    #: A real-shaped European VIN: `Z` where North America puts a check digit.
+    EUROPEAN = "WVWZZZ1KZAW111111"
+
+    def test_a_labelled_vin_is_replaced_whatever_its_check_digit_says(self):
+        self.assertFalse(vinlib.validate(self.EUROPEAN).check_digit_valid)
+
+        redacted, produced = capture.redact(f"VIN: {self.EUROPEAN}")
+
+        self.assertNotIn(self.EUROPEAN, redacted)
+        self.assertEqual(len(produced), 1)
+
+    def test_an_unlabelled_one_is_left_alone_unless_it_validates(self):
+        """Otherwise every seventeen-character part number would be mangled."""
+        text = f"Calibration {self.EUROPEAN} rev 2"
+        self.assertEqual(capture.redact(text)[0], text)
+
+    def test_a_fullwidth_colon_is_a_colon(self):
+        """A TOPDON report writes `VIN：` with U+FF1A and `Mileage:` with an
+        ASCII one, in the same header."""
+        redacted, produced = capture.redact(f"VIN：{self.EUROPEAN}")
+        self.assertNotIn(self.EUROPEAN, redacted)
+        self.assertEqual(len(produced), 1)
+
+    def test_a_stand_in_for_a_european_vin_keeps_its_filler(self):
+        """Recomputing a check digit would turn a European VIN into a North
+        American-shaped one and delete from the corpus the case this
+        application's VIN validation exists to tolerate."""
+        stand_in = capture.synthesise_vin(self.EUROPEAN)
+        self.assertEqual(stand_in[8], "Z")
+        self.assertTrue(vinlib.validate(stand_in).is_well_formed)
+
+    def test_a_stand_in_for_a_north_american_vin_still_validates(self):
+        stand_in = capture.synthesise_vin("1M8GDM9AXKP042788")
+        self.assertTrue(vinlib.validate(stand_in).check_digit_valid)
+
+    def test_the_manufacturer_and_model_year_survive_either_way(self):
+        """What makes a sample representative is shared with millions of cars;
+        only the serial identifies one."""
+        for real in (self.EUROPEAN, "1M8GDM9AXKP042788"):
+            with self.subTest(vin=real):
+                self.assertEqual(capture.synthesise_vin(real)[:8], real[:8])
+                self.assertEqual(capture.synthesise_vin(real)[9:11], real[9:11])
+
+    def test_an_underscore_does_not_hide_a_vin(self):
+        """Two public samples are published as `<VIN>_Aug_17_2025_LiveData`.
+        `\\b` counts an underscore as a word character, so the boundary never
+        matched and the VIN reached a filename."""
+        real = "1M8GDM9AXKP042788"
+        redacted, produced = capture.redact(f"{real}_Aug_17_2025_LiveData")
+        self.assertNotIn(real, redacted)
+        self.assertEqual(len(produced), 1)
+
+
+class RedactingALabelledValueTests(unittest.TestCase):
+    """Values that are only identifiable by what they follow.
+
+    Nothing about the shape of `raffi` says it is a person. The label above it
+    does, and a TOPDON report prints exactly that: `User: raffi`.
+    """
+
+    def test_a_personal_value_is_removed_and_an_equipment_one_keeps_its_shape(self):
+        text = "VIN: -   License Plate: ZR86BR\n   Shop #: WSC 01357 011 00200\n"
+        redacted, _ = capture.redact_document(text)
+
+        self.assertNotIn("ZR86BR", redacted)
+        self.assertIn(capture.MASK, redacted)
+        self.assertNotIn("01357", redacted)
+        # Zeroed rather than blanked: the shape is what a parser matches on.
+        self.assertIn("Shop #: 000 00000 000 00000", redacted)
+
+    def test_an_empty_value_does_not_reach_down_the_page_for_one(self):
+        """`\\s*` crossed the blank line below `Repair Order:` to find a value,
+        and a row of eighty dashes came out as the redaction mask."""
+        text = "Mileage: 46280km   Repair Order: \n\n\n" + "-" * 20 + "\n"
+        redacted, _ = capture.redact_document(text)
+        self.assertIn("-" * 20, redacted)
+
+    def test_an_email_address_goes_wherever_it_appears(self):
+        redacted, _ = capture.redact("Email: somebody@example.com")
+        self.assertNotIn("example.com", redacted)
+
+
+class RedactingWordGeometryTests(unittest.TestCase):
+    """The same rules where the label and the value are separate words.
+
+    This is the half a line-shaped rule cannot reach, and the half that has
+    twice published something: one word after the label was blanked and
+    `Shop Name: <name> vehicle testing center Al-ain` came out with four fifths
+    of the name intact.
+    """
+
+    def _page(self, *words):
+        """Words as `(text, top)`, laid out left to right."""
+        return [
+            {"text": text, "top": top, "x0": 10.0 * index, "x1": 10.0 * index + 8}
+            for index, (text, top) in enumerate(words)
+        ]
+
+    def test_a_personal_value_is_blanked_to_the_end_of_its_line(self):
+        page = self._page(
+            ("Shop", 26.6), ("Name:", 26.6), ("Somebody", 26.6),
+            ("vehicle", 26.6), ("testing", 26.6), ("centre", 26.6),
+        )
+        out, _ = capture.redact_words(page)
+        self.assertEqual(out[:2], ["Shop", "Name:"])
+        self.assertEqual(set(out[2:]), {capture.MASK})
+
+    def test_it_stops_one_word_early_when_the_next_word_is_a_label(self):
+        """`Tel: <number>  Test Time: …` keeps its `Test`."""
+        page = self._page(
+            ("Tel:", 37.0), ("555-0100", 37.0), ("Test", 37.0), ("Time:", 37.0),
+            ("2025-12-21", 37.0),
+        )
+        out, _ = capture.redact_words(page)
+        self.assertEqual(out[1], capture.MASK)
+        self.assertEqual(out[2:], ["Test", "Time:", "2025-12-21"])
+
+    def test_it_does_not_run_on_to_the_next_line(self):
+        page = self._page(("Address:", 57.8), ("Somewhere", 57.8), ("Vehicle", 88.3))
+        out, _ = capture.redact_words(page)
+        self.assertEqual(out, ["Address:", capture.MASK, "Vehicle"])
+
+    def test_a_label_on_another_line_labels_nothing(self):
+        """Reading order is not layout. The D8 emits `SN:` and then, three
+        lines down the page, `Diagnosis` — and the heading of the section
+        naming how the scan was run was zeroed in all nine reports."""
+        page = self._page(("Mileage", 141.75), ("SN:", 141.75), ("Diagnosis", 162.57))
+        out, _ = capture.redact_words(page)
+        self.assertEqual(out[-1], "Diagnosis")
+
+    def test_an_empty_field_does_not_consume_the_label_beside_it(self):
+        page = self._page(("Customer:", 267.4), ("Technician:", 267.4))
+        out, _ = capture.redact_words(page)
+        self.assertEqual(out, ["Customer:", "Technician:"])
+
+
+class CapturingATextReportTests(unittest.TestCase):
+    """Captures of things that are not PDFs, and how much of one is kept."""
+
+    def _write(self, name: str, body: str) -> pathlib.Path:
+        import tempfile
+
+        folder = pathlib.Path(tempfile.mkdtemp())
+        path = folder / name
+        path.write_text(body, encoding="utf-8")
+        return path
+
+    def test_a_report_is_kept_whole(self):
+        body = "VCDS Version: 16.5\n" + "Address 01: Engine\n" * 200
+        data, _ = capture.capture_document(self._write("scan.txt", body))
+        self.assertEqual(data["media_type"], "text")
+        self.assertNotIn("truncated", data)
+        self.assertIn("Address 01", data["text"].splitlines()[-1])
+
+    def test_a_tabular_log_is_cut_down_and_says_so(self):
+        """A live-data export is a header and then ten thousand rows of the
+        same five columns. The public ones come to 336 MB between them, which
+        is not a thing to put in a git history to show that a comma separates
+        two numbers."""
+        body = "time,rpm,load\n" + "".join(f"{n},800,12\n" for n in range(500))
+        data, _ = capture.capture_document(self._write("log.csv", body))
+
+        self.assertEqual(data["media_type"], "csv")
+        self.assertTrue(data["truncated"])
+        self.assertEqual(data["source_lines"], 502)
+        self.assertEqual(len(data["text"].splitlines()), capture.TABLE_ROWS + 1)
+
+    def test_the_capture_names_the_file_it_came_from(self):
+        data, _ = capture.capture_document(self._write("scan.txt", "VIN: -\n"))
+        self.assertEqual(data["source"], "scan.txt")
+
+
+class ManifestTests(unittest.TestCase):
+    """Reading the research manifests into a fetch plan (`manifest.py`)."""
+
+    def entry(self, **overrides):
+        base = {
+            "vendor": "Ross-Tech",
+            "product": "VCDS",
+            "access_type": "raw_file",
+            "parser_scope": "diagnostic_report",
+            "format": "txt",
+            "direct_url": "https://example.invalid/scans/golf-auto-scan.txt",
+        }
+        return {**base, **overrides}
+
+    def test_a_folder_is_the_vendor_and_the_product(self):
+        self.assertEqual(manifest.folder_for(self.entry()), "ross-tech vcds")
+
+    def test_corporate_history_is_not_part_of_a_tool_name(self):
+        """`Creosys / PLX Devices` and `Car Scanner / Torque ecosystem` name
+        companies, not the thing in somebody's hand."""
+        self.assertEqual(
+            manifest.folder_for(self.entry(vendor="Creosys / PLX Devices", product="OBD Auto Doctor")),
+            "creosys obd auto doctor",
+        )
+
+    def test_a_product_nobody_recorded_says_so_rather_than_collecting_tools(self):
+        folder = manifest.folder_for(self.entry(product="unknown"))
+        self.assertEqual(folder, "ross-tech unspecified")
+
+    def test_a_gist_url_does_not_name_every_sample_raw(self):
+        """A gist's download URL ends in `/raw` for every gist there has ever
+        been, so the basename gives them all the same name."""
+        name = manifest.filename_for(
+            self.entry(title="", direct_url="https://gist.example.invalid/abc123/raw")
+        )
+        self.assertEqual(name, "abc123.txt")
+
+    def test_a_vin_never_reaches_a_filename(self):
+        """Two entries are published as `<VIN>_Aug_17`. A corpus that redacts
+        the inside of a report and prints the vehicle on the outside of it has
+        protected nothing."""
+        real = "1M8GDM9AXKP042788"
+        name = manifest.filename_for(
+            self.entry(
+                title=f"{real}_Aug_17_2025",
+                format="csv",
+                direct_url="https://example.invalid/logs/live.csv",
+            )
+        )
+        self.assertNotIn(real.lower(), name.lower())
+        self.assertTrue(name.endswith(".csv"))
+        # The stand-in is still a stand-in, so re-fetching produces the same
+        # name rather than churning the corpus.
+        self.assertEqual(
+            name,
+            manifest.filename_for(
+                self.entry(
+                    title=f"{real}_Aug_17_2025",
+                    format="csv",
+                    direct_url="https://example.invalid/logs/live.csv",
+                )
+            ),
+        )
+
+    def test_a_url_carrying_a_vin_is_withheld_rather_than_redacted(self):
+        """A stand-in in a provenance record is a lie about where a file came
+        from, so the field is dropped and the digest identifies it instead."""
+        self.assertTrue(manifest.carries_a_vin("https://x.invalid/1M8GDM9AXKP042788_Aug"))
+        self.assertFalse(manifest.carries_a_vin("https://x.invalid/golf-auto-scan.txt"))
+
+    def test_the_record_withholds_a_title_as_well_as_a_url(self):
+        sample = manifest.Sample(
+            entry=self.entry(title="1M8GDM9AXKP042788_Aug_17_2025"),
+            folder="ross-tech vcds",
+            filename="scan.txt",
+        )
+        record = manifest.record_for(
+            sample, digest="abc", size=1, media_type="text", retrieved_on="2026-09-01"
+        )
+        self.assertNotIn("title", record)
+        self.assertEqual(record["title_withheld"], "carries a VIN")
+        self.assertEqual(record["sha256"], "abc")
+
+    def test_only_entries_naming_a_fetchable_file_are_wanted(self):
+        self.assertTrue(manifest.wanted(self.entry()))
+        self.assertFalse(manifest.wanted(self.entry(access_type="forum_post")))
+        self.assertFalse(manifest.wanted(self.entry(direct_url="")))
+
+    def test_a_proprietary_logger_binary_is_left_where_it_is(self):
+        """A corpus is not improved by being larger. `ScanReport.live_data`
+        models live data, so a CSV of it is a parser target; this application
+        will never own a decoder for `.xrk`."""
+        binary = self.entry(parser_scope="live_data", format="xrk")
+        self.assertFalse(manifest.wanted(binary))
+        self.assertTrue(manifest.wanted(binary, everything=True))
+        self.assertTrue(manifest.wanted(self.entry(parser_scope="live_data", format="csv")))

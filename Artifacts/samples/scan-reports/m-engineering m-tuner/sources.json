@@ -1,0 +1,41 @@
+{
+ "version": 1,
+ "tool": "m-engineering m-tuner",
+ "note": "Where these samples came from. The files themselves are not committed - they are somebody else's reports, published for people to read rather than for us to redistribute. What ships is the redacted capture beside this file, and this record, so the corpus survives the link going dead and the attribution survives with it.",
+ "sources": [
+  {
+   "file": "originals/m-tuner-speed.csv",
+   "vendor": "M-Engineering",
+   "product": "M-Tuner",
+   "artifact_kind": "live_data_export",
+   "parser_scope": "live_data",
+   "format": "csv",
+   "media_type": "csv",
+   "sha256": "94f5cbc790281b4311aecc3d3bd70ac31364d573c80d332ad640f4a68f61ac42",
+   "bytes": 705,
+   "retrieved_on": "2026-09-01",
+   "listed_on": "2026-09-01",
+   "manifest_id": "scanex_f576e0c0700e",
+   "title": "m-tuner-speed.csv",
+   "direct_url": "https://raw.githubusercontent.com/nyetwurk/ecuxplot/master/test-data/m-tuner-speed.csv",
+   "source_url": "https://github.com/nyetwurk/ecuxplot/blob/master/test-data/m-tuner-speed.csv"
+  },
+  {
+   "file": "originals/m-tuner.csv",
+   "vendor": "M-Engineering",
+   "product": "M-Tuner",
+   "artifact_kind": "live_data_export",
+   "parser_scope": "live_data",
+   "format": "csv",
+   "media_type": "csv",
+   "sha256": "ac692c69a342d28c57de317743e8abb05463fe9ed8855d66f3c073b27b14b0c2",
+   "bytes": 681,
+   "retrieved_on": "2026-09-01",
+   "listed_on": "2026-09-01",
+   "manifest_id": "scanex_8300721893e0",
+   "title": "m-tuner.csv",
+   "direct_url": "https://raw.githubusercontent.com/nyetwurk/ecuxplot/master/test-data/m-tuner.csv",
+   "source_url": "https://github.com/nyetwurk/ecuxplot/blob/master/test-data/m-tuner.csv"
+  }
+ ]
+}

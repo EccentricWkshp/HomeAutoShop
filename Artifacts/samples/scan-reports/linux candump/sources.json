@@ -1,0 +1,24 @@
+{
+ "version": 1,
+ "tool": "linux candump",
+ "note": "Where these samples came from. The files themselves are not committed - they are somebody else's reports, published for people to read rather than for us to redistribute. What ships is the redacted capture beside this file, and this record, so the corpus survives the link going dead and the attribution survives with it.",
+ "sources": [
+  {
+   "file": "originals/can-sample.log",
+   "vendor": "Linux can-utils",
+   "product": "candump",
+   "artifact_kind": "raw_can_log",
+   "parser_scope": "protocol_capture",
+   "format": "log",
+   "media_type": "text",
+   "sha256": "9f23afe00cd2dd99f9c407ca4f272d02ea1562759643c918f2c5ebb4ad316f26",
+   "bytes": 3729576,
+   "retrieved_on": "2026-09-01",
+   "listed_on": "2026-09-01",
+   "manifest_id": "scanex_33c3a8cc65d5",
+   "title": "can_sample.log",
+   "direct_url": "https://raw.githubusercontent.com/stevendaniluk/MotecLogGenerator/master/examples/can_sample.log",
+   "source_url": "https://github.com/stevendaniluk/MotecLogGenerator/blob/master/examples/can_sample.log"
+  }
+ ]
+}

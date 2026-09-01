@@ -1,0 +1,24 @@
+{
+ "version": 1,
+ "tool": "volvotools volvologger",
+ "note": "Where these samples came from. The files themselves are not committed - they are somebody else's reports, published for people to read rather than for us to redistribute. What ships is the redacted capture beside this file, and this record, so the corpus survives the link going dead and the attribution survives with it.",
+ "sources": [
+  {
+   "file": "originals/volvologger.csv",
+   "vendor": "VolvoTools",
+   "product": "VolvoLogger",
+   "artifact_kind": "live_data_export",
+   "parser_scope": "live_data",
+   "format": "csv",
+   "media_type": "csv",
+   "sha256": "6411d6c9acd592ed533f76fb141ca2e4f61f605b84a6d6b76a0589b3db8e8686",
+   "bytes": 378,
+   "retrieved_on": "2026-09-01",
+   "listed_on": "2026-09-01",
+   "manifest_id": "scanex_f405d5b01545",
+   "title": "volvologger.csv",
+   "direct_url": "https://raw.githubusercontent.com/nyetwurk/ecuxplot/master/test-data/volvologger.csv",
+   "source_url": "https://github.com/nyetwurk/ecuxplot/blob/master/test-data/volvologger.csv"
+  }
+ ]
+}

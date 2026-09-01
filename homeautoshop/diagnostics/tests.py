@@ -613,11 +613,24 @@ class XtoolProfileTests(TestCase):
         profilelib.seed()
 
     def _capture(self):
+        """A captured report **from a D8**, which is no longer just any of them.
+
+        This took `samples()[0]` and got a D8 for as long as the corpus held
+        nothing else. It now holds reports from a dozen other tools, sorted by
+        path, so the first one is an Autel — and a test about the D8's
+        fingerprint was quietly asking whether the D8 profile recognizes an
+        Autel report. It should not, and it did not, and the test failed
+        correctly for entirely the wrong reason.
+        """
         from homeautoshop.scantools import fixtures
 
-        samples = fixtures.samples()
+        samples = [
+            s
+            for s in fixtures.samples()
+            if fixtures.BUILT_IN_PARSERS.get(fixtures.tool(s)) == "xtool_d8"
+        ]
         if not samples:
-            self.skipTest("the captured corpus is not in this checkout")
+            self.skipTest("the captured D8 corpus is not in this checkout")
         return fixtures.pages(samples[0])
 
     def test_the_d8_profile_names_a_built_in_parser(self):
@@ -648,3 +661,243 @@ class XtoolProfileTests(TestCase):
         self.assertIsNotNone(chosen)
         self.assertEqual(chosen.tool_model, "D8")
         self.assertGreaterEqual(value, 0.5)
+
+
+class MediaTypeTests(TestCase):
+    """What a file is, decided from its bytes (`engine.media_type`).
+
+    Split out of `read` so the corpus fetcher can answer the question without
+    paying for the document — reading a PDF means parsing it, reading an image
+    means OCR — and worth its own tests because the manifests of public samples
+    are demonstrably wrong about their own formats: an entry filed as an AEM
+    `.daq` serves a file whose first bytes read `EMERALD v1.00`.
+    """
+
+    def test_a_pdf_is_known_by_its_signature(self):
+        self.assertEqual(engine.media_type(b"%PDF-1.4\nstuff"), "pdf")
+
+    def test_a_csv_is_known_by_its_shape_not_its_name(self):
+        body = b"time,rpm,load\n1,800,12\n2,900,14\n"
+        self.assertEqual(engine.media_type(body, filename="export.txt"), "csv")
+
+    def test_a_single_column_export_needs_the_extension_to_break_the_tie(self):
+        """No commas to count, so the name is the only evidence there is."""
+        body = b"rpm\n800\n900\n"
+        self.assertEqual(engine.media_type(body, filename="log.csv"), "csv")
+        self.assertEqual(engine.media_type(body, filename="log.txt"), "text")
+
+    def test_prose_is_not_a_table_unless_its_columns_agree(self):
+        """The column count has to be consistent, which is what separates a
+        table from two sentences that happen to contain commas."""
+        body = "Codes were read, and cleared.\nThe light, however, came back, again.\n"
+        self.assertEqual(engine.media_type(body.encode()), "text")
+
+    def test_bytes_that_are_not_utf8_are_binary(self):
+        self.assertEqual(engine.media_type(b"\x00\x01\x02\xff\xfe"), "binary")
+
+    def test_read_still_accepts_what_media_type_calls_binary(self):
+        """Refusing it would be worse: a mis-encoded export is reviewable."""
+        document = engine.read(b"P0301 misfire \xff\xfe")
+        self.assertEqual(document.media_type, "text")
+        self.assertIn("P0301", document.text)
+
+
+class MultilineTableTests(TestCase):
+    """A row that is printed across more than one line (`multiline: true`).
+
+    Written because VCDS states a fault as two lines — its own fault number and
+    description, then the J2012 code underneath where the controller has one —
+    and a line-at-a-time reader has to pick one of them and is wrong either
+    way. It also carries every PDF profile in the catalog, for a different
+    reason: a page of extracted PDF text is a single line, so `^` and `$` match
+    once per page and a row cannot be anchored to one.
+    """
+
+    FAULTS = (
+        "2 Faults Found:\n"
+        "000772 - Cylinder 4 \n"
+        "               P0304 - 000 - Misfire Detected - Intermittent\n"
+        "01520 - Rain and Light Recognition Sensor (G397) \n"
+        "            002 - Lower Limit Exceeded - Intermittent\n"
+    )
+
+    RULE = {
+        "multiline": True,
+        "row_pattern": (
+            r"^(\d{5,8})[ \t]*-[ \t]*(.+?)[ \t]*\r?\n[ \t]*"
+            r"(?:([PBCU][0-9A-F]{4})[ \t]*-[ \t]*[0-9A-F]{3}[ \t]*-[ \t]*(.+?)[ \t]*$)?"
+        ),
+        "columns": [
+            {"role": "code", "group": [3, 1]},
+            {"role": "description", "group": 2},
+        ],
+    }
+
+    def _rows(self, **overrides):
+        profile = ParserProfile(table_extractor={**self.RULE, **overrides})
+        return engine.apply(profile, engine.Document(text=self.FAULTS)).codes
+
+    def test_a_fault_becomes_one_row_whichever_shape_it_is_printed_in(self):
+        self.assertEqual(len(self._rows()), 2)
+
+    def test_the_j2012_code_is_preferred_where_the_fault_has_one(self):
+        """`group: [3, 1]` — the standard code first, the vendor's as fallback.
+
+        Measured over nine real Auto-Scans: 191 faults, 30 of them with a
+        J2012 code. Reading only the J2012 line would report five faults in
+        six as absent; reading only the vendor line would throw away the code
+        a person can look up.
+        """
+        rows = self._rows()
+        self.assertEqual(rows[0]["code"], "P0304")
+        self.assertEqual(rows[0]["description"], "Cylinder 4")
+
+    def test_and_the_vendor_number_carries_the_fault_that_has_no_j2012_code(self):
+        rows = self._rows()
+        self.assertEqual(rows[1]["code"], "01520")
+        self.assertEqual(rows[1]["description"], "Rain and Light Recognition Sensor (G397)")
+
+    def test_one_line_at_a_time_remains_the_default(self):
+        profile = ParserProfile(
+            table_extractor={
+                "row_pattern": r"([PBCU][0-9A-F]{4})\s+(.*)",
+                "columns": [
+                    {"role": "code", "group": 1},
+                    {"role": "description", "group": 2},
+                ],
+            }
+        )
+        document = engine.Document(text="P0301 Misfire\nP0302 Misfire\n")
+        rows = engine.apply(profile, document).codes
+        self.assertEqual([r["code"] for r in rows], ["P0301", "P0302"])
+
+
+class MappedColumnTests(TestCase):
+    """A column's `map` is a closed vocabulary, not a set of shortcuts.
+
+    It used to pass an unrecognized value straight through, which is harmless
+    for a description and not for `state`: a four-value field twelve characters
+    wide. Car Scanner reports a status as the DTC status bits written out —
+    `Confirmed, Test failed since last DTC clear, Warning indicator requested`
+    — and sixty characters of prose went in as a state.
+    """
+
+    def _row(self, status, **column):
+        profile = ParserProfile(
+            table_extractor={
+                "row_pattern": r"([PBCU][0-9A-F]{4})\s+(.*)",
+                "columns": [
+                    {"role": "code", "group": 1},
+                    {"role": "state_raw", "group": 2},
+                    {
+                        "role": "state",
+                        "group": 2,
+                        "map": {"Confirmed": "stored"},
+                        **column,
+                    },
+                ],
+            }
+        )
+        document = engine.Document(text="P0301 " + status)
+        return engine.apply(profile, document).codes[0]
+
+    def test_a_value_in_the_vocabulary_is_translated(self):
+        self.assertEqual(self._row("Confirmed")["state"], "stored")
+
+    def test_a_value_outside_it_leaves_the_row_default_standing(self):
+        row = self._row("Test not completed during this operation cycle")
+        self.assertEqual(row["state"], "stored")
+
+    def test_and_the_tools_own_wording_survives_in_state_raw(self):
+        """Unmapped is deliberately not the same as discarded."""
+        row = self._row("Test not completed during this operation cycle")
+        self.assertEqual(row["state_raw"], "Test not completed during this operation cycle")
+
+    def test_matching_ignores_case(self):
+        self.assertEqual(self._row("confirmed")["state"], "stored")
+
+    def test_a_profile_may_name_its_own_fallback(self):
+        row = self._row("Anything else", map_default="pending")
+        self.assertEqual(row["state"], "pending")
+
+
+class DetectPrefersTheToolItWasWrittenForTests(TestCase):
+    """A fallback profile does not compete with one written for the hardware.
+
+    `Generic code list` claims any text with a trouble code in it — that is
+    what generic means — and it scores 1.0 on a VCDS Auto-Scan where the VCDS
+    profile scores 0.85, because the older Beta builds omit one of its signals.
+    Ranking on score alone therefore handed three real Auto-Scans to the
+    fallback, which read nothing out of reports holding 61, 14 and 0 faults.
+    """
+
+    TEXT = "Trouble Code list\nP0301 Misfire\n"
+
+    def _profiles(self):
+        generic = ParserProfile(
+            name="Generic",
+            media_type="text",
+            fingerprint={
+                "threshold": 0.5,
+                "signals": [
+                    {"pattern": r"[PBCU][0-9A-F]{4}", "weight": 0.5},
+                    {"pattern": r"(?i)trouble\s*code", "weight": 0.5},
+                ],
+            },
+        )
+        specific = ParserProfile(
+            name="Specific",
+            tool_vendor="Ross-Tech",
+            tool_model="VCDS",
+            media_type="text",
+            fingerprint={
+                "threshold": 0.5,
+                "signals": [
+                    {"pattern": r"[PBCU][0-9A-F]{4}", "weight": 0.6},
+                    {"pattern": r"(?i)never appears anywhere", "weight": 0.4},
+                ],
+            },
+        )
+        return generic, specific
+
+    def test_the_named_tool_wins_even_on_the_lower_score(self):
+        generic, specific = self._profiles()
+        document = engine.Document(text=self.TEXT, media_type="text")
+
+        self.assertGreater(
+            engine.score(generic, document), engine.score(specific, document)
+        )
+        chosen, _ = engine.detect([generic, specific], document)
+        self.assertEqual(chosen.name, "Specific")
+
+    def test_but_only_when_it_clears_its_own_threshold(self):
+        """Clearing its threshold is the claim the profile's author makes.
+
+        Below it, a profile for the wrong tool must not beat a generic one that
+        actually matches — otherwise naming a vendor would be a way to win.
+        """
+        generic, specific = self._profiles()
+        specific.fingerprint = {
+            "threshold": 0.9,
+            "signals": [{"pattern": r"(?i)never appears anywhere", "weight": 1.0}],
+        }
+        document = engine.Document(text=self.TEXT, media_type="text")
+        chosen, _ = engine.detect([generic, specific], document)
+        self.assertEqual(chosen.name, "Generic")
+
+    def test_between_two_named_tools_the_score_still_decides(self):
+        _generic, specific = self._profiles()
+        better = ParserProfile(
+            name="Better",
+            tool_vendor="Ross-Tech",
+            tool_model="VCDS",
+            media_type="text",
+            fingerprint={
+                "threshold": 0.5,
+                "signals": [{"pattern": r"(?i)trouble\s*code", "weight": 1.0}],
+            },
+        )
+        document = engine.Document(text=self.TEXT, media_type="text")
+        chosen, value = engine.detect([specific, better], document)
+        self.assertEqual(chosen.name, "Better")
+        self.assertEqual(value, 1.0)

@@ -1,0 +1,100 @@
+# BlueDriver -- Scan Report
+#
+# The PDF the BlueDriver app e-mails after a scan. It is the simplest report
+# format here: numbered lines, one code each, under a heading that names which
+# scan produced them -- confirmed, pending, and then one heading per module.
+#
+# **This is unproven and says so.** One report exists to write it against --
+# the sample Lemur publishes on its own website -- and the catalog's bar for
+# the verified badge is two, from different vehicles, for a good reason: a
+# profile fitted to one report passes a one-report check by construction. What
+# is written here is what that one report shows. If you own a BlueDriver,
+# capturing two of your own scans is what turns this into a checked claim, and
+# `manage.py capture_fixture` is the whole of that job.
+name: BlueDriver - Scan Report
+author: HomeAutoShop
+tool_vendor: Lemur Vehicle Monitors
+tool_model: BlueDriver
+version: 1
+media_type: pdf
+
+fingerprint:
+  threshold: 0.6
+  signals:
+    - kind: doc_text
+      pattern: '(?i)www\.BlueDriver\.net'
+      weight: 0.4
+    - kind: doc_text
+      pattern: '(?i)lemurmonitors\.com'
+      weight: 0.2
+    - kind: doc_text
+      pattern: '(?i)Trouble Codes:'
+      weight: 0.2
+    - kind: doc_text
+      pattern: '(?i)Codes Scan Report-{2,}'
+      weight: 0.2
+
+field_extractors:
+  vin:
+    strategy: label_anchored
+    labels: ['VIN']
+    pattern: '([A-HJ-NPR-Z0-9]{17})'
+    validate: vin_check_digit
+    confidence: 0.8
+  vehicle_description:
+    # `Make:Dodge Year:2006`, with no space after the colon. The label-anchored
+    # strategy allows for that; a pattern expecting one would not.
+    strategy: label_anchored
+    labels: ['Make']
+    # No space in the class. `Make:Dodge Year:2006` is one line, so a pattern
+    # that allowed a space read the make as `Dodge Year`.
+    pattern: '([A-Za-z][A-Za-z-]+)'
+    confidence: 0.7
+  model_year:
+    strategy: label_anchored
+    labels: ['Year']
+    pattern: '(\d{4})'
+    confidence: 0.8
+  performed_on:
+    strategy: regex
+    pattern: 'Scan Report\s+([A-Z][a-z]+ \d{1,2}, \d{4} \d{1,2}:\d{2} [AP]M)'
+    coerce: { type: datetime, formats: ['%B %d, %Y %I:%M %p'] }
+    confidence: 0.8
+  tool_vendor:
+    strategy: regex
+    pattern: '(BlueDriver)'
+    confidence: 0.9
+
+table_extractor:
+  locate:
+    headings: ['Trouble Codes:']
+    stop_at: []
+  # A page of PDF flattens to one line, so rows are found by shape.
+  multiline: true
+  # `1:P0108 Manifold Absolute Pressure/Barometric Pressure Circuit High`, and
+  # on the module pages `1:C100A Status:ACTIVE/MIL • Check report for
+  # description.` The description runs until the next numbered code, the next
+  # section heading, or the page footer -- all three, because a report that
+  # ended only at the next code would swallow a disclaimer into the last one.
+  row_pattern: '\d{1,3}:([PBCU][0-9A-F]{4})\s+(?:Status:(\S+)\s*(?:•\s*)?)?(.*?)(?=\s+\d{1,3}:[PBCU][0-9A-F]{4}\b|\s*-{2,}|\s*Disclaimer:|\s*www\.BlueDriver|$)'
+  columns:
+    - { role: code, group: 1 }
+    - { role: description, group: 3 }
+    - { role: state_raw, group: 2 }
+  row_filters:
+    drop_if_matches:
+      # The tool prints this rather than omitting the section, so a reader who
+      # trusted the section headings would report codes that are not there.
+      - '(?i)no (trouble )?codes? (found|detected)'
+
+notes: >
+  Written against the sample scan report Lemur publishes at bluedriver.com -
+  a 2006 Dodge with codes in four sections: confirmed, pending, anti-lock
+  brakes and powertrain. Unproven: the catalog's verified badge needs two
+  reports from different vehicles and only one exists here.
+
+  Note what the tool itself could not do, because it will look like a parser
+  failure and is not: BlueDriver prints `Check report for description.` in
+  place of the text for manufacturer-specific codes it has no wording for.
+  That phrase is the description, exactly as the report gives it, and this
+  application's own code dictionary (SPEC 8.3c) is where that gap gets filled.

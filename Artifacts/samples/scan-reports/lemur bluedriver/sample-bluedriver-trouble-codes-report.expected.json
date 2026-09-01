@@ -1,0 +1,302 @@
+{
+  "profile": "BlueDriver - Scan Report",
+  "score": 1.0,
+  "fields": {
+    "vin": {
+      "value": "1D7HU18206S334518",
+      "confidence": 1.0,
+      "page": 0,
+      "label": "VIN"
+    },
+    "vehicle_description": {
+      "value": "Dodge",
+      "confidence": 0.7,
+      "page": 0,
+      "label": "Make"
+    },
+    "model_year": {
+      "value": "2006",
+      "confidence": 0.8,
+      "page": 0,
+      "label": "Year"
+    },
+    "performed_on": {
+      "value": "2015-05-27T07:51:00",
+      "confidence": 0.8,
+      "page": 0,
+      "label": ""
+    },
+    "tool_vendor": {
+      "value": "BlueDriver",
+      "confidence": 0.9,
+      "page": 0,
+      "label": ""
+    }
+  },
+  "codes": [
+    {
+      "code": "P0108",
+      "description": "Manifold Absolute Pressure/Barometric Pressure Circuit High",
+      "state": "stored"
+    },
+    {
+      "code": "P0118",
+      "description": "Engine Coolant Temperature Sensor 1 Circuit High",
+      "state": "stored"
+    },
+    {
+      "code": "U110C",
+      "description": "Check report for description.",
+      "state": "stored"
+    },
+    {
+      "code": "P0499",
+      "description": "Evaporative Emission System Vent Valve Control Circuit High",
+      "state": "stored"
+    },
+    {
+      "code": "P0406",
+      "description": "Exhaust Gas Recirculation Sensor 'A' Circuit High",
+      "state": "stored"
+    },
+    {
+      "code": "P0113",
+      "description": "Intake Air Temperature Sensor 1 Circuit High Bank 1",
+      "state": "stored"
+    },
+    {
+      "code": "P0523",
+      "description": "Engine Oil Pressure Sensor/Switch High",
+      "state": "stored"
+    },
+    {
+      "code": "U1411",
+      "description": "Check report for description.",
+      "state": "stored"
+    },
+    {
+      "code": "U110E",
+      "description": "Check report for description.",
+      "state": "stored"
+    },
+    {
+      "code": "P0198",
+      "description": "Engine Oil Temperature Sensor Circuit High",
+      "state": "stored"
+    },
+    {
+      "code": "P0108",
+      "description": "Manifold Absolute Pressure/Barometric Pressure Circuit High",
+      "state": "stored"
+    },
+    {
+      "code": "P0118",
+      "description": "Engine Coolant Temperature Sensor 1 Circuit High",
+      "state": "stored"
+    },
+    {
+      "code": "U110C",
+      "description": "Check report for description.",
+      "state": "stored"
+    },
+    {
+      "code": "P0499",
+      "description": "Evaporative Emission System Vent Valve Control Circuit High",
+      "state": "stored"
+    },
+    {
+      "code": "P0406",
+      "description": "Exhaust Gas Recirculation Sensor 'A' Circuit High",
+      "state": "stored"
+    },
+    {
+      "code": "P0113",
+      "description": "Intake Air Temperature Sensor 1 Circuit High Bank 1",
+      "state": "stored"
+    },
+    {
+      "code": "P0523",
+      "description": "Engine Oil Pressure Sensor/Switch High",
+      "state": "stored"
+    },
+    {
+      "code": "U1411",
+      "description": "Check report for description.",
+      "state": "stored"
+    },
+    {
+      "code": "U110E",
+      "description": "Check report for description.",
+      "state": "stored"
+    },
+    {
+      "code": "P0198",
+      "description": "Engine Oil Temperature Sensor Circuit High",
+      "state": "stored"
+    },
+    {
+      "code": "C100A",
+      "description": "Check report for description.",
+      "state_raw": "ACTIVE/MIL",
+      "state": "stored"
+    },
+    {
+      "code": "C1015",
+      "description": "Check report for description.",
+      "state_raw": "ACTIVE/MIL",
+      "state": "stored"
+    },
+    {
+      "code": "C1036",
+      "description": "Check report for description.",
+      "state_raw": "ACTIVE/MIL",
+      "state": "stored"
+    },
+    {
+      "code": "C1073",
+      "description": "Check report for description.",
+      "state_raw": "ACTIVE/MIL",
+      "state": "stored"
+    },
+    {
+      "code": "C1008",
+      "description": "Check report for description.",
+      "state_raw": "ACTIVE/MIL",
+      "state": "stored"
+    },
+    {
+      "code": "C2202",
+      "description": "Check report for description.",
+      "state_raw": "ACTIVE/MIL",
+      "state": "stored"
+    },
+    {
+      "code": "C2206",
+      "description": "Check report for description.",
+      "state_raw": "ACTIVE/MIL",
+      "state": "stored"
+    },
+    {
+      "code": "U0141",
+      "description": "Lost Communication With Body Control Module 'A'",
+      "state_raw": "ACTIVE",
+      "state": "stored"
+    },
+    {
+      "code": "U1417",
+      "description": "Check report for description.",
+      "state": "stored"
+    },
+    {
+      "code": "U1418",
+      "description": "Check report for description.",
+      "state": "stored"
+    },
+    {
+      "code": "U1411",
+      "description": "Check report for description.",
+      "state": "stored"
+    },
+    {
+      "code": "U110C",
+      "description": "Check report for description.",
+      "state": "stored"
+    },
+    {
+      "code": "P0685",
+      "state": "stored"
+    },
+    {
+      "code": "P0627",
+      "description": "Fuel Pump 'A' Control Circuit/Open",
+      "state": "stored"
+    },
+    {
+      "code": "U110E",
+      "description": "Check report for description.",
+      "state": "stored"
+    },
+    {
+      "code": "P0406",
+      "description": "Exhaust Gas Recirculation Sensor 'A' Circuit High",
+      "state": "stored"
+    },
+    {
+      "code": "P0499",
+      "description": "Evaporative Emission System Vent Valve Control Circuit High",
+      "state": "stored"
+    },
+    {
+      "code": "P0688",
+      "description": "ECM/PCM Power Relay Sense Circuit/Open",
+      "state": "stored"
+    },
+    {
+      "code": "P0113",
+      "description": "Intake Air Temperature Sensor 1 Circuit High Bank 1",
+      "state": "stored"
+    },
+    {
+      "code": "P0523",
+      "description": "Engine Oil Pressure Sensor/Switch High",
+      "state": "stored"
+    },
+    {
+      "code": "P0198",
+      "description": "Engine Oil Temperature Sensor Circuit High",
+      "state": "stored"
+    },
+    {
+      "code": "P0118",
+      "description": "Engine Coolant Temperature Sensor 1 Circuit High",
+      "state": "stored"
+    },
+    {
+      "code": "P0108",
+      "description": "Manifold Absolute Pressure/Barometric Pressure Circuit High",
+      "state": "stored"
+    },
+    {
+      "code": "P2122",
+      "description": "Throttle/Pedal Position Sensor/Switch 'D' Circuit Low",
+      "state": "stored"
+    },
+    {
+      "code": "P2127",
+      "description": "Throttle/Pedal Position Sensor/Switch 'E' Circuit Low",
+      "state": "stored"
+    },
+    {
+      "code": "P0123",
+      "description": "Throttle/Pedal Position Sensor/Switch 'A' Circuit High",
+      "state": "stored"
+    },
+    {
+      "code": "P0222",
+      "description": "Throttle/Pedal Position Sensor/Switch 'B' Circuit Low",
+      "state": "stored"
+    },
+    {
+      "code": "P2111",
+      "description": "Throttle Actuator Control System - Stuck Open 9",
+      "state": "stored"
+    },
+    {
+      "code": "P0581",
+      "description": "Cruise Control Multi-Function Input 'A' Circuit High 2",
+      "state": "stored"
+    },
+    {
+      "code": "P0593",
+      "description": "Cruise Control Multi-Function Input 'B' Circuit High",
+      "state": "stored"
+    },
+    {
+      "code": "P0585",
+      "description": "Cruise Control Multi-Function Input 'A'/'B' Correlation Vehicle Protocol: CAN11_500 Sensor F/W Version: OSAPI v2.30 App Version: QA-264",
+      "state": "stored"
+    }
+  ],
+  "live_data": [],
+  "warnings": []
+}

@@ -231,6 +231,50 @@ table_extractor:
 SEED = (XTOOL_D8, GENERIC_TEXT)
 
 
+# --------------------------------------------------------------------------
+# The profiles that exist, without a database
+# --------------------------------------------------------------------------
+
+
+def catalog_profiles(root=None) -> list[ParserProfile]:
+    """Every profile published in this repository's catalog folder.
+
+    Unsaved rows, read straight off disk. The corpus tooling needs to know
+    *what a profile makes of a report* long before anybody installs it — that
+    is the whole point of `verified_against` — and requiring a database for
+    that would mean the badge could only be checked on a running instance
+    rather than in the pull request that adds the profile.
+    """
+    from pathlib import Path
+
+    from django.conf import settings
+
+    folder = Path(root) if root else Path(settings.BASE_DIR) / "catalog" / "profiles"
+    if not folder.is_dir():
+        return []
+    found = []
+    for path in sorted(folder.glob("*.yaml")):
+        try:
+            found.append(from_yaml(path.read_text(encoding="utf-8")))
+        except ProfileInvalid:
+            # Skipped, not raised. `build_catalog` is where a broken catalog
+            # file is somebody's problem, and it names the file and the line;
+            # here it would only stop an unrelated capture from being read.
+            continue
+    return found
+
+
+def available(root=None) -> list[ParserProfile]:
+    """Bundled profiles plus catalog ones — everything a report could match.
+
+    Ordered bundled-first only for determinism; `engine.detect` picks on score,
+    so a catalog profile written for the exact tool beats a generic one that
+    happens to also match, whichever order they arrive in.
+    """
+    bundled = [from_yaml(document, source=ProfileSource.BUILTIN) for document in SEED]
+    return bundled + catalog_profiles(root)
+
+
 def seed(*, revive: bool = False) -> int:
     """Install the bundled profiles. Idempotent, and never clobbers an edit.
 
