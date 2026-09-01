@@ -684,7 +684,7 @@ It also covers a scenario nothing else in this spec does: **inspecting a vehicle
 | ID | Requirement |
 | --- | --- |
 | FR-ADM-1 | First-run wizard: create the admin, set units/currency/timezone, name the shop, explain TLS trust, and offer seed data. |
-| FR-ADM-2 | Manage users (invite, deactivate, reset password, promote); **deactivating a user never deletes their authored records**. |
+| FR-ADM-2 | Manage users (invite, deactivate, reset password, promote, grant vehicles to a helper); **deactivating a user never deletes their authored records**. Deactivation is the answer for somebody who worked here — their name belongs on what they did, and taking the key away must not rewrite it. It was for a while the *only* answer, which was wrong about the other case: an account created by mistake or while trying the application out has no history to protect, and refusing to remove those left an instance filling with fragments whose only cure was to wipe it and start again. So an account may be **deleted exactly when nothing in the shop carries its name** — the same shape FR-ADM-8 uses for vendors and locations, and a rule with near-zero risk because there is by construction nothing to lose. The refusal names what is holding the account ("3 work orders, 2 time entries") rather than saying it has history, because the first is a list of things to deal with and the second is a dead end. You cannot delete yourself, and the last administrator is kept. |
 | FR-ADM-3 | Configure integrations with connectivity tests and clear per-integration enable/disable. |
 | FR-ADM-4 | Configure and run backups, and show the last-successful-backup age prominently, with a warning past 7 days. |
 | FR-ADM-5 | Trigger a full export and download it. |

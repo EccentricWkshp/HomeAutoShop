@@ -42,6 +42,7 @@ urlpatterns = [
     path("users/<uuid:pk>/signin/", accounts.user_set_active, name="user_set_active"),
     path("users/<uuid:pk>/password/", accounts.user_set_password, name="user_set_password"),
     path("users/<uuid:pk>/vehicles/", accounts.user_access, name="user_access"),
+    path("users/<uuid:pk>/delete/", accounts.user_delete, name="user_delete"),
     # Reachable only while the accounts table is empty; see views_setup.
     path("setup/", views_setup.setup, name="setup"),
     # Dashboard and search

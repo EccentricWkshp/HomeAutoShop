@@ -461,6 +461,11 @@ class TimeEntry(RevisionedModel):
 
     class Meta:
         ordering = ["-created_at"]
+        # Django's default pluralisation gives "time entrys". Harmless while
+        # it only showed in the admin; not harmless now that it is read back
+        # to somebody in a sentence explaining why they cannot delete an
+        # account (FR-ADM-2).
+        verbose_name_plural = _("time entries")
 
     def __str__(self) -> str:
         return f"{self.hours:.2f} h — {self.get_category_display()}"

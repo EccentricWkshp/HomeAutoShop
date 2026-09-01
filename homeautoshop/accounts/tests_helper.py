@@ -59,7 +59,7 @@ CLOSED_TO_HELPERS = frozenset({
     "spec_add", "spec_copy", "spec_delete", "spec_edit",
     "spec_from_decode", "spec_from_scan", "sync_queue", "tool_delete",
     "tool_list", "tool_search", "trash", "trash_restore", "user_access",
-    "user_create", "user_detail", "user_list", "user_set_active",
+    "user_create", "user_delete", "user_detail", "user_list", "user_set_active",
     "user_set_password", "vendor_create", "vendor_delete", "vendor_edit",
     "vendor_list", "vin_decode", "vin_read", "vin_validate",
     "work_order_delete", "work_order_expense_add",

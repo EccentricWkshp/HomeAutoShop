@@ -19,7 +19,7 @@ recovered from inside the application.
 from __future__ import annotations
 
 from django.test import TestCase
-from django.urls import NoReverseMatch, reverse
+from django.urls import reverse
 
 from homeautoshop.accounts.models import Role, User
 from homeautoshop.people.models import Person
@@ -64,15 +64,39 @@ class WhoCanSeeItTests(Fixture):
         self.assertEqual(self.member.role, Role.MEMBER)
 
 
-class NobodyIsDeletedTests(Fixture):
-    def test_there_is_no_delete_route(self):
-        """Stated as a test because it is a decision, not an omission."""
-        with self.assertRaises(NoReverseMatch):
-            reverse("user_delete", args=[self.member.pk])
+class NobodyWhoWorkedHereIsDeletedTests(Fixture):
+    """This used to say nobody is deleted at all, and the reasoning it gave
+    was right about the case it had in mind and wrong about the other one.
 
-    def test_the_screen_says_why(self):
-        page = self.client.get(reverse("user_detail", args=[self.member.pk])).content.decode()
-        self.assertIn("no delete", page.lower())
+    Detaching a name from work already recorded is not something to offer, and
+    that has not changed. But an account created by mistake, or while trying
+    the application out, has no name on anything — and refusing to remove
+    those meant an instance filled with fragments whose only cure was to wipe
+    it and start again. So the rule gained a condition rather than going away:
+    deletion is offered exactly when nothing in the shop carries the name.
+    """
+
+    def test_an_account_with_history_is_not_offered_deletion(self):
+        from homeautoshop.assets.models import Asset
+
+        Asset.objects.create(nickname="Red truck", created_by=self.member)
+
+        page = self.client.get(
+            reverse("user_detail", args=[self.member.pk])
+        ).content.decode()
+
+        self.assertNotIn(reverse("user_delete", args=[self.member.pk]), page)
+        self.assertIn("cannot be deleted", page.lower())
+
+    def test_and_the_route_refuses_it_too(self):
+        """The screen withholding the button is not the enforcement."""
+        from homeautoshop.assets.models import Asset
+
+        Asset.objects.create(nickname="Red truck", created_by=self.member)
+
+        self.client.post(reverse("user_delete", args=[self.member.pk]))
+
+        self.assertTrue(User.objects.filter(pk=self.member.pk).exists())
 
     def test_deactivating_keeps_what_they_recorded(self):
         from homeautoshop.assets.models import Asset

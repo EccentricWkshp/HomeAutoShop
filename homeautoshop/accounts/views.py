@@ -28,6 +28,7 @@ from homeautoshop.people.models import Person
 
 from .forms import PasswordPairMixin, password_fields
 from .models import AssetAccess, Role, User, require
+from .services import describe_traces, traces
 
 
 def _style(form) -> None:
@@ -202,6 +203,10 @@ def user_detail(request, pk):
             # from helper to member leaves its rows behind, and a list that
             # hides them would make changing the role back a surprise.
             "is_helper": person.role == Role.HELPER,
+            # What their name is on. Empty means the account may be removed;
+            # anything else is both the reason it may not be and the list of
+            # things to go and deal with first.
+            "traces": traces(person),
             "grants": granted,
             "grantable": Asset.objects.exclude(
                 pk__in=granted.values_list("asset_id", flat=True)
@@ -255,6 +260,56 @@ def user_access(request, pk):
         % {"name": person.display_name, "vehicle": asset.nickname},
     )
     return redirect("user_detail", pk=person.pk)
+
+
+@require_POST
+@login_required
+def user_delete(request, pk):
+    """Remove an account that never did anything (FR-ADM-2, FR-ADM-8).
+
+    Deactivation stays the answer for somebody who worked here — their name
+    belongs on what they did. This is for the other kind: an account created
+    by mistake or while trying the application out, which has no history to
+    protect and, until now, could only be hidden. An instance used for a while
+    filled up with those and the only way to tidy it was to start again.
+
+    Refused the moment anything carries their name, and the refusal says what,
+    because "this account has history" is a dead end and "3 work orders, 2
+    time entries" is a list of things to go and deal with.
+    """
+    require(request.user, "user.manage")
+    person = get_object_or_404(User, pk=pk)
+
+    if person.pk == request.user.pk:
+        messages.error(
+            request,
+            _("You cannot delete your own account. Ask another administrator."),
+        )
+        return redirect("user_detail", pk=person.pk)
+    if _would_strand_the_shop(request, person, active=False):
+        return redirect("user_detail", pk=person.pk)
+
+    marks = traces(person)
+    if marks:
+        messages.error(
+            request,
+            _(
+                "%(name)s has %(what)s in the shop, so the account is kept and "
+                "their name stays on it. Deactivate them instead, or remove "
+                "those records first."
+            )
+            % {"name": person.display_name, "what": describe_traces(marks)},
+        )
+        return redirect("user_detail", pk=person.pk)
+
+    name = person.display_name
+    person.delete()
+    messages.success(
+        request,
+        _("Deleted %(name)s. Nothing in the shop carried their name.")
+        % {"name": name},
+    )
+    return redirect("user_list")
 
 
 @require_POST

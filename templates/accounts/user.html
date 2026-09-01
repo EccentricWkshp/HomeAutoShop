@@ -135,9 +135,36 @@
           <button class="primary" type="submit">{% translate "Let them sign in again" %}</button>
         </form>
       {% endif %}
-      <p class="small muted" style="margin-top:.75rem">
-        {% translate "There is no delete. Removing an account would not remove the work it recorded — it would detach their name from it, and nothing brings that back." %}
-      </p>
+      {% comment %}
+      Delete is offered only for an account nothing in the shop names, which
+      is why the two branches say such different things. The refusal is not a
+      policy statement — it is the list of records to go and deal with, since
+      "this account has history" leaves somebody with nowhere to go.
+      {% endcomment %}
+      {% if traces %}
+        <p class="small muted" style="margin-top:.75rem">
+          {% translate "This account cannot be deleted: its name is on work that stays. Deactivating takes the key away without rewriting any of it." %}
+        </p>
+        <ul class="list small">
+          {% for label, count in traces %}<li class="spread"><span>{{ label }}</span><span class="mono">{{ count }}</span></li>{% endfor %}
+        </ul>
+      {% elif not is_you %}
+        <form method="post" action="{% url 'user_delete' person.pk %}" style="margin-top:.75rem">
+          {% csrf_token %}
+          <button type="submit" class="danger"
+                  {% if is_last_admin %}disabled{% endif %}
+                  data-confirm="{% translate 'Delete this account for good?' %}">
+            {% translate "Delete this account" %}
+          </button>
+        </form>
+        <p class="small muted">
+          {% translate "Nothing in the shop carries their name, so there is nothing to lose by removing it." %}
+        </p>
+      {% else %}
+        <p class="small muted" style="margin-top:.75rem">
+          {% translate "You cannot delete your own account. Ask another administrator." %}
+        </p>
+      {% endif %}
     </section>
   </aside>
 </div>

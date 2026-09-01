@@ -80,6 +80,8 @@ class Media(AppendOnlyModel):
 
     class Meta:
         ordering = ["-created_at"]
+        # "medias" otherwise, which is nobody's plural of anything.
+        verbose_name_plural = _("media files")
 
     def __str__(self) -> str:
         return self.original_filename or str(self.pk)
