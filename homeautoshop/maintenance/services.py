@@ -225,6 +225,41 @@ def project(item: AssetServiceItem, *, today: date | None = None) -> Projection:
     )
 
 
+def recurrence_days(item: AssetServiceItem, *, today: date | None = None) -> int | None:
+    """How often this item comes round, in days — or `None` if it cannot say.
+
+    `project` answers when an item is next due. This answers how long until the
+    one after that, which is what a forecast needs: an oil change on a 5,000 mi
+    interval lands three times in a year on a daily driver and once on a truck
+    that leaves the yard twice a month, and a projection that counted each item
+    once would understate exactly the vehicles that cost the most to run.
+
+    Same rule as everywhere else in this module — **first to arrive wins**. An
+    item with both a distance and a time interval recurs on whichever comes up
+    sooner at this asset's observed rate.
+    """
+    today = today or timezone.localdate()
+    asset = item.asset
+    candidates: list[int] = []
+
+    if item.interval_months:
+        # Against a real anchor rather than 30-day months, so twelve monthly
+        # services in a row still land on twelve distinct months.
+        candidates.append((_add_months(today, item.interval_months) - today).days)
+
+    rate = usage_rate(asset, today=today)
+    if rate.per_day > 0:
+        interval = _interval_in_asset_units(item, asset)
+        if item.interval_hours and asset.meter == "engine_hours":
+            hours = Decimal(item.interval_hours)
+            interval = min(interval, hours) if interval else hours
+        if interval:
+            candidates.append(int(interval / rate.per_day))
+
+    usable = [days for days in candidates if days > 0]
+    return min(usable) if usable else None
+
+
 @transaction.atomic
 def apply_template(asset, template: ScheduleTemplate, *, overwrite: bool = False) -> list[AssetServiceItem]:
     """Materialise a template onto an asset as editable per-asset items."""

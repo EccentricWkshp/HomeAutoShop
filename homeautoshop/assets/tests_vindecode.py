@@ -20,6 +20,7 @@ from django.urls import reverse
 
 from homeautoshop.accounts.models import Role, User
 from homeautoshop.assets.models import Asset
+from homeautoshop.assets.services import _readable_fields
 from homeautoshop.assets.vin_schemes import SCHEMES
 from homeautoshop.assets.vindecode import decode, describe
 
@@ -704,3 +705,65 @@ class GmEngineSheetTests(TestCase):
                 "gmc-truck-1955-1959-v8",
             },
         )
+
+
+class ChevroletSeriesTableTests(TestCase):
+    """Page 2 of `CA_VIN-Chassis_ID.pdf`, and the half of it that is readable.
+
+    The sheet's second page expands each series into its class, wheelbase and
+    bed type. Only the first two can be read from a VIN. Bed type lives in the
+    fourth digit of the model number — 3104 stepside, 3124 Fleetside Cameo,
+    3154 4WD — and the number stamped on the door carries only 3100, so a
+    Chevrolet of these years cannot be read as a stepside and is not.
+    """
+
+    def test_the_series_names_a_wheelbase_the_number_never_carried(self):
+        self.assertIn("125.25 in", describe("5GRB292").summary)
+        self.assertIn("116 in", describe("H53S7552").summary)
+
+    def test_the_same_series_moved_to_a_shorter_chassis_in_the_2nd_series(self):
+        """A 3600 is a 125.25 in truck through the 1955 1st series and a
+        123.25 in one after, which is why the reading takes the scheme's own
+        table rather than one table for the model designation."""
+        self.assertIn("123.25 in", describe("3E57S7552").summary)
+
+    def test_it_is_marked_as_implied_rather_than_stamped(self):
+        found = describe("5GRB292")
+        rating = next(r for r in found.readings if r.role == "rating")
+
+        self.assertEqual(rating.code, "")
+        self.assertTrue(rating.derived)
+
+    def test_the_model_written_to_a_vehicle_is_the_designation_alone(self):
+        """It used to be the whole sentence. `model_from` points at the series
+        text, so every word added there landed in a vehicle's model column —
+        which is what made a `3600` into a `3600, 3/4 ton pickup, 125.25 in
+        wheelbase` and is why the class and wheelbase are a reading of their
+        own rather than more words in that string."""
+        for vin, model in (
+            ("5GRB292", "3600"),
+            ("H53S7552", "3100"),
+            ("3E57S7552", "3600"),
+            ("V3A58S7552", "3100"),
+        ):
+            with self.subTest(vin=vin):
+                self.assertEqual(_readable_fields(describe(vin))["model"], model)
+
+    def test_no_bed_type_is_claimed_where_the_number_cannot_carry_one(self):
+        """The one thing on that page these VINs genuinely cannot say: reading
+        it would need the fourth digit of the model number, which is nowhere in
+        them.
+
+        Scoped to those schemes rather than to all of them, because a bed type
+        is not unreadable in general — GMC's 1967–71 numbers carry a two-
+        character body position and this file reads `0C` off it as a stepside.
+        What decides it is whether the scheme has the position, which is the
+        distinction a blanket ban would have flattened.
+        """
+        for scheme in SCHEMES:
+            if "class_by_series" not in scheme:
+                continue
+            blob = repr(scheme["tables"]) + repr(scheme["class_by_series"])
+            for absent in ("Stepside", "Fleetside", "Cameo"):
+                with self.subTest(scheme=scheme["id"], term=absent):
+                    self.assertNotIn(absent, blob)

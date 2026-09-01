@@ -220,11 +220,10 @@ def _read(scheme: dict, vin: str, *, year: int | None) -> Candidate | None:
         readings = _fields(scheme, vin, year=years[0], fallback=readings)
     readings = _explain_sequence(scheme, readings)
 
-    # Last, because it is derived from the year the readings above settled and
-    # must not be counted among the evidence that settled it.
-    engine = _derived_engine(scheme, years)
-    if engine is not None:
-        readings = [*readings, engine]
+    # Last, because these are worked out from the readings above and must not
+    # be counted among the evidence that produced them.
+    derived = (_derived_engine(scheme, years), _derived_class(scheme, readings))
+    readings = [*readings, *(r for r in derived if r is not None)]
 
     return Candidate(
         scheme=scheme["id"],
@@ -412,6 +411,37 @@ def _explain_sequence(scheme: dict, readings: list[Reading]) -> list[Reading]:
         )
         for reading in readings
     ]
+
+
+def _derived_class(scheme: dict, readings: list[Reading]) -> Reading | None:
+    """The tonnage and wheelbase a Chevrolet's series code implies.
+
+    Page 2 of `CA_VIN-Chassis_ID.pdf` expands each series into its class,
+    wheelbase and bed type. Only the first two are readable from a VIN: bed
+    type lives in the fourth digit of the model number — 3104 stepside, 3124
+    Fleetside Cameo, 3154 4WD — and the number stamped on the door carries
+    only 3100. So a Chevrolet of these years cannot be read as a stepside, and
+    this does not pretend otherwise.
+
+    Kept out of the series text on purpose. That text is what `model_from`
+    writes to the vehicle, and `3600` is a model where `3600, 3/4 ton pickup,
+    125.25 in wheelbase` is a sentence about one.
+    """
+    table = scheme.get("class_by_series")
+    if not table:
+        return None
+    code = next((r.code for r in readings if r.role == "series"), "")
+    text = table.get(code)
+    if not text:
+        return None
+    return Reading(
+        role="rating",
+        label=str(_("Class and wheelbase")),
+        code="",
+        text=str(text),
+        free=True,
+        derived=True,
+    )
 
 
 def _entry_allows(entry: dict, years: tuple[int, ...]) -> bool:

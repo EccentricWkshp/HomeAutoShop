@@ -35,11 +35,17 @@
   {% endif %}
 </div>
 
-<section class="card">
+<section class="card" id="campaigns" data-live="campaigns">
   <h2>{% translate "Campaigns" %}</h2>
   <ul class="list">
     {% for recall in recalls %}
-      <li>
+      {% comment %}
+      Anchored per campaign rather than per section. A vehicle can carry a
+      dozen of these and the form is inside the row, so landing at the top of
+      the list would still leave somebody hunting for the one they just
+      recorded — which is the bug, only shorter.
+      {% endcomment %}
+      <li id="recall-{{ recall.pk }}">
         <div class="spread">
           <div>
             <strong class="mono">{{ recall.campaign_number }}</strong> — {{ recall.component }}
@@ -53,7 +59,7 @@
         {% if recall.remedy %}<p class="small muted"><strong>{% translate "Remedy" %}:</strong>
           {{ recall.remedy|truncatewords:40 }}</p>{% endif %}
         <form method="post" action="{% url 'recall_status' asset.pk recall.pk %}" class="row">
-          {% csrf_token %}
+          {% csrf_token %}<input type="hidden" name="_anchor" value="recall-{{ recall.pk }}">
           <select name="owner_status" class="select" aria-label="{% translate 'What you did about it' %}">
             {% for value, label in statuses %}
               <option value="{{ value }}" {% if recall.owner_status == value %}selected{% endif %}>{{ label }}</option>

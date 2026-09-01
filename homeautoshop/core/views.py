@@ -397,13 +397,14 @@ def trash_restore(request, kind: str, pk):
 @login_required
 def reports(request):
     """Shop-level reporting (FR-REP-3/4). Every table exports to CSV."""
-    from .costs import active_warranties, inventory_value, spend_by_month
+    from .costs import active_warranties, forecast, inventory_value, spend_by_month
 
     return render(
         request,
         "core/reports.html",
         {
             "spend": spend_by_month(),
+            "forecast": forecast(),
             "inventory_value": inventory_value(),
             "warranties": active_warranties()[:50],
             "assets": Asset.objects.fleet(),
@@ -433,7 +434,7 @@ def export_csv(request, kind: str):
 
     from django.http import HttpResponse
 
-    from .costs import active_warranties, spend_by_month
+    from .costs import active_warranties, forecast, spend_by_month
 
     response = HttpResponse(content_type="text/csv")
     response["Content-Disposition"] = f'attachment; filename="{kind}.csv"'
@@ -443,6 +444,21 @@ def export_csv(request, kind: str):
         writer.writerow(["month", "amount_minor", "currency"])
         for row in spend_by_month():
             writer.writerow([row["month"], row["amount_minor"], row["money"].currency])
+    elif kind == "forecast":
+        # One row per expected occurrence rather than per month, because the
+        # month total is the part somebody can already read on the page and the
+        # working is the part they cannot. An unpriced row exports with an
+        # empty amount, never a zero: a spreadsheet sums a zero.
+        writer.writerow(["month", "due_on", "vehicle", "service", "amount_minor", "currency"])
+        plan = forecast()
+        for month in plan.months:
+            for entry in month.entries:
+                writer.writerow([
+                    month.month, entry.due_on, entry.item.asset.nickname,
+                    entry.item.definition.name,
+                    "" if entry.amount_minor is None else entry.amount_minor,
+                    plan.currency,
+                ])
     elif kind == "warranties":
         writer.writerow(["part", "vehicle", "installed", "expires", "work_order"])
         for usage in active_warranties():

@@ -1084,10 +1084,10 @@ GM_EARLY = [
             "year": {
                 "E": 1947, "F": 1948, "G": 1949, "H": 1950, "J": 1951, "K": 1952,
             },
-            "series": {
-                "P": _("3100, 1/2 ton pickup, 116 in wheelbase"),
-                "R": _("3600, 3/4 ton pickup, 125.25 in wheelbase"),
-            },
+            # The designation alone, because `model_from` writes this to the
+            # vehicle: `3600` is a model, and `3600, 3/4 ton pickup, 125.25 in
+            # wheelbase` is a sentence about one. The rest is below.
+            "series": {"P": _("3100"), "R": _("3600")},
             "month": {
                 "A": _("January"), "B": _("February"), "C": _("March"),
                 "D": _("April"), "E": _("May"), "F": _("June"), "G": _("July"),
@@ -1098,6 +1098,12 @@ GM_EARLY = [
         # One engine for the whole era, so it needs no years: the 216.5 ran
         # from 1947 to 1953 and this scheme ends in 1952.
         "engine_by_year": [{"text": _("216.5 CID 6-cyl, I-6")}],
+        # Page 2 of the same sheet. Constant across this scheme's years — the
+        # 3100 stayed on the 116 in chassis until the 1955 2nd series.
+        "class_by_series": {
+            "P": _("1/2 ton, 116 in wheelbase"),
+            "R": _("3/4 ton, 125.25 in wheelbase"),
+        },
         "notes": _(
             "The two-digit factory codes this sheet also lists — 12 Buffalo, "
             "14 Baltimore, 20 Los Angeles, 21 Janesville — cannot be told from "
@@ -1106,6 +1112,14 @@ GM_EARLY = [
     },
     {
         "id": "chevrolet-truck-1955-1959",
+        "class_by_series": {
+            "H2": _("1/2 ton, 114 in wheelbase"),
+            "M2": _("1/2 ton, 123.25 in wheelbase"),
+            "J2": _("3/4 ton, 123.25 in wheelbase"),
+            "3A": _("1/2 ton, 114 in wheelbase"),
+            "3B": _("1/2 ton, 123.25 in wheelbase"),
+            "3E": _("3/4 ton, 123.25 in wheelbase"),
+        },
         "also": "CA_Engine_ID.pdf",
         "model_from": "series",
         "label": _("Chevrolet truck, 1955–59"),
@@ -1121,10 +1135,10 @@ GM_EARLY = [
             {"role": "sequence", "width": 0, "label": _("Production number")},
         ],
         "tables": {
+            # The designation alone — `3100 (1955 2nd series)` is not a
+            # model, and the year is decoded from its own position anyway.
             "series": {
-                "H2": _("3100 (1955 2nd series)"),
-                "M2": _("3200 (1955 2nd series)"),
-                "J2": _("3600 (1955 2nd series)"),
+                "H2": _("3100"), "M2": _("3200"), "J2": _("3600"),
                 "3A": _("3100"), "3B": _("3200"), "3E": _("3600"),
             },
             "year": {
@@ -1145,6 +1159,14 @@ GM_EARLY = [
     },
     {
         "id": "chevrolet-truck-1955-1959-v8",
+        "class_by_series": {
+            "H2": _("1/2 ton, 114 in wheelbase"),
+            "M2": _("1/2 ton, 123.25 in wheelbase"),
+            "J2": _("3/4 ton, 123.25 in wheelbase"),
+            "3A": _("1/2 ton, 114 in wheelbase"),
+            "3B": _("1/2 ton, 123.25 in wheelbase"),
+            "3E": _("3/4 ton, 123.25 in wheelbase"),
+        },
         "also": "CA_Engine_ID.pdf",
         "model_from": "series",
         "label": _("Chevrolet truck V8, 1955–59"),
@@ -1171,10 +1193,10 @@ GM_EARLY = [
                     {"text": _("283 CID V8"), "years": [1958, 1959]},
                 ],
             },
+            # The designation alone — `3100 (1955 2nd series)` is not a
+            # model, and the year is decoded from its own position anyway.
             "series": {
-                "H2": _("3100 (1955 2nd series)"),
-                "M2": _("3200 (1955 2nd series)"),
-                "J2": _("3600 (1955 2nd series)"),
+                "H2": _("3100"), "M2": _("3200"), "J2": _("3600"),
                 "3A": _("3100"), "3B": _("3200"), "3E": _("3600"),
             },
             "year": {
@@ -1430,6 +1452,10 @@ GM_LAST = [
     },
     {
         "id": "chevrolet-truck-1953-1955",
+        "class_by_series": {
+            "H": _("1/2 ton, 116 in wheelbase"),
+            "J": _("3/4 ton, 125.25 in wheelbase"),
+        },
         "also": "CA_Engine_ID.pdf",
         "label": _("Chevrolet truck, 1953–55 1st series"),
         "make": "Chevrolet",
@@ -1463,6 +1489,10 @@ GM_LAST = [
     },
     {
         "id": "chevrolet-truck-1953-1955-v8",
+        "class_by_series": {
+            "H": _("1/2 ton, 116 in wheelbase"),
+            "J": _("3/4 ton, 125.25 in wheelbase"),
+        },
         "also": "CA_Engine_ID.pdf",
         "label": _("Chevrolet truck V8, 1953–55 1st series"),
         "make": "Chevrolet",

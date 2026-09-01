@@ -15,6 +15,39 @@
       </table></div>
     </section>
 
+    {% comment %}
+    The forward-looking twin of Spend by month, and it sits directly under it
+    on purpose: the same shape either side of today is what makes "is this year
+    going to be worse than last" answerable at a glance.
+    {% endcomment %}
+    <section class="card">
+      <div class="spread"><h2>{% translate "Next 12 months" %}</h2>
+        <a class="btn small" href="{% url 'export_csv' 'forecast' %}">{% translate "CSV" %}</a></div>
+      <p class="mono" style="font-size:1.75rem;margin:.25rem 0">{{ forecast.total }}</p>
+      {% comment %}
+      The basis line is not decoration. This figure rests on an observed usage
+      rate and on past work orders, and where a service has never been done
+      here it is left out entirely — so the number is a floor, and a floor
+      presented as a total is worse than no number.
+      {% endcomment %}
+      <p class="small {% if not forecast.is_complete %}muted{% endif %}">{{ forecast.basis }}</p>
+      <div class="tablewrap"><table>
+        <tr><th>{% translate "Month" %}</th><th>{% translate "Due" %}</th>
+          <th>{% translate "Expected" %}</th></tr>
+        {% for month in forecast.months %}
+          <tr>
+            <td>{{ month.month }}</td>
+            <td>{% blocktranslate count n=month.entries|length %}{{ n }} service{% plural %}{{ n }} services{% endblocktranslate %}
+              {% if month.unpriced %}<div class="small muted">{% blocktranslate count n=month.unpriced %}{{ n }} not priced{% plural %}{{ n }} not priced{% endblocktranslate %}</div>{% endif %}
+            </td>
+            <td class="mono">{{ month.money }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3" class="muted">{% translate "Nothing scheduled falls in the next year." %}</td></tr>
+        {% endfor %}
+      </table></div>
+    </section>
+
     <section class="card">
       <div class="spread"><h2>{% translate "Cost by vehicle" %}</h2>
         <a class="btn small" href="{% url 'export_csv' 'assets' %}">{% translate "CSV" %}</a></div>
