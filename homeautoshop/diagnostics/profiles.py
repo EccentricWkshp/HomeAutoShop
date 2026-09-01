@@ -231,20 +231,36 @@ table_extractor:
 SEED = (XTOOL_D8, GENERIC_TEXT)
 
 
-def seed() -> int:
+def seed(*, revive: bool = False) -> int:
     """Install the bundled profiles. Idempotent, and never clobbers an edit.
 
     A profile the operator has changed is theirs. Re-seeding bumps nothing and
     overwrites nothing — a new bundled version arrives as a new `version` row,
     which is what versioning is for.
+
+    **A removed profile stays removed** on the boot path, for the same reason
+    the schedule and checklist seeders leave a deleted template deleted: an
+    operator who took the generic text profile off this instance meant it, and
+    should not have to do it again after every restart. `(name, version)` is
+    uniquely constrained regardless of `deleted_at`, so re-creating one would
+    fail on the constraint rather than merely annoy.
+
+    `revive=True` is the other intent — the same person changing their mind,
+    which is a deliberate act and gets its own button (`restore_builtins`).
+    Without it, removing the XTOOL D8 profile would be a one-way door once the
+    trash aged out, and the catalog deliberately publishes nothing that
+    duplicates what ships.
     """
     installed = 0
     for document in SEED:
         candidate = from_yaml(document, source=ProfileSource.BUILTIN)
-        exists = ParserProfile.all_objects.filter(
+        existing = ParserProfile.all_objects.filter(
             name=candidate.name, version=candidate.version
-        ).exists()
-        if exists:
+        ).first()
+        if existing is not None:
+            if revive and existing.is_deleted:
+                existing.restore()
+                installed += 1
             continue
         candidate.save()
         installed += 1

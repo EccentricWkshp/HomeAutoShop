@@ -192,6 +192,42 @@ ALLOWED_VINS = capture.synthetic_vins() | {
 VIN_SHAPED = re.compile(r"\b[A-HJ-NPR-Z0-9]{17}\b")
 
 
+def _ignored() -> set[pathlib.Path]:
+    """Files git would never publish, so files this test cannot be about.
+
+    The subject here is **what leaves this machine**, and the working tree is
+    not that. Research notes gathered for a later phase — a manifest of
+    third-party report URLs, some of which carry a VIN in the path — sat
+    untracked and gitignored and failed a test about the contents of the
+    repository, which they were never going to be part of.
+
+    Only *ignored* files are skipped, never merely untracked ones. A new
+    untracked file is one `git add` away from being published, and catching it
+    then is the whole reason this runs before a commit rather than after.
+
+    If git cannot answer — no git, not a checkout, a machine that has never
+    run it — nothing is skipped and everything is scanned. Wrong in the
+    direction that produces a false alarm rather than a quiet publication.
+    """
+    import subprocess
+
+    try:
+        done = subprocess.run(
+            ["git", "ls-files", "--others", "--ignored", "--exclude-standard", "-z"],
+            cwd=REPO,
+            capture_output=True,
+            timeout=30,
+            check=True,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return set()
+    return {
+        REPO / name.decode("utf-8")
+        for name in done.stdout.split(b"\0")
+        if name
+    }
+
+
 class RedactionTests(unittest.TestCase):
     """The repository is going to be public. Nobody's vehicle goes with it.
 
@@ -204,10 +240,13 @@ class RedactionTests(unittest.TestCase):
     def test_no_real_vin_appears_anywhere_in_the_tree(self):
         """A real VIN satisfies its check digit; a random 17 characters does not."""
         offenders = []
+        ignored = _ignored()
         for path in REPO.rglob("*"):
             if not path.is_file() or path.suffix.lower() not in SCANNED_SUFFIXES:
                 continue
             if any(part in SKIP_DIRECTORIES for part in path.parts):
+                continue
+            if path in ignored:
                 continue
             try:
                 text = path.read_text(encoding="utf-8")

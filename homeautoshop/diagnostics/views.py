@@ -660,12 +660,21 @@ def elm_capture(request, pk):
 
 @login_required
 def profile_list(request):
+    """Kept as an address, not as a page.
+
+    Parser profiles used to have a screen of their own here, reachable only
+    from the scan queue — which meant the one page listing everything a shop
+    imports, exports and shares listed two of the three kinds, while its own
+    copy already said it covered "scan-tool profiles". A profile is the same
+    sort of thing as a schedule and a checklist: YAML, an author, a source,
+    installed from the same catalog by the same validator. It belongs beside
+    them, so it is now listed there.
+
+    This redirect stays because the URL was linked and bookmarkable, and a
+    dead link is a worse answer than a hop.
+    """
     require(request.user, "integration.manage")
-    return render(
-        request,
-        "diagnostics/profiles.html",
-        {"profiles": ParserProfile.objects.all()},
-    )
+    return redirect(reverse("template_list") + "#profiles")
 
 
 @require_GET
@@ -689,13 +698,13 @@ def profile_import(request):
         text = text_from(request, "profile")
     except NothingToImport as exc:
         messages.warning(request, str(exc))
-        return redirect("profile_list")
+        return redirect("template_list")
 
     try:
         profile = profilelib.from_yaml(text)
     except profilelib.ProfileInvalid as exc:
         messages.error(request, _("That profile was refused: %(detail)s") % {"detail": exc})
-        return redirect("profile_list")
+        return redirect("template_list")
 
     if ParserProfile.all_objects.filter(name=profile.name, version=profile.version).exists():
         messages.error(
@@ -703,12 +712,42 @@ def profile_import(request):
             _("%(name)s v%(v)d is already here. Bump the version to import a revision.")
             % {"name": profile.name, "v": profile.version},
         )
-        return redirect("profile_list")
+        return redirect("template_list")
 
     profile.created_by = request.user
     profile.save()
     messages.success(request, _("Imported %(name)s.") % {"name": profile.label})
-    return redirect("profile_list")
+    return redirect("template_list")
+
+
+@require_POST
+@login_required
+def profile_delete(request, pk):
+    """Remove a parser profile (FR-INT-7).
+
+    Switching one off was the only way to say no to it, which is the same gap
+    a scheduled item had: a profile that is wrong, superseded or simply for a
+    tool nobody here owns stayed in the list forever, and the catalog could
+    install one that nothing could take away.
+
+    Nothing that was already read is disturbed. `DiagnosticSession` points at
+    its profile with `SET_NULL` and keeps `parser_version` in a column of its
+    own, so a session goes on saying which version read it after the profile
+    is gone. Soft, like every other delete here, so it is in the trash for
+    thirty days — and a shipped profile can also be put back at any time from
+    **Restore shipped templates**, which matters because removing the built-in
+    that reads XTOOL D8 reports would otherwise be a one-way door.
+    """
+    require(request.user, "integration.manage")
+    profile = get_object_or_404(ParserProfile, pk=pk)
+    name = profile.label
+    profile.delete()
+    messages.success(
+        request,
+        _("Removed %(name)s. Scans already read with it keep their results.")
+        % {"name": name},
+    )
+    return redirect(request.POST.get("back") or "template_list")
 
 
 @require_POST
@@ -726,4 +765,4 @@ def profile_toggle(request, pk):
             "state": _("in use") if profile.is_active else _("switched off"),
         },
     )
-    return redirect("profile_list")
+    return redirect("template_list")

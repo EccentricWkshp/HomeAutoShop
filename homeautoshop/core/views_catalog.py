@@ -28,7 +28,16 @@ from .imports import NothingToImport, text_from
 
 @login_required
 def template_list(request):
-    """The schedules this shop knows about, and where each came from."""
+    """Everything this shop imports, exports and shares, and where each came from.
+
+    All three kinds together, because they are the same kind of thing: YAML
+    with an author and a source, installed from the same catalog through the
+    same validator. Parser profiles used to sit on a page of their own under
+    the scan queue, reachable only by somebody already looking at scans — and
+    this page's own copy said it covered "scan-tool profiles" while listing
+    none. A feature you can only find from the screen you already know about
+    is a feature most people never find.
+    """
     require(request.user, "settings.manage")
     return render(
         request,
@@ -36,6 +45,7 @@ def template_list(request):
         {
             "templates": ScheduleTemplate.objects.all().prefetch_related("items"),
             "checklists": InspectionTemplate.objects.all().prefetch_related("points"),
+            "profiles": ParserProfile.objects.all(),
             "catalog_configured": catalog_lib.is_configured(),
         },
     )
@@ -256,23 +266,32 @@ def restore_builtins(request):
     """
     require(request.user, "settings.manage")
 
+    from homeautoshop.diagnostics import profiles as profile_seed
     from homeautoshop.inspections import seed as checklist_seed
     from homeautoshop.maintenance import seed as schedule_seed
 
-    before = (
-        ScheduleTemplate.objects.count() + InspectionTemplate.objects.count()
-    )
+    def count():
+        # Parser profiles are counted here for the same reason they are listed
+        # on this page: removing the built-in that reads XTOOL D8 reports is
+        # exactly as one-way as removing the diesel schedule, and the button
+        # that undoes one should undo the other.
+        return (
+            ScheduleTemplate.objects.count()
+            + InspectionTemplate.objects.count()
+            + ParserProfile.objects.count()
+        )
+
+    before = count()
     schedule_seed.install(revive=True)
     checklist_seed.install(revive=True)
-    restored = (
-        ScheduleTemplate.objects.count() + InspectionTemplate.objects.count() - before
-    )
+    profile_seed.seed(revive=True)
+    restored = count() - before
 
     messages.success(
         request,
-        _("Put back %(n)d shipped template(s). Nothing you wrote was touched.")
+        _("Put back %(n)d shipped item(s). Nothing you wrote was touched.")
         % {"n": restored}
         if restored
-        else _("Every shipped template was already here."),
+        else _("Everything shipped was already here."),
     )
     return redirect("template_list")

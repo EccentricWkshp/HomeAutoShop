@@ -19,7 +19,18 @@ staticfiles/
 # email, twice over. Captured as redacted text and geometry by
 # homeautoshop/purchasing/importers/capture.py, and the capture is what ships.
 Artifacts/samples/**/*.pdf
-Artifacts/samples/*.jpg
+# `**/`, not `*/`. This one read `Artifacts/samples/*.jpg` while its three
+# neighbours matched at any depth, so photographs one folder further down -
+# `scan-reports/bt600plus/*.jpg`, tool screens shot in the garage - were not
+# ignored at all and a `git add -A` would have taken them.
+Artifacts/samples/**/*.jpg
 Artifacts/samples/**/*.jpeg
 Artifacts/samples/**/*.png
 Artifacts/samples/backups/
+
+# Research notes for a later phase: manifests of third-party scan reports found
+# on the public web, kept for their formats. Not ours to republish, and some of
+# the URLs carry the VIN of the vehicle the report was made for - so redacting
+# would break the link the entry exists for, and keeping it would put somebody's
+# VIN in a public repository. It stays on the machine that gathered it.
+Artifacts/samples/**/automotive_scan_tool_public_examples*.json

@@ -209,6 +209,7 @@ urlpatterns = [
     path("diagnostics/profiles/import/", diagnostics.profile_import, name="profile_import"),
     path("diagnostics/profiles/<uuid:pk>.yaml", diagnostics.profile_export, name="profile_export"),
     path("diagnostics/profiles/<uuid:pk>/toggle/", diagnostics.profile_toggle, name="profile_toggle"),
+    path("diagnostics/profiles/<uuid:pk>/delete/", diagnostics.profile_delete, name="profile_delete"),
     path("diagnostics/sessions/<uuid:pk>/", diagnostics.session_detail, name="session_detail"),
     path("diagnostics/sessions/<uuid:pk>/confirm/", diagnostics.session_confirm, name="session_confirm"),
     path("diagnostics/sessions/<uuid:pk>/discard/", diagnostics.session_discard, name="session_discard"),

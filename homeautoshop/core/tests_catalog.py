@@ -1600,13 +1600,16 @@ class GettingABuiltInBackTests(Base):
         self.assertFalse(ScheduleTemplate.objects.filter(pk=mine.pk).exists())
 
     def test_and_says_when_there_was_nothing_to_do(self):
-        # Both seeders, because the action covers both and a shop missing its
-        # checklists genuinely does have something put back.
+        # All three seeders, because the action covers all three: a shop
+        # missing its checklists or its parser profiles genuinely does have
+        # something put back, and the message would be wrong to say otherwise.
+        from homeautoshop.diagnostics import profiles as profile_seed
         from homeautoshop.inspections import seed as checklist_seed
         from homeautoshop.maintenance import seed
 
         seed.install()
         checklist_seed.install()
+        profile_seed.seed()
 
         response = self.client.post(reverse("restore_builtins"), follow=True)
 
@@ -1634,3 +1637,143 @@ class GettingABuiltInBackTests(Base):
         self.assertEqual(
             self.client.post(reverse("restore_builtins")).status_code, 403
         )
+
+
+class ParserProfilesAreOneOfTheTemplatesTests(Base):
+    """Reported as: the only way to that page is the scan queue.
+
+    It was, and the page it led to listed the third of three things that are
+    all the same kind of thing — YAML with an author and a source, installed
+    from the same catalog through the same validator. The templates page even
+    said in its own copy that the catalog publishes "scan-tool profiles" while
+    listing none of them.
+    """
+
+    def a_profile(self):
+        from homeautoshop.diagnostics import profiles as profile_seed
+        from homeautoshop.diagnostics.models import ParserProfile
+
+        profile_seed.seed()
+        return ParserProfile.objects.first()
+
+    def test_the_templates_page_lists_them(self):
+        profile = self.a_profile()
+        page = self.client.get(reverse("template_list"))
+        self.assertContains(page, profile.name)
+
+    def test_the_old_address_still_goes_somewhere(self):
+        """It was linked and bookmarkable; a dead link is worse than a hop."""
+        response = self.client.get(reverse("profile_list"))
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response["Location"].startswith(reverse("template_list")))
+
+    def test_the_scan_queue_button_points_at_the_page_that_lists_them(self):
+        page = self.client.get(reverse("diagnostic_queue")).content.decode()
+        self.assertIn(reverse("template_list") + "#profiles", page)
+
+    def test_it_is_reachable_without_knowing_about_scans(self):
+        """The actual complaint: findability, not the absence of a screen."""
+        page = self.client.get(reverse("dashboard")).content.decode()
+        self.assertIn(reverse("template_list"), page)
+
+
+class RemovingAParserProfileTests(Base):
+    """Switching one off was the only way to say no to it.
+
+    The same gap schedules had before they were removable, and scheduled items
+    had before that: a profile for a tool nobody here owns, or one superseded
+    by a better version, stayed in the list forever — and the catalog could
+    install one that nothing could take away.
+    """
+
+    def a_profile(self):
+        from homeautoshop.diagnostics import profiles as profile_seed
+        from homeautoshop.diagnostics.models import ParserProfile
+
+        profile_seed.seed()
+        return ParserProfile.objects.first()
+
+    def test_a_profile_can_be_removed(self):
+        from homeautoshop.diagnostics.models import ParserProfile
+
+        profile = self.a_profile()
+        self.client.post(reverse("profile_delete", args=[profile.pk]))
+        self.assertFalse(ParserProfile.objects.filter(pk=profile.pk).exists())
+
+    def test_removal_is_soft_and_lands_in_the_trash(self):
+        profile = self.a_profile()
+        self.client.post(reverse("profile_delete", args=[profile.pk]))
+        self.assertContains(self.client.get(reverse("trash")), profile.name)
+
+    def test_and_can_be_restored_from_there(self):
+        from homeautoshop.diagnostics.models import ParserProfile
+
+        profile = self.a_profile()
+        self.client.post(reverse("profile_delete", args=[profile.pk]))
+
+        self.client.post(reverse("trash_restore", args=["parser_profile", profile.pk]))
+
+        self.assertTrue(ParserProfile.objects.filter(pk=profile.pk).exists())
+
+    def test_a_scan_it_already_read_keeps_its_result(self):
+        """`SET_NULL` plus a version column of its own — the session goes on
+        saying which version read it after the profile is gone."""
+        from homeautoshop.assets.models import Asset
+        from homeautoshop.diagnostics.models import DiagnosticSession
+
+        profile = self.a_profile()
+        asset = Asset.objects.create(nickname="Truck")
+        session = DiagnosticSession.objects.create(
+            asset=asset, parser_profile=profile, parser_version=profile.version
+        )
+
+        self.client.post(reverse("profile_delete", args=[profile.pk]))
+
+        session.refresh_from_db()
+        self.assertEqual(session.parser_version, profile.version)
+
+    def test_restarting_does_not_bring_a_removed_one_back(self):
+        """Same rule as the templates: booting respects the removal.
+
+        Not only a matter of not arguing with the operator — `(name, version)`
+        is uniquely constrained regardless of `deleted_at`, so re-creating one
+        would fail on the constraint rather than merely annoy.
+        """
+        from homeautoshop.diagnostics import profiles as profile_seed
+        from homeautoshop.diagnostics.models import ParserProfile
+
+        profile = self.a_profile()
+        self.client.post(reverse("profile_delete", args=[profile.pk]))
+
+        profile_seed.seed()
+
+        self.assertFalse(ParserProfile.objects.filter(pk=profile.pk).exists())
+
+    def test_but_restore_shipped_templates_does(self):
+        """Otherwise removing the profile that reads XTOOL D8 reports is a
+        one-way door: the catalog deliberately publishes no twin of it."""
+        from homeautoshop.diagnostics.models import ParserProfile
+
+        profile = self.a_profile()
+        name, version = profile.name, profile.version
+        self.client.post(reverse("profile_delete", args=[profile.pk]))
+        # Past the trash, as a purge would leave it.
+        ParserProfile.all_objects.filter(pk=profile.pk).delete()
+
+        self.client.post(reverse("restore_builtins"), follow=True)
+
+        self.assertTrue(ParserProfile.objects.filter(name=name, version=version).exists())
+
+    def test_it_still_leaves_what_you_wrote_alone(self):
+        from homeautoshop.diagnostics import profiles as profilelib
+        from homeautoshop.diagnostics.models import ParserProfile
+
+        mine = profilelib.from_yaml(profilelib.GENERIC_TEXT)
+        mine.name = "Mine"
+        mine.source = "user"
+        mine.save()
+        self.client.post(reverse("profile_delete", args=[mine.pk]))
+
+        self.client.post(reverse("restore_builtins"))
+
+        self.assertFalse(ParserProfile.objects.filter(pk=mine.pk).exists())

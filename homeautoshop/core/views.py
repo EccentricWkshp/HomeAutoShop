@@ -361,6 +361,10 @@ TRASHABLE = {
     # a restored template rejoins a list rather than reattaching to anything.
     "schedule_template": ("homeautoshop.maintenance.models", "ScheduleTemplate"),
     "inspection_template": ("homeautoshop.inspections.models", "InspectionTemplate"),
+    # Same reasoning as the two above. A session records `parser_version` in a
+    # column of its own and points at the profile with SET_NULL, so a restored
+    # profile rejoins a list rather than reattaching to anything.
+    "parser_profile": ("homeautoshop.diagnostics.models", "ParserProfile"),
 }
 
 

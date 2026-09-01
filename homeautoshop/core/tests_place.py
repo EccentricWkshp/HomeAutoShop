@@ -122,7 +122,6 @@ class AnchorTests(Base):
         "core/reminders.html": 1,
         "core/trash.html": 1,
         "diagnostics/asset.html": 1,
-        "diagnostics/profiles.html": 1,
         "diagnostics/session.html": 1,
         "inspections/detail.html": 1,
         # Was 2. The scheduled-items card is a live region now — it grew a

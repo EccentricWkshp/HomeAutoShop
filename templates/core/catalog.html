@@ -7,7 +7,7 @@
 <div class="spread">
   <div>
     <h1>{% translate "Template catalog" %}</h1>
-    <p class="muted">{% translate "Schedules and parser profiles other people have published" %}</p>
+    <p class="muted">{% translate "Schedules, checklists and parser profiles other people have published" %}</p>
   </div>
   {% if configured %}
     <a class="btn" href="?refresh=1">{% translate "Check again" %}</a>
@@ -75,8 +75,8 @@ a vehicle.
               {% endcomment %}
               <div class="row">
                 <span class="pill ok">{% translate "Installed" %}</span>
-                {% if entry.installed_pk and entry.kind != 'profile' %}
-                  <form method="post" action="{% if entry.kind == 'schedule' %}{% url 'template_delete' entry.installed_pk %}{% else %}{% url 'checklist_delete' entry.installed_pk %}{% endif %}">
+                {% if entry.installed_pk %}
+                  <form method="post" action="{% if entry.kind == 'schedule' %}{% url 'template_delete' entry.installed_pk %}{% elif entry.kind == 'profile' %}{% url 'profile_delete' entry.installed_pk %}{% else %}{% url 'checklist_delete' entry.installed_pk %}{% endif %}">
                     {% csrf_token %}<input type="hidden" name="_anchor" value="{{ entry.kind }}s">
                     <input type="hidden" name="back" value="{% url 'catalog_browse' %}">
                     <button type="submit" class="linkish small"
@@ -120,8 +120,8 @@ a vehicle.
               {% endcomment %}
               <div class="row">
                 <span class="pill ok">{% translate "Installed" %}</span>
-                {% if entry.installed_pk and entry.kind != 'profile' %}
-                  <form method="post" action="{% if entry.kind == 'schedule' %}{% url 'template_delete' entry.installed_pk %}{% else %}{% url 'checklist_delete' entry.installed_pk %}{% endif %}">
+                {% if entry.installed_pk %}
+                  <form method="post" action="{% if entry.kind == 'schedule' %}{% url 'template_delete' entry.installed_pk %}{% elif entry.kind == 'profile' %}{% url 'profile_delete' entry.installed_pk %}{% else %}{% url 'checklist_delete' entry.installed_pk %}{% endif %}">
                     {% csrf_token %}<input type="hidden" name="_anchor" value="{{ entry.kind }}s">
                     <input type="hidden" name="back" value="{% url 'catalog_browse' %}">
                     <button type="submit" class="linkish small"
@@ -178,8 +178,8 @@ a vehicle.
               {% endcomment %}
               <div class="row">
                 <span class="pill ok">{% translate "Installed" %}</span>
-                {% if entry.installed_pk and entry.kind != 'profile' %}
-                  <form method="post" action="{% if entry.kind == 'schedule' %}{% url 'template_delete' entry.installed_pk %}{% else %}{% url 'checklist_delete' entry.installed_pk %}{% endif %}">
+                {% if entry.installed_pk %}
+                  <form method="post" action="{% if entry.kind == 'schedule' %}{% url 'template_delete' entry.installed_pk %}{% elif entry.kind == 'profile' %}{% url 'profile_delete' entry.installed_pk %}{% else %}{% url 'checklist_delete' entry.installed_pk %}{% endif %}">
                     {% csrf_token %}<input type="hidden" name="_anchor" value="{{ entry.kind }}s">
                     <input type="hidden" name="back" value="{% url 'catalog_browse' %}">
                     <button type="submit" class="linkish small"

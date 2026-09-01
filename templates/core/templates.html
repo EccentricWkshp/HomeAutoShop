@@ -4,7 +4,7 @@
 <div class="spread">
   <div>
     <h1>{% translate "Templates" %}</h1>
-    <p class="muted">{% translate "Service schedules and inspection checklists this shop can apply" %}</p>
+    <p class="muted">{% translate "Service schedules, inspection checklists and scan-tool profiles this shop can use" %}</p>
   </div>
   <div class="row">
     {% comment %}
@@ -18,7 +18,7 @@
     <form method="post" action="{% url 'restore_builtins' %}">
       {% csrf_token %}
       <button type="submit" class="btn"
-              data-confirm="{% translate 'Put back any shipped templates you have removed?' %}">
+              data-confirm="{% translate 'Put back any shipped schedules, checklists and parser profiles you have removed?' %}">
         {% translate "Restore shipped templates" %}
       </button>
     </form>
@@ -169,6 +169,98 @@ unfindable. Nothing here reaches the network; it is a sentence about a setting.
       </label>
       <label class="field">
         <span class="visually-hidden">{% translate "Or paste the checklist" %}</span>
+        <textarea name="yaml" rows="6" class="input"
+                  placeholder="{% translate 'or paste it here' %}"></textarea>
+      </label>
+      <div class="row"><button class="primary" type="submit">{% translate "Import" %}</button></div>
+    </form>
+  </aside>
+</div>
+
+{% comment %}
+Parser profiles listed here rather than on a page of their own under the scan
+queue. They are the third of the same thing — YAML, an author, a source, the
+same catalog, the same validator — and the copy at the top of this page has
+always said so while listing two of the three. The old page was reachable only
+from the scans screen, which meant you found it if you already knew it was
+there. The button on that screen still exists and now lands here.
+{% endcomment %}
+<div class="cols two">
+  <section class="card" id="profiles" data-live="profiles">
+    <h2>{% translate "Parser profiles" %}</h2>
+    <p class="small muted">
+      {% translate "How a scan tool's report becomes fields. Supporting a new tool usually means writing one of these." %}
+    </p>
+    <ul class="list small">
+      {% for profile in profiles %}
+        <li class="spread">
+          <div>
+            <strong>{{ profile.name }}</strong> <span class="muted">v{{ profile.version }}</span>
+            {% if not profile.is_active %}<span class="pill warn">{% translate "off" %}</span>{% endif %}
+            {% if profile.engine %}<span class="pill">{% translate "built-in parser" %}</span>{% endif %}
+            <div class="muted">
+              {{ profile.tool_vendor }} {{ profile.tool_model }}
+              · {{ profile.get_media_type_display }}
+              · {{ profile.get_source_display }}
+              {% if profile.author %} · {{ profile.author }}{% endif %}
+              {% blocktranslate count n=profile.sessions.count %}· read {{ n }} scan{% plural %}· read {{ n }} scans{% endblocktranslate %}
+            </div>
+            {% comment %}
+            Kept visible after install, not only while browsing. Six months on,
+            "where did this parser come from and was it ever proven" is exactly
+            the question somebody asks when a scan reads oddly.
+            {% endcomment %}
+            {% if profile.verified_against %}
+              <div><span class="pill ok">{% translate "Proven against" %} <span class="mono">{{ profile.verified_against|join:", " }}</span></span></div>
+            {% endif %}
+          </div>
+          <div class="row">
+            <a class="btn small" href="{% url 'profile_export' profile.pk %}">{% translate "Export" %}</a>
+            <form method="post" action="{% url 'profile_toggle' profile.pk %}">
+              {% csrf_token %}<input type="hidden" name="_anchor" value="profiles">
+              <button type="submit" class="linkish small">
+                {% if profile.is_active %}{% translate "Switch off" %}{% else %}{% translate "Switch on" %}{% endif %}
+              </button>
+            </form>
+            {% comment %}
+            Switching one off used to be the only way to say no to it, which
+            left a profile for a tool nobody here owns in the list forever.
+            Removal is soft and shipped profiles come back from Restore, so
+            taking off the one that reads XTOOL D8 reports is not a one-way
+            door — which is the only reason it can be offered on a built-in.
+            {% endcomment %}
+            <form method="post" action="{% url 'profile_delete' profile.pk %}">
+              {% csrf_token %}<input type="hidden" name="_anchor" value="profiles">
+              <button type="submit" class="linkish small"
+                      data-confirm="{% translate 'Remove this profile? Scans already read with it keep their results.' %}">
+                {% translate "Remove" %}
+              </button>
+            </form>
+          </div>
+        </li>
+      {% empty %}
+        <li class="muted">{% translate "None installed." %}</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <aside class="card">
+    <h2>{% translate "Import a profile" %}</h2>
+    <p class="small muted">
+      {% translate "YAML, as exported from another instance. A profile with an invalid pattern is refused, and the message says which field." %}
+    </p>
+    <p class="small muted">
+      {% translate "Some report formats cannot be described by patterns and are read by a parser inside the application. Those are marked built-in parser: they have no rules to edit, but they version and re-parse like any other profile." %}
+    </p>
+    <form method="post" action="{% url 'profile_import' %}" enctype="multipart/form-data" class="stack">
+      {% csrf_token %}
+      <label class="filepick">
+        <input type="file" name="profile" accept=".yaml,.yml,text/yaml"
+               aria-label="{% translate 'Profile file' %}">
+        <span>{% translate "Choose a file" %}</span>
+      </label>
+      <label class="field">
+        <span class="visually-hidden">{% translate "Or paste the profile" %}</span>
         <textarea name="yaml" rows="6" class="input"
                   placeholder="{% translate 'or paste it here' %}"></textarea>
       </label>
