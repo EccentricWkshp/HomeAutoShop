@@ -1,49 +1,111 @@
 {% extends "base.html" %}{% load i18n %}
-{% block title %}{% if asset %}{{ asset.nickname }}{% else %}{% translate "Add a vehicle" %}{% endif %}{% endblock %}
+{% block title %}{% if asset %}{{ asset.nickname }}{% else %}{% translate "Add a vehicle or equipment" %}{% endif %}{% endblock %}
 {% block content %}
 <h1>{% if asset %}{% translate "Edit" %} {{ asset.nickname }}{% else %}{% translate "Add a vehicle or equipment" %}{% endif %}</h1>
 <p class="muted small">{% translate "Only a nickname is required. A half-known project car is still worth recording." %}</p>
 
-<form method="post" class="card">{% csrf_token %}
-  {{ form.non_field_errors }}
-  <div class="formgrid">
-    {% for field in form %}
-      <div class="field {% if field.name in 'nickname,notes' %}full{% endif %}">
-        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-        {% if field.name == 'vin' and not asset %}
-          <div class="row">
-            {{ field }}
-            {# Code 39 is what a door-jamb label carries; some are QR instead. #}
-            <button type="button" class="nowrap"
-                    data-scan="code_39,qr_code,data_matrix,pdf417"
-                    data-scan-target="vin" data-scan-kind="vin">
-              {% translate "Scan" %}
-            </button>
-            <button type="submit" name="action" value="lookup" class="nowrap"
-                    {% if offline_mode %}disabled{% endif %}>{% translate "Look up" %}</button>
-          </div>
-          <div id="vin-feedback"></div>
-          <p class="helptext">
-            {% if offline_mode %}
-              {% translate "Offline mode is on, so no lookup is attempted." %}
+{% comment %}
+The form is grouped by section, and the sections a mower has no use for are not
+on the screen (FR-EQP-1). Equipment carries no VIN, no plate and no
+registration, and a box that can only ever be wrong is worse than no box: it
+invites an entry the record will refuse.
+
+`form.sections()` decides this on the server, so the right fields are shown
+before a single line of script has run. The script below only keeps up with the
+select afterwards.
+{% endcomment %}
+<form method="post" class="stack">{% csrf_token %}
+  {% for error in form.non_field_errors %}<p class="msg error">{{ error }}</p>{% endfor %}
+
+  {% for section in form.sections %}
+    <section class="card"{% if section.kind %} data-kind="{{ section.kind }}"{% endif %}{% if section.hidden %} hidden{% endif %}>
+      <h2>{{ section.title }}</h2>
+      <div class="formgrid">
+        {% for row in section.fields %}
+          <div class="field{% if row.full %} full{% endif %}"{% if row.kind %} data-kind="{{ row.kind }}"{% endif %}{% if row.hidden %} hidden{% endif %}>
+            <label for="{{ row.field.id_for_label }}">{{ row.field.label }}</label>
+            {% if row.field.name == 'vin' and not asset %}
+              <div class="row">
+                {{ row.field }}
+                {# Code 39 is what a door-jamb label carries; some are QR instead. #}
+                <button type="button" class="nowrap"
+                        data-scan="code_39,qr_code,data_matrix,pdf417"
+                        data-scan-target="vin" data-scan-kind="vin">
+                  {% translate "Scan" %}
+                </button>
+                <button type="submit" name="action" value="lookup" class="nowrap"
+                        {% if offline_mode %}disabled{% endif %}>{% translate "Look up" %}</button>
+              </div>
+              <div id="vin-feedback"></div>
+              <p class="helptext">
+                {% if offline_mode %}
+                  {% translate "Offline mode is on, so no lookup is attempted." %}
+                {% else %}
+                  {% translate "Fills in only the boxes you have left empty. Nothing you typed is overwritten." %}
+                {% endif %}
+              </p>
             {% else %}
-              {% translate "Fills in only the boxes you have left empty. Nothing you typed is overwritten." %}
+              {{ row.field }}
+              {% if row.field.name == 'vin' %}<div id="vin-feedback"></div>{% endif %}
+              {% if row.field.name == 'asset_kind' %}
+                <p class="helptext">
+                  {% translate "Equipment has no VIN, plate or registration, and measures hours rather than miles. Changing this clears the fields the other kind used." %}
+                </p>
+              {% endif %}
             {% endif %}
-          </p>
-        {% else %}
-          {{ field }}
-          {% if field.name == 'vin' %}<div id="vin-feedback"></div>{% endif %}
-        {% endif %}
-        {% if field.help_text %}<p class="helptext">{{ field.help_text }}</p>{% endif %}
-        {{ field.errors }}
+            {% if row.field.help_text %}<p class="helptext">{{ row.field.help_text }}</p>{% endif %}
+            {% for error in row.field.errors %}<p class="msg error">{{ error }}</p>{% endfor %}
+          </div>
+        {% endfor %}
       </div>
-    {% endfor %}
-  </div>
+    </section>
+  {% endfor %}
+
   {% if asset %}{% url 'asset_detail' asset.pk as cancel_to %}{% else %}{% url 'asset_list' as cancel_to %}{% endif %}
   {% include "partials/_formactions.html" with cancel_url=cancel_to %}
 </form>
 
 <script>
+// Keep the form matching the kind that is selected (FR-EQP-1). Everything is
+// already in the page and the server has already hidden what does not apply,
+// so this is only about the switch: no fetch, and nothing breaks without it.
+(function () {
+  const kind = document.getElementById('id_asset_kind');
+  if (!kind) return;
+  const gated = document.querySelectorAll('[data-kind]');
+
+  function applyKind() {
+    gated.forEach(function (el) { el.hidden = el.dataset.kind !== kind.value; });
+  }
+
+  // A mower has no odometer, and Asset.save() rewrites one to engine hours
+  // anyway (FR-EQP-2). Showing "Odometer" until then means the form and the
+  // record it will write disagree while somebody is reading it.
+  const meter = document.getElementById('id_meter');
+  const unit = document.getElementById('id_meter_unit');
+  let replaced = null;
+
+  function applyMeter() {
+    if (!meter || !unit) return;
+    if (kind.value === 'equipment' && meter.value === 'odometer') {
+      replaced = [meter.value, unit.value];
+      meter.value = 'engine_hours';
+      unit.value = 'hours';
+    } else if (kind.value !== 'equipment' && replaced && meter.value === 'engine_hours') {
+      // Only ever put back what this script itself took away; a meter the
+      // person chose is theirs.
+      meter.value = replaced[0];
+      unit.value = replaced[1];
+      replaced = null;
+    }
+  }
+
+  // On load the sections are re-checked but the meter is left alone: opening
+  // an edit screen must not change what is stored.
+  kind.addEventListener('change', function () { applyKind(); applyMeter(); });
+  applyKind();
+})();
+
 // Local VIN validation as you type (FR-VEH-2). No network involved: the check
 // digit and character rules are computable offline, and catching a typo here
 // beats a mysterious empty decode later.

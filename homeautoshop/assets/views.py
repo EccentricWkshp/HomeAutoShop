@@ -13,6 +13,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 from django.utils.translation import ngettext
 from django.views.decorators.http import require_GET, require_POST
 
@@ -49,6 +50,62 @@ log = logging.getLogger(__name__)
 from .services import decode_vin, mark_override, read_vin_locally, record_reading
 
 
+# Which kind of asset each field belongs to. FR-EQP-1 is explicit: equipment
+# shows *no* VIN, plate, title or registration field — not a disabled one, not
+# one that fails on save, none. A field named here belongs to that kind alone;
+# anything not named is shown for both.
+FIELD_KINDS = {
+    "vehicle_class": AssetKind.VEHICLE,
+    "vin": AssetKind.VEHICLE,
+    "plate": AssetKind.VEHICLE,
+    "plate_region": AssetKind.VEHICLE,
+    "plate_expires_on": AssetKind.VEHICLE,
+    "make": AssetKind.VEHICLE,
+    "model": AssetKind.VEHICLE,
+    "trim": AssetKind.VEHICLE,
+    "body_style": AssetKind.VEHICLE,
+    "transmission": AssetKind.VEHICLE,
+    "drivetrain": AssetKind.VEHICLE,
+    "color_exterior": AssetKind.VEHICLE,
+    "manufacturer": AssetKind.EQUIPMENT,
+    "model_number": AssetKind.EQUIPMENT,
+    "serial_number": AssetKind.EQUIPMENT,
+}
+
+# The form in the order it is read, as (kind, heading, fields). A section with
+# a kind belongs to that kind whole; inside a shared section a field can still
+# be gated on its own.
+#
+# **Each field appears exactly once.** Rendered twice it would submit twice,
+# and a QueryDict keeps the last value — so the copy nobody could see would be
+# the one that won. That is why `year`, `engine` and `fuel_type` sit in one
+# shared section instead of being repeated under an equipment heading.
+SECTIONS = (
+    ("", gettext_lazy("The basics"), ("nickname", "asset_kind", "vehicle_class", "status")),
+    (
+        AssetKind.VEHICLE,
+        gettext_lazy("Registration"),
+        ("vin", "plate", "plate_region", "plate_expires_on"),
+    ),
+    (
+        AssetKind.EQUIPMENT,
+        gettext_lazy("Identification"),
+        ("manufacturer", "model_number", "serial_number"),
+    ),
+    (
+        "",
+        gettext_lazy("What it is"),
+        ("year", "make", "model", "trim", "body_style", "engine", "fuel_type",
+         "transmission", "drivetrain", "color_exterior"),
+    ),
+    ("", gettext_lazy("Meter"), ("meter", "meter_unit")),
+    ("", gettext_lazy("Ownership and notes"), ("acquired_on", "notes")),
+)
+
+# Fields worth the whole width rather than half of it.
+FULL_WIDTH = ("nickname", "notes")
+
+
 class AssetForm(forms.ModelForm):
     class Meta:
         model = Asset
@@ -79,7 +136,68 @@ class AssetForm(forms.ModelForm):
                 css = "input textarea"
             field.widget.attrs.setdefault("class", css)
 
+    # -- what this kind actually has ------------------------------------
+
+    def current_kind(self) -> str:
+        """The kind being filled in — submitted, being edited, or the default.
+
+        `BoundField.value()` because it is the one accessor that answers for a
+        bound form, an edit and a blank one alike.
+        """
+        return self["asset_kind"].value() or AssetKind.VEHICLE
+
+    def sections(self):
+        """The form grouped for display, each group knowing whose it is.
+
+        Everything is rendered and what the chosen kind has no use for is
+        marked hidden, so changing the kind is instant and costs no round trip.
+        The server still decides the initial state, which is what makes the
+        screen correct with JavaScript switched off.
+        """
+        kind = self.current_kind()
+        groups = []
+        for section_kind, title, names in SECTIONS:
+            fields = []
+            for name in names:
+                if name not in self.fields:
+                    continue
+                # A field inside a section that is already gated does not carry
+                # a gate of its own; one attribute deciding one thing.
+                belongs_to = "" if section_kind else FIELD_KINDS.get(name, "")
+                fields.append({
+                    "field": self[name],
+                    "kind": belongs_to,
+                    "hidden": bool(belongs_to) and belongs_to != kind,
+                    "full": name in FULL_WIDTH,
+                })
+            groups.append({
+                "title": title,
+                "kind": section_kind,
+                "hidden": bool(section_kind) and section_kind != kind,
+                "fields": fields,
+            })
+        return groups
+
+    # -- validation ------------------------------------------------------
+
+    def clean(self):
+        cleaned = super().clean()
+        kind = cleaned.get("asset_kind") or AssetKind.VEHICLE
+        # What this kind does not have is cleared rather than validated.
+        # Turning a vehicle into equipment would otherwise fail on `vin`, and
+        # that error points at a field the form is no longer showing — nobody
+        # can act on it. `Asset.save()` already does exactly this to
+        # `vehicle_class`; this is the same rule applied where it is visible.
+        for name, belongs_to in FIELD_KINDS.items():
+            if name in self.fields and belongs_to != kind:
+                cleaned[name] = None if Asset._meta.get_field(name).null else ""
+        return cleaned
+
     def clean_vin(self):
+        if self.current_kind() != AssetKind.VEHICLE:
+            # The box is not on the screen for equipment, so an error raised
+            # against it would be one nobody could see, let alone fix.
+            return ""
         vin = vinlib.normalize(self.cleaned_data.get("vin"))
         if vin:
             check = vinlib.validate(vin)
@@ -91,8 +209,12 @@ class AssetForm(forms.ModelForm):
         asset = super().save(commit=False)
         # FR-VEH-4: a human correcting a decoded field must survive re-decode.
         if asset.pk and asset.decoded_raw:
+            kind = asset.asset_kind
             for name in ("year", "make", "model", "trim", "engine", "body_style"):
-                if name in self.changed_data:
+                # A field cleared because the kind changed is not a correction
+                # anybody made, and recording it as one would pin the blank
+                # over every future decode.
+                if name in self.changed_data and FIELD_KINDS.get(name, kind) == kind:
                     mark_override(asset, name, self.cleaned_data.get(name))
         if commit:
             asset.save()
@@ -399,6 +521,15 @@ def asset_create(request):
             return redirect("asset_detail", pk=asset.pk)
     else:
         initial = {"meter_unit": distance_unit_for(request.user.units or "imperial")}
+        # Arriving from the Equipment tab opens the equipment form. Otherwise
+        # the one screen that knows which kind you meant throws it away, and
+        # the first thing you do on a fresh form is change it back.
+        kind = request.GET.get("kind", "")
+        if kind in AssetKind.values:
+            initial["asset_kind"] = kind
+        if kind == AssetKind.EQUIPMENT:
+            initial["meter"] = "engine_hours"
+            initial["meter_unit"] = "hours"
         form = AssetForm(initial=initial)
     return render(request, "assets/form.html", {"form": form, "asset": None})
 

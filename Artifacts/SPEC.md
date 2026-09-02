@@ -1783,6 +1783,7 @@ Found and closed:
 | Inspection templates import/export as YAML | FR-DVI-13, with a full schema document | Nothing. The contract was written, reviewed and never implemented. | FR-DVI-13, §8.1b |
 | The per-vehicle report exports as PDF **and CSV** | FR-REP-2 | PDF only. | FR-REP-2 |
 | Allow-listed views call `require(user, action, object)` to decide *which* vehicle | §12.2a | Not in `maintenance`: all seven writes on the schedule screen took the asset id from the URL and checked nobody against it, so a helper with a read grant on one vehicle could write to any. The section that recorded "`maintenance` 9 views and no checks" as the problem then described the fix in the present tense. | §12.2a, FR-MAINT-12 |
+| Equipment is created **with no VIN, plate, title, or registration fields shown** | FR-EQP-1 | One flat form, showing both kinds' fields to both kinds. Adding a mower offered a VIN, a licence plate, a registration expiry and a vehicle class — and `Asset.clean()` refuses a VIN on equipment outright, so the screen invited an entry the record would then reject. Found the ordinary way: somebody went to add a mower. | FR-EQP-1 unchanged — the form now matches it |
 
 Still open, named rather than assumed:
 
