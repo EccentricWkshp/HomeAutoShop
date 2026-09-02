@@ -236,6 +236,13 @@ summary { cursor: pointer; }
 .list { list-style: none; padding: 0; margin: 0; }
 .list > li { padding: .75rem 0; border-bottom: 1px solid var(--line); }
 .list > li:last-child { border-bottom: 0; }
+/* A row's own text wraps; the row itself does not. Without this the left-hand
+   side keeps its content width and one long line — a code list naming the
+   document it was transcribed from, say — pushes the button onto a line of its
+   own, left-aligned, where every other row in the list has it on the right.
+   `.spread` still wraps when a screen is genuinely too narrow for both. */
+.list > li.spread > :first-child { min-width: 0; flex: 1 1 auto; }
+.list > li.spread > .row { flex: 0 0 auto; }
 .list a { text-decoration: none; }
 /* What is inside the row above. Indented against a rule rather than merely
    padded, so the relationship survives a narrow screen where the indent alone

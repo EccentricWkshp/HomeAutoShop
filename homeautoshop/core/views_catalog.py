@@ -16,7 +16,8 @@ from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
 
 from homeautoshop.accounts.models import require
-from homeautoshop.diagnostics.models import ParserProfile
+from homeautoshop.diagnostics import codelistlib
+from homeautoshop.diagnostics.models import InstalledCodeList, ParserProfile
 from homeautoshop.inspections import templatelib as checklistlib
 from homeautoshop.inspections.models import InspectionTemplate
 from homeautoshop.maintenance import templatelib
@@ -30,13 +31,19 @@ from .imports import NothingToImport, text_from
 def template_list(request):
     """Everything this shop imports, exports and shares, and where each came from.
 
-    All three kinds together, because they are the same kind of thing: YAML
-    with an author and a source, installed from the same catalog through the
-    same validator. Parser profiles used to sit on a page of their own under
-    the scan queue, reachable only by somebody already looking at scans — and
-    this page's own copy said it covered "scan-tool profiles" while listing
-    none. A feature you can only find from the screen you already know about
-    is a feature most people never find.
+    Four kinds together, because they are the same kind of thing: content with
+    an author and a source, installed from the same catalog through the same
+    validator, and removable without touching what was made from it. Parser
+    profiles used to sit on a page of their own under the scan queue,
+    reachable only by somebody already looking at scans — and this page's own
+    copy said it covered "scan-tool profiles" while listing none. A feature you
+    can only find from the screen you already know about is a feature most
+    people never find.
+
+    Manufacturer code lists are here for that reason rather than as a fifth
+    thing to scroll past. Installed, they were visible only on the catalog
+    browse screen, so the shop had no answer to "which makes do we have, and
+    at what version" without going back out to the network.
     """
     require(request.user, "settings.manage")
     return render(
@@ -46,6 +53,7 @@ def template_list(request):
             "templates": ScheduleTemplate.objects.all().prefetch_related("items"),
             "checklists": InspectionTemplate.objects.all().prefetch_related("points"),
             "profiles": ParserProfile.objects.all(),
+            "code_lists": InstalledCodeList.objects.all(),
             "catalog_configured": catalog_lib.is_configured(),
         },
     )
@@ -151,7 +159,17 @@ def catalog_install(request):
         return redirect("catalog_browse")
 
     name = getattr(installed, "name", "")
-    if isinstance(installed, ParserProfile):
+    if isinstance(installed, InstalledCodeList):
+        # No "apply it to a vehicle" here: a code list is a dictionary, not a
+        # template. It starts answering lookups the moment it is installed,
+        # and saying how many definitions arrived is what tells somebody the
+        # install did anything at all.
+        messages.success(
+            request,
+            _("Installed %(name)s — %(n)d definitions.")
+            % {"name": name, "n": installed.code_count},
+        )
+    elif isinstance(installed, ParserProfile):
         messages.success(request, _("Installed %(name)s.") % {"name": name})
     else:
         messages.success(
@@ -244,6 +262,69 @@ def checklist_delete(request, pk):
     """
     require(request.user, "settings.manage")
     _removed(request, get_object_or_404(InspectionTemplate, pk=pk), "checklist")
+    return redirect(request.POST.get("back") or "template_list")
+
+
+@require_POST
+@login_required
+def codelist_import(request):
+    """Install a manufacturer code list from a file (§17 R-1, P-1).
+
+    The catalog is how most shops will get one, and it needs an address it can
+    reach. P-1 says an instance that reaches nothing must still work — and
+    before the lists were published rather than bundled, offline meant *no
+    worse*, because Ford's list was in the image. It no longer is. So the way
+    in that does not involve the network is built rather than assumed:
+    download the file on a machine that has a connection, carry it over.
+
+    Through `codelistlib.load`, which is the same validator the catalog install
+    calls. That equivalence is the trust model rather than a tidiness point: a
+    catalog file is trusted exactly as far as a file a stranger emailed, and
+    that only stays true while both take the same road.
+    """
+    require(request.user, "settings.manage")
+    try:
+        text = text_from(request, "codelist")
+    except NothingToImport as exc:
+        messages.warning(request, str(exc))
+        return redirect("template_list")
+
+    try:
+        held = codelistlib.load(text, user=request.user)
+    except codelistlib.CodeListInvalid as exc:
+        messages.error(
+            request, _("That code list was refused: %(detail)s") % {"detail": exc}
+        )
+        return redirect("template_list")
+
+    messages.success(
+        request,
+        _("Installed the %(name)s code list — %(n)d definitions.")
+        % {"name": held.name, "n": held.code_count},
+    )
+    return redirect("template_list")
+
+
+@require_POST
+@login_required
+def codelist_delete(request, pk):
+    """Remove an installed manufacturer code list.
+
+    Nothing that has already been read changes. A code recorded on a session
+    keeps the wording the scan tool printed and whatever the shop wrote down;
+    what goes away is this make's published document, so a lookup falls back
+    to the ISO/SAE standard and to the shop's own notes — which is exactly
+    where it stood before anybody installed it.
+    """
+    require(request.user, "settings.manage")
+    held = get_object_or_404(InstalledCodeList, pk=pk)
+    name = held.name
+    held.delete()
+    messages.success(
+        request,
+        _("Removed the %(name)s code list. Readings already recorded are untouched.")
+        % {"name": name},
+    )
     return redirect(request.POST.get("back") or "template_list")
 
 

@@ -207,3 +207,44 @@ class SearchShapeTests(TestCase):
         kinds |= {group.kind for group in search("ACT1164").groups}
         kinds |= {group.kind for group in search("alice").groups}
         self.assertEqual({"asset", "part", "person"}, kinds)
+
+
+class TroubleCodesAreSearchableTests(TestCase):
+    """The search box is where somebody types `P0420`.
+
+    Before this, the code reference page could only be reached by importing a
+    report and clicking a reading — so answering "what is P0420" meant running
+    a scan first, which is the wrong way round for the one question a code
+    dictionary exists to answer.
+    """
+
+    def test_a_code_typed_into_the_box_is_found(self):
+        self.assertIn("P0420", [d.code for d in found("P0420", "code")])
+
+    def test_so_is_a_partial_code(self):
+        """Read off a cracked screen, or half-remembered."""
+        self.assertIn("P0421", [d.code for d in found("P042", "code")])
+
+    def test_and_so_are_words_from_the_definition(self):
+        """The other half of the job: a technician who knows the symptom and
+        not the number."""
+        self.assertIn("P0420", [d.code for d in found("catalyst efficiency", "code")])
+
+    def test_the_result_says_who_defines_it(self):
+        """An ISO/SAE code means the same thing on every vehicle ever built; a
+        manufacturer's list is that manufacturer's own wording. Rendered flat,
+        the narrower claim reads exactly like the wider one."""
+        self.assertEqual(found("P0420", "code")[0].source, "standard")
+
+    def test_a_helper_gets_them_too(self):
+        """A dictionary is not vehicle data. Helpers can already open the code
+        page, and search is how a person reaches it."""
+        from homeautoshop.accounts.models import Role, User
+
+        helper = User.objects.create_user("sam", password="x" * 16, role=Role.HELPER)
+        groups = {g.kind for g in search("P0420", user=helper).groups}
+
+        self.assertIn("code", groups)
+
+    def test_a_word_that_matches_nothing_returns_no_group(self):
+        self.assertEqual(found("zzzzzz", "code"), [])

@@ -26,6 +26,519 @@
       "author": "HomeAutoShop"
     },
     {
+      "kind": "codes",
+      "slug": "acura",
+      "name": "Acura",
+      "path": "codes/acura.json",
+      "description": "5,743 codes for Acura, from 2 documents: lemon-manuals.la — Acura service manuals, 21 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Acura Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 3
+    },
+    {
+      "kind": "codes",
+      "slug": "alfa-romeo",
+      "name": "Alfa Romeo",
+      "path": "codes/alfa-romeo.json",
+      "description": "2,435 codes for Alfa Romeo, from 2 documents: lemon-manuals.la — Alfa Romeo service manuals, 6 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Alfa Romeo Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "audi",
+      "name": "Audi",
+      "path": "codes/audi.json",
+      "description": "1,867 codes for Audi, from 2 documents: lemon-manuals.la — Audi service manuals, 26 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Audi Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 4
+    },
+    {
+      "kind": "codes",
+      "slug": "bmw",
+      "name": "BMW",
+      "path": "codes/bmw.json",
+      "description": "1,335 codes for BMW, from 2 documents: lemon-manuals.la — BMW service manuals, 7 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — BMW Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "buick",
+      "name": "Buick",
+      "path": "codes/buick.json",
+      "description": "3,313 codes for Buick, from 2 documents: lemon-manuals.la — Buick service manuals, 84 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Buick Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "cadillac",
+      "name": "Cadillac",
+      "path": "codes/cadillac.json",
+      "description": "4,544 codes for Cadillac, from 2 documents: lemon-manuals.la — Cadillac service manuals, 73 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Cadillac Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "chevrolet",
+      "name": "Chevrolet",
+      "path": "codes/chevrolet.json",
+      "description": "4,625 codes for Chevrolet, from 2 documents: lemon-manuals.la — Chevrolet service manuals, 75 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Chevrolet Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "chrysler",
+      "name": "Chrysler",
+      "path": "codes/chrysler.json",
+      "description": "6,803 codes for Chrysler, from 2 documents: lemon-manuals.la — Chrysler service manuals, 22 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Chrysler Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 4
+    },
+    {
+      "kind": "codes",
+      "slug": "daewoo",
+      "name": "Daewoo",
+      "path": "codes/daewoo.json",
+      "description": "460 codes for Daewoo, from 2 documents: lemon-manuals.la — Daewoo service manuals, 5 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Daewoo Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "daihatsu",
+      "name": "Daihatsu",
+      "path": "codes/daihatsu.json",
+      "description": "41 codes for Daihatsu, from TroubleCodes.net — Daihatsu Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 1
+    },
+    {
+      "kind": "codes",
+      "slug": "dodge",
+      "name": "Dodge",
+      "path": "codes/dodge.json",
+      "description": "6,938 codes for Dodge, from 2 documents: lemon-manuals.la — Dodge service manuals, 23 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Dodge Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "eagle",
+      "name": "Eagle",
+      "path": "codes/eagle.json",
+      "description": "4,344 codes for Eagle, from 2 documents: lemon-manuals.la — Eagle service manuals, 7 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Eagle Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 3
+    },
+    {
+      "kind": "codes",
+      "slug": "fiat",
+      "name": "Fiat",
+      "path": "codes/fiat.json",
+      "description": "2,261 codes for Fiat, from lemon-manuals.la — Fiat service manuals, 9 vehicles read, build lemon e9dfaf202d2b",
+      "version": 1
+    },
+    {
+      "kind": "codes",
+      "slug": "ford",
+      "name": "Ford",
+      "path": "codes/ford.json",
+      "description": "5,633 codes for Ford, from 2 documents: lemon-manuals.la — Ford service manuals, 30 vehicles read, build lemon e9dfaf202d2b; Ford Motor Company Group — Master List of DTC Codes",
+      "author": "HomeAutoShop",
+      "version": 2,
+      "applies_to": [
+        "Lincoln",
+        "Mercury"
+      ]
+    },
+    {
+      "kind": "codes",
+      "slug": "freightliner",
+      "name": "Freightliner",
+      "path": "codes/freightliner.json",
+      "description": "152 codes for Freightliner, from TroubleCodes.net — Freightliner Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 1
+    },
+    {
+      "kind": "codes",
+      "slug": "genesis",
+      "name": "Genesis",
+      "path": "codes/genesis.json",
+      "description": "2,249 codes for Genesis, from 2 documents: lemon-manuals.la — Genesis service manuals, 13 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Genesis Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "geo",
+      "name": "Geo",
+      "path": "codes/geo.json",
+      "description": "175 codes for Geo, from 2 documents: lemon-manuals.la — Geo service manuals, 5 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — GEO Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "gm",
+      "name": "GM",
+      "path": "codes/gm.json",
+      "description": "448 codes for GM, from TroubleCodes.net — GM Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 1
+    },
+    {
+      "kind": "codes",
+      "slug": "gmc",
+      "name": "GMC",
+      "path": "codes/gmc.json",
+      "description": "2,622 codes for GMC, from 2 documents: lemon-manuals.la — GMC service manuals, 25 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — GMC Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "honda",
+      "name": "Honda",
+      "path": "codes/honda.json",
+      "description": "5,472 codes for Honda, from 2 documents: lemon-manuals.la — Honda service manuals, 12 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Honda Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 4
+    },
+    {
+      "kind": "codes",
+      "slug": "hummer",
+      "name": "Hummer",
+      "path": "codes/hummer.json",
+      "description": "853 codes for Hummer, from 2 documents: lemon-manuals.la — Hummer service manuals, 11 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Hummer Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "hyundai",
+      "name": "Hyundai",
+      "path": "codes/hyundai.json",
+      "description": "3,348 codes for Hyundai, from 2 documents: lemon-manuals.la — Hyundai service manuals, 68 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Hyundai Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "infiniti",
+      "name": "Infiniti",
+      "path": "codes/infiniti.json",
+      "description": "8,420 codes for Infiniti, from 2 documents: lemon-manuals.la — Infiniti service manuals, 66 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Infiniti Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 4
+    },
+    {
+      "kind": "codes",
+      "slug": "isuzu",
+      "name": "Isuzu",
+      "path": "codes/isuzu.json",
+      "description": "981 codes for Isuzu, from 2 documents: lemon-manuals.la — Isuzu service manuals, 20 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Isuzu Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "jaguar",
+      "name": "Jaguar",
+      "path": "codes/jaguar.json",
+      "description": "2,930 codes for Jaguar, from 2 documents: lemon-manuals.la — Jaguar service manuals, 26 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Jaguar Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "jeep",
+      "name": "Jeep",
+      "path": "codes/jeep.json",
+      "description": "6,600 codes for Jeep, from 2 documents: lemon-manuals.la — Jeep service manuals, 20 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Jeep Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 3
+    },
+    {
+      "kind": "codes",
+      "slug": "kenworth",
+      "name": "Kenworth",
+      "path": "codes/kenworth.json",
+      "description": "355 codes for Kenworth, from TroubleCodes.net — Kenworth Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 1,
+      "applies_to": [
+        "Peterbilt"
+      ]
+    },
+    {
+      "kind": "codes",
+      "slug": "kia",
+      "name": "Kia",
+      "path": "codes/kia.json",
+      "description": "2,317 codes for Kia, from 2 documents: lemon-manuals.la — Kia service manuals, 20 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Kia Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "lamborghini",
+      "name": "Lamborghini",
+      "path": "codes/lamborghini.json",
+      "description": "53 codes for Lamborghini, from TroubleCodes.net — Lamborghini Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 1
+    },
+    {
+      "kind": "codes",
+      "slug": "land-rover",
+      "name": "Land Rover",
+      "path": "codes/land-rover.json",
+      "description": "2,579 codes for Land Rover, from 2 documents: lemon-manuals.la — Land Rover service manuals, 20 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Land Rover Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "lexus",
+      "name": "Lexus",
+      "path": "codes/lexus.json",
+      "description": "7,433 codes for Lexus, from 2 documents: lemon-manuals.la — Lexus service manuals, 77 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Lexus Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 3
+    },
+    {
+      "kind": "codes",
+      "slug": "lincoln",
+      "name": "Lincoln",
+      "path": "codes/lincoln.json",
+      "description": "4,892 codes for Lincoln, from lemon-manuals.la — Lincoln service manuals, 94 vehicles read, build lemon e9dfaf202d2b",
+      "version": 1
+    },
+    {
+      "kind": "codes",
+      "slug": "mack",
+      "name": "Mack",
+      "path": "codes/mack.json",
+      "description": "5 codes for Mack, from TroubleCodes.net — Mack Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 1
+    },
+    {
+      "kind": "codes",
+      "slug": "mahindra",
+      "name": "Mahindra",
+      "path": "codes/mahindra.json",
+      "description": "85 codes for Mahindra, from TroubleCodes.net — Mahindra Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 1
+    },
+    {
+      "kind": "codes",
+      "slug": "mazda",
+      "name": "Mazda",
+      "path": "codes/mazda.json",
+      "description": "1,917 codes for Mazda, from 2 documents: lemon-manuals.la — Mazda service manuals, 19 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Mazda Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "mercedes-benz",
+      "name": "Mercedes-Benz",
+      "path": "codes/mercedes-benz.json",
+      "description": "837 codes for Mercedes-Benz, from 2 documents: lemon-manuals.la — Mercedes Benz service manuals, 8 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Mercedes-Benz Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2,
+      "applies_to": [
+        "Mercedes"
+      ]
+    },
+    {
+      "kind": "codes",
+      "slug": "mercury",
+      "name": "Mercury",
+      "path": "codes/mercury.json",
+      "description": "3,048 codes for Mercury, from lemon-manuals.la — Mercury service manuals, 62 vehicles read, build lemon e9dfaf202d2b",
+      "version": 1
+    },
+    {
+      "kind": "codes",
+      "slug": "mini",
+      "name": "Mini",
+      "path": "codes/mini.json",
+      "description": "710 codes for Mini, from 2 documents: lemon-manuals.la — Mini service manuals, 3 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Mini Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "mitsubishi",
+      "name": "Mitsubishi",
+      "path": "codes/mitsubishi.json",
+      "description": "4,398 codes for Mitsubishi, from 2 documents: lemon-manuals.la — Mitsubishi service manuals, 53 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Mitsubishi Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "nissan",
+      "name": "Nissan",
+      "path": "codes/nissan.json",
+      "description": "7,367 codes for Nissan, from 2 documents: lemon-manuals.la — Nissan service manuals, 41 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Nissan Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "oldsmobile",
+      "name": "Oldsmobile",
+      "path": "codes/oldsmobile.json",
+      "description": "1,267 codes for Oldsmobile, from 2 documents: lemon-manuals.la — Oldsmobile service manuals, 37 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Oldsmobile Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "opel",
+      "name": "Opel",
+      "path": "codes/opel.json",
+      "description": "103 codes for Opel, from TroubleCodes.net — Opel Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 1
+    },
+    {
+      "kind": "codes",
+      "slug": "plymouth",
+      "name": "Plymouth",
+      "path": "codes/plymouth.json",
+      "description": "4,390 codes for Plymouth, from 2 documents: lemon-manuals.la — Plymouth service manuals, 6 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Plymouth Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 3
+    },
+    {
+      "kind": "codes",
+      "slug": "pontiac",
+      "name": "Pontiac",
+      "path": "codes/pontiac.json",
+      "description": "2,068 codes for Pontiac, from 2 documents: lemon-manuals.la — Pontiac service manuals, 57 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Pontiac Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "porsche",
+      "name": "Porsche",
+      "path": "codes/porsche.json",
+      "description": "682 codes for Porsche, from 2 documents: lemon-manuals.la — Porsche service manuals, 3 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Porsche Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "ram",
+      "name": "Ram",
+      "path": "codes/ram.json",
+      "description": "3,743 codes for Ram, from 2 documents: lemon-manuals.la — Ram service manuals, 12 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Ram Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "renault",
+      "name": "Renault",
+      "path": "codes/renault.json",
+      "description": "10 codes for Renault, from TroubleCodes.net — Renault Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 1
+    },
+    {
+      "kind": "codes",
+      "slug": "saab",
+      "name": "Saab",
+      "path": "codes/saab.json",
+      "description": "2,035 codes for Saab, from 2 documents: lemon-manuals.la — Saab service manuals, 24 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Saab Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "saturn",
+      "name": "Saturn",
+      "path": "codes/saturn.json",
+      "description": "1,621 codes for Saturn, from 2 documents: lemon-manuals.la — Saturn service manuals, 17 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Saturn Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "scion",
+      "name": "Scion",
+      "path": "codes/scion.json",
+      "description": "1,297 codes for Scion, from 2 documents: lemon-manuals.la — Scion service manuals, 18 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Scion Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "subaru",
+      "name": "Subaru",
+      "path": "codes/subaru.json",
+      "description": "2,758 codes for Subaru, from 2 documents: lemon-manuals.la — Subaru service manuals, 44 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Subaru Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "suzuki",
+      "name": "Suzuki",
+      "path": "codes/suzuki.json",
+      "description": "1,652 codes for Suzuki, from 3 documents: LEMON Manuals — 2004 Suzuki Aerio SX FWD Automatic service manual, DTC Index (pages 13517-13521); lemon-manuals.la — Suzuki service manuals, 39 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Suzuki Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "toyota",
+      "name": "Toyota",
+      "path": "codes/toyota.json",
+      "description": "5,479 codes for Toyota, from 2 documents: lemon-manuals.la — Toyota service manuals, 11 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Toyota Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "vinfast",
+      "name": "VinFast",
+      "path": "codes/vinfast.json",
+      "description": "1,312 codes for VinFast, from lemon-manuals.la — VinFast service manuals, 1 vehicles read, build lemon e9dfaf202d2b",
+      "version": 1
+    },
+    {
+      "kind": "codes",
+      "slug": "volvo",
+      "name": "Volvo",
+      "path": "codes/volvo.json",
+      "description": "672 codes for Volvo, from 2 documents: lemon-manuals.la — Volvo service manuals, 9 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — Volvo Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2
+    },
+    {
+      "kind": "codes",
+      "slug": "vw",
+      "name": "VW",
+      "path": "codes/vw.json",
+      "description": "1,555 codes for VW, from 2 documents: lemon-manuals.la — VW service manuals, 25 vehicles read, build lemon e9dfaf202d2b; TroubleCodes.net — VW Codes (troublecodes.net)",
+      "author": "HomeAutoShop",
+      "version": 2,
+      "applies_to": [
+        "Volkswagen"
+      ]
+    },
+    {
       "kind": "profile",
       "slug": "autel-maxisys-vehicle-diagnostic-report",
       "name": "Autel MaxiSys - Vehicle Diagnostic Report",

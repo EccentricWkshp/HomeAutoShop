@@ -264,7 +264,7 @@ class DiagnosticCode(AppendOnlyModel):
     code = models.CharField(max_length=16, db_index=True)
     description = models.CharField(max_length=255, blank=True)
     system = models.CharField(max_length=1, blank=True)
-    is_generic = models.BooleanField(default=True)
+    is_iso_sae = models.BooleanField(default=True)
     module = models.CharField(max_length=80, blank=True)
     state = models.CharField(max_length=12, choices=CodeState.choices, default=CodeState.STORED)
     #: Exactly what the tool printed. Normalizing into `state` is lossy and the
@@ -313,3 +313,56 @@ class CodeDescription(BaseModel):
 
     def __str__(self) -> str:
         return f"{self.make} {self.code}"
+
+
+class InstalledCodeList(BaseModel):
+    """A manufacturer's published code list, installed from the catalog.
+
+    The ISO/SAE sets ship in the image because they answer for every vehicle
+    ever built and are finite. A manufacturer's list is neither: there are
+    ninety-odd makes, a shop owns two or three of them, and bundling all of
+    them would put eighteen thousand definitions in every image so that each
+    operator could use a few hundred. Parser profiles were split the same way
+    and for the same reason — see `catalog/README.md`.
+
+    So this is a **row rather than a file**: installed on request, removable,
+    and backed up with the rest of the database. `dtc` reads these alongside
+    the bundled standard, and a make with nothing installed falls through to
+    the standard and to what the shop wrote down itself, which is exactly
+    where it stood before any list existed.
+
+    `documents` holds one entry per published document — `source`,
+    `precedence`, `codes` — because a make may be covered by more than one
+    and they are different claims. `version` is the publisher's, and is what
+    tells the browse screen that what is installed is behind what is offered.
+    """
+
+    make = models.CharField(max_length=60)
+    slug = models.CharField(max_length=64, blank=True)
+    aliases = models.JSONField(default=list, blank=True)
+    version = models.PositiveIntegerField(default=1)
+    description = models.TextField(blank=True)
+    author = models.CharField(max_length=80, blank=True)
+    documents = models.JSONField(default=list, blank=True)
+
+    class Meta(BaseModel.Meta):
+        ordering = ["make"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["make"],
+                condition=models.Q(deleted_at__isnull=True),
+                name="unique_installed_code_list",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return self.make
+
+    @property
+    def name(self) -> str:
+        """What the catalog calls it. The make is the whole identity here."""
+        return self.make
+
+    @property
+    def code_count(self) -> int:
+        return len({c for d in self.documents for c in (d.get("codes") or {})})

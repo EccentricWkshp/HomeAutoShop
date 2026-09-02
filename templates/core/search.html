@@ -5,7 +5,7 @@
 <form method="get" class="row" style="margin-bottom:1rem">
   <input type="search" name="q" value="{{ q }}" autofocus style="flex:1"
          aria-label="{% translate 'Search' %}"
-         placeholder="{% translate 'Part number, nickname, VIN, a phrase from a note…' %}">
+         placeholder="{% translate 'Part number, nickname, VIN, a trouble code, a phrase from a note…' %}">
   <button class="primary" type="submit">{% translate "Search" %}</button>
 </form>
 
@@ -28,6 +28,16 @@
         {% elif group.kind == 'person' %}<a href="{% url 'person_detail' item.pk %}">{{ item.display_name }}</a>
         {% elif group.kind == 'note' %}<a href="{% url 'work_order_detail' item.work_order.pk %}">{{ item.body|truncatewords:24 }}</a>
           <div class="small muted">{{ item.work_order.number }} · {{ item.noted_at|date }}</div>
+        {% elif group.kind == 'code' %}<a href="{% url 'code_reference' item.code %}">{{ item.code }}</a>
+          <span class="muted"> — {{ item.text }}</span>
+          {% comment %}
+          Which authority answered, because they are not equal claims: an
+          ISO/SAE code means the same thing on every vehicle ever built, while
+          a manufacturer's list is that manufacturer's own wording for its own
+          code. Shown flat, the narrower reads exactly like the wider.
+          {% endcomment %}
+          {% if item.make %}<span class="pill small">{{ item.make }}</span>
+          {% else %}<span class="pill small ok">{% translate "ISO/SAE" %}</span>{% endif %}
         {% elif group.kind == 'media' %}{{ item.original_filename|default:item }}
           <div class="small muted">{{ item.ocr_text|truncatewords:20 }}</div>
         {% else %}{{ item }}{% endif %}

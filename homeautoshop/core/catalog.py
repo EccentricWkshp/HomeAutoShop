@@ -82,7 +82,7 @@ CACHE_KEY = "catalog:index"
 #: What an entry may be. A kind this instance does not know is skipped rather
 #: than refused, so an older instance browsing a newer catalog sees what it
 #: can use instead of an error about something it was never going to install.
-KINDS = ("schedule", "profile", "checklist")
+KINDS = ("schedule", "profile", "checklist", "codes")
 
 
 class CatalogUnavailable(Exception):
@@ -104,16 +104,38 @@ class Entry:
     #: file makes about itself — the index only carries it because the build
     #: ran the profile and it passed.
     verified: bool = False
+    #: The publisher's version of this entry, where it keeps one. Code lists
+    #: do: a manufacturer's list is corrected and extended over time, and a
+    #: shop that installed it in March needs to be told there is a newer one
+    #: rather than left to compare three thousand rows by eye.
+    version: int = 0
     installed: bool = False
     #: The local record this entry corresponds to, where it is installed. The
     #: browse screen is one of the two places somebody realizes they do not
     #: want a template — the other being the list itself — so it offers
     #: removal rather than only reporting that it is here.
     installed_pk: str = ""
+    #: What is installed here, where the kind keeps a version. Zero when
+    #: nothing is installed, or when the kind has no versions.
+    installed_version: int = 0
 
     @property
     def is_schedule(self) -> bool:
         return self.kind == "schedule"
+
+    @property
+    def is_codes(self) -> bool:
+        return self.kind == "codes"
+
+    @property
+    def update_available(self) -> bool:
+        """Installed, and behind what is published.
+
+        Only ever true for a kind that versions itself. A newer version is
+        offered rather than applied: a definition somebody is reading today
+        should not change under them because a catalog was edited.
+        """
+        return bool(self.installed and self.version > self.installed_version)
 
 
 @dataclass(slots=True)
@@ -133,6 +155,19 @@ class Catalog:
     @property
     def checklists(self) -> list[Entry]:
         return [e for e in self.entries if e.kind == "checklist"]
+
+    @property
+    def codes(self) -> list[Entry]:
+        """Installed first, then by make.
+
+        This is the one list on the page with ninety rows in it, and the
+        question somebody arrives with is "have I got Ford" — which is worse
+        answered by scrolling to F than by looking at the top.
+        """
+        return sorted(
+            (e for e in self.entries if e.kind == "codes"),
+            key=lambda e: (not e.installed, e.name.lower()),
+        )
 
 
 def base_url() -> str:
@@ -252,6 +287,7 @@ def _read(payload) -> Catalog:
                 author=str(row.get("author") or "")[:80],
                 applies_to=tuple(str(a)[:32] for a in applies if isinstance(a, str)),
                 verified=bool(row.get("verified")),
+                version=max(0, int(row.get("version") or 0)),
             )
         )
     return _mark_installed(catalog)
@@ -259,40 +295,45 @@ def _read(payload) -> Catalog:
 
 def _mark_installed(catalog: Catalog) -> Catalog:
     """Say which entries this shop already has, so installing twice is not offered."""
-    from homeautoshop.diagnostics.models import ParserProfile
+    from homeautoshop.diagnostics.models import InstalledCodeList, ParserProfile
     from homeautoshop.inspections.models import InspectionTemplate
     from homeautoshop.maintenance.models import ScheduleTemplate
 
-    # Keyed by name *and* slug, to the local row, so the screen can offer to
-    # remove exactly the thing it is pointing at. Alive rows only: something
-    # in the trash is not installed, and offering to remove it again would be
+    # Keyed by name *and* slug, to the local row and its version, so the screen
+    # can offer to remove exactly the thing it is pointing at and can say when
+    # what is here is behind what is published. Alive rows only: something in
+    # the trash is not installed, and offering to remove it again would be
     # offering to do nothing.
-    have: dict = {"schedule": {}, "profile": {}, "checklist": {}}
+    have: dict = {kind: {} for kind in KINDS}
     for kind, model, has_slug in (
         ("schedule", ScheduleTemplate, True),
         ("checklist", InspectionTemplate, True),
         ("profile", ParserProfile, False),
+        ("codes", InstalledCodeList, True),
     ):
         for row in model.objects.all():
-            have[kind][row.name] = str(row.pk)
-            if has_slug and row.slug:
-                have[kind][row.slug] = str(row.pk)
+            found_at = (str(row.pk), int(getattr(row, "version", 0) or 0))
+            have[kind][row.name] = found_at
+            if has_slug and getattr(row, "slug", ""):
+                have[kind][row.slug] = found_at
 
     found = []
     for entry in catalog.entries:
         local = have[entry.kind].get(entry.name) or (
             have[entry.kind].get(entry.slug) if entry.slug else None
         )
+        pk, version = local if local else ("", 0)
         found.append(
             Entry(
                 **{
                     **{
                         f: getattr(entry, f)
                         for f in Entry.__slots__
-                        if f not in ("installed", "installed_pk")
+                        if f not in ("installed", "installed_pk", "installed_version")
                     },
-                    "installed": bool(local),
-                    "installed_pk": local or "",
+                    "installed": bool(pk),
+                    "installed_pk": pk,
+                    "installed_version": version,
                 }
             )
         )
@@ -343,6 +384,18 @@ def install(entry: Entry, *, user=None):
         from homeautoshop.inspections import templatelib as checklistlib
 
         return checklistlib.load(text)
+
+    if entry.is_codes:
+        from homeautoshop.diagnostics import codelistlib
+
+        installed = codelistlib.load(text, user=user)
+        # A version that arrived under a slug keeps it, so the browse screen
+        # can still point at this row when the make is spelled differently
+        # in the index than in the file.
+        if entry.slug and installed.slug != entry.slug:
+            installed.slug = entry.slug
+            installed.save(update_fields=["slug", "updated_at"])
+        return installed
 
     from homeautoshop.diagnostics import profiles as profilelib
 

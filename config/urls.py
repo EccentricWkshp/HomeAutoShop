@@ -48,6 +48,10 @@ urlpatterns = [
     path("templates/restore-builtins/", catalog.restore_builtins, name="restore_builtins"),
     path("templates/catalog/", catalog.catalog_browse, name="catalog_browse"),
     path("templates/catalog/install/", catalog.catalog_install, name="catalog_install"),
+    path("codelists/import/", catalog.codelist_import, name="codelist_import"),
+    path(
+        "codelists/<uuid:pk>/remove/", catalog.codelist_delete, name="codelist_delete"
+    ),
     path("users/new/", accounts.user_create, name="user_create"),
     path("users/<uuid:pk>/", accounts.user_detail, name="user_detail"),
     path("users/<uuid:pk>/signin/", accounts.user_set_active, name="user_set_active"),

@@ -499,10 +499,17 @@ data when present, and the original report. Nothing enters the vehicle history
 until **Add to the history** is pressed. Correct the date, tool, model, meter,
 or notes first, or discard the draft.
 
-Generic trouble codes use the built-in offline dictionary. Manufacturer-
-specific codes use the description imported from the report or a make-specific
-description recorded in the shop; they are not assigned a generic meaning by
-guesswork.
+ISO/SAE codes — the ones that mean the same thing on every vehicle — use the
+built-in offline dictionary, which needs no network and no setup.
+
+Manufacturer-specific codes, where `P1345` means one thing to GM and another to
+Toyota, are answered by that maker's own published list. Those are **installed
+rather than shipped**: there are around ninety makes and most shops work on
+two or three. Install the ones you need under **Templates, checklists and
+profiles → Browse the catalog → Manufacturer code lists**. Until a make's
+list is installed, its manufacturer codes fall back to the description imported
+from the report and to any description recorded in the shop. Nothing is ever
+assigned a meaning by guesswork.
 
 ### Unrecognized reports and better profiles
 
@@ -532,12 +539,31 @@ Every code is a link to its own page, wherever it appears. That page shows what
 the code means and **who says so**, which matters because the sources are not
 equally reliable:
 
-- **The standard (SAE J2012).** Generic codes — `P0` and `P2`, and their
-  equivalents in the other systems — mean the same thing on every vehicle ever
-  built. Nothing overrides these.
-- **The manufacturer's own list.** Ford's published list of about three
-  thousand codes is included, and Lincoln and Mercury read it too, since it is
-  the Ford Motor Company Group's document. No other make ships a list yet.
+- **The standard (SAE J2012).** *ISO/SAE controlled* codes — `P0` and `P2`,
+  and their equivalents in the other systems — mean the same thing on every
+  vehicle ever built. Nothing overrides these. You may hear them called
+  "generic"; the standard does not use that word.
+- **The manufacturer's own list.** Lists for 56 makes are published — about
+  fifty-eight thousand manufacturer-controlled definitions in all, from Acura
+  and Alfa Romeo through to Volvo and VW, including the heavy trucks. Most of
+  them are read from the makers' own service manuals, so the wording is the
+  manufacturer's rather than somebody's summary of it. These are **installed
+  rather than built in**: most shops work on two or three makes, and carrying
+  ninety would be a great deal of weight for a few hundred useful rows.
+  Install the ones you need under **Templates, checklists and profiles →
+  Browse the catalog**. Infiniti's is the largest at around eight thousand.
+  A make can have more than one, and where it does the more specific answers
+  first: Lincoln has its own list now and reads Ford's underneath it for the
+  codes its own does not carry, and where a particular vehicle's service
+  manual has been added it answers ahead of the general list. The page always
+  names the document it came from. Until a make's list is installed, its
+  manufacturer-controlled codes fall back to what the tool printed and what
+  you have written down.
+- **The standard's own P, B, C and U lists, for an ISO/SAE code.** These mean
+  the same thing on every vehicle, so they answer whatever you drive — about
+  thirty-five hundred codes. Manufacturer-controlled codes are never borrowed
+  across makes this way, and the page always says whose wording you are
+  reading.
 - **What you wrote down.** A note you record for a make is shown ahead of a
   published list, because you are the one holding the vehicle. It does not
   displace a standard definition, which is the same on every vehicle.
@@ -640,6 +666,7 @@ Administrators manage all three under **Templates, checklists and profiles**:
 - **Inspection checklists** define areas, guidance, photo requirements,
   measurements, and thresholds.
 - **Parser profiles** describe how a scan-tool report becomes fields and codes.
+- **Manufacturer code lists** say what one maker's own trouble codes mean.
 
 Each type can be imported from YAML and exported for another instance. Imports
 are validated before anything is written. Installed profiles can be turned off
@@ -654,11 +681,29 @@ does not apply it to a vehicle. A catalog entry's intervals and provenance
 still need human judgment; parser profiles verified against real reports are
 marked separately from unproven ones.
 
+Manufacturer code lists carry a version. When a newer one is published, the
+browse screen says so and offers **Update** — it is never applied on its own,
+so a definition being read today does not change underneath the reader.
+Removing a code list leaves every reading already recorded untouched; only the
+lookup falls back.
+
+On a machine with no connection, **Import a manufacturer code list** takes a
+`.json` file downloaded elsewhere and carried over, and
+`manage.py install_code_list <make>` installs one straight from a source
+checkout. Both are checked exactly as a catalog download is.
+
 ## Search, photos, documents, and OCR
 
 Global search accepts a nickname, VIN, part number, alternate number, person's
 name, work-order text, note phrase, filename, or text found inside a document.
 Results are grouped by record type.
+
+It also looks codes up. Type a trouble code (`P0420`), part of one (`P042`) if
+it is half-remembered or the screen is cracked, or words from what it means
+(`catalyst efficiency`) when the symptom is known and the number is not. Each
+result says who defines it — the ISO/SAE standard, which is true of every
+vehicle, or one manufacturer's own list. This does not need a scan report or an
+imported session; it is the quick lookup for a code read straight off a tool.
 
 Uploads are de-duplicated by content. Image derivatives and OCR run as
 background jobs. By default, GPS EXIF is removed from photos because a garage

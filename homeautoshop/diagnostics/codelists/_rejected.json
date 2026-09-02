@@ -1,0 +1,108 @@
+{
+ "why": "Documents examined and deliberately not transcribed, with the evidence. This file exists because the overlap check in `build_dtc_list` compares a new list against the ones already held, which makes it depend on build order: rebuilt from empty in alphabetical order, `Citroen` is read before `Ford` and nothing catches it. A finding that survives only in somebody's memory of a terminal session is not a finding. Each entry names the file as it was fetched, so the refusal is permanent and reproducible.",
+ "documents": [
+  {
+   "file": "DTC_Definitions Duramax codes.pdf",
+   "claimed": "Duramax / GM diesel",
+   "matches": "Ford",
+   "evidence": "670 of its 671 manufacturer-controlled codes are in Ford's Master List and 611 are word for word identical, including P1105 'Dual Alternator Upper Fault'. 37 entries carry two makes' definitions slash-joined, and three conflict internally — one reads 'P0562 A/C pressure sensor low voltage(Chrysler)'. It is a tuner's generic troubleshooting appendix, not a Duramax list."
+  },
+  {
+   "file": "Citroen Codes – TroubleCodes.net.pdf",
+   "claimed": "Citroen",
+   "matches": "Ford",
+   "evidence": "670 of its 671 manufacturer-controlled codes are shared with Ford's Master List and 612 are word for word identical. Exactly one code is unique to the page. 'Dual Alternator Upper Fault' is a Ford truck code and is not a Citroen one."
+  },
+  {
+   "file": "Peugeot Codes – TroubleCodes.net.pdf",
+   "claimed": "Peugeot",
+   "matches": "Citroen",
+   "evidence": "671 codes, 100% word for word the Citroen page, which is itself Ford's list. Same document twice over."
+  },
+  {
+   "file": "Peterbilt Codes – TroubleCodes.net.pdf",
+   "claimed": "Peterbilt",
+   "matches": "Kenworth",
+   "evidence": "355 codes, 100% word for word the Kenworth page. Both are PACCAR and it is one document, so Peterbilt is an alias of the Kenworth list rather than a second copy of it."
+  },
+  {
+   "file": "Ford Codes – TroubleCodes.net.pdf",
+   "claimed": "Ford",
+   "matches": "Ford",
+   "evidence": "Not a rejection, a preference. 507 manufacturer-controlled codes against 2,231 in Ford's own group document, and it adds only 55 the group document lacks. The manufacturer's own list is the better authority."
+  },
+  {
+   "file": "Lincoln Codes – TroubleCodes.net.pdf",
+   "claimed": "Lincoln",
+   "matches": "Ford",
+   "evidence": "Adds 33 codes to Ford's group document, which already covers Lincoln. Reading the 2,231-code group list beats reading a 319-code page of its own."
+  },
+  {
+   "file": "Mercury Codes – TroubleCodes.net.pdf",
+   "claimed": "Mercury",
+   "matches": "Ford",
+   "evidence": "Adds 32 codes to Ford's group document. Same reasoning as Lincoln."
+  },
+  {
+   "file": "Nonsense Codes – TroubleCodes.net.pdf",
+   "claimed": "n/a",
+   "matches": "",
+   "evidence": "A page about codes that are not codes. One code-shaped token in the whole document."
+  },
+  {
+   "file": "https://github.com/Wal33D/dtc-database",
+   "claimed": "28,220 codes across 33 manufacturers, MIT licensed",
+   "matches": "",
+   "evidence": "Definitions from different makes are merged into single strings. Its Ford P1106 reads 'Dual Alternator Lower Fault Manifold Absolute Pressure (MAP) Sensor Circuit Intermittent High Voltage' — Ford's definition with another make's welded on — and the same fault is present in data/source-data/ford_codes.txt, so it is in the source rather than introduced by the build. Its per-make files are also smaller than what is held here: Ford 413 against 3,093, Toyota 45 against 147, Chevy 403 against 499."
+  },
+  {
+   "file": "https://github.com/mytrile/obd-trouble-codes",
+   "claimed": "3,071 OBD trouble codes, make-agnostic, MIT licensed",
+   "matches": "Ford",
+   "evidence": "3,053 of its 3,071 codes are in Ford's Master List. It is one manufacturer's document served as though it applied to every vehicle, which is the failure that scoping definitions by make exists to prevent."
+  }
+ ],
+ "overlaps_why": "Overlaps examined and found legitimate, with the share that was seen. The copy check reports a new list that repeats a held one word for word, and on a catalog built from factory service manuals it reports twenty-six of them — every one of which is corporate families sharing a code chart, or a list small enough that a handful of standard codes dominates the fraction. Left unrecorded, each is investigated again from scratch every time somebody rebuilds, and the finding that matters drowns in the ones that do not. `upto` is the highest share observed: a pair listed here is reported quietly at or below it and loudly above it, because the point is not to silence the check but to say what has already been answered.",
+ "overlaps": [
+  {
+   "makes": [
+    "Chrysler",
+    "Dodge",
+    "Jeep",
+    "Plymouth",
+    "Eagle",
+    "Ram"
+   ],
+   "upto": 0.79,
+   "why": "One corporate chart across six badges. Chrysler wrote the codes and every badge's manuals reproduce them, wording included — `P1294 TARGET IDLE NOT REACHED` is the same sentence in all of them. Not merged, because the pages do disagree in places and merging would have to pick one; each keeps its own document."
+  },
+  {
+   "makes": [
+    "Toyota",
+    "Lexus"
+   ],
+   "upto": 0.68,
+   "why": "Lexus is Toyota's luxury division and the powertrain charts are shared."
+  },
+  {
+   "makes": [
+    "Hyundai",
+    "Genesis"
+   ],
+   "upto": 0.62,
+   "why": "Genesis is Hyundai's luxury division and the body modules are the same, down to `B1005 Airbag Present Error - Coding code error`."
+  },
+  {
+   "makes": [
+    "Eagle",
+    "Acura",
+    "Infiniti",
+    "Lexus",
+    "Nissan",
+    "Toyota"
+   ],
+   "upto": 0.64,
+   "why": "Not a family — an artefact of the denominator. Share is measured against the smaller list, and Eagle carries only about 190 manufacturer-controlled codes, so the P34xx cylinder-deactivation block being identical everywhere is enough to reach two thirds. Those codes are standard in all but classification: J2012 puts P3400-P3499 outside the manufacturer range, this does not, and that is deliberate — a code answered for one make more than it strictly should be costs a shop nothing, and removing it costs somebody an answer."
+  }
+ ]
+}

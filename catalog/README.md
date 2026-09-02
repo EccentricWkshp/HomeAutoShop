@@ -1,7 +1,8 @@
 # The shared template catalog
 
-Service schedules, inspection checklists and parser profiles that other people
-can install. Implements SPEC §17 R-1 / §8.1b.
+Service schedules, inspection checklists, parser profiles and manufacturer
+trouble-code lists that other people can install. Implements SPEC §17 R-1 /
+§8.1b.
 
 An instance points here by default — `CATALOG_URL` needs no configuring —
 and reads it only when somebody opens **Templates and checklists → Browse
@@ -11,7 +12,12 @@ bundled templates ship in the image, and this is additive.
 
 ## Contributing
 
-1. Drop your `.yaml` file in `schedules/`, `checklists/` or `profiles/`.
+1. Drop your `.yaml` file in `schedules/`, `checklists/` or `profiles/`. A
+   code list is a `.json` file in `codes/`, written by a command rather than
+   by hand — `manage.py build_dtc_list` for a document you have, or
+   `manage.py catalog_dtc_harvest` for a harvest staged by
+   `read_manual_library`. Both put the file through the validator that will
+   run on an operator's instance before it is written.
 2. Put an `author:` line in it — a name or handle, whatever you want beside
    your work. It shows on the browse screen and stays with the template after
    somebody installs it, because *who said these intervals were right* is the
@@ -50,9 +56,63 @@ an operator installs the one for the tool in their hand. That also means a
 profile can be contributed by whoever owns the hardware, which is the only
 person in a position to prove it reads their reports.
 
+## Why manufacturer code lists are published rather than bundled
+
+The same split, for the same reason. A trouble code is either **ISO/SAE
+controlled** — it means the same thing on every vehicle ever built — or
+**manufacturer controlled**, where `P1345` is one thing to GM and another to
+Toyota. J2012's own terms; "generic" is the shop-floor word and appears
+nowhere in the standard.
+
+The ISO/SAE sets are finite, about three and a half thousand codes, and answer
+for everything. They **ship in the image**, so an instance that has never
+reached a network still knows what `P0420` means, and nothing in this folder is
+needed to read a scan report.
+
+The manufacturer lists are neither. There are ninety-odd makes here and a
+shop owns two or three; bundling them all would put eighteen thousand
+definitions in every image so that each operator could use a few hundred. So a
+shop installs the makes on its own ramp, and the rest are not carried.
+
+**Each file is one manufacturer**, holding every published document that covers
+it. Suzuki has two — a summary of the whole badge, and one 2004 Aerio's own
+service manual, which between them share 11 codes out of 155 — and
+`precedence` says which answers first, a vehicle's own manual outranking a
+third party's summary. Grouping by make rather than by document is what makes
+the entry something a person can choose: you install *Suzuki*, not two
+documents you are then expected to rank.
+
+**Aliases are how one document covers several badges.** Ford's list is the Ford
+Motor Company Group's, so Lincoln and Mercury read it. Those names go in the
+index as `applies_to`, because a shop with a Lincoln has to be able to find the
+list that covers their vehicle — otherwise the badge on the wing is the one
+thing stopping them.
+
+**Every list carries a `version`.** The command that writes it raises it when
+the content actually changes and leaves it alone when it does not, so it answers the
+question the browse screen asks — *is what I installed behind what is
+published* — rather than counting how often somebody ran the command. A newer
+version is **offered, never applied**: a definition somebody is reading today
+should not change under them because a catalog was edited this morning.
+
+**A list may not claim to be the standard.** `codelistlib` refuses a document
+whose scope is `iso_sae` outright rather than quietly downgrading it. An
+ISO/SAE definition is presented to the operator as fact; a stranger's wording
+arriving with that authority is precisely the failure that scoping definitions
+by make exists to prevent.
+
+**There is a way in without a network.** P-1 says an instance that reaches
+nothing must still work, and while these lists were bundled, being offline
+meant no worse. It no longer does. So `manage.py install_code_list Ford` reads
+this folder directly, and **Templates and checklists → Import a manufacturer
+code list** takes a file carried in on a stick. Both go through the same
+validator the catalog install calls, which is the point: there is no
+privileged route for a file depending on how it arrived.
+
 ## What is already here
 
-Seven templates and seven parser profiles. They are meant to be read as
+Seven templates, seven parser profiles, and manufacturer code lists for 52
+makes. The templates and profiles are meant to be read as
 examples as much as installed:
 
 | File | What it shows |
@@ -186,9 +246,10 @@ running instance is already in the right format:
 | `schedules/` | Service schedule | `homeautoshop/maintenance/templatelib.py` |
 | `checklists/` | Inspection checklist | [SCHEMA-INSPECTION-TEMPLATES.md](../Artifacts/SCHEMA-INSPECTION-TEMPLATES.md) |
 | `profiles/` | Scan-tool parser profile | [SCHEMA-PARSER-PROFILES.md](../Artifacts/SCHEMA-PARSER-PROFILES.md) |
+| `codes/` | Manufacturer trouble-code list | `homeautoshop/diagnostics/codelistlib.py` |
 
 `index.json` carries `kind`, `slug`, `name`, `path` and `description` per
-entry. A `kind` an older instance does not recognize is **skipped and
+entry, plus `version` and `applies_to` for the kinds that have them. A `kind` an older instance does not recognize is **skipped and
 counted**, not refused, so publishing a new kind does not break instances that
 predate it — they show what they can use and say how many entries they could
 not.

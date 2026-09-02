@@ -28,16 +28,38 @@ from pathlib import Path
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
-#: folder → kind. The reader returns `(name, slug, description, author)` or
-#: raises, and is the *same* code that runs on an operator's instance.
+#: folder → kind. The reader returns `(name, slug, description, author, extra)`
+#: or raises, and is the *same* code that runs on an operator's instance.
 FOLDERS = {
     "schedules": "schedule",
     "checklists": "checklist",
     "profiles": "profile",
+    "codes": "codes",
 }
 
+#: What a folder holds. Templates and profiles are YAML because a person
+#: writes them; a code list is three thousand transcribed rows, which is a
+#: table, and JSON is what the transcriber writes and what it is read back as.
+SUFFIX = {"codes": "*.json"}
 
-def _read(kind: str, text: str) -> tuple[str, str, str, str]:
+
+def _read(kind: str, text: str) -> tuple[str, str, str, str, dict]:
+    if kind == "codes":
+        from homeautoshop.diagnostics import codelistlib
+
+        data = codelistlib.parse(text)
+        return (
+            data["make"],
+            "",
+            data["description"] or _describes_codes(data),
+            data["author"],
+            # The makes this one file answers for. Ford's list is the Ford
+            # Motor Company Group's, so a shop with a Lincoln has to be able to
+            # find it under Lincoln — otherwise the badge on the wing is the
+            # one thing that stops them installing the list that covers it.
+            {"version": data["version"], "applies_to": data["aliases"]},
+        )
+
     if kind in ("schedule", "checklist"):
         if kind == "schedule":
             from homeautoshop.maintenance import templatelib as lib
@@ -50,6 +72,7 @@ def _read(kind: str, text: str) -> tuple[str, str, str, str]:
             str(data.get("slug") or ""),
             str(data.get("description") or ""),
             str(data.get("author") or ""),
+            {},
         )
 
     from homeautoshop.diagnostics import profiles as profilelib
@@ -63,7 +86,23 @@ def _read(kind: str, text: str) -> tuple[str, str, str, str]:
         # Refused rather than downgraded: a file claiming a verification it
         # cannot pass is the one thing worse than one claiming nothing.
         verify(profile)
-    return (profile.name, "", _describes(profile), profile.author)
+    return (profile.name, "", _describes(profile), profile.author, {})
+
+
+def _describes_codes(data: dict) -> str:
+    """What the catalog says a code list is, taken out of the file itself.
+
+    The two things somebody choosing needs: how much is in it, and who says
+    so. A count alone would let a thin summary and a vehicle's own service
+    manual look identical on the browse screen, and which document a definition
+    came from is the thing the code page quotes beside it.
+    """
+    codes = len({c for d in data["documents"] for c in d["codes"]})
+    documents = [d["source"] for d in data["documents"]]
+    what = f"{codes:,} codes for {data['make']}"
+    if len(documents) > 1:
+        return f"{what}, from {len(documents)} documents: " + "; ".join(documents)
+    return f"{what}, from {documents[0]}"
 
 
 #: How much of a profile's notes reach the browse screen. Enough for what the
@@ -218,10 +257,10 @@ class Command(BaseCommand):
 
         entries, problems = [], []
         for folder, kind in sorted(FOLDERS.items()):
-            for path in sorted((root / folder).glob("*.yaml")):
+            for path in sorted((root / folder).glob(SUFFIX.get(kind, "*.yaml"))):
                 text = path.read_text(encoding="utf-8")
                 try:
-                    name, slug, description, author = _read(kind, text)
+                    name, slug, description, author, extra = _read(kind, text)
                 except Exception as exc:
                     # Named and collected rather than raised on the first one:
                     # a contributor fixing three files wants all three errors.
@@ -238,6 +277,7 @@ class Command(BaseCommand):
                     entry["author"] = author
                 if verified_against(kind, text):
                     entry["verified"] = True
+                entry.update({k: v for k, v in extra.items() if v})
                 entries.append(entry)
 
         if problems:

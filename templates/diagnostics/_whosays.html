@@ -4,7 +4,7 @@ Who says so, beside a trouble code's meaning. Takes `meaning` (a `dtc.Definition
 and optionally `printed` — the wording the scan tool itself put on that reading.
 
 A definition is only as good as whoever issued it, and these are not equal
-claims: SAE defines a generic code identically for every vehicle ever built, a
+claims: J2012 defines an ISO/SAE controlled code identically for every vehicle, a
 manufacturer's list is that manufacturer's own wording, a note is one person in
 this shop, and a scan tool is a third party rendering somebody else's
 definition. Shown flat, the weakest of those reads exactly like the strongest.
@@ -17,6 +17,8 @@ reader's behalf — which is the opposite of the point.
   <span class="small muted">{% translate "· recorded here" %}</span>
 {% elif meaning.source == 'make' %}
   <span class="small muted">{% blocktranslate with make=meaning.make %}· {{ make }}'s own list{% endblocktranslate %}</span>
+{% elif meaning.source == 'published' %}
+  <span class="small muted">{% blocktranslate with make=meaning.make %}· ISO/SAE code, wording from {{ make }}{% endblocktranslate %}</span>
 {% elif meaning.source == 'report' %}
   <span class="small muted">{% translate "· as the tool read it" %}</span>
 {% elif meaning.source == 'structure' %}

@@ -289,6 +289,90 @@ def search_api(request, q: str):
 
 
 # ---------------------------------------------------------------------------
+# Trouble codes (SPEC §8.3c)
+# ---------------------------------------------------------------------------
+
+
+class DefinitionOut(Schema):
+    """One answer about one code, with who said it.
+
+    `source` is the load-bearing field and the reason this is not just a
+    string. `standard` means J2012 defines it identically for every vehicle
+    ever built and a caller may present it as fact; `make` means it is one
+    manufacturer's own wording for its own code; `structure` means nobody has
+    said, and what comes back is the shape of the code rather than a guess at
+    the fault. A client that renders all three the same way is making a claim
+    this application refuses to make.
+    """
+
+    code: str
+    text: str
+    source: str
+    make: str = ""
+    citation: str = ""
+    version: int = 0
+    is_authoritative: bool = False
+
+
+def _out(found) -> dict:
+    return {
+        "code": found.code,
+        "text": found.text,
+        "source": found.source,
+        "make": found.make,
+        "citation": found.citation,
+        "version": found.version,
+        "is_authoritative": found.is_authoritative,
+    }
+
+
+@api.get("/codes", response=list[DefinitionOut], tags=["Trouble codes"])
+def code_search(request, q: str, limit: int = 25):
+    """Look a code up by number or by what it means.
+
+    The point of having it: reading a code off a scan tool and wanting to know
+    what it is should not require importing a report first. `q` takes either
+    `P0420`, the prefix `P042`, or words from the definition —
+    `catalyst efficiency` — and every word has to appear somewhere, because
+    nobody types a definition verbatim.
+
+    Not narrowed by who is asking. A dictionary is not vehicle data.
+    """
+    from homeautoshop.diagnostics import dtc
+
+    return [_out(found) for found in dtc.find(q, limit=max(1, min(limit, 100)))]
+
+
+@api.get("/codes/{code}", response=DefinitionOut, tags=["Trouble codes"])
+def code_detail(request, code: str, make: str = ""):
+    """The best available meaning for one code, and where it came from.
+
+    `make` matters and is worth passing whenever it is known: `P1345` is one
+    thing to GM and another to Toyota, and without it a manufacturer-controlled
+    code can only be answered from its structure. With it, the answer walks the
+    same ranking the screens use — a note recorded in this shop, then that
+    maker's own published list, then the standard, then structure.
+    """
+    from homeautoshop.diagnostics import dtc
+
+    found = dtc.explain(code, make=make)
+    if found is None:
+        # Not "no definition" — not code-shaped at all. The caller has to be
+        # able to tell a typo from a code nobody has written down.
+        return api.create_response(
+            request,
+            {
+                "type": "about:blank",
+                "title": "Not a trouble code",
+                "status": 404,
+                "detail": f"{code!r} is not shaped like a trouble code.",
+            },
+            status=404,
+        )
+    return _out(found)
+
+
+# ---------------------------------------------------------------------------
 # Offline write queue (SPEC §5.4, §10)
 # ---------------------------------------------------------------------------
 

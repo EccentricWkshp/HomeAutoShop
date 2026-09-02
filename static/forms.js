@@ -470,6 +470,53 @@
     });
   }
 
+  /* ------------------------------------------------------- a file, shown
+   * A file chosen for one of the import boxes is read into the box beside it.
+   *
+   * Before this the picker gave no sign of having done anything at all: the
+   * label still read "Choose a file", the box beside it stayed empty, and the
+   * only way to learn whether anything had been picked was to press Import and
+   * find out. Showing the text is better feedback than showing the filename,
+   * because the question in the operator's mind is not *did it take my file*
+   * but *is this the right file* — and these are documents somebody may have
+   * three near-identical copies of.
+   *
+   * The picker is cleared once the text is in the box, so what the screen shows
+   * is what will be sent. Leaving both filled would mean two sources for one
+   * field with the server quietly preferring the one that is not on screen,
+   * which is how an edit made in the box gets dropped without saying so.
+   */
+  function wireTextPickers(root) {
+    root.querySelectorAll("form[data-text-import]").forEach(function (form) {
+      var input = form.querySelector('input[type="file"]');
+      var box = form.querySelector("textarea");
+      var label = form.querySelector(".filepick span");
+      if (!input || !box || typeof window.FileReader === "undefined") return;
+
+      var idle = label ? label.textContent : "";
+      var picked = form.getAttribute("data-text-import-picked") || "%(name)s";
+      var failed = form.getAttribute("data-text-import-failed") || idle;
+
+      on(input, "change", function () {
+        var file = (input.files || [])[0];
+        if (!file) return;
+        var reader = new window.FileReader();
+        reader.onload = function () {
+          box.value = String(reader.result || "");
+          input.value = "";
+          if (label) label.textContent = picked.replace("%(name)s", file.name);
+        };
+        reader.onerror = function () {
+          // Left in the picker rather than half-loaded into the box: a
+          // truncated document that looks pasted is worse than one that
+          // plainly did not arrive.
+          if (label) label.textContent = failed;
+        };
+        reader.readAsText(file);
+      });
+    });
+  }
+
   /* ------------------------------------------------------ confirm before losing
    * Only where something disappears from view. A confirmation on everything
    * teaches people to dismiss confirmations.
@@ -498,6 +545,7 @@
     wireQuantitySteps(root);
     wireUnitPickers(root);
     wireUploads(root);
+    wireTextPickers(root);
     wireConfirms(root);
   }
 

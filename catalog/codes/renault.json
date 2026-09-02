@@ -1,0 +1,24 @@
+{
+ "make": "Renault",
+ "aliases": [],
+ "version": 1,
+ "author": "HomeAutoShop",
+ "documents": [
+  {
+   "source": "TroubleCodes.net — Renault Codes (troublecodes.net)",
+   "precedence": 0,
+   "codes": {
+    "P1205": "Control circuit particle filter injector",
+    "P1544": "Temp Sensor Upstream particulate filter",
+    "P160C": "Calculator",
+    "P1641": "Heater relay control circuit 1",
+    "P1642": "Heater relay control circuit 2",
+    "P1643": "Heater relay control circuit 3",
+    "P1644": "Heater relay control 1",
+    "P1645": "Heater relay control 2",
+    "P1646": "Heater relay control 3",
+    "P1650": "Control box connection heaters"
+   }
+  }
+ ]
+}

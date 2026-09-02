@@ -106,7 +106,7 @@
               fix it was the inline box below, which exists on drafts alone.
               {% endcomment %}
               <a href="{% url 'code_reference' code.code %}?make={{ session.asset.make|urlencode }}">{{ code.code }}</a>
-              {% if not code.is_generic %}<span class="pill">{% translate "maker-specific" %}</span>{% endif %}
+              {% if not code.is_iso_sae %}<span class="pill">{% translate "maker-specific" %}</span>{% endif %}
             </th>
             <td>
               {{ code.meaning.text|default:"—" }}

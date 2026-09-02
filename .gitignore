@@ -44,3 +44,11 @@ Artifacts/samples/**/automotive_scan_tool_public_examples*.json
 # `.dat` would be in a public repository forever. What ships is the redacted
 # capture beside it and the provenance in sources.json.
 Artifacts/samples/**/originals/
+
+# Published trouble-code lists, transcribed by `manage.py build_dtc_list` into
+# homeautoshop/diagnostics/codelists/. Somebody else's manual or web page, kept
+# so a committed table can be checked against what it came from. Ignored as a
+# whole directory for the same reason `originals/` is: these arrive as a PDF,
+# a saved web page or a text dump, and an extension list is a rule that has to
+# be remembered. What ships is the transcription, which names its source.
+Artifacts/samples/dtc-lists/

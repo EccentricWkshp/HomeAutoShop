@@ -23,7 +23,7 @@
       <h2>{% translate "What it means" %}</h2>
       {% comment %}
       The wording and, beside it, who says so. Those are different claims: SAE
-      defines a generic code identically for every vehicle ever built, a
+      defines an ISO/SAE code identically for every vehicle ever built, a
       manufacturer's list is that manufacturer's own wording, and a note typed
       in this shop is one person's understanding. Presenting all three the same
       way is how a guess ends up being acted on.
@@ -32,7 +32,7 @@
         <p style="font-size:1.1rem">{{ definition.text }}</p>
         {% if definition.source == 'standard' %}
           <p class="small muted">
-            {% translate "Defined by SAE J2012. A generic code means the same thing on every vehicle, so this needs no make." %}
+            {% translate "Defined by SAE J2012 as an ISO/SAE controlled code — it means the same thing on every vehicle, so this needs no make." %}
           </p>
         {% elif definition.source == 'make' %}
           <p class="small muted">
@@ -42,6 +42,11 @@
         {% elif definition.source == 'operator' %}
           <p class="small muted">
             {% blocktranslate with make=definition.make %}Recorded in this shop, for {{ make }}. Only the standard outranks it — you are the one who looked this up.{% endblocktranslate %}
+          </p>
+        {% elif definition.source == 'published' %}
+          <p class="small muted">
+            {% blocktranslate with make=definition.make %}An ISO/SAE controlled code, so it means this on every vehicle whatever the badge. The wording comes from {{ make }}, one of the published lists bundled here.{% endblocktranslate %}
+            {% if definition.citation %}<br>{{ definition.citation }}{% endif %}
           </p>
         {% elif definition.source == 'report' %}
           <p class="small muted">
@@ -138,7 +143,7 @@
         </p>
       {% elif definition.source == 'standard' %}
         <p class="small muted">
-          {% translate "This one is standard and stays that way. A generic code means the same thing on every vehicle ever built, so a local note does not replace it — record one only if you have something to add for your own reference." %}
+          {% translate "This one is standard and stays that way. An ISO/SAE controlled code means the same thing on every vehicle ever built, so a local note does not replace it — record one only if you have something to add for your own reference." %}
         </p>
       {% endif %}
     </section>
@@ -152,8 +157,8 @@
       <ul class="list small">
         <li>{% translate "System" %}: <strong>{{ structural }}</strong></li>
         <li>
-          {% if parsed.is_generic %}
-            {% translate "A generic code — defined by the standard, the same on every make." %}
+          {% if parsed.is_iso_sae %}
+            {% translate "ISO/SAE controlled — defined by the standard, and the same on every make." %}
           {% else %}
             {% translate "A manufacturer's own code. Its meaning is set by whoever built the vehicle, which is why this page asks for a make." %}
           {% endif %}
@@ -162,9 +167,18 @@
           <li>{% blocktranslate with byte=parsed.failure_type %}Failure type byte {{ byte }} — how the fault failed, kept out of the code itself so two readings of one fault still match.{% endblocktranslate %}</li>
         {% endif %}
       </ul>
+      {% comment %}
+      Named without a link: this page is open to helpers and the catalog is
+      not, so a link here would be a dead end for the people most likely to
+      be reading a code they do not recognize.
+      {% endcomment %}
       {% if makes_with_lists %}
         <p class="small muted">
-          {% blocktranslate with makes=makes_with_lists|join:", " %}A published code list is bundled for: {{ makes }}. Any other make relies on what this shop writes down.{% endblocktranslate %}
+          {% blocktranslate with makes=makes_with_lists|join:", " %}A manufacturer's own code list is installed for: {{ makes }}. Any other make relies on what this shop writes down, until its list is installed from Templates and checklists.{% endblocktranslate %}
+        </p>
+      {% else %}
+        <p class="small muted">
+          {% translate "No manufacturer's code list is installed. The ISO/SAE codes every vehicle shares are built in; a maker's own codes are answered by a list installed from Templates and checklists." %}
         </p>
       {% endif %}
     </section>

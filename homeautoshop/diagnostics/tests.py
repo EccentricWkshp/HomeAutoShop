@@ -56,8 +56,8 @@ class CodeDictionaryTests(TestCase):
         self.assertTrue(authoritative)
 
     def test_a_numbered_family_is_generated_rather_than_typed(self):
-        self.assertIn("Cylinder 7", str(dtc.GENERIC["P0307"]))
-        self.assertIn("Injector", str(dtc.GENERIC["P0203"]))
+        self.assertIn("Cylinder 7", str(dtc.ISO_SAE["P0307"]))
+        self.assertIn("Injector", str(dtc.ISO_SAE["P0203"]))
 
     def test_an_unknown_manufacturer_code_still_says_something_true(self):
         text, authoritative = dtc.describe("P1516")
@@ -72,8 +72,8 @@ class CodeDictionaryTests(TestCase):
         self.assertNotIn("circuit", text.lower())
 
     def test_the_second_digit_decides_generic_or_not(self):
-        self.assertTrue(dtc.parse("P0420")["is_generic"])
-        self.assertFalse(dtc.parse("P1420")["is_generic"])
+        self.assertTrue(dtc.parse("P0420")["is_iso_sae"])
+        self.assertFalse(dtc.parse("P1420")["is_iso_sae"])
 
     def test_a_letter_that_is_not_a_system_is_not_a_code(self):
         self.assertIsNone(dtc.parse("Z0420"))

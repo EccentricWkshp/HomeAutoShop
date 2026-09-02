@@ -996,7 +996,7 @@ class ProvingAProfileTests(TestCase):
         build_catalog = build_catalog_module()
         text, stems = self.profile()
 
-        name, _slug, _description, _author = build_catalog._read(
+        name, _slug, _description, _author, _extra = build_catalog._read(
             "profile", text + self.naming(stems)
         )
 
@@ -1078,7 +1078,7 @@ class ProvingAProfileTests(TestCase):
         build_catalog = build_catalog_module()
         text, _stems = self.profile(author="Somebody")
 
-        name, _slug, _description, author = build_catalog._read("profile", text)
+        name, _slug, _description, author, _extra = build_catalog._read("profile", text)
 
         self.assertTrue(name)
         self.assertEqual(author, "Somebody")
@@ -1830,3 +1830,178 @@ class RemovingAParserProfileTests(Base):
         self.client.post(reverse("restore_builtins"))
 
         self.assertFalse(ParserProfile.objects.filter(pk=mine.pk).exists())
+
+
+CODE_LIST = json.dumps({
+    "make": "Testla",
+    "aliases": ["Tesler"],
+    "version": 3,
+    "documents": [{
+        "source": "Testla service manual",
+        "codes": {"P1500": "Wastegate position sensor performance"},
+    }],
+})
+
+CODES_INDEX = {
+    "entries": [{
+        "kind": "codes",
+        "slug": "testla",
+        "name": "Testla",
+        "path": "codes/testla.json",
+        "description": "1 code for Testla, from Testla service manual",
+        "version": 3,
+        "applies_to": ["Tesler"],
+    }]
+}
+
+
+@override_settings(CATALOG_URL=BASE)
+class PublishingCodeListsTests(Base):
+    """A manufacturer's code list, published rather than bundled.
+
+    The split is the point: the ISO/SAE sets answer for every vehicle ever
+    built and stay in the image, while ninety makes of manufacturer codes
+    would be eighteen thousand definitions shipped so that each shop could use
+    a few hundred. The same reasoning that publishes parser profiles.
+    """
+
+    def browse(self, payload=None):
+        return mock.patch(
+            "homeautoshop.core.catalog.fetch_json",
+            return_value=Response(200, payload or CODES_INDEX, 5),
+        )
+
+    def install(self, body=CODE_LIST):
+        with self.browse(), mock.patch(
+            "homeautoshop.core.catalog.fetch_text", return_value=body
+        ):
+            return self.client.post(
+                reverse("catalog_install"),
+                {"kind": "codes", "path": "codes/testla.json"},
+                follow=True,
+            )
+
+    def test_it_is_offered_on_the_browse_screen(self):
+        with self.browse():
+            published = catalog_lib.index()
+
+        self.assertEqual(len(published.codes), 1)
+        self.assertEqual(published.codes[0].name, "Testla")
+        self.assertEqual(published.codes[0].version, 3)
+
+    def test_installing_one_makes_it_answer(self):
+        from homeautoshop.diagnostics import dtc
+
+        self.addCleanup(dtc._lists.cache_clear)
+        self.install()
+
+        self.assertEqual(dtc.explain("P1500", make="Testla").source, dtc.MAKE)
+
+    def test_the_message_counts_what_arrived_rather_than_talking_about_vehicles(self):
+        """A code list is a dictionary, not a template. It starts answering
+        the moment it is installed, and there is nothing to apply."""
+        response = self.install()
+
+        self.assertContains(response, "1 definitions")
+        self.assertNotContains(response, "until you apply it")
+
+    def test_what_is_already_installed_is_marked(self):
+        self.install()
+
+        with self.browse():
+            entry = catalog_lib.index().codes[0]
+
+        self.assertTrue(entry.installed)
+        self.assertEqual(entry.installed_version, 3)
+        self.assertFalse(entry.update_available)
+
+    def test_a_newer_published_version_is_offered_not_applied(self):
+        """A definition somebody is reading today should not change under them
+        because a catalog was edited this morning."""
+        self.install()
+        newer = {"entries": [{**CODES_INDEX["entries"][0], "version": 4}]}
+
+        with self.browse(newer):
+            # Forced, because installing already fetched and cached the index.
+            # That cache is deliberate — browsing should not be a request per
+            # page load — and "Check again" is the button that bypasses it.
+            entry = catalog_lib.index(force=True).codes[0]
+
+        self.assertTrue(entry.update_available)
+        self.assertEqual(entry.installed_version, 3)
+
+    def test_installing_the_newer_one_replaces_rather_than_doubles(self):
+        from homeautoshop.diagnostics.models import InstalledCodeList
+
+        self.install()
+        self.install(json.dumps({**json.loads(CODE_LIST), "version": 4}))
+
+        self.assertEqual(InstalledCodeList.objects.count(), 1)
+        self.assertEqual(InstalledCodeList.objects.get().version, 4)
+
+    def test_a_file_claiming_to_be_the_standard_is_refused(self):
+        """The catalog gets no privileged path. `CATALOG_URL` is a setting, so
+        the editorial review protecting the default catalog is somebody else's
+        process the moment it is pointed elsewhere — and an ISO/SAE list is
+        presented to the operator as fact."""
+        from homeautoshop.diagnostics.models import InstalledCodeList
+
+        response = self.install(json.dumps({
+            "make": "Testla",
+            "documents": [{
+                "source": "A standard, honestly",
+                "scope": "iso_sae",
+                "codes": {"P0420": "Catalyst below threshold"},
+            }],
+        }))
+
+        self.assertContains(response, "refused")
+        self.assertFalse(InstalledCodeList.objects.exists())
+
+    def test_the_makes_it_also_covers_are_published_with_it(self):
+        """Ford's list is the Ford Motor Company Group's. A shop with a
+        Lincoln has to be able to find it, or the badge on the wing is the one
+        thing stopping them installing the list that covers their vehicle."""
+        with self.browse():
+            self.assertEqual(catalog_lib.index().codes[0].applies_to, ("Tesler",))
+
+
+class TheImportBoxesTests(Base):
+    """Picking a file used to give no sign it had done anything.
+
+    The label still read "Choose a file", the box beside it stayed empty, and
+    the only way to find out whether the picker had taken anything was to press
+    Import and see. The file is now read into the box, so the screen shows what
+    will be sent — better feedback than a filename, because the question is not
+    *did it take my file* but *is this the right one*, and these are documents
+    somebody may hold three near-identical copies of.
+
+    The reading is done in the browser and is an enhancement only: with the
+    script blocked, the file input posts the file and the server reads it, the
+    way it always did.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.body = self.client.get(reverse("template_list")).content.decode()
+
+    def test_every_import_form_is_wired_for_it(self):
+        """All four, because they are the same control four times over and one
+        of them behaving differently is worse than none of them doing."""
+        self.assertEqual(self.body.count("data-text-import"), 4 * 3)
+
+    def test_the_code_list_import_is_one_of_them(self):
+        """The one this was reported against."""
+        import re
+
+        where = reverse("codelist_import")
+        forms = re.findall(r"<form[^>]*%s[^>]*>" % re.escape(where), self.body)
+
+        self.assertEqual(len(forms), 1)
+        self.assertIn("data-text-import", forms[0])
+
+    def test_the_form_still_posts_a_file_without_the_script(self):
+        """The enhancement clears the picker once it has the text. Nothing may
+        depend on that having happened."""
+        self.assertIn('enctype="multipart/form-data"', self.body)
+        self.assertIn('name="codelist"', self.body)

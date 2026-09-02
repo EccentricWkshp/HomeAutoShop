@@ -1,0 +1,19 @@
+{
+ "make": "Mack",
+ "aliases": [],
+ "version": 1,
+ "author": "HomeAutoShop",
+ "documents": [
+  {
+   "source": "TroubleCodes.net — Mack Codes (troublecodes.net)",
+   "precedence": 0,
+   "codes": {
+    "P1080": "Actuator Supply #2 ACM: Open Circuit",
+    "P1095": "Actuator Supply #2 ACM: Short Circuit Low",
+    "P1096": "Actuator Supply #2 ACM: Short Circuit High",
+    "P1131": "Aftertreatment Hydrocarbon Air Purge Valve: Short Circuit Low",
+    "P1134": "Aftertreatment Hydrocarbon Air Purge Valve: Open Circuit"
+   }
+  }
+ ]
+}

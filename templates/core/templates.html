@@ -99,7 +99,9 @@ unfindable. Nothing here reaches the network; it is a sentence about a setting.
       {% translate "A YAML file exported from another instance. It is checked before anything is written, and nothing is scheduled on a vehicle until you apply it." %}
       {% translate "Anything you remove goes to the trash for 30 days; shipped templates can be restored at any time." %}
     </p>
-    <form method="post" action="{% url 'template_import' %}" enctype="multipart/form-data" class="stack">
+    <form method="post" action="{% url 'template_import' %}" enctype="multipart/form-data" class="stack" data-text-import
+          data-text-import-picked="{% translate '%(name)s — shown below, press Import' %}"
+          data-text-import-failed="{% translate 'That file could not be read. Choose another.' %}">
       {% csrf_token %}
       <label class="filepick">
         <input type="file" name="template" accept=".yaml,.yml,text/yaml"
@@ -160,7 +162,9 @@ unfindable. Nothing here reaches the network; it is a sentence about a setting.
     <p class="small muted">
       {% translate "A YAML checklist. Its thresholds are checked before anything is written — an unknown comparison or a bound that is not a number is refused with the point named." %}
     </p>
-    <form method="post" action="{% url 'checklist_import' %}" enctype="multipart/form-data" class="stack">
+    <form method="post" action="{% url 'checklist_import' %}" enctype="multipart/form-data" class="stack" data-text-import
+          data-text-import-picked="{% translate '%(name)s — shown below, press Import' %}"
+          data-text-import-failed="{% translate 'That file could not be read. Choose another.' %}">
       {% csrf_token %}
       <label class="filepick">
         <input type="file" name="checklist" accept=".yaml,.yml,text/yaml"
@@ -252,7 +256,9 @@ there. The button on that screen still exists and now lands here.
     <p class="small muted">
       {% translate "Some report formats cannot be described by patterns and are read by a parser inside the application. Those are marked built-in parser: they have no rules to edit, but they version and re-parse like any other profile." %}
     </p>
-    <form method="post" action="{% url 'profile_import' %}" enctype="multipart/form-data" class="stack">
+    <form method="post" action="{% url 'profile_import' %}" enctype="multipart/form-data" class="stack" data-text-import
+          data-text-import-picked="{% translate '%(name)s — shown below, press Import' %}"
+          data-text-import-failed="{% translate 'That file could not be read. Choose another.' %}">
       {% csrf_token %}
       <label class="filepick">
         <input type="file" name="profile" accept=".yaml,.yml,text/yaml"
@@ -262,6 +268,86 @@ there. The button on that screen still exists and now lands here.
       <label class="field">
         <span class="visually-hidden">{% translate "Or paste the profile" %}</span>
         <textarea name="yaml" rows="6" class="input"
+                  placeholder="{% translate 'or paste it here' %}"></textarea>
+      </label>
+      <div class="row"><button class="primary" type="submit">{% translate "Import" %}</button></div>
+    </form>
+  </aside>
+</div>
+
+{% comment %}
+Its own pair rather than a second form under Parser profiles, where it first
+landed. The two are related — both are about reading a scan — but they are not
+the same decision and do not answer to each other: a profile turns one tool's
+report into fields, a code list says what a maker's codes mean, and installing
+either has nothing to do with the other. Filed under one heading, the smaller
+reads as a detail of the larger.
+{% endcomment %}
+<div class="cols two">
+  <section class="card" id="codes" data-live="codes">
+    <h2>{% translate "Manufacturer code lists" %}</h2>
+    <p class="small muted">
+      {% translate "What one maker's own trouble codes mean. The codes every vehicle shares are built in and need nothing; install the makes on your ramp." %}
+    </p>
+    <ul class="list small">
+      {% for held in code_lists %}
+        <li class="spread">
+          <div>
+            <strong>{{ held.make }}</strong> <span class="muted">v{{ held.version }}</span>
+            <div class="muted">
+              {% blocktranslate count n=held.code_count %}{{ n }} definition{% plural %}{{ n }} definitions{% endblocktranslate %}
+              {% if held.aliases %} · {% blocktranslate with makes=held.aliases|join:", " %}also covers {{ makes }}{% endblocktranslate %}{% endif %}
+              {% if held.author %} · {{ held.author }}{% endif %}
+            </div>
+            {% comment %}
+            Which document, kept visible after install for the same reason a
+            profile's proof is: six months on, "where did this definition come
+            from" is exactly the question somebody asks when a code reads oddly
+            — and a make covered by two documents has two answers.
+            {% endcomment %}
+            {% for document in held.documents %}
+              <div class="small muted">{{ document.source }}</div>
+            {% endfor %}
+          </div>
+          <div class="row">
+            <form method="post" action="{% url 'codelist_delete' held.pk %}">
+              {% csrf_token %}<input type="hidden" name="_anchor" value="codes">
+              <button type="submit" class="linkish small"
+                      data-confirm="{% translate 'Remove this code list? Readings you have already recorded are untouched.' %}">
+                {% translate "Remove" %}
+              </button>
+            </form>
+          </div>
+        </li>
+      {% empty %}
+        <li class="muted">{% translate "None installed." %}</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <aside class="card">
+    <h2>{% translate "Import a code list" %}</h2>
+    {% comment %}
+    The way in that does not need a network. A manufacturer's code list is
+    published rather than shipped, so an instance that cannot reach the catalog
+    has no other route to one — and P-1 says it must still be able to get
+    there. Download it on a machine that has a connection, bring it over.
+    {% endcomment %}
+    <p class="small muted">
+      {% translate "JSON, as published in the catalog. Normally you would install one from the catalog instead; this is the way in when this machine has no connection." %}
+    </p>
+    <form method="post" action="{% url 'codelist_import' %}" enctype="multipart/form-data" class="stack" data-text-import
+          data-text-import-picked="{% translate '%(name)s — shown below, press Import' %}"
+          data-text-import-failed="{% translate 'That file could not be read. Choose another.' %}">
+      {% csrf_token %}
+      <label class="filepick">
+        <input type="file" name="codelist" accept=".json,application/json"
+               aria-label="{% translate 'Code list file' %}">
+        <span>{% translate "Choose a file" %}</span>
+      </label>
+      <label class="field">
+        <span class="visually-hidden">{% translate "Or paste the code list" %}</span>
+        <textarea name="yaml" rows="4" class="input"
                   placeholder="{% translate 'or paste it here' %}"></textarea>
       </label>
       <div class="row"><button class="primary" type="submit">{% translate "Import" %}</button></div>

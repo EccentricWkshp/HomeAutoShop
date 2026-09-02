@@ -8,12 +8,12 @@ something somebody in this shop typed.
 
 **Structure** is defined by SAE J2012 and ISO 15031-6 and is true of every code
 ever issued: the letter names the system, the second digit says whether the
-code is generic or the manufacturer's own, and — for powertrain codes — the
+code is ISO/SAE controlled or the manufacturer's own, and — for powertrain codes — the
 third names the subsystem. That is derivable, so it is derived. A code this
 application has never heard of still produces *"Chassis · manufacturer-specific"*
 rather than a blank, which is a real answer.
 
-**Wording** is standardized only for the generic set. Those are finite, so a
+**Wording** is standardized only for the ISO/SAE controlled set. Those are finite, so a
 table of them is bundled and works with the network unplugged.
 
 Manufacturer-specific codes are not published anywhere free *and*
@@ -30,7 +30,7 @@ for them and both are used, in this order:
 
 What remains is structure, which is never a guess at the fault.
 
-The generic table carries a translation key per the §5.6 seed-data rule. The
+The ISO/SAE table carries a translation key per the §5.6 seed-data rule. The
 transcribed lists deliberately do not — see `codelists/__init__.py`.
 """
 
@@ -45,6 +45,11 @@ from pathlib import Path
 from django.utils.translation import gettext_lazy as _
 
 from . import codelists
+
+#: Every list as loaded, including the ones keyed to no make. Filled by
+#: :func:`_lists`, which is the cached loader; kept beside it rather than
+#: returned from it because the cache key is "all of them" either way.
+_EVERY: dict[str, list] = {}
 
 #: `B1352-20` is a real code: the suffix is a failure-type byte, not noise.
 CODE_RE = re.compile(r"^([PBCU])([0-9A-F])([0-9A-F])([0-9A-F]{2})(?:-([0-9A-F]{2}))?$", re.I)
@@ -74,11 +79,12 @@ POWERTRAIN_SUBSYSTEMS = {
     "C": _("Hybrid propulsion"),
 }
 
-#: The generic (SAE-defined) set. Not exhaustive — the full J2012 list runs to
+#: The ISO/SAE controlled set — what J2012 defines for every vehicle, and what
+#: the shop floor calls "generic". Not exhaustive: the full list runs to
 #: thousands, most of them cylinder- and bank-numbered variants that
 #: :func:`_expand` generates below. What is written out here is the codes a
 #: home shop actually meets, phrased the way the standard phrases them.
-_GENERIC: dict[str, object] = {
+_ISO_SAE: dict[str, object] = {
     # --- fuel and air metering -------------------------------------------
     "P0011": _("Camshaft position — timing over-advanced (bank 1)"),
     "P0014": _("Camshaft position — timing over-advanced (bank 1 exhaust)"),
@@ -186,11 +192,27 @@ _GENERIC: dict[str, object] = {
     "P0751": _("Shift solenoid A — stuck off or performance"),
     "P0755": _("Shift solenoid B circuit"),
     # --- chassis ----------------------------------------------------------
-    "C0035": _("Left front wheel speed sensor circuit"),
-    "C0040": _("Right front wheel speed sensor circuit"),
-    "C0045": _("Left rear wheel speed sensor circuit"),
-    "C0050": _("Right rear wheel speed sensor circuit"),
-    "C0561": _("System disabled information stored"),
+    # No C-codes here on purpose. `C0035`/`C0040`/`C0045`/`C0050` used to sit
+    # in this table as left-front through right-rear wheel speed sensors, which
+    # is **GM's** chassis numbering rather than the standard's: the published
+    # J2012 C set bundled beside this one puts the wheel speed sensors at
+    # `C0031`/`C0034`/`C0037`, reads `C0040` as *Brake Pedal Switch "A"*, and
+    # marks `C0050` **ISO/SAE Reserved** — a code the standard reserves cannot
+    # also be a definition the standard gives. `C0561` appears in no published
+    # ISO/SAE set held here at all, which is not evidence of what it means,
+    # only that this table could not say.
+    #
+    # They mattered more than five rows because of where they were. This table
+    # is the *authoritative* layer: `is_authoritative` is true for it and the
+    # screen presents it as fact on every vehicle ever built. One manufacturer's
+    # chassis codes asserted that way is the precise failure that scoping
+    # definitions by make exists to prevent, arrived at from the other end.
+    #
+    # Removed rather than corrected: the published C set answers all four
+    # properly and says whose wording it is, and `C0561` reaches structure,
+    # which reports what its number actually tells you — an ISO/SAE-controlled
+    # chassis code nobody here has defined — rather than asserting one
+    # manufacturer's meaning for it on every vehicle.
     # --- body -------------------------------------------------------------
     "B0001": _("Driver airbag deployment control"),
     "B0081": _("Driver seatbelt pretensioner deployment control"),
@@ -212,7 +234,7 @@ def _expand() -> dict[str, object]:
     bank-and-sensor number, and writing them out by hand is how a typo gets
     into a lookup table nobody checks.
     """
-    table = dict(_GENERIC)
+    table = dict(_ISO_SAE)
     for cylinder in range(1, 13):
         table.setdefault(
             f"P{300 + cylinder:04d}",
@@ -225,8 +247,16 @@ def _expand() -> dict[str, object]:
     # J2012 gives each oxygen sensor a block of six consecutive codes, starting
     # at P0130 for bank 1 and P0150 for bank 2. The block base is the plain
     # "circuit" fault; the five after it are low, high, slow, inactive, heater.
+    #
+    # **Three sensors per bank, not four.** The blocks end at P0147 and P0167;
+    # what follows is fuel, not oxygen — `P0148` is *Fuel delivery error* and
+    # `P0168` is *Fuel temperature too high*, both of which this loop was
+    # overwriting with an invented "bank 1 sensor 4". Generating a row is
+    # exactly as much of a claim as typing one, and this one was contradicting
+    # the published J2012 set bundled beside it while outranking it, because
+    # the hand-written table is the layer a caller may present as fact.
     for bank, base in ((1, 130), (2, 150)):
-        for sensor in range(1, 5):
+        for sensor in range(1, 4):
             start = base + (sensor - 1) * 6
             table.setdefault(
                 f"P{start:04d}",
@@ -235,7 +265,14 @@ def _expand() -> dict[str, object]:
     return table
 
 
-GENERIC = _expand()
+#: The revision of the table below. It is written out here the way the standard
+#: phrases it rather than transcribed from a file, so it changes with this
+#: module — but J2012 is revised and codes are added, and an answer presented
+#: to an operator as fact should be able to say which printing it came from.
+#: Raise it when a definition here changes or a code is added.
+ISO_SAE_VERSION = 1
+
+ISO_SAE = _expand()
 
 
 def parse(code: str) -> dict | None:
@@ -247,7 +284,7 @@ def parse(code: str) -> dict | None:
     return {
         "code": f"{system}{second}{third}{rest}".upper(),
         "system": system.upper(),
-        "is_generic": second in "02",
+        "is_iso_sae": second in "02",
         "subsystem": third,
         "failure_type": (failure or "").upper(),
     }
@@ -270,43 +307,178 @@ def normalize(code: str) -> str:
 
 @dataclass(frozen=True)
 class CodeList:
-    """One manufacturer's published list, as transcribed."""
+    """One published list, as transcribed.
+
+    `scope` is `make` for a manufacturer's own list and `iso_sae` for a
+    document that is the standard's list rather than anybody's — the P, B, C
+    and U sets. J2012 calls those codes ISO/SAE controlled, and such a list is
+    matched to no make at all: it answers ISO/SAE codes for every vehicle and
+    manufacturer-controlled codes for none.
+    """
 
     make: str
     source: str
     codes: dict
+    scope: str = "make"
+    #: Higher wins where two documents cover one make and define one code.
+    #: A vehicle's own service manual outranks a third party's summary of the
+    #: whole make, and there is no way to work that out from the files.
+    precedence: int = 0
+    #: The publisher's revision of this document. Every list has one, the
+    #: standard's own sets included: J2012 is revised, codes are added, and a
+    #: definition presented as fact still came from a particular printing of
+    #: it. Bundled lists change with the image rather than through the catalog,
+    #: so the number is provenance rather than an update prompt — but "which
+    #: revision is this instance answering from" is a question worth being able
+    #: to answer, and a transcription that cannot say is not checkable.
+    version: int = 1
+
+    @property
+    def is_iso_sae(self) -> bool:
+        return self.scope == "iso_sae"
 
 
 @lru_cache(maxsize=1)
-def _lists() -> dict[str, CodeList]:
-    """Every bundled list, keyed by each make name that should read it.
+def _lists() -> dict[str, list[CodeList]]:
+    """Every list this instance can read, keyed by each make that reads it.
 
-    Ford's document is the Ford Motor Company Group's, so Lincoln and Mercury
-    are keyed to it as well — they are the same modules with a different badge,
-    and the alternative is three copies of one table drifting apart.
+    Two sources, and the split is the point. **The standard's own sets ship in
+    the image**: they answer for every vehicle ever built, they are finite, and
+    an instance that has never reached the network still knows what `P0420`
+    means. **A manufacturer's list is installed**, because there are ninety-odd
+    makes and a shop owns three; see
+    :class:`~homeautoshop.diagnostics.models.InstalledCodeList`.
+
+    A make maps to a **list** of documents, not one. A make can be covered by
+    more than one — a summary of the whole badge and, alongside it, one
+    vehicle's own service manual — and keying by name alone let the second
+    silently replace the first, which is the kind of loss nothing would report.
+
+    Aliases are how one document covers several badges: Ford's is the Ford
+    Motor Company Group's, so Lincoln and Mercury read it too. They are the
+    same modules with a different badge, and the alternative is three copies of
+    one table drifting apart.
     """
-    found: dict[str, CodeList] = {}
-    for path in sorted(Path(codelists.__file__).parent.glob("*.json")):
-        data = json.loads(path.read_text(encoding="utf-8"))
-        entry = CodeList(
-            make=str(data.get("make") or ""),
-            source=str(data.get("source") or ""),
-            codes=data.get("codes") or {},
-        )
-        for name in [entry.make, *(data.get("aliases") or [])]:
+    found: dict[str, list[CodeList]] = {}
+    _all: list[CodeList] = _EVERY.setdefault("lists", [])
+    _all.clear()
+    for entry, names in [*_bundled(), *_installed()]:
+        _all.append(entry)
+        if entry.is_iso_sae:
+            # Not keyed to anything. A vehicle never "is" the standard, and
+            # keying it to a name would let it answer a manufacturer code.
+            continue
+        for name in names:
             if str(name).strip():
-                found[str(name).strip().lower()] = entry
+                found.setdefault(str(name).strip().lower(), []).append(entry)
+
+    for name, entries in found.items():
+        # A document that *is* this make's answers before one that merely
+        # covers it. Ford's list carries Lincoln and Mercury by alias, which
+        # was the whole answer while neither had a document; once Lincoln has
+        # 4,892 codes read from Lincoln service manuals, ranking on precedence
+        # and source alone hands a Lincoln Ford's list because `Ford` sorts
+        # before `Lincoln`. Both still answer — `explain` walks all of them —
+        # so the badge's own wording leads and the group's fills the gaps.
+        entries.sort(
+            key=lambda e: (e.make.strip().lower() != name, -e.precedence, e.source)
+        )
     return found
 
 
+def _bundled() -> list[tuple[CodeList, list[str]]]:
+    """The lists that ship in the image: the ISO/SAE sets, and nothing else."""
+    out = []
+    for path in sorted(Path(codelists.__file__).parent.glob("*.json")):
+        if path.name.startswith("_"):
+            continue  # `_rejected.json` is a register of what was kept out.
+        data = json.loads(path.read_text(encoding="utf-8"))
+        out.append((
+            CodeList(
+                make=str(data.get("make") or ""),
+                source=str(data.get("source") or ""),
+                codes=data.get("codes") or {},
+                scope=str(data.get("scope") or "make"),
+                precedence=int(data.get("precedence") or 0),
+                version=int(data.get("version") or 1),
+            ),
+            [data.get("make") or "", *(data.get("aliases") or [])],
+        ))
+    return out
+
+
+def _installed() -> list[tuple[CodeList, list[str]]]:
+    """The manufacturer lists this shop chose to install.
+
+    Read straight from the rows every time `_lists` is rebuilt, and the cache
+    above is dropped whenever one is installed or removed — see
+    `DiagnosticsConfig.ready`. A stale answer here would be a code page still
+    quoting a list somebody has just deleted.
+    """
+    from .models import InstalledCodeList
+
+    out = []
+    try:
+        rows = list(InstalledCodeList.objects.all())
+    except Exception:
+        # Before `migrate`, and during the first steps of a fresh install,
+        # there is no table yet. The standard still answers, which is the
+        # whole reason it is bundled rather than installed.
+        return out
+
+    for row in rows:
+        names = [row.make, *(row.aliases or [])]
+        for document in row.documents or []:
+            out.append((
+                CodeList(
+                    make=row.make,
+                    source=str(document.get("source") or ""),
+                    codes=document.get("codes") or {},
+                    scope="make",
+                    precedence=int(document.get("precedence") or 0),
+                    version=row.version,
+                ),
+                names,
+            ))
+    return out
+
+
+def forget() -> None:
+    """Drop the cached view of what is installed.
+
+    Called when a list is installed or removed. Everything else about the
+    lookup is files, which do not change while the process runs.
+    """
+    _lists.cache_clear()
+
+
+def code_lists_for(make: str) -> list[CodeList]:
+    """Every bundled list covering this make, best first."""
+    return _lists().get((make or "").strip().lower(), [])
+
+
 def code_list_for(make: str) -> CodeList | None:
-    """The bundled list covering this make, if one is shipped."""
-    return _lists().get((make or "").strip().lower())
+    """The first list covering this make, if one is shipped."""
+    covering = code_lists_for(make)
+    return covering[0] if covering else None
 
 
 def makes_with_lists() -> list[str]:
     """The makes a bundled list can answer for, named as their own list names."""
-    return sorted({entry.make for entry in _lists().values()})
+    return sorted({e.make for entries in _lists().values() for e in entries})
+
+
+def _every_list() -> list[CodeList]:
+    """Each bundled list once, in a fixed order so an answer never wobbles.
+
+    The standard's own sets come first. Several documents define one ISO/SAE
+    code, and a list that *is* the standard's list is the better authority for
+    it than one manufacturer's restatement.
+    """
+    _lists()  # populates the registry below
+    return sorted(
+        _EVERY["lists"], key=lambda e: (not e.is_iso_sae, e.make)
+    )
 
 
 # --------------------------------------------------------------------------
@@ -320,6 +492,7 @@ def makes_with_lists() -> list[str]:
 STANDARD = "standard"
 OPERATOR = "operator"
 MAKE = "make"
+PUBLISHED = "published"
 REPORT = "report"
 STRUCTURE = "structure"
 
@@ -333,6 +506,21 @@ class Definition:
     source: str
     make: str = ""
     citation: str = ""
+    #: The revision of the list that answered, where a list did. Zero for a
+    #: definition that came from somewhere else — the hand-written ISO/SAE
+    #: table, a note typed here, the scan tool, or structure.
+    version: int = 0
+
+    def __str__(self) -> str:
+        """The code and what it means, in one line.
+
+        Written out because a `Definition` reaches places that render whatever
+        they are given — the API's search endpoint among them — and a
+        dataclass repr there would be a wall of field names where a person
+        expected a sentence.
+        """
+        said = f"{self.code} — {self.text}" if self.text else self.code
+        return f"{said} ({self.make})" if self.make else said
 
     @property
     def is_authoritative(self) -> bool:
@@ -356,28 +544,37 @@ def explain(code: str, *, make: str = "", reported: str = "") -> Definition | No
     **The order is the whole point**, and it ranks claims rather than
     convenience:
 
-    1. **The SAE generic set.** A generic code means the same thing on every
+    1. **The ISO/SAE controlled set.** Such a code means the same thing on every
        vehicle ever built, so nothing local gets to redefine it.
     2. **A note recorded in this shop for this make.** Somebody looked it up
        and wrote it down deliberately, which outranks every table below — the
        same rule that keeps a corrected VIN decode safe from vPIC.
     3. **The manufacturer's own published list.**
-    4. **What the scan tool printed**, below the manufacturer's own list on
+    4. **Any published list at all, for an ISO/SAE code.** Such a code means
+       the same thing on every vehicle ever built, so a manufacturer's wording
+       for one is evidence about the standard rather than about that
+       manufacturer — there is no reason a Toyota should be told nothing about
+       `P0351` because the list that happens to define it is Ford's. The table
+       in this module is a few hundred codes hand-written the way the standard
+       phrases them; Ford's list alone carries 862 more.
+    5. **What the scan tool printed**, below the manufacturer's own list on
        purpose. A tool is a third party rendering somebody else's definition:
        it truncates, and it sometimes declines outright. A real Ford `B1695`
        reads *"Please See The Vehicle Service Manual."* off one tool and
        *"Autolamp On Circuit Short To Battery"* off Ford's own list. Nothing
        is lost by ranking it here, because the screen still prints what the
        tool read underneath.
-    5. **Structure**, which is the floor and is never a guess at the fault.
+    6. **Structure**, which is the floor and is never a guess at the fault.
     """
     parsed = parse(code)
     if parsed is None:
         return None
 
     canonical = parsed["code"]
-    if parsed["is_generic"] and canonical in GENERIC:
-        return Definition(canonical, str(GENERIC[canonical]), STANDARD)
+    if parsed["is_iso_sae"] and canonical in ISO_SAE:
+        return Definition(
+            canonical, str(ISO_SAE[canonical]), STANDARD, version=ISO_SAE_VERSION
+        )
 
     if make:
         from .models import CodeDescription
@@ -390,20 +587,109 @@ def explain(code: str, *, make: str = "", reported: str = "") -> Definition | No
         if own:
             return Definition(canonical, own, OPERATOR, make=make)
 
-        published = code_list_for(make)
-        if published and canonical in published.codes:
-            return Definition(
-                canonical,
-                published.codes[canonical],
-                MAKE,
-                make=published.make,
-                citation=published.source,
-            )
+        for published in code_lists_for(make):
+            if canonical in published.codes:
+                return Definition(
+                    canonical,
+                    published.codes[canonical],
+                    MAKE,
+                    make=published.make,
+                    citation=published.source,
+                    version=published.version,
+                )
+
+    if parsed["is_iso_sae"]:
+        for entry in _every_list():
+            if canonical in entry.codes:
+                return Definition(
+                    canonical,
+                    entry.codes[canonical],
+                    PUBLISHED,
+                    make=entry.make,
+                    citation=entry.source,
+                    version=entry.version,
+                )
 
     if (reported or "").strip():
         return Definition(canonical, reported.strip(), REPORT)
 
     return Definition(canonical, structural(canonical), STRUCTURE)
+
+
+#: How many code hits a lookup returns before it stops being a lookup and
+#: starts being a listing. Somebody typing "misfire" wants the handful that
+#: names it, not four hundred rows to read.
+MOST_HITS = 25
+
+
+def find(query: str, *, limit: int = MOST_HITS) -> list[Definition]:
+    """Codes matching `query`, for looking one up without a report in hand.
+
+    Two ways of asking, because there are two questions:
+
+    * **By code.** `P0420`, or the prefix `P042` when somebody is reading a
+      cracked screen. This is the common one and it is why the whole thing
+      exists — the code page could only be reached by importing a report and
+      clicking a reading, so answering "what is P0420" meant running a scan
+      first.
+    * **By what it means.** `catalyst efficiency`, `evap purge`. A technician
+      who knows the symptom and not the number is the other half of the job,
+      and the tables already hold the words.
+
+    Searched across the standard's own sets and every installed manufacturer
+    list, and each hit says which — an ISO/SAE code means the same thing on
+    every vehicle, while `P1345` is one thing to GM and another to Toyota, and
+    a result that did not say which would be worse than none.
+
+    Nothing here is vehicle data, so it is not narrowed by who is asking. A
+    dictionary is a dictionary.
+    """
+    query = " ".join((query or "").split())
+    if len(query) < 2:
+        return []
+
+    wanted = query.upper().replace(" ", "")
+    by_code = bool(re.match(r"^[PBCU][0-9A-F]{0,4}$", wanted))
+    # Every word, anywhere, rather than the phrase as typed. Nobody types a
+    # definition verbatim: `catalyst efficiency` is how a person asks for
+    # "Catalyst system efficiency below threshold", and a phrase match answers
+    # that with nothing while looking like the code does not exist.
+    terms = [t for t in query.casefold().split() if t]
+
+    found: dict[tuple[str, str], Definition] = {}
+
+    def keep(code: str, text: str, source: str, make: str, citation: str, version: int):
+        # Keyed by code *and* make: one code answered by four makes is four
+        # answers, and collapsing them would silently pick one.
+        found.setdefault(
+            (code, make.lower()),
+            Definition(code, text, source, make=make, citation=citation, version=version),
+        )
+
+    def says(text: str) -> bool:
+        lowered = text.casefold()
+        return all(term in lowered for term in terms)
+
+    for code, text in ISO_SAE.items():
+        if code.startswith(wanted) if by_code else says(str(text)):
+            keep(code, str(text), STANDARD, "", "", 0)
+
+    for entry in _every_list():
+        source = PUBLISHED if entry.is_iso_sae else MAKE
+        for code, text in entry.codes.items():
+            if code.startswith(wanted) if by_code else says(text):
+                keep(code, text, source, entry.make, entry.source, entry.version)
+        if len(found) > limit * 4:
+            # Enough to rank from. Reading every remaining list to find the
+            # 2,000th match is work nobody is waiting for.
+            break
+
+    # The standard first, then by code, so an exact code lands at the top and
+    # the answer that is true of every vehicle outranks one make's wording.
+    return sorted(
+        found.values(),
+        key=lambda d: (d.source != STANDARD, d.code != wanted, d.code, d.make),
+    )[:limit]
 
 
 def describe(code: str, *, make: str = "", reported: str = "") -> tuple[str, bool]:
@@ -425,7 +711,7 @@ def structural(code: str) -> str:
     if parsed is None:
         return ""
     system = str(SYSTEMS.get(parsed["system"], ""))
-    scope = _("generic") if parsed["is_generic"] else _("manufacturer-specific")
+    scope = _("ISO/SAE") if parsed["is_iso_sae"] else _("manufacturer-specific")
     if parsed["system"] == "P" and parsed["subsystem"] in POWERTRAIN_SUBSYSTEMS:
         area = str(POWERTRAIN_SUBSYSTEMS[parsed["subsystem"]])
         return f"{system} · {area} · {scope}"

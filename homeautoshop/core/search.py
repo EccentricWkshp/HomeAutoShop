@@ -164,6 +164,7 @@ def search(query: str, *, limit_per_group: int = 10, user=None) -> Results:
     from homeautoshop.accounts.policy import is_helper, visible_assets, visible_assets_for
 
     from homeautoshop.assets.models import Asset
+    from homeautoshop.diagnostics import dtc
     from homeautoshop.mediafiles.models import Media
     from homeautoshop.parts.models import Part
     from homeautoshop.people.models import Person
@@ -217,6 +218,16 @@ def search(query: str, *, limit_per_group: int = 10, user=None) -> Results:
             limit=limit_per_group,
         ),
     )
+    # Trouble codes are a dictionary, not vehicle data, so everybody gets them
+    # — including helpers, who can already open the code page. Above the
+    # helper cut-off for exactly that reason.
+    #
+    # This is the entry the reference page was missing. It could only be
+    # reached by importing a report and clicking a reading, so answering "what
+    # is P0420" meant running a scan first; and the tables already hold the
+    # words, so `catalyst efficiency` finds it from the other direction too.
+    add(_("Trouble codes"), "code", dtc.find(query, limit=limit_per_group))
+
     # The address book and the document shelf are not vehicle-scoped, so a
     # helper gets neither rather than a filtered version of each.
     if user is not None and is_helper(user):
