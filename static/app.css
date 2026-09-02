@@ -240,9 +240,25 @@ summary { cursor: pointer; }
    side keeps its content width and one long line — a code list naming the
    document it was transcribed from, say — pushes the button onto a line of its
    own, left-aligned, where every other row in the list has it on the right.
-   `.spread` still wraps when a screen is genuinely too narrow for both. */
-.list > li.spread > :first-child { min-width: 0; flex: 1 1 auto; }
-.list > li.spread > .row { flex: 0 0 auto; }
+
+   The basis has to be `0`, and `flex-shrink` will not do it. A wrapping flex
+   container breaks lines on each item's *hypothetical* main size, which is its
+   flex-basis: at `auto` that is the text's max-content width, so a long line
+   overflows and wraps before shrinking is ever considered — shrinking applies
+   within a line, after the breaking is done. At `0` both items always share a
+   line and the text column then grows into whatever the button leaves.
+
+   `min-width: min-content` is what keeps the documented behaviour: a screen
+   genuinely too narrow for the longest word and the button still wraps.
+
+   Whatever sits on the right holds its size, and it is matched by position
+   rather than by class: on the catalog page it is a bare `<form>` around an
+   Install button, in an installed list a `.row` of them, and naming `.row`
+   alone left the catalog's buttons to wrap. `:not(:first-child)` also leaves
+   a one-child row alone, which `:last-child` would not — that would be the
+   same element as `:first-child` and cancel the rule above it. */
+.list > li.spread > :first-child { min-width: min-content; flex: 1 1 0; }
+.list > li.spread > :not(:first-child) { flex: 0 0 auto; }
 .list a { text-decoration: none; }
 /* What is inside the row above. Indented against a rule rather than merely
    padded, so the relationship survives a narrow screen where the indent alone
