@@ -293,7 +293,10 @@ def promote_to_work_order(code: DiagnosticCode, *, user=None, work_order=None):
 
     session = code.session
     asset = session.asset
-    described = code.description or dtc.structural(code.code)
+    # The resolved meaning, not the column. A job titled "B1695 — Please See
+    # The Vehicle Service Manual." is the complaint field answering nothing.
+    meaning = dtc.explain(code.code, make=asset.make, reported=code.description)
+    described = meaning.text if meaning else ""
 
     if work_order is None:
         work_order = WorkOrder.objects.create(
@@ -360,3 +363,48 @@ def _datetime(value: str):
     if timezone.is_naive(parsed):
         parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
     return parsed
+
+
+def record_description(*, make: str, code: str, text: str) -> int:
+    """Name a manufacturer-specific code for one make, everywhere it appears.
+
+    Typed once and reused instance-wide, because `P1345` means one thing to
+    every Ford ever built and something else entirely to Toyota — the make is
+    what makes the answer true, not the vehicle.
+
+    An empty `text` **removes** the note rather than storing a blank, and
+    unwinds it from the readings it had been written onto. Only readings whose
+    description is exactly the note being removed are touched: anything the
+    scan tool itself printed is what the tool said and is not ours to erase.
+
+    Returns how many stored readings the change reached, which is what the
+    message on the screen is counting.
+    """
+    from .models import CodeDescription, DiagnosticCode
+
+    canonical = dtc.normalize(code)
+    text = (text or "").strip()[:255]
+    # Matched case-insensitively rather than exactly. vPIC says `FORD` and a
+    # person types `Ford`; the unique constraint is on the exact string, so
+    # creating blind makes two rows for one make and the lookup then picks
+    # whichever sorts first.
+    existing = CodeDescription.objects.filter(code=canonical, make__iexact=make).first()
+
+    if not text:
+        if existing is None:
+            return 0
+        was = existing.description
+        existing.delete()
+        return DiagnosticCode.objects.filter(
+            code=canonical, session__asset__make__iexact=make, description=was
+        ).update(description="")
+
+    if existing is not None:
+        existing.description = text
+        existing.save(update_fields=["description"])
+    else:
+        CodeDescription.objects.create(make=make, code=canonical, description=text)
+
+    return DiagnosticCode.objects.filter(
+        code=canonical, session__asset__make__iexact=make, description=""
+    ).update(description=text)

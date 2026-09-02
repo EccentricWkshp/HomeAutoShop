@@ -1,0 +1,173 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ code }} — {% translate "Trouble code" %}{% endblock %}
+{% block content %}
+{% url 'diagnostic_queue' as back_url %}
+{% include "partials/_back.html" with url=back_url label=_("Diagnostics") %}
+
+<div class="spread">
+  <div>
+    <h1 class="mono">{{ code }}</h1>
+    <p class="muted">
+      {{ structural }}
+      {% if parsed.failure_type %}
+        · {% translate "failure type" %} <span class="mono">{{ parsed.failure_type }}</span>
+      {% endif %}
+    </p>
+  </div>
+</div>
+
+<div class="cols two">
+  <div class="stack">
+
+    <section class="card">
+      <h2>{% translate "What it means" %}</h2>
+      {% comment %}
+      The wording and, beside it, who says so. Those are different claims: SAE
+      defines a generic code identically for every vehicle ever built, a
+      manufacturer's list is that manufacturer's own wording, and a note typed
+      in this shop is one person's understanding. Presenting all three the same
+      way is how a guess ends up being acted on.
+      {% endcomment %}
+      {% if definition.is_known %}
+        <p style="font-size:1.1rem">{{ definition.text }}</p>
+        {% if definition.source == 'standard' %}
+          <p class="small muted">
+            {% translate "Defined by SAE J2012. A generic code means the same thing on every vehicle, so this needs no make." %}
+          </p>
+        {% elif definition.source == 'make' %}
+          <p class="small muted">
+            {% blocktranslate with make=definition.make %}From {{ make }}'s own published list.{% endblocktranslate %}
+            {% if definition.citation %}<br>{{ definition.citation }}{% endif %}
+          </p>
+        {% elif definition.source == 'operator' %}
+          <p class="small muted">
+            {% blocktranslate with make=definition.make %}Recorded in this shop, for {{ make }}. Only the standard outranks it — you are the one who looked this up.{% endblocktranslate %}
+          </p>
+        {% elif definition.source == 'report' %}
+          <p class="small muted">
+            {% translate "This is only what the scan tool printed. A tool renders somebody else's definition, truncates it, and sometimes declines it outright — so if you know better, the box beside this replaces it for every vehicle of the make." %}
+          </p>
+        {% endif %}
+      {% else %}
+        <p class="muted">
+          {% if make %}
+            {% blocktranslate %}Nobody has said what this means on a {{ make }}.{% endblocktranslate %}
+          {% else %}
+            {% translate "Nothing here defines this code yet." %}
+          {% endif %}
+        </p>
+        <p class="small muted">
+          {% translate "Manufacturer-specific codes are not published anywhere free and complete, so nothing is invented for one: a plausible-sounding guess is worse than a blank, because it gets acted on. Look it up and write down what you find." %}
+        </p>
+      {% endif %}
+
+      {% if manuals %}
+        <p class="small muted">
+          {% translate "Look it up:" %}
+          {% for manual in manuals %}
+            <a href="{{ manual.url }}" target="_blank" rel="noopener noreferrer">{{ manual.provider.name }} ↗</a>{% if not forloop.last %} · {% endif %}
+          {% endfor %}
+        </p>
+      {% endif %}
+    </section>
+
+    <section class="card" id="seen">
+      <h2>{% translate "Where it has turned up" %}</h2>
+      {% if seen %}
+        {% comment %}
+        Often the real answer. "This came back twice on the truck after the
+        same repair" is not something a definition can tell you.
+        {% endcomment %}
+        <div class="tablewrap"><table>
+          <thead><tr>
+            <th>{% translate "Vehicle" %}</th><th>{% translate "Read" %}</th>
+            <th>{% translate "As" %}</th><th>{% translate "State" %}</th>
+          </tr></thead>
+          <tbody>
+          {% for row in seen %}
+            <tr>
+              <th><a href="{% url 'asset_diagnostics' row.session.asset.pk %}">{{ row.session.asset.nickname }}</a>
+                <div class="small muted">{{ row.session.asset.descriptor }}</div>
+              </th>
+              <td class="small">
+                <a href="{% url 'session_detail' row.session.pk %}">{{ row.session.performed_on|date:"SHORT_DATE_FORMAT" }}</a>
+                {% if row.module %}<div class="muted">{{ row.module }}</div>{% endif %}
+              </td>
+              <td class="small">{{ row.description|default:"—" }}</td>
+              <td class="small">
+                {% if row.status == 'recurring' %}<span class="pill warn">{% translate "came back" %}</span>
+                {% else %}{{ row.get_status_display }}{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table></div>
+      {% else %}
+        <p class="muted">{% translate "Not on any vehicle here — you are looking it up before it arrives." %}</p>
+      {% endif %}
+    </section>
+
+  </div>
+
+  <aside class="stack">
+    <section class="card">
+      <h2>{% translate "Say what it means" %}</h2>
+      <p class="small muted">
+        {% translate "Typed once and reused for every vehicle of that make in the shop. The make is what makes the answer true — P1345 is one fault to Ford and a different one to Toyota — so it is asked for rather than assumed." %}
+      </p>
+      <form method="post" action="{% url 'code_define' code %}" class="stack">{% csrf_token %}
+        <div class="field">
+          <label for="define-make">{% translate "Make" %}</label>
+          <input class="input" id="define-make" name="make" value="{{ make }}"
+                 maxlength="60" required placeholder="{% translate 'Ford' %}">
+        </div>
+        <div class="field">
+          <label for="define-text">{% translate "What it means on that make" %}</label>
+          <input class="input" id="define-text" name="description" maxlength="255"
+                 value="{% if definition.source == 'operator' %}{{ definition.text }}{% endif %}"
+                 placeholder="{% translate 'Ignition key-in circuit failure' %}">
+          <p class="helptext">
+            {% translate "Leaving this empty removes a note you recorded earlier." %}
+          </p>
+        </div>
+        <button class="primary" type="submit">{% translate "Record it" %}</button>
+      </form>
+      {% if definition.source == 'make' %}
+        <p class="small muted">
+          {% blocktranslate with make=definition.make %}Recording something here replaces {{ make }}'s own wording for this shop.{% endblocktranslate %}
+        </p>
+      {% elif definition.source == 'standard' %}
+        <p class="small muted">
+          {% translate "This one is standard and stays that way. A generic code means the same thing on every vehicle ever built, so a local note does not replace it — record one only if you have something to add for your own reference." %}
+        </p>
+      {% endif %}
+    </section>
+
+    <section class="card">
+      <h2>{% translate "What the code itself says" %}</h2>
+      {% comment %}
+      Derivable from J2012 and true of every code ever issued, so it is derived
+      rather than looked up. A code nothing has heard of still answers this.
+      {% endcomment %}
+      <ul class="list small">
+        <li>{% translate "System" %}: <strong>{{ structural }}</strong></li>
+        <li>
+          {% if parsed.is_generic %}
+            {% translate "A generic code — defined by the standard, the same on every make." %}
+          {% else %}
+            {% translate "A manufacturer's own code. Its meaning is set by whoever built the vehicle, which is why this page asks for a make." %}
+          {% endif %}
+        </li>
+        {% if parsed.failure_type %}
+          <li>{% blocktranslate with byte=parsed.failure_type %}Failure type byte {{ byte }} — how the fault failed, kept out of the code itself so two readings of one fault still match.{% endblocktranslate %}</li>
+        {% endif %}
+      </ul>
+      {% if makes_with_lists %}
+        <p class="small muted">
+          {% blocktranslate with makes=makes_with_lists|join:", " %}A published code list is bundled for: {{ makes }}. Any other make relies on what this shop writes down.{% endblocktranslate %}
+        </p>
+      {% endif %}
+    </section>
+  </aside>
+</div>
+{% endblock %}

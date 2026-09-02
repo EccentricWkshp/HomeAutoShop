@@ -526,6 +526,44 @@ Configured manual-library links can open the relevant diagnostic-code section
 for the vehicle. These are constructed links; HomeAutoShop does not check that
 the target library has the page before opening it.
 
+### What a code means
+
+Every code is a link to its own page, wherever it appears. That page shows what
+the code means and **who says so**, which matters because the sources are not
+equally reliable:
+
+- **The standard (SAE J2012).** Generic codes — `P0` and `P2`, and their
+  equivalents in the other systems — mean the same thing on every vehicle ever
+  built. Nothing overrides these.
+- **The manufacturer's own list.** Ford's published list of about three
+  thousand codes is included, and Lincoln and Mercury read it too, since it is
+  the Ford Motor Company Group's document. No other make ships a list yet.
+- **What you wrote down.** A note you record for a make is shown ahead of a
+  published list, because you are the one holding the vehicle. It does not
+  displace a standard definition, which is the same on every vehicle.
+- **What the scan tool printed.** Ranked below all of the above, because a tool
+  is a third party rendering somebody else's definition — it truncates, and it
+  sometimes declines outright. One tool answers a Ford `B1695` with "Please See
+  The Vehicle Service Manual." where Ford's own list says "Autolamp On Circuit
+  Short To Battery". What the tool read is still shown underneath, since the
+  reading is what it is.
+- **The shape of the code.** Failing all of the above, the code's own structure
+  still says the system, the subsystem for powertrain codes, and whether it is
+  generic or the manufacturer's. That is derived, never guessed.
+
+Nothing is invented for a code nobody has defined. A plausible-sounding guess
+about a fault is worse than a blank, because it gets acted on.
+
+**Say what it means** records a definition for one make, and every vehicle of
+that make in the shop then reads it. Readings already stored that had no
+description are filled in; anything the scan tool itself printed is left alone.
+Clearing the box removes your note again. The make is asked for rather than
+assumed, because `P1345` is one fault to Ford and a different one to Toyota.
+
+The page also lists everywhere that code has turned up in the shop, which is
+often the more useful answer — a code that came back twice on the same vehicle
+after the same repair is telling you something no definition can.
+
 ### Read an ELM327 adapter directly
 
 **Read the car directly** uses Web Serial with an ELM327-compatible USB

@@ -28,13 +28,21 @@
     <tbody>
     {% for code in open_codes %}
       <tr>
-        <th class="mono">{{ code.code }}
+        <th class="mono">
+          <a href="{% url 'code_reference' code.code %}?make={{ asset.make|urlencode }}">{{ code.code }}</a>
           {% if code.status == 'recurring' %}
             <span class="pill warn">{% translate "came back" %}</span>
           {% endif %}
         </th>
-        <td>{{ code.description|default:"—" }}
+        <td>
+          {{ code.meaning.text|default:"—" }}
           {% if code.module %}<span class="small muted">· {{ code.module }}</span>{% endif %}
+          {% include "diagnostics/_whosays.html" with meaning=code.meaning printed=code.description %}
+          {% if not code.meaning.is_known %}
+            <div class="small muted">
+              <a href="{% url 'code_reference' code.code %}?make={{ asset.make|urlencode }}">{% translate "Say what it means" %}</a>
+            </div>
+          {% endif %}
         </td>
         <td class="small muted">{{ code.session.performed_on|date:"SHORT_DATE_FORMAT" }}</td>
         <td>

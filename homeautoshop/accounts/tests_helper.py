@@ -57,6 +57,7 @@ CLOSED_TO_HELPERS = frozenset({
     "recall_check", "reminder_channel_action", "reminder_channel_add",
     "reminders", "reports", "service_info_pin", "service_info_unpin",
     "service_info_visibility", "settings", "settings_restart", "setup",
+    "code_define",
     "spec_add", "spec_copy", "spec_delete", "spec_edit", "spec_pin",
     "spec_from_decode", "spec_from_scan", "sync_queue", "tool_delete",
     "template_list", "template_import", "template_export",

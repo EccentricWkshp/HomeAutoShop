@@ -8,10 +8,12 @@ import logging
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.http import urlencode
 from django.utils.translation import gettext as _
+from django.utils.translation import ngettext
 from django.views.decorators.http import require_GET, require_POST
 
 from homeautoshop.accounts.policy import visible_assets, visible_assets_for
@@ -82,7 +84,7 @@ def asset_diagnostics(request, pk):
     drafts = asset.diagnostic_sessions.filter(review_status=ReviewStatus.DRAFT).order_by(
         "-created_at"
     )
-    open_codes = (
+    open_codes = list(
         DiagnosticCode.objects.filter(
             session__asset=asset,
             session__review_status=ReviewStatus.CONFIRMED,
@@ -91,6 +93,7 @@ def asset_diagnostics(request, pk):
         .select_related("session")
         .order_by("-session__performed_on", "code")
     )
+    _with_meaning(open_codes, asset.make)
     return render(
         request,
         "diagnostics/asset.html",
@@ -178,11 +181,7 @@ def session_detail(request, pk):
             }
         )
 
-    codes = list(session.codes.all())
-    for code in codes:
-        described, authoritative = dtc.describe(code.code, make=session.asset.make)
-        code.lookup = described
-        code.lookup_is_authoritative = authoritative
+    codes = _with_meaning(list(session.codes.all()), session.asset.make)
 
     return render(
         request,
@@ -197,6 +196,24 @@ def session_detail(request, pk):
             "form": SessionForm(instance=session),
         },
     )
+
+
+def _with_meaning(codes, make: str):
+    """Attach each reading's best meaning, for display only.
+
+    Resolved here rather than written into the record: a reading holds what the
+    *tool* said, and freezing today's best answer into it would make "has
+    anybody actually named this?" unanswerable ever after.
+
+    This is also where a reported description stops outranking everything else.
+    It used to be read straight out of the column, so a shop that had looked
+    `B1695` up and written down what it means went on being shown the tool's
+    *"Please See The Vehicle Service Manual."* — the definition was recorded,
+    reused, and never once displayed.
+    """
+    for row in codes:
+        row.meaning = dtc.explain(row.code, make=make, reported=row.description)
+    return codes
 
 
 def _pairs(value) -> list[tuple[str, str]]:
@@ -533,20 +550,138 @@ def code_describe(request, pk):
         return redirect("session_detail", pk=code.session_id)
 
     make = code.session.asset.make or ""
-    CodeDescription.objects.update_or_create(
-        make=make, code=code.code, defaults={"description": text}
-    )
-    DiagnosticCode.objects.filter(
-        code=code.code, session__asset__make__iexact=make, description=""
-    ).update(description=text)
-    code.description = text
-    code.save(update_fields=["description"])
+    services.record_description(make=make, code=code.code, text=text)
+    code.refresh_from_db(fields=["description"])
+    if not code.description:
+        # This reading already carried the tool's own wording, which the
+        # service leaves alone. The note is still recorded for every other one.
+        code.description = text
+        code.save(update_fields=["description"])
     messages.success(
         request,
         _("Recorded. Every %(make)s in the shop will show that for %(code)s.")
         % {"make": make or _("vehicle"), "code": code.code},
     )
     return redirect("session_detail", pk=code.session_id)
+
+
+# --------------------------------------------------------------------------
+# One code, on its own page (§8.3c)
+# --------------------------------------------------------------------------
+
+
+@login_required
+def code_reference(request, code):
+    """What a single trouble code means, and a place to say so if nobody knows.
+
+    A code was a dead end wherever it appeared: five characters of monospace,
+    sometimes with a definition beside it and sometimes with an em dash. If the
+    dash was there, the only way to fix it was to find a *draft* session that
+    still had the inline form on it — so a code read last year could never be
+    named at all.
+
+    It is a page rather than another inline box because the answer has parts:
+    what the shape says, who says what the fault is, and where in this shop the
+    code has actually turned up. The last of those is often the real answer —
+    "this came back twice on the truck after the same repair" is not something
+    a definition can tell you.
+    """
+    parsed = dtc.parse(code)
+    if parsed is None:
+        raise Http404("not a trouble code")
+    canonical = parsed["code"]
+
+    # The make is what makes an answer true, so it comes from the URL and the
+    # page says which make it is answering for.
+    make = (request.GET.get("make") or "").strip()
+    seen = list(
+        DiagnosticCode.objects.filter(
+            code=canonical,
+            session__asset__in=visible_assets(request.user, Asset.objects.all()),
+        )
+        .select_related("session", "session__asset")
+        .order_by("-session__performed_on")[:25]
+    )
+    if not make and seen:
+        make = seen[0].session.asset.make or ""
+
+    # The most recent reading's own wording joins the ranking, so this page's
+    # headline is the same answer the tables show rather than a second opinion.
+    definition = dtc.explain(
+        canonical, make=make, reported=seen[0].description if seen else ""
+    )
+    published = dtc.code_list_for(make)
+    on_vehicle = seen[0].session.asset if seen else None
+
+    return render(
+        request,
+        "diagnostics/code.html",
+        {
+            "code": canonical,
+            "parsed": parsed,
+            "make": make,
+            "definition": definition,
+            "structural": dtc.structural(canonical),
+            "published": published,
+            "seen": seen,
+            "manuals": service_info.dtc_links(on_vehicle) if on_vehicle else [],
+            "makes_with_lists": dtc.makes_with_lists(),
+        },
+    )
+
+
+@require_POST
+@login_required
+def code_define(request, code):
+    """Say what a code means on one make, from anywhere the code appears.
+
+    Distinct from `code_describe`, which names the code on a reading you are
+    looking at. This one needs no reading at all, which is the point: a code
+    you have not scanned yet, or one whose only session is two years old, is
+    still a code you can write down what you learned about.
+    """
+    parsed = dtc.parse(code)
+    if parsed is None:
+        raise Http404("not a trouble code")
+
+    # No vehicle in hand, so no per-vehicle grant can authorise it: this writes
+    # a dictionary the whole shop reads. `helper_can` refuses a write with no
+    # resource, which is the behaviour wanted here rather than an exception.
+    require(request.user, "asset.edit")
+
+    make = (request.POST.get("make") or "").strip()
+    text = (request.POST.get("description") or "").strip()[:255]
+    if not make:
+        messages.error(
+            request,
+            _("A definition needs a make — a code means different things to "
+              "different manufacturers."),
+        )
+        return redirect("code_reference", code=parsed["code"])
+
+    touched = services.record_description(make=make, code=parsed["code"], text=text)
+    if text:
+        messages.success(
+            request,
+            _("Recorded. Every %(make)s in the shop reads that for %(code)s.")
+            % {"make": make, "code": parsed["code"]},
+        )
+    else:
+        messages.success(
+            request,
+            _("Removed. %(code)s falls back to whatever else is known about it.")
+            % {"code": parsed["code"]},
+        )
+    if touched:
+        messages.info(
+            request,
+            ngettext(
+                "%(n)d stored reading updated.", "%(n)d stored readings updated.", touched
+            )
+            % {"n": touched},
+        )
+    where = reverse("code_reference", args=[parsed["code"]])
+    return redirect(f"{where}?{urlencode({'make': make})}")
 
 
 # --------------------------------------------------------------------------

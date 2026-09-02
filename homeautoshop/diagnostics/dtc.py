@@ -1,8 +1,10 @@
 """
 Offline trouble-code dictionary (SPEC §8.3c).
 
-Two layers, because a code carries two different kinds of meaning and only one
-of them can be looked up honestly.
+Four layers, because a code carries several different kinds of meaning and they
+are not equally trustworthy. Every answer says which layer it came from, so the
+screen can tell a standard apart from a manufacturer's own wording apart from
+something somebody in this shop typed.
 
 **Structure** is defined by SAE J2012 and ISO 15031-6 and is true of every code
 ever issued: the letter names the system, the second digit says whether the
@@ -11,22 +13,38 @@ third names the subsystem. That is derivable, so it is derived. A code this
 application has never heard of still produces *"Chassis · manufacturer-specific"*
 rather than a blank, which is a real answer.
 
-**Wording** is only reliable for the generic set. Those are standardized and
-finite, so a table of them is bundled and works with the network unplugged.
-Manufacturer-specific codes are not published anywhere free and comprehensive,
-and inventing plausible text for `P1516` would be worse than saying nothing:
-the operator would act on it. Those come from the operator, once, per make, and
-are reused instance-wide (`CodeDescription`).
+**Wording** is standardized only for the generic set. Those are finite, so a
+table of them is bundled and works with the network unplugged.
 
-Every description carries a translation key per §5.6 seed-data rule, so the
-catalog can be translated without the codes being re-keyed.
+Manufacturer-specific codes are not published anywhere free *and*
+comprehensive, and inventing plausible text for `P1516` would be worse than
+saying nothing, because the operator would act on it. Two honest sources exist
+for them and both are used, in this order:
+
+* **What somebody in this shop wrote** (`CodeDescription`), typed once per make
+  and reused instance-wide. It outranks a shipped table because the person
+  holding the vehicle outranks a document about it.
+* **The manufacturer's own published list**, transcribed into
+  `codelists/<make>.json` where one exists. Ford publishes three thousand of
+  them; typing those in one at a time was never a reasonable ask.
+
+What remains is structure, which is never a guess at the fault.
+
+The generic table carries a translation key per the §5.6 seed-data rule. The
+transcribed lists deliberately do not — see `codelists/__init__.py`.
 """
 
 from __future__ import annotations
 
+import json
 import re
+from dataclasses import dataclass
+from functools import lru_cache
+from pathlib import Path
 
 from django.utils.translation import gettext_lazy as _
+
+from . import codelists
 
 #: `B1352-20` is a real code: the suffix is a failure-type byte, not noise.
 CODE_RE = re.compile(r"^([PBCU])([0-9A-F])([0-9A-F])([0-9A-F]{2})(?:-([0-9A-F]{2}))?$", re.I)
@@ -245,36 +263,160 @@ def normalize(code: str) -> str:
     return parsed["code"] if parsed else (code or "").strip().upper()
 
 
-def describe(code: str, *, make: str = "") -> tuple[str, bool]:
-    """Best available wording for a code, and whether it is authoritative.
+# --------------------------------------------------------------------------
+# Transcribed manufacturer lists
+# --------------------------------------------------------------------------
 
-    Returns `(description, is_authoritative)`. Authoritative means the SAE
-    generic table — the caller may present that as fact. Anything else is a
-    structural summary or the operator's own note, and the UI says so rather
-    than letting a guess look like a lookup.
+
+@dataclass(frozen=True)
+class CodeList:
+    """One manufacturer's published list, as transcribed."""
+
+    make: str
+    source: str
+    codes: dict
+
+
+@lru_cache(maxsize=1)
+def _lists() -> dict[str, CodeList]:
+    """Every bundled list, keyed by each make name that should read it.
+
+    Ford's document is the Ford Motor Company Group's, so Lincoln and Mercury
+    are keyed to it as well — they are the same modules with a different badge,
+    and the alternative is three copies of one table drifting apart.
+    """
+    found: dict[str, CodeList] = {}
+    for path in sorted(Path(codelists.__file__).parent.glob("*.json")):
+        data = json.loads(path.read_text(encoding="utf-8"))
+        entry = CodeList(
+            make=str(data.get("make") or ""),
+            source=str(data.get("source") or ""),
+            codes=data.get("codes") or {},
+        )
+        for name in [entry.make, *(data.get("aliases") or [])]:
+            if str(name).strip():
+                found[str(name).strip().lower()] = entry
+    return found
+
+
+def code_list_for(make: str) -> CodeList | None:
+    """The bundled list covering this make, if one is shipped."""
+    return _lists().get((make or "").strip().lower())
+
+
+def makes_with_lists() -> list[str]:
+    """The makes a bundled list can answer for, named as their own list names."""
+    return sorted({entry.make for entry in _lists().values()})
+
+
+# --------------------------------------------------------------------------
+# Looking a code up
+# --------------------------------------------------------------------------
+
+#: Where a definition came from. The screen says which, because "the standard
+#: defines this", "Ford's own list says this" and "somebody here typed this"
+#: are three different kinds of claim and only the first is the same on every
+#: vehicle in the world.
+STANDARD = "standard"
+OPERATOR = "operator"
+MAKE = "make"
+REPORT = "report"
+STRUCTURE = "structure"
+
+
+@dataclass(frozen=True)
+class Definition:
+    """What is known about one code, and on whose authority."""
+
+    code: str
+    text: str
+    source: str
+    make: str = ""
+    citation: str = ""
+
+    @property
+    def is_authoritative(self) -> bool:
+        """True only for the SAE set — the caller may present that as fact."""
+        return self.source == STANDARD
+
+    @property
+    def is_known(self) -> bool:
+        """Whether anything actually said what this fault *is*."""
+        return self.source != STRUCTURE
+
+
+def explain(code: str, *, make: str = "", reported: str = "") -> Definition | None:
+    """The best available meaning for a code, and where it came from.
+
+    `reported` is what the scan tool printed against this particular reading,
+    where there is one. None is returned when the string is not code-shaped at
+    all — different from a code nobody has a definition for, and the caller has
+    to be able to tell those apart.
+
+    **The order is the whole point**, and it ranks claims rather than
+    convenience:
+
+    1. **The SAE generic set.** A generic code means the same thing on every
+       vehicle ever built, so nothing local gets to redefine it.
+    2. **A note recorded in this shop for this make.** Somebody looked it up
+       and wrote it down deliberately, which outranks every table below — the
+       same rule that keeps a corrected VIN decode safe from vPIC.
+    3. **The manufacturer's own published list.**
+    4. **What the scan tool printed**, below the manufacturer's own list on
+       purpose. A tool is a third party rendering somebody else's definition:
+       it truncates, and it sometimes declines outright. A real Ford `B1695`
+       reads *"Please See The Vehicle Service Manual."* off one tool and
+       *"Autolamp On Circuit Short To Battery"* off Ford's own list. Nothing
+       is lost by ranking it here, because the screen still prints what the
+       tool read underneath.
+    5. **Structure**, which is the floor and is never a guess at the fault.
     """
     parsed = parse(code)
     if parsed is None:
-        return "", False
+        return None
 
     canonical = parsed["code"]
     if parsed["is_generic"] and canonical in GENERIC:
-        return str(GENERIC[canonical]), True
+        return Definition(canonical, str(GENERIC[canonical]), STANDARD)
 
-    from .models import CodeDescription
+    if make:
+        from .models import CodeDescription
 
-    own = (
-        CodeDescription.objects.filter(code=canonical)
-        .filter(make__iexact=make)
-        .values_list("description", flat=True)
-        .first()
-        if make
-        else None
-    )
-    if own:
-        return own, False
+        own = (
+            CodeDescription.objects.filter(code=canonical, make__iexact=make)
+            .values_list("description", flat=True)
+            .first()
+        )
+        if own:
+            return Definition(canonical, own, OPERATOR, make=make)
 
-    return structural(canonical), False
+        published = code_list_for(make)
+        if published and canonical in published.codes:
+            return Definition(
+                canonical,
+                published.codes[canonical],
+                MAKE,
+                make=published.make,
+                citation=published.source,
+            )
+
+    if (reported or "").strip():
+        return Definition(canonical, reported.strip(), REPORT)
+
+    return Definition(canonical, structural(canonical), STRUCTURE)
+
+
+def describe(code: str, *, make: str = "", reported: str = "") -> tuple[str, bool]:
+    """`(description, is_authoritative)` — the old two-value shape.
+
+    Kept because most callers only need the words and whether to present them
+    as fact. Anything that wants to say *where* the words came from should call
+    :func:`explain` instead.
+    """
+    found = explain(code, make=make, reported=reported)
+    if found is None:
+        return "", False
+    return found.text, found.is_authoritative
 
 
 def structural(code: str) -> str:

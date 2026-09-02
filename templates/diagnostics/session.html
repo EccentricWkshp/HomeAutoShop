@@ -99,16 +99,26 @@
         <tbody>
         {% for code in codes %}
           <tr>
-            <th class="mono">{{ code.code }}
+            <th class="mono">
+              {% comment %}
+              The code is the link. It was five characters of monospace and a
+              dead end — and where the meaning was an em dash, the only way to
+              fix it was the inline box below, which exists on drafts alone.
+              {% endcomment %}
+              <a href="{% url 'code_reference' code.code %}?make={{ session.asset.make|urlencode }}">{{ code.code }}</a>
               {% if not code.is_generic %}<span class="pill">{% translate "maker-specific" %}</span>{% endif %}
             </th>
             <td>
-              {{ code.description|default:code.lookup|default:"—" }}
-              {% if not code.lookup_is_authoritative and code.description %}
-                <span class="small muted">{% translate "(not a standard definition)" %}</span>
-              {% endif %}
+              {{ code.meaning.text|default:"—" }}
+              {% include "diagnostics/_whosays.html" with meaning=code.meaning printed=code.description %}
               {% if code.module %}<div class="small muted">{{ code.module }}</div>{% endif %}
-              {% if not code.is_generic and not code.description %}
+              {% comment %}
+              Offered where the best answer is the tool's own wording or
+              nothing at all. It used to require an empty description, which
+              is exactly backwards: a tool that answers "see the vehicle
+              service manual" fills the column and locked the box away.
+              {% endcomment %}
+              {% if code.meaning.source == 'report' or code.meaning.source == 'structure' %}
                 <form method="post" action="{% url 'code_describe' code.pk %}" class="row">{% csrf_token %}
                   <input type="text" name="description" maxlength="255"
                          aria-label="{% translate 'What this code means on this make' %}"

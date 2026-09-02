@@ -51,8 +51,11 @@ confirmation PDF can be read straight into the catalog, prices and all.
 than trusted. Extraction is driven by YAML [parser profiles](Artifacts/SCHEMA-PARSER-PROFILES.md)
 that can be shared and installed, so a new tool's format is a file rather than a
 release; historical reports can be re-parsed once a better profile exists. A
-trouble-code dictionary works offline, a code becomes a job item, and it is
-flagged if it comes back. An ELM327 can be read directly over Web Serial
+trouble-code dictionary works offline and says where each answer came from —
+the SAE standard, a manufacturer's published list (Ford's is bundled), or
+somebody in the shop who wrote down what they learned; nothing is invented for
+a code nobody has defined. A code becomes a job item, and is flagged if it
+comes back. An ELM327 can be read directly over Web Serial
 (Chromium only).
 
 **Documents and photographs.** Deduplicated by content hash, thumbnailed in the

@@ -84,7 +84,7 @@ VEHICLE = frozenset({
     # Diagnostics
     "diagnostic_queue", "session_detail", "session_import", "session_confirm",
     "session_discard", "session_map", "session_reparse", "code_status",
-    "code_describe", "code_promote", "elm327", "elm_capture",
+    "code_describe", "code_promote", "code_reference", "elm327", "elm_capture",
 })
 
 HELPER_URLS = ALWAYS | VEHICLE
@@ -95,7 +95,7 @@ HELPER_READ_ONLY_URLS = frozenset({
     "part_list", "part_detail", "part_search", "part_by_code", "asset_list",
     "asset_timeline", "asset_specs", "asset_diagnostics", "asset_recalls",
     "due_list", "inspection_list", "work_order_list", "diagnostic_queue",
-    "wear_chart", "code_describe",
+    "wear_chart", "code_describe", "code_reference",
 })
 
 

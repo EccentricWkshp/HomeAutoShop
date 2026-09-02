@@ -220,6 +220,10 @@ urlpatterns = [
     path("diagnostics/codes/<uuid:pk>/promote/", diagnostics.code_promote, name="code_promote"),
     path("diagnostics/codes/<uuid:pk>/status/", diagnostics.code_status, name="code_status"),
     path("diagnostics/codes/<uuid:pk>/describe/", diagnostics.code_describe, name="code_describe"),
+    # After the three `<uuid:pk>/…/` routes above, which all carry a further
+    # segment and so cannot be shadowed by this one.
+    path("diagnostics/codes/<str:code>/", diagnostics.code_reference, name="code_reference"),
+    path("diagnostics/codes/<str:code>/define/", diagnostics.code_define, name="code_define"),
     path("vehicles/<uuid:pk>/diagnostics/", diagnostics.asset_diagnostics, name="asset_diagnostics"),
     path("vehicles/<uuid:pk>/diagnostics/import/", diagnostics.session_import, name="session_import"),
     path("vehicles/<uuid:pk>/diagnostics/live/", diagnostics.elm327, name="elm327"),
