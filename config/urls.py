@@ -204,6 +204,7 @@ urlpatterns = [
     path("vehicles/<uuid:pk>/specs/copy/", assets.spec_copy, name="spec_copy"),
     path("vehicles/<uuid:pk>/specs/<uuid:spec_id>/edit/", assets.spec_edit, name="spec_edit"),
     path("vehicles/<uuid:pk>/specs/<uuid:spec_id>/delete/", assets.spec_delete, name="spec_delete"),
+    path("vehicles/<uuid:pk>/specs/<uuid:spec_id>/pin/", assets.spec_pin, name="spec_pin"),
     # Diagnostics (SPEC §8.3)
     path("diagnostics/", diagnostics.queue, name="diagnostic_queue"),
     path("diagnostics/profiles/", diagnostics.profile_list, name="profile_list"),

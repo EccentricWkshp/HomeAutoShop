@@ -271,6 +271,6 @@ Artifacts/samples/scan-reports/
 1. Get real reports into the corpus — `capture_fixture` for one of your own, `fetch_scan_samples` and `capture_scan_samples` for the public ones. Both redact.
 2. Iterate the profile YAML against the captures until it reads them.
 3. Name the reports in `verified_against`. `build_catalog` **runs** the profile against each and refuses to publish a file that cannot read them, so the badge is a fact rather than a claim.
-4. The fixtures stay in CI forever — a profile change that breaks an older report fails the build.
+4. The fixtures stay in the test suite forever — a profile change that breaks an older report fails it.
 
 **Sample coverage that actually matters**, in priority order: (1) *no codes found* — the empty-table case breaks naive table parsers; (2) *several stored codes* — the normal case; (3) *codes plus freeze frame and readiness monitors* — the multi-section case; (4) a multi-page report. Three files covering 1–3 are enough to write a profile that holds up; one file tends to overfit to incidental layout, which is why the verified badge needs two from different vehicles.

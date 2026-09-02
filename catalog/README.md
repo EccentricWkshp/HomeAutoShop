@@ -31,9 +31,9 @@ remember to update is one that silently publishes nothing when they forget.
 
 **It validates while it walks.** Every file is parsed by the same validator
 that will run on an operator's instance, and a file that would not import
-fails the command with the reason and the line. CI runs `build_catalog
---check`, so a stale index or a broken template fails the build rather than
-shipping. That check is worth more than the index-writing: it moves the first
+fails the command with the reason and the line. The test suite runs
+`build_catalog --check`, so a stale index or a broken template fails the suite
+rather than shipping. That check is worth more than the index-writing: it moves the first
 failure from somebody's garage to the pull request, while the person who wrote
 it is still looking at it.
 

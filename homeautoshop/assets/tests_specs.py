@@ -173,3 +173,87 @@ class SpecEditTests(TestCase):
         self.spec.refresh_from_db()
         self.assertEqual(self.spec.value, "32")
         self.assertContains(response, "needs a group, a name and a value")
+
+
+class PinningASpecTests(TestCase):
+    """FR-SPEC-4 — pinning is what puts a spec on the work-order panel.
+
+    It was reachable only through the edit form: open a form, find one checkbox
+    among six fields, save. The row already showed the state as a pill, so the
+    one thing you could not do was change it where you were reading it — and
+    which specs are worth having in front of you mid-job is exactly the kind of
+    thing that changes often and by eye.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="andy", password="x" * 16)
+        self.client.force_login(self.user)
+        self.asset = Asset.objects.create(nickname="Red truck")
+        self.spec = AssetSpec.objects.create(
+            asset=self.asset, group="fluids", name="Engine oil", value="5.7", unit="qt"
+        )
+        self.url = reverse("spec_pin", args=[self.asset.pk, self.spec.pk])
+
+    def test_pinning_puts_it_on_the_work_order_panel(self):
+        response = self.client.post(self.url, {"pinned": "1"})
+
+        self.assertEqual(response.status_code, 302)
+        self.spec.refresh_from_db()
+        self.assertTrue(self.spec.is_pinned)
+        self.assertIn(
+            self.spec, self.asset.specs.filter(is_pinned=True, is_sensitive=False)
+        )
+
+    def test_unpinning_takes_it_off_again(self):
+        self.spec.is_pinned = True
+        self.spec.save()
+
+        self.client.post(self.url, {"pinned": "0"})
+
+        self.spec.refresh_from_db()
+        self.assertFalse(self.spec.is_pinned)
+
+    def test_the_state_is_posted_rather_than_toggled(self):
+        """A toggle acts on what the server holds now, so a page left open
+        does the opposite of what its own button said. Posting the wanted
+        state twice is the same as posting it once."""
+        self.client.post(self.url, {"pinned": "1"})
+        self.client.post(self.url, {"pinned": "1"})
+
+        self.spec.refresh_from_db()
+        self.assertTrue(self.spec.is_pinned)
+
+    def test_the_button_offers_the_action_the_row_is_not_already_in(self):
+        page = self.client.get(reverse("asset_specs", args=[self.asset.pk])).content.decode()
+        self.assertIn('name="pinned" value="1"', page)
+        self.assertNotIn("Unpin", page)
+
+        self.spec.is_pinned = True
+        self.spec.save()
+
+        page = self.client.get(reverse("asset_specs", args=[self.asset.pk])).content.decode()
+        self.assertIn("Unpin", page)
+        self.assertIn('name="pinned" value="0"', page)
+
+    def test_pinning_a_sensitive_spec_says_it_will_not_show(self):
+        """Sensitive specs are kept off work orders and reports by design, so
+        pinning one changes nothing there. Better said here than discovered on
+        a work order it never appears on."""
+        self.spec.is_sensitive = True
+        self.spec.save()
+
+        response = self.client.post(self.url, {"pinned": "1"}, follow=True)
+
+        self.assertContains(response, "kept off work orders")
+        self.spec.refresh_from_db()
+        self.assertTrue(self.spec.is_pinned)
+
+    def test_it_is_a_post(self):
+        self.assertEqual(self.client.get(self.url).status_code, 405)
+
+    def test_a_spec_from_another_vehicle_is_not_reachable(self):
+        other = Asset.objects.create(nickname="Someone else's")
+        response = self.client.post(
+            reverse("spec_pin", args=[other.pk, self.spec.pk]), {"pinned": "1"}
+        )
+        self.assertEqual(response.status_code, 404)

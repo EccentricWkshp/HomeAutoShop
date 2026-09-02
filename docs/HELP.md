@@ -96,8 +96,14 @@ read from uploaded documents.
 
 Choose **Vehicles → Add**. A record can represent either a vehicle or
 serviceable equipment. Vehicle classes include car, truck, motorcycle,
-trailer, RV, bus, and other plated vehicles. Equipment has manufacturer,
-model-number, and serial-number fields instead of requiring vehicle identity.
+trailer, RV, bus, and other plated vehicles.
+
+The form shows only the fields the chosen kind has. Equipment has
+manufacturer, model-number and serial-number fields and no VIN, license plate,
+vehicle class or registration at all, and it measures engine hours rather than
+miles. Changing the kind on an existing record clears the fields belonging to
+the other one. Opening the form from the **Equipment** tab starts it on
+equipment.
 
 Use the status to describe the asset's real place in the shop:
 
@@ -156,6 +162,15 @@ than rewriting the earlier record.
 
 Photos open in an in-page viewer. Documents such as titles, insurance cards,
 manuals, and PDFs stay in a separate document list and open in a browser tab.
+**Rename** on a document row gives it a name of your own — a manual that
+arrives as `31P8770110E1.pdf` can be called what you would actually look for —
+and the file name stays underneath it. The name belongs to that attachment, so
+a receipt filed against both a purchase and a work order can be called
+something different in each.
+
+Adding files is two steps in order: choose the files, then **Upload**. The
+upload button stays inactive until something is chosen and then names how many.
+
 Ordinary links store only their label, address, and note; HomeAutoShop does not
 fetch the linked page.
 
@@ -164,7 +179,13 @@ fetch the linked page.
 **Specs** stores values such as fluid capacities, torque values, tire
 pressures, alignment ranges, electrical identifiers, paint codes, and access
 codes. A spec can carry a unit, a condition, a source, notes, and an optional
-maximum value. Pin frequently needed specs to show them on work orders.
+maximum value.
+
+**Pin** on a spec row puts it on the quick-reference panel of every work order
+for that vehicle, and **Unpin** takes it off again; neither needs the edit
+form. A sensitive spec can be pinned but still will not appear there — access
+codes are kept off work orders and reports deliberately, and the message says
+so when you pin one.
 
 Specs can be entered manually, copied from another vehicle, proposed from a VIN
 decode, or read from a supported scan-tool PDF. Scan-derived module identifiers
@@ -230,8 +251,11 @@ create duplicate completions.
 
 ### Installed components
 
-Record items whose age or wear matters—such as tires or batteries—with their
-position, installation date, meter reading, and serial or DOT code. Inspection
+Record items whose age or wear matters—such as tires or batteries—with what
+it is, where it is (LF, RF, LR, RR), and its serial or DOT code. The
+installation date and the meter reading are filled in for you from today and
+the vehicle's current reading, which is what later turns a measurement into a
+wear rate. Inspection
 measurements can then be interpreted against the life of that component.
 
 For tires, a readable DOT date code produces an age warning at six years and a

@@ -9,6 +9,7 @@
 
 <p class="muted small">
   {% translate "Fill capacities, torque values, tire pressures, bulb sizes. These get looked up far more often than any report gets run — usually mid-job, with the manual three minutes away." %}
+  {% translate "Pin the handful worth having in front of you: a pinned spec shows on every work order for this vehicle." %}
 </p>
 
 <div class="cols two">
@@ -44,12 +45,24 @@
                 </th>
                 <td class="mono">{{ spec.display_value }}</td>
                 <td class="small muted">{{ spec.get_source_display }}</td>
-                <td style="width:6rem">
+                <td style="width:10rem">
                   <div class="row">
+                    {% comment %}
+                    The state this button will set, not a toggle. A toggle acts
+                    on what the server holds now, so a page left open does the
+                    opposite of what its own button said — and pinning is read
+                    off the row before it is pressed.
+                    {% endcomment %}
+                    <form method="post" action="{% url 'spec_pin' asset.pk spec.pk %}">{% csrf_token %}
+                      <input type="hidden" name="pinned" value="{% if spec.is_pinned %}0{% else %}1{% endif %}">
+                      <button class="linkish small nowrap" type="submit">
+                        {% if spec.is_pinned %}{% translate "Unpin" %}{% else %}{% translate "Pin" %}{% endif %}
+                      </button>
+                    </form>
                     <a class="linkish small nowrap"
                        href="{% url 'asset_specs' asset.pk %}?edit={{ spec.pk }}">{% translate "Edit" %}</a>
                     <form method="post" action="{% url 'spec_delete' asset.pk spec.pk %}">{% csrf_token %}
-                      <button class="linkish small" type="submit">{% translate "Remove" %}</button>
+                      <button class="linkish small nowrap" type="submit">{% translate "Remove" %}</button>
                     </form>
                   </div>
                 </td>

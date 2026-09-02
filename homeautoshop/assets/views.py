@@ -1293,7 +1293,51 @@ def spec_from_scan(request, pk):
 @login_required
 def spec_delete(request, pk, spec_id):
     asset = get_object_or_404(Asset, pk=pk)
+    # §12.2a. `spec_edit` immediately above has always had this; this one was
+    # the odd route out, and the two sit four lines apart.
+    require(request.user, "asset.edit", asset)
     get_object_or_404(AssetSpec, pk=spec_id, asset=asset).delete()
+    return redirect("asset_specs", pk=asset.pk)
+
+
+@require_POST
+@login_required
+def spec_pin(request, pk, spec_id):
+    """Put a spec on the work-order quick-reference panel, or take it off.
+
+    This was reachable only through the edit form: open a form, find one
+    checkbox among six fields, save. The row already *shows* the state as a
+    pill, so the one thing you could not do was change it where you were
+    reading it — and which specs are worth having in front of you mid-job is
+    exactly the sort of thing you change often and by eye.
+
+    The wanted state is posted rather than toggled. A toggle acts on what the
+    server holds now; a stale page then does the opposite of what its button
+    said, which for a two-state control is every bit as wrong as failing.
+    """
+    asset = get_object_or_404(Asset, pk=pk)
+    require(request.user, "asset.edit", asset)
+    spec = get_object_or_404(AssetSpec, pk=spec_id, asset=asset)
+
+    spec.is_pinned = request.POST.get("pinned") == "1"
+    spec.save(update_fields=["is_pinned"])
+
+    if not spec.is_pinned:
+        messages.success(request, _("%(name)s is no longer pinned.") % {"name": spec.name})
+    elif spec.is_sensitive:
+        # A sensitive spec is kept off work orders and reports by design, so
+        # pinning one changes nothing there. Said here, rather than left to be
+        # discovered on a work order the spec never appears on.
+        messages.warning(
+            request,
+            _("%(name)s is pinned, but it is marked sensitive — those are kept off work orders.")
+            % {"name": spec.name},
+        )
+    else:
+        messages.success(
+            request,
+            _("%(name)s will show on this vehicle's work orders.") % {"name": spec.name},
+        )
     return redirect("asset_specs", pk=asset.pk)
 
 

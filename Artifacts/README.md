@@ -24,14 +24,18 @@ The two `SCHEMA-*` documents are authoring guides: they are opened by whoever is
 
 ## Status
 
-| Document | Version | Status |
-| --- | --- | --- |
-| SPEC.md | 0.6.0 | **Phases 1–4 built** — §15.1 records what shipped and where the implementation decided differently |
-| INTEGRATION-WRENCHLEDGER.md | 0.4.0 | Draft — WL-Q1–Q11 all resolved against source and a live workspace. Built: the readiness gate. Not built: the webhook receiver and the three optional Shop-plan surfaces |
-| INTEGRATION-LUBELOGGER.md | 0.1.0 | Draft — LL-Q1–Q3 open. Built: one-time import and scheduled pull |
-| SCHEMA-PARSER-PROFILES.md | 0.2.0 | **Engine implemented**; contract still a draft, and deliberately so until a second tool's reports arrive |
-| SCHEMA-INSPECTION-TEMPLATES.md | 0.1.0 | Draft |
-| REFERENCE.md | 0.1.0 | Draft |
+Each document carries its own version and date in its header. Repeating them
+here only produced a second copy to forget to update, so this table says what
+state each one is in and nothing a header already answers.
+
+| Document | Status |
+| --- | --- |
+| SPEC.md | **Phases 1–4 built.** §15.1 records what shipped and where the implementation decided differently; **§19 records claims this document made in the present tense that were not true**, and how each was found. |
+| INTEGRATION-WRENCHLEDGER.md | Draft — WL-Q1–Q11 all resolved against source and a live workspace. Built: the readiness gate. Not built: the webhook receiver and the three optional Shop-plan surfaces. |
+| INTEGRATION-LUBELOGGER.md | Draft — LL-Q1–Q3 open. Built: one-time import and scheduled pull. |
+| SCHEMA-PARSER-PROFILES.md | **Engine implemented**, and the seven profiles in `catalog/profiles/` are written against it. The contract stays a draft where it describes something no profile has needed yet. |
+| SCHEMA-INSPECTION-TEMPLATES.md | Draft. |
+| REFERENCE.md | Draft. |
 
 ## Open questions
 
