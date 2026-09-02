@@ -209,11 +209,30 @@
           </li>
         {% empty %}<li class="muted">{% translate "None recorded." %}</li>{% endfor %}
       </ul>
+      {% comment %}
+        Labelled, one by one. These were three bare widgets: a select showing
+        "Other" and two empty boxes with nothing at all to say what went in
+        them — and the DOT code box is the one that decides whether a tire with
+        full tread is a failed tire, so an unlabelled box there is a feature
+        nobody can use. `check_accessibility` cannot see this class of mistake:
+        it looks for a literal `<input>` tag, and `{{ form.field }}` is not one.
+      {% endcomment %}
       <form method="post" action="{% url 'component_add' asset.pk %}" class="stack" style="margin-top:.5rem">
         {% csrf_token %}
-        {{ component_form.component_type }}
-        {{ component_form.position }}
-        {{ component_form.serial_or_dot_code }}
+        <div class="field">
+          <label for="{{ component_form.component_type.auto_id }}">{% translate "What it is" %}</label>
+          {{ component_form.component_type }}
+        </div>
+        <div class="field">
+          <label for="{{ component_form.position.auto_id }}">{% translate "Where it is" %}</label>
+          {{ component_form.position }}
+          <p class="helptext">{% translate "LF, RF, LR, RR — leave it blank where there is only one." %}</p>
+        </div>
+        <div class="field">
+          <label for="{{ component_form.serial_or_dot_code.auto_id }}">{% translate "Serial or DOT code" %}</label>
+          {{ component_form.serial_or_dot_code }}
+          <p class="helptext">{% translate "A tire's DOT code is four digits — week and year it was made. It is what dates the tire when the tread still looks fine." %}</p>
+        </div>
         <button type="submit" class="small">{% translate "Add component" %}</button>
       </form>
     </section>

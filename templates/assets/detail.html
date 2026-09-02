@@ -90,7 +90,10 @@
           {% include "partials/_thumb.html" with link=link media=link.media alt=link.caption|default:asset.nickname %}
         {% empty %}<p class="muted small">{% translate "No photos yet." %}</p>{% endfor %}
       </div>
-      <form method="post" action="{% url 'asset_photo_upload' asset.pk %}" enctype="multipart/form-data" class="row" style="margin-top:.75rem">
+      <form method="post" action="{% url 'asset_photo_upload' asset.pk %}" enctype="multipart/form-data"
+            class="row" data-upload style="margin-top:.75rem"
+            data-upload-one="{% translate 'Upload %(n)s photo' %}"
+            data-upload-many="{% translate 'Upload %(n)s photos' %}">
         {% csrf_token %}
         {% comment %}
           Two inputs, not one with `capture`. `capture="environment"` does not
@@ -108,9 +111,10 @@
         <label class="filepick">
           <input type="file" name="files" accept="image/*" multiple
                  aria-label="{% translate 'Choose photos of this vehicle' %}">
-          <span>{% translate "Choose photos" %}</span>
+          <span>{% translate "Choose photos…" %}</span>
         </label>
-        <button type="submit">{% translate "Add photos" %}</button>
+        <button type="submit" data-upload-submit>{% translate "Upload" %}</button>
+        <span class="small muted" data-upload-chosen></span>
       </form>
     </section>
 
@@ -125,40 +129,75 @@
       <h2>{% translate "Documents" %}</h2>
       <ul class="list small">
         {% for link in documents %}
-          <li class="spread">
-            <div>
-              {% comment %}
-              A link to the file first, so it still opens with scripting
-              blocked, and `rel=noopener` because it leaves the page.
-              {% endcomment %}
-              <a href="{% url 'media_file' link.media.pk %}" target="_blank" rel="noopener noreferrer">
-                {{ link.media.original_filename|default:link.media.get_kind_display }} ↗</a>
-              <div class="muted">
-                {{ link.media.get_kind_display }}
-                {% if link.caption %} · {{ link.caption }}{% endif %}
+          <li>
+            <div class="spread">
+              <div>
+                {% comment %}
+                A link to the file first, so it still opens with scripting
+                blocked, and `rel=noopener` because it leaves the page.
+
+                The name somebody gave it wins over the file name. A manual
+                arrives as `31P8770110E1.pdf` — what the manufacturer's part
+                system called it, and nothing a person would recognise — so
+                four of them are four indistinguishable serial numbers. The
+                file name stays underneath, because it is what you search for on
+                the vendor's site.
+                {% endcomment %}
+                <a href="{% url 'media_file' link.media.pk %}" target="_blank" rel="noopener noreferrer">
+                  {% firstof link.caption link.media.original_filename link.media.get_kind_display %} ↗</a>
+                <div class="muted">
+                  {% if link.caption and link.media.original_filename %}
+                    {{ link.media.original_filename }} ·
+                  {% endif %}
+                  {{ link.media.get_kind_display }}
+                </div>
               </div>
+              <form method="post" action="{% url 'media_unlink' link.pk %}">
+                {% csrf_token %}<input type="hidden" name="_anchor" value="documents">
+                <button type="submit" class="linkish small"
+                        data-confirm="{% translate 'Take this off the vehicle?' %}">
+                  {% translate "Detach" %}
+                </button>
+              </form>
             </div>
-            <form method="post" action="{% url 'media_unlink' link.pk %}">
-              {% csrf_token %}<input type="hidden" name="_anchor" value="documents">
-              <button type="submit" class="linkish small"
-                      data-confirm="{% translate 'Take this off the vehicle?' %}">
-                {% translate "Detach" %}
-              </button>
-            </form>
+            {% comment %}
+            Renaming after the fact rather than a title box on the upload
+            form: documents arrive several at a time, one box cannot name four
+            files, and this also reaches the ones already here.
+            {% endcomment %}
+            <details class="rename">
+              <summary class="small muted">{% translate "Rename" %}</summary>
+              <form method="post" action="{% url 'media_rename' link.pk %}" class="row" style="margin-top:.4rem">
+                {% csrf_token %}<input type="hidden" name="_anchor" value="documents">
+                <input name="caption" value="{{ link.caption }}" maxlength="255" style="flex:1"
+                       aria-label="{% translate 'What to call this document' %}"
+                       placeholder="{% translate 'what to call it' %}">
+                <button type="submit" class="small">{% translate "Save" %}</button>
+              </form>
+            </details>
           </li>
         {% empty %}
           <li class="muted">{% translate "No documents yet — the title, the manual, an insurance card." %}</li>
         {% endfor %}
       </ul>
+      {% comment %}
+      Two controls that looked like two ways to do the same thing. They are a
+      sequence: the first opens the file picker, the second sends what it
+      chose. Naming the step each one performs — and leaving the second one
+      inert until there is something to send — is what makes it read as one.
+      {% endcomment %}
       <form method="post" action="{% url 'asset_document_upload' asset.pk %}"
-            enctype="multipart/form-data" class="row" style="margin-top:.75rem">
+            enctype="multipart/form-data" class="row" data-upload style="margin-top:.75rem"
+            data-upload-one="{% translate 'Upload %(n)s document' %}"
+            data-upload-many="{% translate 'Upload %(n)s documents' %}">
         {% csrf_token %}<input type="hidden" name="_anchor" value="documents">
         <label class="filepick">
           <input type="file" name="files" multiple
                  aria-label="{% translate 'Choose documents for this vehicle' %}">
-          <span>{% translate "Choose files" %}</span>
+          <span>{% translate "Choose files…" %}</span>
         </label>
-        <button type="submit">{% translate "Add documents" %}</button>
+        <button type="submit" data-upload-submit>{% translate "Upload" %}</button>
+        <span class="small muted" data-upload-chosen></span>
       </form>
     </section>
 

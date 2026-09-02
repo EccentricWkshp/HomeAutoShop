@@ -95,6 +95,7 @@ urlpatterns = [
     # Detaching a file from one record, which is not the same as deleting it:
     # a receipt hangs off both a purchase and a work order.
     path("files/links/<uuid:link_id>/remove/", mediafiles.media_unlink, name="media_unlink"),
+    path("files/links/<uuid:link_id>/rename/", mediafiles.media_rename, name="media_rename"),
     path("files/<uuid:pk>/", mediafiles.media_file, name="media_file"),
     path("files/<uuid:pk>/<str:variant>/", mediafiles.media_file, name="media_file_variant"),
     path("trash/", core.trash, name="trash"),

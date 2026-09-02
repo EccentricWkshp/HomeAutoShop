@@ -7,6 +7,7 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.test import TestCase, override_settings
+from django.urls import reverse
 from django.utils import timezone
 
 from homeautoshop.assets.models import Asset
@@ -629,3 +630,35 @@ class TheScheduleChecksWhoseVehicleItIsTests(TestCase):
         )
         self.post("service_item_remove", self.mine.pk, mine.pk)
         self.assertFalse(AssetServiceItem.objects.filter(pk=mine.pk).exists())
+
+
+class TheComponentFormSaysWhatItsBoxesAreForTests(TestCase):
+    """Three bare widgets: a select reading "Other" and two empty boxes.
+
+    `check_accessibility` cannot see this class of mistake and says so — it
+    matches a literal `<input>` tag, and `{{ form.field }}` is not one. Its own
+    docstring records the last time this happened, to three interval boxes on
+    this same screen.
+
+    The DOT box is the one that matters most. It is what dates a tire whose
+    tread still looks fine (FR-CMP-6), and an unlabelled box is a feature
+    nobody can use.
+    """
+
+    def setUp(self):
+        from homeautoshop.accounts.models import User
+
+        self.user = User.objects.create_user("andy", password="correct-horse-battery")
+        self.client.force_login(self.user)
+        self.asset = Asset.objects.create(nickname="Truck", meter_unit="mi")
+
+    def test_each_control_has_a_label_bound_to_it(self):
+        page = self.client.get(reverse("asset_schedule", args=[self.asset.pk])).content.decode()
+
+        for field in ("component_type", "position", "serial_or_dot_code"):
+            with self.subTest(field=field):
+                self.assertIn('<label for="id_%s"' % field, page)
+
+    def test_the_dot_box_says_what_a_dot_code_is(self):
+        page = self.client.get(reverse("asset_schedule", args=[self.asset.pk])).content.decode()
+        self.assertIn("week and year", page)

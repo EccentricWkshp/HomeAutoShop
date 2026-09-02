@@ -55,7 +55,7 @@ VEHICLE = frozenset({
     "asset_list", "asset_detail", "asset_timeline", "asset_schedule",
     "asset_specs", "asset_diagnostics", "asset_recalls", "asset_photo_upload",
     "reading_create", "component_add", "component_remove", "media_unlink",
-    "recall_status",
+    "media_rename", "recall_status",
     # Attaching a manual and keeping the forum thread that solved the fault
     # are part of working on the vehicle, not privileges over the shop. Each
     # is object-checked as `asset.edit`, so a read-only grant still cannot.

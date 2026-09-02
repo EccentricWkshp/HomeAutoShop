@@ -425,6 +425,51 @@
     });
   }
 
+  /* ----------------------------------------------------------- upload forms
+   * "Choose files" and "Add documents" read as two ways to do the same thing.
+   * They are a sequence — the first opens a picker, the second sends what it
+   * chose — and nothing on the screen said so, or said that anything had been
+   * chosen at all. So the submit stays inert until there is something to send
+   * and then says how much, which makes one control lead to the other instead
+   * of competing with it.
+   *
+   * An enhancement, like everything else here: with this file blocked both
+   * controls are present, labelled, and the form posts exactly as before.
+   */
+  function wireUploads(root) {
+    root.querySelectorAll("form[data-upload]").forEach(function (form) {
+      var inputs = form.querySelectorAll('input[type="file"]');
+      var submit = form.querySelector("[data-upload-submit]");
+      var readout = form.querySelector("[data-upload-chosen]");
+      if (!inputs.length || !submit) return;
+
+      var one = form.getAttribute("data-upload-one") || "";
+      var many = form.getAttribute("data-upload-many") || "";
+      var idle = submit.textContent;
+
+      var apply = function () {
+        var names = [];
+        inputs.forEach(function (input) {
+          Array.prototype.forEach.call(input.files || [], function (file) {
+            names.push(file.name);
+          });
+        });
+        submit.disabled = names.length === 0;
+        var template = names.length === 1 ? one : many;
+        submit.textContent =
+          names.length && template ? template.replace("%(n)s", names.length) : idle;
+        // The names, not just the count: seeing the file you meant is what
+        // tells you the picker did anything at all.
+        if (readout) readout.textContent = names.join(", ");
+      };
+
+      apply();
+      inputs.forEach(function (input) {
+        on(input, "change", apply);
+      });
+    });
+  }
+
   /* ------------------------------------------------------ confirm before losing
    * Only where something disappears from view. A confirmation on everything
    * teaches people to dismiss confirmations.
@@ -452,6 +497,7 @@
     wirePartPickers(root);
     wireQuantitySteps(root);
     wireUnitPickers(root);
+    wireUploads(root);
     wireConfirms(root);
   }
 

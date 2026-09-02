@@ -269,9 +269,9 @@ class TimelineTests(TestCase):
             )
 
     def story(self) -> list:
-        from .views import _group_photos, _timeline
+        from .views import _group_media, _timeline
 
-        return _group_photos(_timeline(self.asset))
+        return _group_media(_timeline(self.asset))
 
     def test_a_days_photographs_become_one_entry(self):
         self.add_photos(4)

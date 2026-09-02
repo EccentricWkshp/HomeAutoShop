@@ -169,6 +169,63 @@ UNLINK_RETURNS = {
 }
 
 
+def _require_write(user, link) -> None:
+    """Check a write against the record the file actually hangs on (§12.2a).
+
+    Only `Asset` is resolved, and that is a limit rather than an oversight: a
+    helper's access is granted per vehicle, so the vehicle is the one resource
+    the policy knows how to answer about. A file attached to a purchase is
+    still governed by the request gate and nothing finer.
+    """
+    if link.entity_type != "Asset":
+        return
+
+    from homeautoshop.accounts.models import require
+    from homeautoshop.assets.models import Asset
+
+    asset = Asset.objects.filter(pk=link.entity_id).first()
+    if asset is not None:
+        require(user, "asset.edit", asset)
+
+
+@require_POST
+@login_required
+def media_rename(request, link_id):
+    """Give an attachment a name of somebody's own (FR-DOC-1).
+
+    A file arrives called `31P8770110E1.pdf`, which is what a manufacturer's
+    part system called it and tells the person reading the record nothing.
+    Links on the same page have always carried a label; documents did not, so
+    a row of PDFs was four indistinguishable serial numbers.
+
+    The name lives on the **link**, not on the file. One document legitimately
+    hangs off several records — a receipt belongs to both the purchase and the
+    work order — and what it should be called there is a property of that
+    attachment, not of the bytes.
+    """
+    from django.shortcuts import get_object_or_404, redirect
+    from django.urls import reverse
+
+    from .models import MediaLink
+
+    link = get_object_or_404(MediaLink, pk=link_id)
+    _require_write(request.user, link)
+
+    link.caption = (request.POST.get("caption") or "").strip()[:255]
+    link.save(update_fields=["caption"])
+    messages.success(
+        request,
+        _("Renamed to “%(name)s”.") % {"name": link.caption}
+        if link.caption
+        else _("Name cleared — the file name is shown instead."),
+    )
+
+    route = UNLINK_RETURNS.get(link.entity_type)
+    if route:
+        return redirect(reverse(route, args=[link.entity_id]))
+    return redirect("dashboard")
+
+
 @require_POST
 @login_required
 def media_unlink(request, link_id):
@@ -189,6 +246,7 @@ def media_unlink(request, link_id):
     from .models import MediaLink
 
     link = get_object_or_404(MediaLink, pk=link_id)
+    _require_write(request.user, link)
     media, entity_type, entity_id = link.media, link.entity_type, link.entity_id
     link.delete()
 

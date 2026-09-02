@@ -274,7 +274,7 @@ def asset_detail(request, pk):
     shown = [(p, links.get(p.pk)) for p in providers if not getattr(links.get(p.pk), "is_hidden", False)]
     hidden = [p for p in providers if getattr(links.get(p.pk), "is_hidden", False)]
 
-    story = _group_photos(_timeline(asset))
+    story = _group_media(_timeline(asset))
     recent = story[:RECENT_EVENTS]
 
     return render(
@@ -324,8 +324,36 @@ def asset_detail(request, pk):
 RECENT_EVENTS = 8
 
 
-def _group_photos(events: list[dict]) -> list[dict]:
-    """Collapse a day's photographs into a single entry.
+def _media_title(link) -> str:
+    """What to call one attachment in the story.
+
+    A photograph is worth calling "Photo": its file name is `IMG_4032.jpg` and
+    says nothing. A document's file name is the only thing that distinguishes
+    it from the three beside it, so that is what gets shown — until somebody
+    gives it a name of their own, which always wins.
+    """
+    if link.caption:
+        return link.caption
+    # `kind`, the same test the Photos and Documents cards split on, so a row
+    # in the story and the card it opens never disagree about what it is.
+    if link.media.kind != Media.Kind.PHOTO and link.media.original_filename:
+        return link.media.original_filename
+    return link.media.get_kind_display()
+
+
+def _group_label(kind: str, n: int) -> str:
+    """The plural for a day's worth of one kind of attachment."""
+    if kind == Media.Kind.DOCUMENT:
+        return ngettext("%(n)s document", "%(n)s documents", n) % {"n": n}
+    if kind == Media.Kind.SCAN_EXPORT:
+        return ngettext("%(n)s scan report", "%(n)s scan reports", n) % {"n": n}
+    if kind == Media.Kind.AUDIO_NOTE:
+        return ngettext("%(n)s audio note", "%(n)s audio notes", n) % {"n": n}
+    return ngettext("%(n)s photo", "%(n)s photos", n) % {"n": n}
+
+
+def _group_media(events: list[dict]) -> list[dict]:
+    """Collapse a day's attachments into a single entry, one group per kind.
 
     A photo is one row and a work order is one row, and they are not the same
     size of event. Five shots of the same caliper pushed the meter reading, the
@@ -335,8 +363,12 @@ def _group_photos(events: list[dict]) -> list[dict]:
     By day rather than by run, because "the thirty-first, four photos" is how
     somebody remembers taking them; and a day with one photograph stays one
     photograph, because a group of one is a worse label than the thing itself.
+
+    **By kind as well as by day**, because the group carries a noun. Four PDFs
+    uploaded together were counted as "4 photos" — a row that named the wrong
+    thing and, opened, led to files the Photos card had never held.
     """
-    photos: dict = {}
+    attachments: dict = {}
     merged = [event for event in events if event["kind"] != "media"]
 
     for event in events:
@@ -344,9 +376,9 @@ def _group_photos(events: list[dict]) -> list[dict]:
             continue
         when = event["when"]
         day = (timezone.localtime(when) if timezone.is_aware(when) else when).date()
-        photos.setdefault(day, []).append(event)
+        attachments.setdefault((day, event.get("media_kind", "")), []).append(event)
 
-    for group in photos.values():
+    for (_day, kind), group in attachments.items():
         if len(group) == 1:
             merged.append(group[0])
             continue
@@ -356,8 +388,8 @@ def _group_photos(events: list[dict]) -> list[dict]:
                 # recent photograph would have.
                 "when": max(event["when"] for event in group),
                 "kind": "media_group",
-                "title": ngettext("%(n)s photo", "%(n)s photos", len(group))
-                % {"n": len(group)},
+                "media_kind": kind,
+                "title": _group_label(kind, len(group)),
                 "detail": "",
                 "url": "",
                 "children": sorted(group, key=lambda e: e["when"], reverse=True),
@@ -426,7 +458,11 @@ def _timeline(asset: Asset) -> list[dict]:
             {
                 "when": link.media.captured_at or link.created_at,
                 "kind": "media",
-                "title": link.caption or _("Photo"),
+                # A document is not a photograph. Every attachment used to be
+                # titled "Photo", so four PDFs of a mower's manual read as
+                # four photographs on a page whose Photos card was empty.
+                "title": _media_title(link),
+                "media_kind": link.media.kind,
                 "detail": link.get_role_display(),
                 "url": link.media.url_for(),
             }
@@ -712,6 +748,10 @@ def reading_create(request, pk):
 @login_required
 def photo_upload(request, pk):
     asset = get_object_or_404(Asset, pk=pk)
+    # §12.2a — this was the one attachment route with no resource check on it,
+    # so a helper granted read on one vehicle could put photographs on any of
+    # them. `document_upload`, three lines of code away, always had it.
+    require(request.user, "asset.edit", asset)
     files = request.FILES.getlist("files")
     created = 0
     for upload in files:
@@ -726,6 +766,11 @@ def photo_upload(request, pk):
             if created
             else _("Those photos were already on file."),
         )
+    else:
+        # Silence here read as a page that did nothing for no reason. The two
+        # controls are a sequence and this is what says so when only the
+        # second one was pressed.
+        messages.warning(request, _("Choose a photo first, then Upload."))
     return redirect("asset_detail", pk=asset.pk)
 
 
@@ -794,6 +839,8 @@ def document_upload(request, pk):
             if created
             else _("Those documents were already on file."),
         )
+    else:
+        messages.warning(request, _("Choose a file first, then Upload."))
     return redirect("asset_detail", pk=asset.pk)
 
 
