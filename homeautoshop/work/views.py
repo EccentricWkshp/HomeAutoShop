@@ -22,7 +22,9 @@ from homeautoshop.accounts.policy import visible_assets, visible_assets_for
 from homeautoshop.assets.models import Asset
 from homeautoshop.assets.services import record_reading
 from homeautoshop.mediafiles.models import MediaLink
+from homeautoshop.core.budget import budget_burndown, project_cost
 from homeautoshop.core.costs import work_order_cost
+from homeautoshop.core.moneyform import MoneyFormMixin
 from homeautoshop.mediafiles.services import ingest
 from homeautoshop.parts.services import consume, resolve_part
 from homeautoshop.purchasing.models import Vendor
@@ -45,13 +47,13 @@ from .models import (
 log = logging.getLogger(__name__)
 
 
-class WorkOrderForm(forms.ModelForm):
+class WorkOrderForm(MoneyFormMixin, forms.ModelForm):
     class Meta:
         model = WorkOrder
         fields = [
             "asset", "title", "type", "priority", "complaint", "cause",
             "correction", "odometer_in", "requested_by", "parent",
-            "is_safety_critical",
+            "budget_minor", "is_safety_critical",
         ]
         widgets = {
             "complaint": forms.Textarea(attrs={"rows": 3}),
@@ -76,6 +78,12 @@ class WorkOrderForm(forms.ModelForm):
             parents = parents.exclude(pk__in=self.instance.descendant_ids() | {self.instance.pk})
         self.fields["parent"].queryset = parents
         self.fields["parent"].empty_label = _("Not part of a project")
+        self.fields["budget_minor"].label = _("Budget")
+        self.fields["budget_minor"].help_text = _(
+            "What this job is meant to cost. Leave it empty for no budget — a "
+            "burn-down appears on the work order once there is one, and counts "
+            "everything underneath it."
+        )
         if not parents.exists():
             self.fields["parent"].help_text = _(
                 "Nothing here yet — set a work order's type to Project and it "
@@ -219,8 +227,20 @@ def work_order_detail(request, pk):
             "parts_blocked_reason": _shortfall_sentence(parts_needed),
             "vendors": Vendor.objects.order_by("name")[:100],
             "expenses": wo.expenses.select_related("vendor"),
+            # The sample form offers a work order, so the work order has to
+            # show what chose it. Otherwise the field records something the
+            # record it points at cannot display.
+            "fluid_samples": wo.fluid_samples.all(),
             "time_entries": wo.time_entries.select_related("user"),
             "rollup": work_order_cost(wo),
+            # R-6. `None` unless a budget was set, and the whole tree when it
+            # was — a project's spend is its children's spend (FR-WO-8).
+            "budget": budget_burndown(wo),
+            "children": wo.children.order_by("opened_at"),
+            # What the project has cost, as against what this row has cost.
+            # Only computed where the two can differ, so a leaf job asks the
+            # database nothing extra.
+            "project_rollup": project_cost(wo) if wo.children.exists() else None,
             "expense_form": ExpenseForm(),
             # Empty whenever WrenchLedger is absent, off, or unreachable, so
             # the page renders exactly as it did before the integration existed.

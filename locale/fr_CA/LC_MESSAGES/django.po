@@ -7825,3 +7825,563 @@ msgstr "Manuels"
 #: templates/work/list.html:22
 msgid "Nothing here."
 msgstr "Rien ici."
+
+#
+# --- Fluid analysis (R-5), project budgets (R-6), and the trouble-code page.
+# Machine-drafted like the rest of this catalog and wanting the same review.
+#
+
+#: homeautoshop/assets/views.py:469
+msgid "Fluid sample"
+msgstr "Prélèvement de fluide"
+
+#: homeautoshop/assets/views.py:862
+#: homeautoshop/fluids/views.py:212
+msgid "Choose a file first, then Upload."
+msgstr "Choisissez d'abord un fichier, puis téléversez."
+
+#: homeautoshop/fluids/analytes.py:46
+msgid "Wear metals"
+msgstr "Métaux d'usure"
+
+#: homeautoshop/fluids/analytes.py:47
+msgid "Contamination"
+msgstr "Contamination"
+
+#: homeautoshop/fluids/analytes.py:48
+msgid "Additives"
+msgstr "Additifs"
+
+#: homeautoshop/fluids/analytes.py:49
+msgid "Physical properties"
+msgstr "Propriétés physiques"
+
+#: homeautoshop/fluids/analytes.py:70
+msgid "Iron"
+msgstr "Fer"
+
+#: homeautoshop/fluids/analytes.py:71
+msgid "Chromium"
+msgstr "Chrome"
+
+#: homeautoshop/fluids/analytes.py:72
+msgid "Nickel"
+msgstr "Nickel"
+
+#: homeautoshop/fluids/analytes.py:73
+msgid "Aluminum"
+msgstr "Aluminium"
+
+#: homeautoshop/fluids/analytes.py:74
+msgid "Copper"
+msgstr "Cuivre"
+
+#: homeautoshop/fluids/analytes.py:75
+msgid "Lead"
+msgstr "Plomb"
+
+#: homeautoshop/fluids/analytes.py:76
+msgid "Tin"
+msgstr "Étain"
+
+#: homeautoshop/fluids/analytes.py:77
+msgid "Silver"
+msgstr "Argent"
+
+#: homeautoshop/fluids/analytes.py:78
+msgid "Titanium"
+msgstr "Titane"
+
+#: homeautoshop/fluids/analytes.py:79
+msgid "Vanadium"
+msgstr "Vanadium"
+
+#: homeautoshop/fluids/analytes.py:80
+msgid "Manganese"
+msgstr "Manganèse"
+
+#: homeautoshop/fluids/analytes.py:82
+msgid "Silicon"
+msgstr "Silicium"
+
+#: homeautoshop/fluids/analytes.py:83
+msgid "Sodium"
+msgstr "Sodium"
+
+#: homeautoshop/fluids/analytes.py:84
+msgid "Potassium"
+msgstr "Potassium"
+
+#: homeautoshop/fluids/analytes.py:87
+msgid "Water"
+msgstr "Eau"
+
+#: homeautoshop/fluids/analytes.py:88
+msgid "Fuel dilution"
+msgstr "Dilution par le carburant"
+
+#: homeautoshop/fluids/analytes.py:89
+msgid "Glycol"
+msgstr "Glycol"
+
+#: homeautoshop/fluids/analytes.py:90
+msgid "Soot"
+msgstr "Suie"
+
+#: homeautoshop/fluids/analytes.py:91
+msgid "Insolubles"
+msgstr "Insolubles"
+
+#: homeautoshop/fluids/analytes.py:93
+msgid "Molybdenum"
+msgstr "Molybdène"
+
+#: homeautoshop/fluids/analytes.py:94
+msgid "Boron"
+msgstr "Bore"
+
+#: homeautoshop/fluids/analytes.py:95
+msgid "Magnesium"
+msgstr "Magnésium"
+
+#: homeautoshop/fluids/analytes.py:96
+msgid "Calcium"
+msgstr "Calcium"
+
+#: homeautoshop/fluids/analytes.py:97
+msgid "Barium"
+msgstr "Baryum"
+
+#: homeautoshop/fluids/analytes.py:98
+msgid "Phosphorus"
+msgstr "Phosphore"
+
+#: homeautoshop/fluids/analytes.py:99
+msgid "Zinc"
+msgstr "Zinc"
+
+#: homeautoshop/fluids/analytes.py:101
+msgid "Viscosity at 100 °C"
+msgstr "Viscosité à 100 °C"
+
+#: homeautoshop/fluids/analytes.py:103
+msgid "Viscosity at 40 °C"
+msgstr "Viscosité à 40 °C"
+
+#: homeautoshop/fluids/analytes.py:105
+msgid "Flashpoint"
+msgstr "Point d'éclair"
+
+#: homeautoshop/fluids/analytes.py:106
+msgid "Total base number"
+msgstr "Indice de basicité total (TBN)"
+
+#: homeautoshop/fluids/analytes.py:108
+msgid "Total acid number"
+msgstr "Indice d'acidité total (TAN)"
+
+#: homeautoshop/fluids/analytes.py:110
+msgid "Oxidation"
+msgstr "Oxydation"
+
+#: homeautoshop/fluids/analytes.py:111
+msgid "Nitration"
+msgstr "Nitration"
+
+#: homeautoshop/fluids/analytes.py:112
+msgid "pH"
+msgstr "pH"
+
+#: homeautoshop/fluids/analytes.py:113
+msgid "Moisture"
+msgstr "Humidité"
+
+#: homeautoshop/fluids/models.py:55
+msgid "Engine oil"
+msgstr "Huile moteur"
+
+#: homeautoshop/fluids/models.py:57
+msgid "Differential"
+msgstr "Différentiel"
+
+#: homeautoshop/fluids/models.py:58
+msgid "Transfer case"
+msgstr "Boîte de transfert"
+
+#: homeautoshop/fluids/models.py:59
+msgid "Hydraulic"
+msgstr "Hydraulique"
+
+#: homeautoshop/fluids/models.py:60
+msgid "Coolant"
+msgstr "Liquide de refroidissement"
+
+#: homeautoshop/fluids/models.py:61
+msgid "Brake fluid"
+msgstr "Liquide de frein"
+
+#: homeautoshop/fluids/models.py:63
+msgid "Gear oil"
+msgstr "Huile à engrenages"
+
+#: homeautoshop/fluids/models.py:78
+msgid "Front, rear — where there is more than one."
+msgstr "Avant, arrière — lorsqu'il y en a plus d'un."
+
+#: homeautoshop/fluids/models.py:84
+msgid "The meter reading when the sample was drawn."
+msgstr "Le relevé du compteur au moment du prélèvement."
+
+#: homeautoshop/fluids/models.py:90
+msgid "How far the fluid itself had run — miles or hours since it was changed. Wear metals accumulate, so without this a number cannot be compared with the last one."
+msgstr "La distance parcourue par le fluide lui-même — milles ou heures depuis sa vidange. Les métaux d'usure s'accumulent : sans cette donnée, un nombre ne peut pas être comparé au précédent."
+
+#: homeautoshop/fluids/models.py:96
+msgid "Was the fluid changed at this sample?"
+msgstr "Le fluide a-t-il été changé lors de ce prélèvement ?"
+
+#: homeautoshop/fluids/models.py:102
+msgid "5W-30, 75W-90…"
+msgstr "5W-30, 75W-90…"
+
+#: homeautoshop/fluids/models.py:125
+msgid "A fluid cannot have run a negative distance."
+msgstr "Un fluide ne peut pas avoir parcouru une distance négative."
+
+#: homeautoshop/fluids/models.py:160
+msgid "The lab marked this line. Their judgment, not ours."
+msgstr "Le laboratoire a signalé cette ligne. Son jugement, pas le nôtre."
+
+#: homeautoshop/fluids/services.py:112
+msgid "no number on this line"
+msgstr "aucun nombre sur cette ligne"
+
+#: homeautoshop/fluids/services.py:117
+msgid "could not read the number"
+msgstr "impossible de lire le nombre"
+
+#: homeautoshop/fluids/services.py:124
+msgid "no analyte named on this line"
+msgstr "aucun analyte nommé sur cette ligne"
+
+#: homeautoshop/fluids/services.py:128
+msgid "this analyte is already on the report"
+msgstr "cet analyte figure déjà sur le rapport"
+
+#: homeautoshop/fluids/services.py:294
+msgid "One sample so far — send another to see a trend."
+msgstr "Un seul prélèvement jusqu'ici — envoyez-en un autre pour voir une tendance."
+
+#: homeautoshop/fluids/services.py:298
+#, python-format
+msgid "Not comparable: %(n)s of these samples did not record how far the fluid had run."
+msgstr "Non comparable : %(n)s de ces prélèvements n'indiquent pas la distance parcourue par le fluide."
+
+#: homeautoshop/fluids/services.py:303
+msgid "No comparable previous figure."
+msgstr "Aucun chiffre antérieur comparable."
+
+#: homeautoshop/fluids/services.py:305
+#, python-format
+msgid "%(x)s× the previous sample."
+msgstr "%(x)s× le prélèvement précédent."
+
+#: homeautoshop/fluids/services.py:307
+#, python-format
+msgid "Down to %(x)s× the previous sample."
+msgstr "Descendu à %(x)s× le prélèvement précédent."
+
+#: homeautoshop/fluids/services.py:308
+msgid "Unchanged from the previous sample."
+msgstr "Inchangé par rapport au prélèvement précédent."
+
+#: homeautoshop/fluids/views.py:32
+msgid "Results"
+msgstr "Résultats"
+
+#: homeautoshop/fluids/views.py:36
+msgid "Paste the lab's table — one line each, like “Iron 24” or “Viscosity @ 100C 10.9”. Anything that cannot be read is listed back to you rather than dropped."
+msgstr "Collez le tableau du laboratoire — une ligne chacun, comme « Iron 24 » ou « Viscosity @ 100C 10.9 ». Tout ce qui ne peut pas être lu vous est signalé plutôt qu'écarté."
+
+#: homeautoshop/fluids/views.py:59
+msgid "Not against a job"
+msgstr "Hors bon de travail"
+
+#: homeautoshop/fluids/views.py:223
+#, python-format
+msgid "%(n)s file attached."
+msgid_plural "%(n)s files attached."
+msgstr[0] "%(n)s fichier joint."
+msgstr[1] "%(n)s fichiers joints."
+
+#: homeautoshop/fluids/views.py:226
+msgid "That file is already on this sample."
+msgstr "Ce fichier est déjà sur ce prélèvement."
+
+#: homeautoshop/fluids/views.py:237
+msgid "Sample removed."
+msgstr "Prélèvement supprimé."
+
+#: homeautoshop/fluids/views.py:246
+#, python-format
+msgid "%(n)s result recorded."
+msgid_plural "%(n)s results recorded."
+msgstr[0] "%(n)s résultat enregistré."
+msgstr[1] "%(n)s résultats enregistrés."
+
+#: homeautoshop/fluids/views.py:252
+#, python-format
+msgid "Not recorded — %(why)s: %(line)s"
+msgstr "Non enregistré — %(why)s : %(line)s"
+
+#: homeautoshop/work/models.py:167
+msgid "budget"
+msgstr "budget"
+
+#: homeautoshop/work/views.py:81
+#: templates/work/detail.html:459
+msgid "Budget"
+msgstr "Budget"
+
+#: templates/assets/detail.html:17
+msgid "Fluids"
+msgstr "Fluides"
+
+#: templates/assets/detail.html:120
+#: templates/assets/detail.html:207
+#: templates/fluids/detail.html:164
+msgid "Upload"
+msgstr "Téléverser"
+
+#: templates/assets/detail.html:165
+#: templates/fluids/detail.html:144
+msgid "Detach"
+msgstr "Détacher"
+
+#: templates/assets/timeline.html:14
+msgid "Work orders, meter readings, fluid samples and every photograph, in one order. The vehicle's own page shows a summary of this with each day's photographs collapsed; here nothing is grouped."
+msgstr "Bons de travail, relevés du compteur, prélèvements de fluide et toutes les photographies, dans un seul ordre. La page du véhicule en montre un résumé avec les photographies de chaque jour repliées ; ici, rien n'est regroupé."
+
+#: templates/diagnostics/code.html:72
+msgid "Other lists installed here do define this code:"
+msgstr "D'autres listes installées ici définissent bel et bien ce code :"
+
+#: templates/diagnostics/code.html:82
+msgid "A manufacturer's code means what that manufacturer says it means, so these answer for their own badge and not for yours."
+msgstr "Le code d'un constructeur signifie ce que ce constructeur dit qu'il signifie : ceux-ci répondent pour leur propre marque, pas pour la vôtre."
+
+#: templates/diagnostics/code.html:104
+msgid "ISO/SAE controlled — defined by the standard, and the same on every make."
+msgstr "Contrôlé par l'ISO/SAE — défini par la norme, et identique pour toutes les marques."
+
+#: templates/diagnostics/code.html:106
+msgid "A manufacturer's own code. Its meaning is set by whoever built the vehicle, which is why this page asks for a make."
+msgstr "Un code propre au constructeur. Son sens est fixé par celui qui a construit le véhicule : c'est pourquoi cette page demande une marque."
+
+#: templates/diagnostics/code.html:109
+#, python-format
+msgid "Failure type byte %(byte)s — how the fault failed, kept out of the code itself so two readings of one fault still match."
+msgstr "Octet de type de défaillance %(byte)s — comment la panne s'est manifestée, tenu hors du code lui-même pour que deux lectures d'une même panne correspondent encore."
+
+#: templates/fluids/detail.html:5
+#: templates/fluids/form.html:5
+#: templates/fluids/list.html:2
+#: templates/fluids/list.html:9
+#: templates/work/detail.html:655
+msgid "Fluid analysis"
+msgstr "Analyse des fluides"
+
+#: templates/fluids/detail.html:13
+#: templates/fluids/list.html:74
+msgid "Fluid changed"
+msgstr "Fluide changé"
+
+#: templates/fluids/detail.html:19
+#, python-format
+msgid "Remove the sample taken %(on)s? It goes to the trash for 30 days."
+msgstr "Supprimer le prélèvement du %(on)s ? Il ira à la corbeille pendant 30 jours."
+
+#: templates/fluids/detail.html:35
+msgid "No fluid interval was recorded, so this sample cannot be compared with the others. Add how far the fluid had run and it joins the trend."
+msgstr "Aucun intervalle de fluide n'a été enregistré : ce prélèvement ne peut donc pas être comparé aux autres. Indiquez la distance parcourue par le fluide et il rejoindra la tendance."
+
+#: templates/fluids/detail.html:48
+#: templates/fluids/list.html:44
+msgid "Per 1,000"
+msgstr "Par 1 000"
+
+#: templates/fluids/detail.html:49
+msgid "Lab's own figure"
+msgstr "Chiffre du laboratoire"
+
+#: templates/fluids/detail.html:54
+msgid "Flagged by the lab"
+msgstr "Signalé par le laboratoire"
+
+#: templates/fluids/detail.html:70
+msgid "No results were recorded on this sample."
+msgstr "Aucun résultat n'a été enregistré sur ce prélèvement."
+
+#: templates/fluids/detail.html:76
+msgid "What the lab said"
+msgstr "Ce qu'a dit le laboratoire"
+
+#: templates/fluids/detail.html:86
+#, python-format
+msgid "%(lab)s's reading of this sample. HomeAutoShop does not add one of its own."
+msgstr "L'interprétation de ce prélèvement par %(lab)s. HomeAutoShop n'en ajoute pas une à lui."
+
+#: templates/fluids/detail.html:88
+msgid "The lab's reading of this sample. HomeAutoShop does not add one of its own."
+msgstr "L'interprétation de ce prélèvement par le laboratoire. HomeAutoShop n'en ajoute pas une à lui."
+
+#: templates/fluids/detail.html:97
+msgid "The sample"
+msgstr "Le prélèvement"
+
+#: templates/fluids/detail.html:99
+msgid "Fluid interval"
+msgstr "Intervalle du fluide"
+
+#: templates/fluids/detail.html:109
+msgid "Lab"
+msgstr "Laboratoire"
+
+#: templates/fluids/detail.html:111
+msgid "Fluid"
+msgstr "Fluide"
+
+#: templates/fluids/detail.html:114
+msgid "Job"
+msgstr "Bon de travail"
+
+#: templates/fluids/detail.html:134
+msgid "The lab's report"
+msgstr "Le rapport du laboratoire"
+
+#: templates/fluids/detail.html:143
+msgid "Take this off the sample?"
+msgstr "Retirer ceci du prélèvement ?"
+
+#: templates/fluids/detail.html:149
+msgid "Not attached. The numbers above cannot be checked against anything without it."
+msgstr "Non joint. Sans lui, les nombres ci-dessus ne peuvent être vérifiés contre quoi que ce soit."
+
+#: templates/fluids/detail.html:154
+#, python-format
+msgid "Upload %%(n)s file"
+msgstr "Téléverser %%(n)s fichier"
+
+#: templates/fluids/detail.html:155
+#, python-format
+msgid "Upload %%(n)s files"
+msgstr "Téléverser %%(n)s fichiers"
+
+#: templates/fluids/detail.html:159
+msgid "Photograph the report"
+msgstr "Photographier le rapport"
+
+#: templates/fluids/detail.html:163
+msgid "Choose the report file"
+msgstr "Choisir le fichier du rapport"
+
+#: templates/fluids/form.html:2
+#: templates/fluids/form.html:6
+msgid "Edit sample"
+msgstr "Modifier le prélèvement"
+
+#: templates/fluids/form.html:2
+#: templates/fluids/form.html:6
+#: templates/fluids/list.html:12
+msgid "Record a sample"
+msgstr "Enregistrer un prélèvement"
+
+#: templates/fluids/form.html:17
+msgid "These lines were not recorded:"
+msgstr "Ces lignes n'ont pas été enregistrées :"
+
+#: templates/fluids/list.html:17
+msgid "One report says very little. Four say when something started. Wear metals build up while the fluid is in service, so a sample is only comparable with the last one when you have recorded how far the fluid itself had run."
+msgstr "Un rapport dit très peu. Quatre disent quand quelque chose a commencé. Les métaux d'usure s'accumulent pendant que le fluide est en service : un prélèvement n'est comparable au précédent que si vous avez noté la distance parcourue par le fluide lui-même."
+
+#: templates/fluids/list.html:27
+msgid "Compartment"
+msgstr "Circuit"
+
+#: templates/fluids/list.html:45
+msgid "Against the last one"
+msgstr "Par rapport au précédent"
+
+#: templates/fluids/list.html:62
+msgid "Per 1,000 is filled in only where the number accumulates — wear metals and contamination. Viscosity and the additive pack describe the fluid as it is now, so a rate would say nothing about them."
+msgstr "« Par 1 000 » n'est rempli que là où le nombre s'accumule — métaux d'usure et contamination. La viscosité et le paquet d'additifs décrivent le fluide tel qu'il est maintenant : un taux n'en dirait rien."
+
+#: templates/fluids/list.html:68
+msgid "Samples"
+msgstr "Prélèvements"
+
+#: templates/fluids/list.html:77
+#, python-format
+msgid "%(n)s %(unit)s on the fluid"
+msgstr "%(n)s %(unit)s sur le fluide"
+
+#: templates/fluids/list.html:79
+msgid "No fluid interval recorded"
+msgstr "Aucun intervalle de fluide enregistré"
+
+#: templates/fluids/list.html:87
+msgid "No samples recorded yet."
+msgstr "Aucun prélèvement enregistré pour l'instant."
+
+#: templates/work/detail.html:64
+#, python-format
+msgid "%(counter)s job in this project"
+msgid_plural "%(counter)s jobs in this project"
+msgstr[0] "%(counter)s bon de travail dans ce projet"
+msgstr[1] "%(counter)s bons de travail dans ce projet"
+
+#: templates/work/detail.html:78
+msgid "The total above is the whole project — this work order and every job under it."
+msgstr "Le total ci-dessus correspond au projet entier — ce bon de travail et tous ceux qui en dépendent."
+
+#: templates/work/detail.html:468
+#, python-format
+msgid "%(used)s committed of %(total)s"
+msgstr "%(used)s engagés sur %(total)s"
+
+#: templates/work/detail.html:484
+#, python-format
+msgid "%(amount)s over budget"
+msgstr "%(amount)s de dépassement"
+
+#: templates/work/detail.html:489
+#, python-format
+msgid "%(used)s%% committed"
+msgstr "%(used)s%% engagés"
+
+#: templates/work/detail.html:493
+#: templates/work/detail.html:512
+msgid "Fitted"
+msgstr "Posé"
+
+#: templates/work/detail.html:503
+#, python-format
+msgid "%(hours)s hours of your own time, which no budget is charged for."
+msgstr "%(hours)s heures de votre propre temps, qu'aucun budget ne se voit facturer."
+
+#: templates/work/detail.html:508
+msgid "Month by month"
+msgstr "Mois par mois"
+
+#: templates/work/detail.html:513
+msgid "Running total"
+msgstr "Total cumulatif"
+
+#: homeautoshop/work/views.py:82
+msgid "What this job is meant to cost. Leave it empty for no budget — a burn-down appears on the work order once there is one, and counts everything underneath it."
+msgstr "Ce que ce travail est censé coûter. Laissez vide pour aucun budget — un graphique d'avancement apparaît sur le bon de travail dès qu'il y en a un, et compte tout ce qui s'y rattache."
+
+#: templates/work/detail.html:471
+#, python-format
+msgid "%(amount)s left"
+msgstr "%(amount)s restants"

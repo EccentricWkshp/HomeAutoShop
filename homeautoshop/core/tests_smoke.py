@@ -24,6 +24,7 @@ from homeautoshop.assets.models import Asset, AssetSpec, Recall
 from homeautoshop.core.models import NotificationChannel
 from homeautoshop.diagnostics.models import DiagnosticSession, ParserProfile
 from homeautoshop.diagnostics.profiles import seed as seed_profiles
+from homeautoshop.fluids.models import FluidSample
 from homeautoshop.inspections.models import Inspection
 from homeautoshop.maintenance.models import AssetServiceItem, ServiceDefinition
 from homeautoshop.parts.models import Location, Part, PartFitment, StockLot
@@ -103,6 +104,7 @@ class EveryPageRendersTests(TestCase):
         cls.inspection = Inspection.objects.create(
             asset=cls.asset, template_name="Winter prep"
         )
+        cls.fluid_sample = FluidSample.objects.create(asset=cls.asset)
         # Photos are served by the application now rather than linked straight
         # to object storage, so the route that does it is a page like any other.
         cls.media = Media(kind=Media.Kind.PHOTO, original_filename="a.jpg", mime="image/jpeg")
@@ -207,6 +209,8 @@ class EveryPageRendersTests(TestCase):
             "inspection_delete",
         }:
             by_name["pk"] = str(self.inspection.pk)
+        elif name in {"fluid_sample_detail", "fluid_sample_edit", "fluid_sample_delete"}:
+            by_name["pk"] = str(self.fluid_sample.pk)
 
         try:
             return reverse(name, kwargs={key: by_name[key] for key in captured})

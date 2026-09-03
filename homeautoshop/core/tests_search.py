@@ -21,6 +21,7 @@ test below names a search somebody would really type.
 from __future__ import annotations
 
 from django.test import TestCase
+from django.utils import translation
 
 from homeautoshop.assets.models import Asset
 from homeautoshop.core.search import search
@@ -229,6 +230,36 @@ class TroubleCodesAreSearchableTests(TestCase):
         """The other half of the job: a technician who knows the symptom and
         not the number."""
         self.assertIn("P0420", [d.code for d in found("catalyst efficiency", "code")])
+
+    def test_the_words_are_found_whatever_language_is_active(self):
+        """The flake this class produced for months, as an assertion.
+
+        `ISO_SAE` holds lazy strings, so searching what `str()` returned meant
+        searching whatever language was last activated — and `LocaleMiddleware`
+        activates one per request and never deactivates. Any test that ran
+        after one which rendered a French page searched the French table for
+        English words and found nothing, while the code lookup beside it went
+        on working. It passed alone and failed in the suite, which is the
+        shape of every ambient-state bug.
+        """
+        for code in ("en-us", "fr-ca", "es-mx"):
+            with translation.override(code):
+                with self.subTest(language=code):
+                    self.assertIn("P0420", [d.code for d in found("catalyst efficiency", "code")])
+
+    def test_and_in_the_language_the_reader_is_using(self):
+        """The other half, and the reason this is a fix rather than a pin: a
+        French instance can be searched in French."""
+        with translation.override("fr-ca"):
+            self.assertIn(
+                "P0420", [d.code for d in found("efficacité du catalyseur", "code")]
+            )
+
+    def test_the_wording_shown_is_still_the_readers_own(self):
+        """Found in either language, displayed in theirs."""
+        with translation.override("fr-ca"):
+            hit = next(d for d in found("catalyst efficiency", "code") if d.code == "P0420")
+            self.assertIn("catalyseur", hit.text)
 
     def test_the_result_says_who_defines_it(self):
         """An ISO/SAE code means the same thing on every vehicle ever built; a

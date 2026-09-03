@@ -21,6 +21,7 @@ from homeautoshop.core.models import (
     SoftDeleteQuerySet,
     alive_manager,
 )
+from homeautoshop.core.money import money, money_columns
 
 
 class WorkOrderType(models.TextChoices):
@@ -154,6 +155,20 @@ class WorkOrder(RevisionedModel):
     is_safety_critical = models.BooleanField(default=False)
     tags = models.JSONField(default=list, blank=True)
 
+    # R-6. Nullable rather than defaulted to zero, because "no budget" and "a
+    # budget of nothing" are different statements and only one of them should
+    # put a burn-down on the screen. Offered on every work order rather than
+    # only on `type = project`: a brake job somebody has decided is worth $400
+    # is the same question, and a field that refuses to be filled in is a
+    # worse answer than one nobody uses.
+    budget_minor, budget_currency = money_columns(
+        "budget",
+        null=True,
+        verbose_name=_("budget"),
+    )
+
+    budget = money("budget")
+
     objects = alive_manager(WorkOrderQuerySet)
     all_objects = models.Manager.from_queryset(WorkOrderQuerySet)()
 
@@ -207,6 +222,15 @@ class WorkOrder(RevisionedModel):
             found.update(children)
             frontier = children
         return found
+
+    def tree_ids(self) -> list:
+        """This work order and everything under it (FR-WO-8).
+
+        A project's cost is the cost of the project. `descendant_ids` was
+        already here for the parent picker; nothing had ever asked it what the
+        whole tree cost.
+        """
+        return [self.pk, *sorted(self.descendant_ids())]
 
     def can_transition_to(self, status: str) -> bool:
         return status in TRANSITIONS.get(self.status, ())

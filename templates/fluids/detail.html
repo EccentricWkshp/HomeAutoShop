@@ -1,0 +1,167 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ sample.where }} {{ sample.sampled_on }} — {{ asset.nickname }}{% endblock %}
+{% block content %}
+{% url 'fluid_list' asset.pk as back_url %}
+{% include "partials/_back.html" with url=back_url label=_("Fluid analysis") %}
+<div class="spread">
+  <div>
+    <h1>{{ sample.where }}</h1>
+    <p class="muted">
+      <a href="{% url 'asset_detail' asset.pk %}">{{ asset.nickname }}</a>
+      · {{ sample.sampled_on }}
+      {% if sample.usage_at_sample %}· {{ sample.usage_at_sample|floatformat:0 }} {{ asset.meter_unit }}{% endif %}
+      {% if sample.fluid_changed %}<span class="pill">{% translate "Fluid changed" %}</span>{% endif %}
+    </p>
+  </div>
+  <div class="row">
+    <a class="btn" href="{% url 'fluid_sample_edit' sample.pk %}">{% translate "Edit" %}</a>
+    <form method="post" action="{% url 'fluid_sample_delete' sample.pk %}"
+          data-confirm="{% blocktranslate with on=sample.sampled_on %}Remove the sample taken {{ on }}? It goes to the trash for 30 days.{% endblocktranslate %}">
+      {% csrf_token %}
+      <button class="btn danger" type="submit">{% translate "Delete" %}</button>
+    </form>
+  </div>
+</div>
+
+{% if not sample.fluid_usage %}
+  {% comment %}
+    Said once, plainly, on the record it applies to. Without the interval this
+    sample can be read but not compared, and finding that out on the trend
+    screen — where the row is simply missing a number — is finding it out too
+    late to go and look the figure up.
+  {% endcomment %}
+  <p class="msg warning">
+    {% translate "No fluid interval was recorded, so this sample cannot be compared with the others. Add how far the fluid had run and it joins the trend." %}
+  </p>
+{% endif %}
+
+<div class="cols two">
+  <div class="stack">
+    {% for heading, results in sections %}
+      <section class="card">
+        <h2>{{ heading }}</h2>
+        <div class="tablewrap"><table>
+          <thead><tr>
+            <th scope="col">{% translate "Measured" %}</th>
+            <th scope="col">{% translate "Value" %}</th>
+            <th scope="col">{% translate "Per 1,000" %}</th>
+            <th scope="col">{% translate "Lab's own figure" %}</th>
+          </tr></thead>
+          <tbody>
+            {% for result in results %}
+              <tr>
+                <td>{{ result.label }}{% if result.flagged %} <span class="pill warn">{% translate "Flagged by the lab" %}</span>{% endif %}</td>
+                <td class="mono">{{ result.value|floatformat:"-2" }} {{ result.unit }}</td>
+                <td class="mono">
+                  {% if result.rate_per_thousand %}{{ result.rate_per_thousand|floatformat:"-2" }}
+                  {% else %}<span class="muted">—</span>{% endif %}
+                </td>
+                <td class="mono muted">
+                  {% if result.reference %}{{ result.reference|floatformat:"-2" }}{% else %}—{% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table></div>
+      </section>
+    {% empty %}
+      <section class="card">
+        <p class="muted">{% translate "No results were recorded on this sample." %}</p>
+      </section>
+    {% endfor %}
+
+    {% if sample.lab_comment %}
+      <section class="card">
+        <h2>{% translate "What the lab said" %}</h2>
+        {% comment %}
+          Verbatim, and attributed. HomeAutoShop does not decide whether an
+          engine is healthy — limits are engine-specific and labs disagree —
+          so the only judgment on this page is the one somebody was paid for.
+        {% endcomment %}
+        <p>{{ sample.lab_comment|linebreaksbr }}</p>
+        <p class="small muted">
+          {% if sample.lab %}
+            {% blocktranslate with lab=sample.lab %}{{ lab }}'s reading of this sample. HomeAutoShop does not add one of its own.{% endblocktranslate %}
+          {% else %}
+            {% translate "The lab's reading of this sample. HomeAutoShop does not add one of its own." %}
+          {% endif %}
+        </p>
+      </section>
+    {% endif %}
+  </div>
+
+  <aside class="stack">
+    <section class="card">
+      <h2>{% translate "The sample" %}</h2>
+      <ul class="list small">
+        <li class="spread"><span>{% translate "Fluid interval" %}</span>
+          <span class="mono">
+            {% if sample.fluid_usage %}{{ sample.fluid_usage|floatformat:0 }} {{ asset.meter_unit }}
+            {% else %}<span class="muted">—</span>{% endif %}
+          </span></li>
+        <li class="spread"><span>{% translate "Meter" %}</span>
+          <span class="mono">
+            {% if sample.usage_at_sample %}{{ sample.usage_at_sample|floatformat:0 }} {{ asset.meter_unit }}
+            {% else %}<span class="muted">—</span>{% endif %}
+          </span></li>
+        <li class="spread"><span>{% translate "Lab" %}</span><span>{{ sample.lab|default:"—" }}</span></li>
+        <li class="spread"><span>{% translate "Report" %}</span><span class="mono">{{ sample.report_number|default:"—" }}</span></li>
+        <li class="spread"><span>{% translate "Fluid" %}</span>
+          <span>{{ sample.fluid_brand }} {{ sample.fluid_grade|default:"—" }}</span></li>
+        {% if sample.work_order %}
+          <li class="spread"><span>{% translate "Job" %}</span>
+            <a href="{% url 'work_order_detail' sample.work_order.pk %}">{{ sample.work_order.number }}</a></li>
+        {% endif %}
+      </ul>
+      {% if sample.notes %}<p class="small">{{ sample.notes|linebreaksbr }}</p>{% endif %}
+    </section>
+
+    {% comment %}
+      The lab's own report, filed against the sample rather than loose on the
+      vehicle. The numbers above are a transcription of this page, and a
+      transcription with no route back to what it came from cannot be checked
+      — the same reason every code list in this application cites its document.
+
+      Two inputs, as everywhere else (FR-DOC-2): `capture` alone means *only*
+      the camera, which would make it impossible to attach the PDF the lab
+      emailed. A photographed printout and a PDF both work; which kind a file
+      becomes is read off the file.
+    {% endcomment %}
+    <section class="card" id="report" data-live="report">
+      <h2>{% translate "The lab's report" %}</h2>
+      <ul class="list small">
+        {% for link in documents %}
+          <li class="spread">
+            <a href="{% url 'media_file' link.media.pk %}" target="_blank" rel="noopener noreferrer">
+              {% firstof link.caption link.media.original_filename link.media.get_kind_display %} ↗</a>
+            <form method="post" action="{% url 'media_unlink' link.pk %}">
+              {% csrf_token %}<input type="hidden" name="_anchor" value="report">
+              <button type="submit" class="linkish small"
+                      data-confirm="{% translate 'Take this off the sample?' %}">
+                {% translate "Detach" %}
+              </button>
+            </form>
+          </li>
+        {% empty %}
+          <li class="muted">{% translate "Not attached. The numbers above cannot be checked against anything without it." %}</li>
+        {% endfor %}
+      </ul>
+      <form method="post" action="{% url 'fluid_sample_report' sample.pk %}"
+            enctype="multipart/form-data" class="row" data-upload style="margin-block-start:.75rem"
+            data-upload-one="{% translate 'Upload %(n)s file' %}"
+            data-upload-many="{% translate 'Upload %(n)s files' %}">
+        {% csrf_token %}<input type="hidden" name="_anchor" value="report">
+        <label class="filepick">
+          <input type="file" name="files" accept="image/*" capture="environment"
+                 aria-label="{% translate 'Photograph the report' %}">
+          <span aria-hidden="true">{% translate "Camera" %}</span>
+        </label>
+        <input type="file" name="files" multiple
+               aria-label="{% translate 'Choose the report file' %}">
+        <button type="submit" data-upload-submit>{% translate "Upload" %}</button>
+        <span class="small muted" data-upload-chosen></span>
+      </form>
+    </section>
+  </aside>
+</div>
+{% endblock %}

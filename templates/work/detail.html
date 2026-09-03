@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% load i18n %}
+{% extends "base.html" %}{% load i18n l10n %}
 {% block title %}{{ wo.number }} — {{ shop_name }}{% endblock %}
 {% block content %}
 {% url 'work_order_list' as back_url %}
@@ -14,7 +14,7 @@
     </p>
   </div>
   <div class="row">
-    <div style="text-align:right">
+    <div style="text-align:end">
       <div class="small muted">{% translate "Cost so far" %}</div>
       <div class="mono" style="font-size:1.3rem">{{ rollup.total }}</div>
     </div>
@@ -49,6 +49,33 @@
       <h2>{% translate "Correction" %}</h2>
       <p>{{ wo.correction|linebreaksbr|default:"—" }}</p>
     </section>
+
+    {% if children %}
+      {% comment %}
+        FR-WO-8 has always said a project collects child work orders and rolls
+        their cost up. The column existed and nothing read it: a project's page
+        showed neither its children nor their spend, so the record it was built
+        for was the one it could not display.
+      {% endcomment %}
+      <section class="card" id="project">
+        <div class="spread">
+          <h2>{% blocktranslate count counter=children|length %}{{ counter }} job in this project{% plural %}{{ counter }} jobs in this project{% endblocktranslate %}</h2>
+          <span class="mono">{{ project_rollup.total }}</span>
+        </div>
+        <ul class="list small">
+          {% for child in children %}
+            <li class="spread">
+              <span>
+                <a href="{% url 'work_order_detail' child.pk %}">{{ child.number }} — {{ child.title }}</a>
+                <span class="pill">{{ child.get_status_display }}</span>
+              </span>
+              <span class="mono muted">{{ child.opened_at|date:"SHORT_DATE_FORMAT" }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+        <p class="small muted">{% translate "The total above is the whole project — this work order and every job under it." %}</p>
+      </section>
+    {% endif %}
 
     {% if tool_warnings %}
       {% comment %}The readiness gate (SPEC §8.7, FR-WL-4). A warning, never a block:
@@ -410,6 +437,83 @@
           </div>
 
   <aside class="stack">
+    {% if budget %}
+      {% comment %}
+        R-6. Three bands rather than one, because "what has this cost me" and
+        "what is on the vehicle" are different questions and a single bar has
+        to lie about one of them. The widths are logical properties, so the
+        card turns round with the rest of the page (§5.6).
+      {% endcomment %}
+      <section class="card{% if budget.is_over %} warn-card{% endif %}" id="budget">
+        <div class="spread"><h2>{% translate "Budget" %}</h2><span class="mono">{{ budget.budget }}</span></div>
+        {% comment %}
+          Labelled with the money rather than the percentage: a budget of zero
+          has no percentage, and "0% committed" over a job that has spent $45
+          is the one reading the card must never give.
+        {% endcomment %}
+        <div class="burnbar"
+             role="img"
+             aria-label="{% blocktranslate with used=budget.committed total=budget.budget %}{{ used }} committed of {{ total }}{% endblocktranslate %}">
+          {% comment %}
+            `unlocalize` on every one of these. A width is CSS, not prose, and
+            a French-Canadian instance renders 33.33 as `33,33` — which is not
+            a length, so the band would collapse to nothing in exactly the
+            locales §5.6 exists to support. The figures beside the bar stay
+            localized, because those are read by a person.
+          {% endcomment %}
+          <span class="burn spent" style="inline-size:{{ budget.spent_percent|unlocalize }}%"></span>
+          <span class="burn shelf" style="inline-size:{{ budget.on_shelf_percent|unlocalize }}%"></span>
+          <span class="burn order" style="inline-size:{{ budget.on_order_percent|unlocalize }}%"></span>
+          <span class="burnmark" style="inset-inline-start:{{ budget.budget_marker_percent|unlocalize }}%"></span>
+        </div>
+        <p class="{% if budget.is_over %}pill danger{% else %}small muted{% endif %}">
+          {% if budget.is_over %}
+            {% blocktranslate with amount=budget.over %}{{ amount }} over budget{% endblocktranslate %}
+          {% else %}
+            {% blocktranslate with amount=budget.remaining %}{{ amount }} left{% endblocktranslate %}
+          {% endif %}
+          {% if budget.used_percent %}
+            · {% blocktranslate with used=budget.used_percent %}{{ used }}% committed{% endblocktranslate %}
+          {% endif %}
+        </p>
+        <ul class="list small">
+          <li class="spread"><span class="key spent">{% translate "Fitted" %}</span><span class="mono">{{ budget.spent }}</span></li>
+          {% if budget.on_shelf_minor %}
+            <li class="spread"><span class="key shelf">{% translate "On the shelf" %}</span><span class="mono">{{ budget.on_shelf }}</span></li>
+          {% endif %}
+          {% if budget.on_order_minor %}
+            <li class="spread"><span class="key order">{% translate "On order" %}</span><span class="mono">{{ budget.on_order }}</span></li>
+          {% endif %}
+        </ul>
+        {% if budget.labour_minutes %}
+          <p class="small muted">
+            {% blocktranslate with hours=budget.labour_hours %}{{ hours }} hours of your own time, which no budget is charged for.{% endblocktranslate %}
+          </p>
+        {% endif %}
+        {% if budget.months %}
+          <details>
+            <summary class="small">{% translate "Month by month" %}</summary>
+            <table class="small">
+              <thead><tr>
+                <th scope="col">{% translate "Month" %}</th>
+                <th scope="col">{% translate "Fitted" %}</th>
+                <th scope="col">{% translate "Running total" %}</th>
+              </tr></thead>
+              <tbody>
+                {% for month in budget.months %}
+                  <tr>
+                    <td class="mono">{{ month.month }}</td>
+                    <td class="mono">{{ month.spent }}</td>
+                    <td class="mono muted">{{ month.cumulative }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </details>
+        {% endif %}
+      </section>
+    {% endif %}
+
     <section class="card">
       <div class="spread"><h2>{% translate "Cost" %}</h2><span class="mono">{{ rollup.total }}</span></div>
       <ul class="list small">
@@ -523,6 +627,25 @@
       </ul>
     </section>
     {% endif %}
+    {% if fluid_samples %}
+      {% comment %}
+        The sample form offers a work order, so the work order has to show what
+        chose it. A field that records a link the record it points at cannot
+        display is a field that quietly loses things.
+      {% endcomment %}
+      <section class="card" id="fluid-samples">
+        <h2>{% translate "Fluid analysis" %}</h2>
+        <ul class="list small">
+          {% for sample in fluid_samples %}
+            <li class="spread">
+              <a href="{% url 'fluid_sample_detail' sample.pk %}">{{ sample.where }}</a>
+              <span class="mono muted">{{ sample.sampled_on }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+
     <section class="card" id="other-costs" data-live="other-costs">
       <h2>{% translate "Other costs" %}</h2>
       <ul class="list small">

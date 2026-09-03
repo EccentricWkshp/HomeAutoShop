@@ -622,6 +622,26 @@ def explain(code: str, *, make: str = "", reported: str = "") -> Definition | No
 MOST_HITS = 25
 
 
+@lru_cache(maxsize=1)
+def _iso_sae_source() -> dict[str, str]:
+    """The standard table's own wording, untranslated.
+
+    `ISO_SAE` holds lazy strings, so `str()` renders them in whatever language
+    happens to be active — and searching *that* made a dictionary lookup
+    depend on ambient state. On a French instance, and in any test that ran
+    after one which rendered a French page, `catalyst efficiency` matched
+    nothing while `P0420` still did: the code path and the wording path
+    disagreed about the same table.
+
+    Computed once with translations off, which is what makes the msgid itself
+    available. Msgids do not change at runtime, so once is enough.
+    """
+    from django.utils import translation
+
+    with translation.override(None):
+        return {code: str(text) for code, text in ISO_SAE.items()}
+
+
 def find(query: str, *, limit: int = MOST_HITS) -> list[Definition]:
     """Codes matching `query`, for looking one up without a report in hand.
 
@@ -670,8 +690,20 @@ def find(query: str, *, limit: int = MOST_HITS) -> list[Definition]:
         lowered = text.casefold()
         return all(term in lowered for term in terms)
 
+    # Both wordings, not just the active one. A scan tool prints English on a
+    # French instance, and a manufacturer's list is never translated at all
+    # (see `codelists/__init__.py`), so a shop searching in one language and
+    # reading printouts in another has to be answered either way. Matching the
+    # source as well is also what stops the result depending on whichever
+    # language was last activated.
+    source = _iso_sae_source()
     for code, text in ISO_SAE.items():
-        if code.startswith(wanted) if by_code else says(str(text)):
+        if by_code:
+            hit = code.startswith(wanted)
+        else:
+            hit = says(str(text)) or says(source[code])
+        if hit:
+            # Displayed in the active language, found in either.
             keep(code, str(text), STANDARD, "", "", 0)
 
     for entry in _every_list():
@@ -690,6 +722,40 @@ def find(query: str, *, limit: int = MOST_HITS) -> list[Definition]:
         found.values(),
         key=lambda d: (d.source != STANDARD, d.code != wanted, d.code, d.make),
     )[:limit]
+
+
+def answers_for(code: str) -> list[Definition]:
+    """Every installed list that defines this exact code, whatever the make.
+
+    For the one place a page would otherwise lie: saying *nothing defines this
+    code* while a list sitting on this instance defines it under a make the
+    reader did not happen to name. `C1281` is a Ford code and a Suzuki code and
+    they are different faults, so the answer is a list of claims rather than a
+    winner — the reader picks the badge on the vehicle in front of them.
+
+    A direct lookup per list rather than a pass through :func:`find`, which is
+    a prefix search with a result budget and may stop before reading them all.
+    """
+    parsed = parse(code)
+    if parsed is None:
+        return []
+    canonical = parsed["code"]
+    out: list[Definition] = []
+    for entry in _every_list():
+        text = entry.codes.get(canonical)
+        if not text:
+            continue
+        out.append(
+            Definition(
+                canonical,
+                text,
+                PUBLISHED if entry.is_iso_sae else MAKE,
+                make=entry.make,
+                citation=entry.source,
+                version=entry.version,
+            )
+        )
+    return out
 
 
 def describe(code: str, *, make: str = "", reported: str = "") -> tuple[str, bool]:

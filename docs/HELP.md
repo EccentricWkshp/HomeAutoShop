@@ -17,6 +17,7 @@ features. Installation and server administration are covered separately in
 - [Vehicles and equipment](#vehicles-and-equipment)
 - [Maintenance schedules](#maintenance-schedules)
 - [Inspections](#inspections)
+- [Oil and fluid analysis](#oil-and-fluid-analysis)
 - [Work orders](#work-orders)
 - [Parts and inventory](#parts-and-inventory)
 - [Purchasing and receipts](#purchasing-and-receipts)
@@ -292,6 +293,53 @@ became better or worse.
 or more readings against meter history, it can show a wear rate and projected
 due point.
 
+## Oil and fluid analysis
+
+Open a vehicle and choose **Fluids** to record a lab report and to see how its
+numbers have moved. Samples also appear on the vehicle's history, and on the
+work order they were taken for if you named one.
+
+Record where the sample came from — engine oil, transmission, a differential,
+coolant — and, if the vehicle has more than one of that thing, which one. Two
+figures matter and one of them is easy to leave out:
+
+- **The meter reading** when the sample was drawn.
+- **How far the fluid itself had run** since it was changed.
+
+The second is what makes one sample comparable with the next. Wear metals build
+up while the fluid is in service, so 24 ppm of iron on 3,000 miles of oil and
+24 ppm on 9,000 miles are not the same result. A sample recorded without it is
+kept and shown, but it is left out of the trend and the screen says so rather
+than quietly averaging it in.
+
+**Paste the panel rather than typing it.** Put one analyte per line in the
+Results box — `Iron 24`, `Fe: 24 ppm`, `Viscosity @ 100C 10.9` all work, and so
+does a lab's own average in brackets, as in `Iron 24 ppm (avg 18)`. Element
+symbols are understood. A line that cannot be read is listed back to you with
+the reason instead of being dropped, so a panel that looks complete is
+complete. Something the application has never heard of is still recorded under
+its own name.
+
+The trend shows each measurement, its latest value, its rate per 1,000 units of
+fluid life, and how that compares with the previous sample. The rate column is
+filled in only where a rate means something: wear metals and contamination
+accumulate, so they are shown as rates, while viscosity and the additive pack
+describe the fluid as it is now and are compared on their face value.
+
+**HomeAutoShop does not tell you whether a result is good.** Limits depend on
+the engine and labs disagree about them, so the only judgment on the page is
+the lab's own comment, stored as written and attributed to them. What the
+application adds is arithmetic on your own samples — *three times the previous
+one* — which is a fact about your history rather than an opinion about your
+engine.
+
+**Attach the report to the sample.** The sample page has a box for it — the
+PDF the lab emailed, or a photograph of the printed sheet. It belongs on the
+sample rather than loose among the vehicle's documents, because the question it
+answers is *did I type this figure correctly*, and that is asked while looking
+at the figure. The report is not read automatically; the numbers are the ones
+you pasted.
+
 ## Work orders
 
 ### Plan the job
@@ -348,6 +396,22 @@ Tools can also be added locally when they are not in WrenchLedger.
 
 The work order shows its running cost from parts, expenses, and any cost options
 enabled by the administrator.
+
+**Budget.** Give a work order a budget and it grows a burn-down. The bar shows
+three things separately, because they answer different questions: what has been
+**fitted** to the vehicle, what is **on the shelf** — bought for this job,
+arrived, not yet used — and what is still **on order**. What is left is measured
+against all three, so a job does not read as comfortably under budget the day
+before a delivery arrives.
+
+A budget on a project counts everything underneath it. The teardown, the
+machine work and the reassembly are the project's spend, and the project's page
+lists them with the whole total above.
+
+An overrun is shown as a figure and drawn past the budget marker rather than
+stopping at the end of the bar. Your own time is never charged against a
+budget, even when a labour rate is configured: a household budget is money, and
+the hours are reported beside the figures instead.
 
 ### Move a work order through its lifecycle
 

@@ -1,0 +1,38 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% if sample %}{% translate "Edit sample" %}{% else %}{% translate "Record a sample" %}{% endif %} — {{ asset.nickname }}{% endblock %}
+{% block content %}
+{% url 'fluid_list' asset.pk as back_url %}
+{% include "partials/_back.html" with url=back_url label=_("Fluid analysis") %}
+<h1>{% if sample %}{% translate "Edit sample" %}{% else %}{% translate "Record a sample" %}{% endif %}</h1>
+<p class="muted">{{ asset.nickname }}</p>
+
+{% if unreadable %}
+  {% comment %}
+    Shown rather than swallowed. The failure mode of a quiet importer is a
+    panel that looks complete and is missing the one line somebody sent the
+    sample to see.
+  {% endcomment %}
+  <div class="msg warning">
+    <p>{% translate "These lines were not recorded:" %}</p>
+    <ul class="list small">
+      {% for line in unreadable %}<li><span class="mono">{{ line.raw }}</span> — {{ line.problem }}</li>{% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+<form method="post" class="card">{% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="formgrid">
+    {% for field in form %}
+      <div class="field {% if field.name in 'results_text,lab_comment,notes' %}full{% endif %}">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<p class="helptext">{{ field.help_text }}</p>{% endif %}
+        {{ field.errors }}
+      </div>
+    {% endfor %}
+  </div>
+  {% if sample %}{% url 'fluid_sample_detail' sample.pk as cancel_to %}{% else %}{% url 'fluid_list' asset.pk as cancel_to %}{% endif %}
+  {% include "partials/_formactions.html" with cancel_url=cancel_to %}
+</form>
+{% endblock %}

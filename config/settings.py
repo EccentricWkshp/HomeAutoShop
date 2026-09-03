@@ -85,6 +85,7 @@ INSTALLED_APPS = [
     "homeautoshop.purchasing",
     "homeautoshop.mediafiles",
     "homeautoshop.diagnostics",
+    "homeautoshop.fluids",
 ]
 
 MIDDLEWARE = [
@@ -124,6 +125,11 @@ TEMPLATES = [
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
+                # `LANGUAGE_CODE` and `LANGUAGE_BIDI`, which `base.html` puts
+                # on <html> as `lang` and `dir`. It was reading `LANGUAGE_CODE`
+                # without this, so every page declared `lang="en"` however it
+                # had been translated, and nothing could ever be right-to-left.
+                "django.template.context_processors.i18n",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "homeautoshop.core.context.instance",

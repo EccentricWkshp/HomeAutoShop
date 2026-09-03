@@ -28,7 +28,15 @@
         {% elif group.kind == 'person' %}<a href="{% url 'person_detail' item.pk %}">{{ item.display_name }}</a>
         {% elif group.kind == 'note' %}<a href="{% url 'work_order_detail' item.work_order.pk %}">{{ item.body|truncatewords:24 }}</a>
           <div class="small muted">{{ item.work_order.number }} · {{ item.noted_at|date }}</div>
-        {% elif group.kind == 'code' %}<a href="{% url 'code_reference' item.code %}">{{ item.code }}</a>
+        {% elif group.kind == 'code' %}
+          {% comment %}
+            The make travels with the link. A hit is keyed by code *and* make —
+            C1281 is one fault to Ford and another to Suzuki, which is why two
+            rows can carry the same code — so a link that dropped it landed on
+            a page answering for nobody, which then said the code was undefined
+            while the row above it was reading out the definition.
+          {% endcomment %}
+          <a href="{% url 'code_reference' item.code %}{% if item.make %}?make={{ item.make|urlencode }}{% endif %}">{{ item.code }}</a>
           <span class="muted"> — {{ item.text }}</span>
           {% comment %}
           Which authority answered, because they are not equal claims: an

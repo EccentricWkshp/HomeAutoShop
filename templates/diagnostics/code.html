@@ -61,10 +61,51 @@
             {% translate "Nothing here defines this code yet." %}
           {% endif %}
         </p>
+        {% if elsewhere %}
+          {% comment %}
+            A blank is only honest if it is true. Another installed list may
+            define this exact code under a different badge — and they really
+            are different faults, so this offers them rather than picking one.
+          {% endcomment %}
+          <p class="small">{% translate "Other lists installed here do define this code:" %}</p>
+          <ul class="list small">
+            {% for other in elsewhere %}
+              <li>
+                <a href="?make={{ other.make|urlencode }}"><strong>{{ other.make }}</strong></a>
+                — {{ other.text }}
+              </li>
+            {% endfor %}
+          </ul>
+          <p class="small muted">
+            {% translate "A manufacturer's code means what that manufacturer says it means, so these answer for their own badge and not for yours." %}
+          </p>
+        {% endif %}
         <p class="small muted">
           {% translate "Manufacturer-specific codes are not published anywhere free and complete, so nothing is invented for one: a plausible-sounding guess is worse than a blank, because it gets acted on. Look it up and write down what you find." %}
         </p>
       {% endif %}
+
+      {% comment %}
+        The shape, in the card the reader is already looking at rather than in
+        one of its own below the fold. It was a section headed "What the code
+        itself says", and its first line repeated the subtitle under the H1
+        while the sentence worth reading — *why* this page is asking for a make
+        — sat where somebody wondering exactly that would not find it.
+
+        Derivable from J2012 and true of every code ever issued, so it is
+        derived rather than looked up. A code nothing has heard of still
+        answers this, which is why it is the floor under everything above.
+      {% endcomment %}
+      <p class="small muted">
+        {% if parsed.is_iso_sae %}
+          {% translate "ISO/SAE controlled — defined by the standard, and the same on every make." %}
+        {% else %}
+          {% translate "A manufacturer's own code. Its meaning is set by whoever built the vehicle, which is why this page asks for a make." %}
+        {% endif %}
+        {% if parsed.failure_type %}
+          {% blocktranslate with byte=parsed.failure_type %}Failure type byte {{ byte }} — how the fault failed, kept out of the code itself so two readings of one fault still match.{% endblocktranslate %}
+        {% endif %}
+      </p>
 
       {% if manuals %}
         <p class="small muted">
@@ -146,31 +187,12 @@
           {% translate "This one is standard and stays that way. An ISO/SAE controlled code means the same thing on every vehicle ever built, so a local note does not replace it — record one only if you have something to add for your own reference." %}
         </p>
       {% endif %}
-    </section>
-
-    <section class="card">
-      <h2>{% translate "What the code itself says" %}</h2>
       {% comment %}
-      Derivable from J2012 and true of every code ever issued, so it is derived
-      rather than looked up. A code nothing has heard of still answers this.
-      {% endcomment %}
-      <ul class="list small">
-        <li>{% translate "System" %}: <strong>{{ structural }}</strong></li>
-        <li>
-          {% if parsed.is_iso_sae %}
-            {% translate "ISO/SAE controlled — defined by the standard, and the same on every make." %}
-          {% else %}
-            {% translate "A manufacturer's own code. Its meaning is set by whoever built the vehicle, which is why this page asks for a make." %}
-          {% endif %}
-        </li>
-        {% if parsed.failure_type %}
-          <li>{% blocktranslate with byte=parsed.failure_type %}Failure type byte {{ byte }} — how the fault failed, kept out of the code itself so two readings of one fault still match.{% endblocktranslate %}</li>
-        {% endif %}
-      </ul>
-      {% comment %}
-      Named without a link: this page is open to helpers and the catalog is
-      not, so a link here would be a dead end for the people most likely to
-      be reading a code they do not recognize.
+        Beside the box rather than in a card of its own, because it is the
+        answer to the question the box raises: type it, or install the list
+        that already knows. Named without a link — this page is open to helpers
+        and the catalog is not, so a link would be a dead end for exactly the
+        people most likely to be reading a code they do not recognize.
       {% endcomment %}
       {% if makes_with_lists %}
         <p class="small muted">
@@ -182,6 +204,7 @@
         </p>
       {% endif %}
     </section>
+
   </aside>
 </div>
 {% endblock %}

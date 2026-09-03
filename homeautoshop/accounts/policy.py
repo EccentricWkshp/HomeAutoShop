@@ -81,6 +81,12 @@ VEHICLE = frozenset({
     "inspection_resume", "inspection_add_check", "inspection_complete",
     "inspection_abandon", "inspection_convert", "result_record",
     "result_remove", "wear_chart",
+    # Fluid analysis. A lab report is a fact about the vehicle somebody is
+    # working on, and recording one is the same kind of act as recording a
+    # meter reading — so it travels with the vehicle grant rather than being
+    # held back with the money screens.
+    "fluid_list", "fluid_sample_detail", "fluid_sample_create",
+    "fluid_sample_edit", "fluid_sample_delete", "fluid_sample_report",
     # Diagnostics
     "diagnostic_queue", "session_detail", "session_import", "session_confirm",
     "session_discard", "session_map", "session_reparse", "code_status",
@@ -176,7 +182,7 @@ def helper_can(user, action: str, resource=None) -> bool:
 HELPER_DOMAINS = frozenset({
     "asset", "work", "job", "note", "time", "media", "reading", "component",
     "maintenance", "service", "inspection", "diagnostic", "code", "part",
-    "recall",
+    "recall", "fluid",
 })
 
 #: …of which these may only ever be read by a helper.

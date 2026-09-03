@@ -613,6 +613,20 @@ def code_reference(request, code):
     published = dtc.code_list_for(make)
     on_vehicle = seen[0].session.asset if seen else None
 
+    # A blank is only honest if it is true. Where this make has no answer,
+    # another installed list may still define the same code — `C1281` is a
+    # Ford code and a Suzuki code and they are different faults — and saying
+    # "nothing defines this" while a list on this very instance defines it is
+    # the same false blank that a search link dropping `?make=` produced.
+    # Offered rather than chosen: the reader knows which badge is in the shop.
+    elsewhere = []
+    if not definition.is_known:
+        elsewhere = [
+            other
+            for other in dtc.answers_for(canonical)
+            if other.make and other.make.casefold() != make.casefold()
+        ]
+
     return render(
         request,
         "diagnostics/code.html",
@@ -621,6 +635,7 @@ def code_reference(request, code):
             "parsed": parsed,
             "make": make,
             "definition": definition,
+            "elsewhere": elsewhere,
             "structural": dtc.structural(canonical),
             "published": published,
             "seen": seen,

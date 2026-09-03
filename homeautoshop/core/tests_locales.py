@@ -226,6 +226,11 @@ class ItActuallyTranslatesTests(TestCase):
 
         user = User.objects.create_user(username="andy", password="x" * 16, role=Role.ADMIN)
         self.client.force_login(user)
+        # `LocaleMiddleware` activates a language per request and never
+        # deactivates: in production the next request sets it again, but in a
+        # test process it outlives the case and the next one inherits it. Put
+        # back deliberately rather than left for somebody to trip over.
+        self.addCleanup(translation.deactivate)
         for code, marker in (("fr-ca", "Véhicules"), ("es-mx", "Vehículos")):
             with self.subTest(language=code):
                 page = self.client.get(

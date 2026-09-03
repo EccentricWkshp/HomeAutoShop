@@ -365,6 +365,11 @@ TRASHABLE = {
     # column of its own and points at the profile with SET_NULL, so a restored
     # profile rejoins a list rather than reattaching to anything.
     "parser_profile": ("homeautoshop.diagnostics.models", "ParserProfile"),
+    # The delete button on a sample promises a 30-day trash, so the trash has
+    # to know about it — a soft delete listed nowhere is a delete that is
+    # permanent and invisible at once, which is the pair the three entries
+    # above were added to fix.
+    "fluid_sample": ("homeautoshop.fluids.models", "FluidSample"),
 }
 
 

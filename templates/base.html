@@ -1,5 +1,10 @@
 {% load i18n static %}<!doctype html>
-<html lang="{{ LANGUAGE_CODE|default:'en' }}" data-theme="auto">
+{% comment %}
+  `dir` is what makes the logical properties in app.css mean anything: with no
+  direction on the document element every `-inline-start` resolves to the left,
+  whatever the language (SPEC §5.6, R-8).
+{% endcomment %}
+<html lang="{{ LANGUAGE_CODE|default:'en' }}" dir="{% if LANGUAGE_BIDI %}rtl{% else %}ltr{% endif %}" data-theme="auto">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">

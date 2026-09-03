@@ -14,6 +14,7 @@
     <a class="btn" href="{% url 'asset_specs' asset.pk %}">{% translate "Specs" %}</a>
     <a class="btn" href="{% url 'asset_recalls' asset.pk %}">{% translate "Recalls" %}</a>
     <a class="btn" href="{% url 'asset_diagnostics' asset.pk %}">{% translate "Diagnostics" %}</a>
+    <a class="btn" href="{% url 'fluid_list' asset.pk %}">{% translate "Fluids" %}</a>
     <a class="btn" href="{% url 'asset_report' asset.pk %}">{% translate "Report" %}</a>
     <a class="btn" href="{% url 'asset_costs' asset.pk %}">{% translate "Costs" %}</a>
     <a class="btn" href="{% url 'asset_edit' asset.pk %}">{% translate "Edit" %}</a>

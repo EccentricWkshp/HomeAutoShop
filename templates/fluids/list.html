@@ -1,0 +1,90 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ asset.nickname }} — {% translate "Fluid analysis" %}{% endblock %}
+{% block content %}
+{% url 'asset_detail' asset.pk as back_url %}
+{% include "partials/_back.html" with url=back_url label=asset.nickname %}
+<div class="spread">
+  <div>
+    <h1>{{ asset.nickname }}</h1>
+    <p class="muted">{% translate "Fluid analysis" %}</p>
+  </div>
+  <div class="row">
+    <a class="btn primary" href="{% url 'fluid_sample_create' asset.pk %}">{% translate "Record a sample" %}</a>
+  </div>
+</div>
+
+<p class="muted small">
+  {% translate "One report says very little. Four say when something started. Wear metals build up while the fluid is in service, so a sample is only comparable with the last one when you have recorded how far the fluid itself had run." %}
+</p>
+
+{% if series|length > 1 %}
+  {% comment %}
+    A vehicle can have four series going at once — engine, transmission, front
+    and rear differential — and comparing across them is meaningless, so they
+    are switched between rather than merged.
+  {% endcomment %}
+  <nav class="subnav" aria-label="{% translate 'Compartment' %}">
+    {% for key, rows in series %}
+      <a href="?compartment={{ key.0 }}&amp;position={{ key.1 }}"
+         {% if key.0 == compartment and key.1 == position %}aria-current="page"{% endif %}>
+        {{ rows.0.where }} <span class="mono muted">({{ rows|length }})</span>
+      </a>
+    {% endfor %}
+  </nav>
+{% endif %}
+
+{% if trends %}
+  <section class="card">
+    <h2>{% translate "Trend" %}</h2>
+    <div class="tablewrap"><table>
+      <thead><tr>
+        <th scope="col">{% translate "Measured" %}</th>
+        <th scope="col">{% translate "Latest" %}</th>
+        <th scope="col">{% translate "Per 1,000" %}</th>
+        <th scope="col">{% translate "Against the last one" %}</th>
+      </tr></thead>
+      <tbody>
+        {% for trend in trends %}
+          <tr>
+            <td><strong>{{ trend.label }}</strong></td>
+            <td class="mono">{{ trend.latest.value|floatformat:"-2" }} {{ trend.unit }}</td>
+            <td class="mono">
+              {% if trend.latest.rate %}{{ trend.latest.rate|floatformat:"-2" }}
+              {% else %}<span class="muted">—</span>{% endif %}
+            </td>
+            <td class="small">{{ trend.summary }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+    <p class="small muted">
+      {% translate "Per 1,000 is filled in only where the number accumulates — wear metals and contamination. Viscosity and the additive pack describe the fluid as it is now, so a rate would say nothing about them." %}
+    </p>
+  </section>
+{% endif %}
+
+<section class="card">
+  <h2>{% if compartment_label %}{{ compartment_label }}{% else %}{% translate "Samples" %}{% endif %}</h2>
+  <ul class="list">
+    {% for sample in samples %}
+      <li class="spread">
+        <div>
+          <a href="{% url 'fluid_sample_detail' sample.pk %}">{{ sample.sampled_on }}</a>
+          {% if sample.fluid_changed %}<span class="pill">{% translate "Fluid changed" %}</span>{% endif %}
+          <div class="muted small">
+            {% if sample.fluid_usage %}
+              {% blocktranslate with n=sample.fluid_usage|floatformat:0 unit=asset.meter_unit %}{{ n }} {{ unit }} on the fluid{% endblocktranslate %}
+            {% else %}
+              <span class="pill warn">{% translate "No fluid interval recorded" %}</span>
+            {% endif %}
+            {% if sample.lab %}· {{ sample.lab }}{% endif %}
+          </div>
+        </div>
+        <span class="mono muted">{{ sample.results.count }}</span>
+      </li>
+    {% empty %}
+      <li class="muted">{% translate "No samples recorded yet." %}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

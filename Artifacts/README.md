@@ -30,7 +30,7 @@ state each one is in and nothing a header already answers.
 
 | Document | Status |
 | --- | --- |
-| SPEC.md | **Phases 1–4 built.** §15.1 records what shipped and where the implementation decided differently; **§19 records claims this document made in the present tense that were not true**, and how each was found. |
+| SPEC.md | **Phases 1–4 built, and R-1, R-2, R-5 through R-10 with them.** §15.1 records what shipped and where the implementation decided differently; **§19 records claims this document made in the present tense that were not true**, and how each was found — two of them found by building a roadmap item on top of the claim. |
 | INTEGRATION-WRENCHLEDGER.md | Draft — WL-Q1–Q11 all resolved against source and a live workspace. Built: the readiness gate. Not built: the webhook receiver and the three optional Shop-plan surfaces. |
 | INTEGRATION-LUBELOGGER.md | Draft — LL-Q1–Q3 open. Built: one-time import and scheduled pull. |
 | SCHEMA-PARSER-PROFILES.md | **Engine implemented**, and the seven profiles in `catalog/profiles/` are written against it. The contract stays a draft where it describes something no profile has needed yet. |

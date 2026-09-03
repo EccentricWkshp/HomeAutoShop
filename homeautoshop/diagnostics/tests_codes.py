@@ -1060,3 +1060,179 @@ class TheTwoIsoSaeSourcesAgreeTests(TestCase):
         to be mistaken for the standard's, and this table is the layer a caller
         may present as fact."""
         self.assertEqual([c for c in dtc.ISO_SAE if c.startswith("C")], [])
+
+
+#: One code, two makes, two entirely different faults — the case that exposed
+#: the dropped make. Ford calls `C1281` an accelerometer circuit; Suzuki's line
+#: for it is an instruction about the 4WD control module.
+SHARED_CODE = "C1281"
+FORD_SHARED = "Lateral Accelerometer circuit Failure"
+SUZUKI_SHARED = "4WD CONTROL MODULE"
+#: A code only one of the two lists has at all.
+SUZUKI_ONLY = "B1035"
+SUZUKI_ONLY_MEANING = "Replace contact coil assembly"
+
+
+class TheMakeHasToSurviveTheLinkTests(Installed, CodeCase):
+    """A search hit named a make; the link to the page dropped it.
+
+    The result was a page that contradicted the row above it — the search list
+    read out Suzuki's wording for `B1035`, and the page it linked to said
+    nothing defined the code. Both were telling the truth about different
+    questions, which is the worst kind of disagreement to put in front of
+    somebody: the page looks like the authority, and it was the one answering
+    for nobody.
+
+    Two halves, because the link was only what made it visible: the link now
+    carries the make, and the page asked with no make says which installed
+    lists *do* define the code rather than claiming none does. That blank is
+    reachable by typing the URL, and it was false there too.
+    """
+
+    makes = ("Ford", "Suzuki")
+
+    def test_one_code_can_be_two_different_faults(self):
+        """The premise. If these agreed, none of the rest would matter."""
+        ford = dtc.explain(SHARED_CODE, make="Ford")
+        suzuki = dtc.explain(SHARED_CODE, make="Suzuki")
+
+        self.assertTrue(ford.is_known)
+        self.assertTrue(suzuki.is_known)
+        self.assertNotEqual(ford.text, suzuki.text)
+
+    def test_the_search_row_names_the_make_it_answered_for(self):
+        page = self.client.get(reverse("search"), {"q": SHARED_CODE}).content.decode()
+        self.assertIn(FORD_SHARED, page)
+        self.assertIn(SUZUKI_SHARED, page)
+
+    def test_and_its_link_carries_that_make(self):
+        """The bug, in one assertion."""
+        page = self.client.get(reverse("search"), {"q": SUZUKI_ONLY}).content.decode()
+        self.assertIn(
+            reverse("code_reference", args=[SUZUKI_ONLY]) + "?make=Suzuki", page
+        )
+
+    def test_following_it_lands_on_a_page_that_agrees_with_the_row(self):
+        page = self.client.get(
+            reverse("code_reference", args=[SUZUKI_ONLY]), {"make": "Suzuki"}
+        ).content.decode()
+
+        self.assertIn(SUZUKI_ONLY_MEANING, page)
+        self.assertNotIn("Nothing here defines this code yet", page)
+
+    def test_each_row_of_a_shared_code_links_to_its_own_answer(self):
+        page = self.client.get(reverse("search"), {"q": SHARED_CODE}).content.decode()
+        for make in ("Ford", "Suzuki"):
+            with self.subTest(make=make):
+                self.assertIn(
+                    reverse("code_reference", args=[SHARED_CODE]) + "?make=" + make, page
+                )
+
+    def test_a_generic_code_needs_no_make_on_its_link(self):
+        """An ISO/SAE hit means the same thing on every vehicle, so a make in
+        the URL would be a claim the row is not making."""
+        page = self.client.get(reverse("search"), {"q": "P0420"}).content.decode()
+        self.assertIn('href="' + reverse("code_reference", args=["P0420"]) + '"', page)
+
+
+class TheBlankHasToBeTrueTests(Installed, CodeCase):
+    """`answers_for` — because a page said nothing knew this while something did."""
+
+    makes = ("Ford", "Suzuki")
+
+    def test_every_installed_list_that_defines_the_code_is_findable(self):
+        self.assertEqual(
+            {d.make for d in dtc.answers_for(SHARED_CODE)}, {"Ford", "Suzuki"}
+        )
+
+    def test_a_code_nobody_has_gets_an_empty_answer_not_a_guess(self):
+        self.assertEqual(dtc.answers_for("B2FFF"), [])
+
+    def test_something_that_is_not_a_code_answers_nothing(self):
+        self.assertEqual(dtc.answers_for("Bananas"), [])
+
+    def test_asked_with_no_make_the_page_names_who_does_define_it(self):
+        """Reachable by typing the URL, and it was false there too."""
+        page = self.client.get(
+            reverse("code_reference", args=[SUZUKI_ONLY])
+        ).content.decode()
+
+        self.assertIn("Other lists installed here do define this code", page)
+        self.assertIn("Suzuki", page)
+        self.assertIn(SUZUKI_ONLY_MEANING, page)
+
+    def test_and_offers_them_rather_than_choosing_one(self):
+        """They are different faults. Picking one would be the guess this whole
+        module exists to refuse."""
+        response = self.client.get(reverse("code_reference", args=[SHARED_CODE]))
+
+        self.assertFalse(response.context["definition"].is_known)
+        self.assertEqual(
+            {d.make for d in response.context["elsewhere"]}, {"Ford", "Suzuki"}
+        )
+        self.assertContains(response, "?make=Ford")
+        self.assertContains(response, "?make=Suzuki")
+
+    def test_the_make_that_was_asked_for_is_not_offered_back(self):
+        response = self.client.get(
+            reverse("code_reference", args=[SHARED_CODE]), {"make": "Ford"}
+        )
+        # Ford answers, so there is no blank to fill in the first place.
+        self.assertTrue(response.context["definition"].is_known)
+        self.assertEqual(response.context["elsewhere"], [])
+
+    def test_a_code_nothing_defines_still_says_so_plainly(self):
+        """The offer must not soften a real blank into a maybe."""
+        page = self.client.get(reverse("code_reference", args=["B2FFF"])).content.decode()
+
+        self.assertIn("Nothing here defines this code yet", page)
+        self.assertNotIn("Other lists installed here", page)
+        self.assertIn("worse than a blank", page)
+
+
+class TheShapeIsWhereTheQuestionIsTests(Installed, CodeCase):
+    """What the code's shape says, moved into the card that raises it.
+
+    It was a section of its own down the right-hand column, and its first line
+    repeated the subtitle under the heading. The sentence worth reading — *why
+    is this page asking me for a make?* — sat where somebody wondering exactly
+    that would not look.
+    """
+
+    makes = ("Ford",)
+
+    #: Manufacturer-specific — the second character decides — and defined by
+    #: nothing here, which is the state that raises the question.
+    UNKNOWN = "B1FFF"
+
+    def test_the_reason_a_make_is_wanted_sits_with_the_blank_that_raises_it(self):
+        page = self.client.get(reverse("code_reference", args=[self.UNKNOWN])).content.decode()
+
+        meaning = page.index("What it means")
+        reason = page.index("which is why this page asks for a make")
+        turned_up = page.index("Where it has turned up")
+        self.assertLess(meaning, reason)
+        self.assertLess(reason, turned_up)
+
+    def test_the_shape_is_no_longer_a_section_repeating_the_heading(self):
+        page = self.client.get(reverse("code_reference", args=[self.UNKNOWN])).content.decode()
+
+        self.assertNotIn("What the code itself says", page)
+        # The subtitle under the heading still carries it, and only it.
+        self.assertEqual(page.count("Body \u00b7 manufacturer-specific"), 1)
+
+    def test_a_generic_code_is_told_the_standard_settles_it_instead(self):
+        """The same slot, the other sentence: an ISO/SAE code needs no make,
+        so asking for one would be the wrong question."""
+        page = self.client.get(reverse("code_reference", args=["B2FFF"])).content.decode()
+
+        self.assertIn("the same on every make", page)
+        self.assertNotIn("which is why this page asks for a make", page)
+
+    def test_which_lists_are_installed_sits_beside_the_box_it_answers(self):
+        """Type it, or install the list that already knows — one decision."""
+        page = self.client.get(reverse("code_reference", args=[self.UNKNOWN])).content.decode()
+
+        say = page.index("Say what it means")
+        installed = page.index("own code list is installed for")
+        self.assertLess(say, installed)

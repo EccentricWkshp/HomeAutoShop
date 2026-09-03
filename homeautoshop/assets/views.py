@@ -453,6 +453,25 @@ def _timeline(asset: Asset) -> list[dict]:
                 "url": f"/parts/{usage.part.pk}/",
             }
         )
+    # A lab sample is a dated observation about this vehicle, and the timeline
+    # is where the vehicle's story is read. Left off it, a sample was a thing
+    # you had to already know to go and look for — the same defect as the
+    # orphan part usage above.
+    for sample in asset.fluid_samples.all()[:30]:
+        events.append(
+            {
+                "when": timezone.make_aware(
+                    timezone.datetime.combine(
+                        sample.sampled_on, timezone.datetime.min.time()
+                    )
+                ),
+                "kind": "fluid",
+                "title": _("Fluid sample"),
+                "detail": sample.where
+                + (f" — {sample.lab}" if sample.lab else ""),
+                "url": f"/fluids/{sample.pk}/",
+            }
+        )
     for link in MediaLink.for_entity(asset).select_related("media")[:30]:
         events.append(
             {

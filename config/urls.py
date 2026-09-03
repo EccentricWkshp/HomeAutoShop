@@ -13,6 +13,7 @@ from homeautoshop.core import views_integrations as integrations
 from homeautoshop.core import views_settings as instance_settings
 from homeautoshop.core import views_setup
 from homeautoshop.diagnostics import views as diagnostics
+from homeautoshop.fluids import views as fluids
 from homeautoshop.mediafiles import views as mediafiles
 from homeautoshop.inspections import views as inspections
 from homeautoshop.maintenance import views as maintenance
@@ -259,6 +260,18 @@ urlpatterns = [
     path("inspections/<uuid:pk>/delete/", inspections.inspection_delete,
          name="inspection_delete"),
     path("vehicles/<uuid:pk>/wear/", inspections.wear_chart, name="wear_chart"),
+    # Oil and fluid analysis (R-5). Filed under the vehicle, because a
+    # lab report is only ever about one and only ever means anything in
+    # that vehicle's own series.
+    path("vehicles/<uuid:pk>/fluids/", fluids.fluid_list, name="fluid_list"),
+    path("vehicles/<uuid:pk>/fluids/new/", fluids.fluid_sample_create,
+         name="fluid_sample_create"),
+    path("fluids/<uuid:pk>/", fluids.fluid_sample_detail, name="fluid_sample_detail"),
+    path("fluids/<uuid:pk>/edit/", fluids.fluid_sample_edit, name="fluid_sample_edit"),
+    path("fluids/<uuid:pk>/report/", fluids.fluid_sample_report,
+         name="fluid_sample_report"),
+    path("fluids/<uuid:pk>/delete/", fluids.fluid_sample_delete,
+         name="fluid_sample_delete"),
     # Maintenance
     path("due/", maintenance.due_list, name="due_list"),
     path("vehicles/<uuid:pk>/schedule/", maintenance.asset_schedule, name="asset_schedule"),
