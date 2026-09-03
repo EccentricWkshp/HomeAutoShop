@@ -11,8 +11,10 @@ from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.http import urlencode
 from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 from django.utils.translation import ngettext
 from django.views.decorators.http import require_GET, require_POST
 
@@ -22,6 +24,7 @@ from homeautoshop.accounts.models import require
 from homeautoshop.assets import service_info
 from homeautoshop.assets import vin as vinlib
 from homeautoshop.assets.models import Asset
+from homeautoshop.mediafiles.models import Media
 from homeautoshop.work.models import WorkOrder
 
 from . import dtc, engine, profiles as profilelib, services
@@ -88,6 +91,10 @@ def asset_diagnostics(request, pk):
         DiagnosticCode.objects.filter(
             session__asset=asset,
             session__review_status=ReviewStatus.CONFIRMED,
+            # A join does not consult the related model's manager, so without
+            # this a session removed from the history goes on contributing its
+            # open codes to the vehicle it was removed from.
+            session__deleted_at__isnull=True,
             status__in=[CodeStatus.OPEN, CodeStatus.RECURRING],
         )
         .select_related("session")
@@ -171,6 +178,7 @@ def session_detail(request, pk):
                 "name": name,
                 "label": found.get("label") or name.replace("_", " "),
                 "value": found.get("value", ""),
+                "now": _now(session, name, found.get("value", "")),
                 # A field whose value is a mapping — the module identifiers —
                 # is unreadable as raw JSON in a table cell, which is what it
                 # looked like. Expanded here so the review screen shows what
@@ -190,12 +198,33 @@ def session_detail(request, pk):
             "session": session,
             "rows": rows,
             "codes": codes,
+            "results": test_results(session),
+            "back": _back_to(request, session),
             "match": (session.extraction or {}).get("_match", {}),
             "profiles": ParserProfile.objects.filter(is_active=True),
             "manuals": service_info.dtc_links(session.asset),
             "form": SessionForm(instance=session),
         },
     )
+
+
+def _back_to(request, session) -> dict:
+    """Where the crumb at the top of a session goes.
+
+    It went to the import queue unconditionally, which is wrong for a confirmed
+    session in the plainest way available: that list holds drafts, so the way
+    back led to a page that does not contain the thing you were looking at.
+
+    A vehicle's own scan list holds both, and drafts are reachable from either
+    — so a link from the vehicle says so and is taken at its word. Anything
+    else falls back to the queue, which is where a draft lives.
+    """
+    if request.GET.get("from") == "vehicle" or not session.is_draft:
+        return {
+            "url": reverse("asset_diagnostics", args=[session.asset_id]),
+            "label": session.asset.nickname,
+        }
+    return {"url": reverse("diagnostic_queue"), "label": _("Scans to check")}
 
 
 def _with_meaning(codes, make: str):
@@ -214,6 +243,267 @@ def _with_meaning(codes, make: str):
     for row in codes:
         row.meaning = dtc.explain(row.code, make=make, reported=row.description)
     return codes
+
+
+#: What each kind of bench test is called on screen. The parser deals in
+#: identifiers because it has no gettext; the wording lives here.
+#:
+#: **Lazy, because these are built at import.** `gettext` resolves when it is
+#: called, and at import time no language is active — so an eager call here
+#: freezes English into the dictionary and every one of these captions stayed
+#: English on a French page while the table headings around them translated.
+TEST_KINDS = {
+    "battery": gettext_lazy("Battery test"),
+    "cranking": gettext_lazy("Cranking test"),
+    "charging": gettext_lazy("Charging test"),
+}
+
+#: What each value is called. Falls back to the label the tester printed, so a
+#: firmware that starts printing something new still shows *something* rather
+#: than a slug — and shows it in the tester's own words, which is what the
+#: operator is comparing against the paper.
+VALUE_LABELS = {
+    "verdict": gettext_lazy("Verdict"),
+    "performed_on": gettext_lazy("Taken at"),
+    "health": gettext_lazy("Health"),
+    "charge": gettext_lazy("Charge"),
+    "voltage": gettext_lazy("Voltage"),
+    "measured": gettext_lazy("Measured"),
+    "rated": gettext_lazy("Rated"),
+    "internal_r": gettext_lazy("Internal resistance"),
+    "time": gettext_lazy("Cranking time"),
+    "unloaded": gettext_lazy("Unloaded"),
+    "loaded": gettext_lazy("Loaded"),
+    "ripple": gettext_lazy("Ripple"),
+    "standard": gettext_lazy("Rating standard"),
+    "type": gettext_lazy("Battery type"),
+}
+
+#: A parser reports findings as codes, because a parser that runs over a sample
+#: corpus has no translation catalog to write sentences with. This is where
+#: they become something to read.
+VALUE_WARNINGS = {
+    "unreadable": gettext_lazy("Nothing could be made of these characters."),
+    "out_of_range": gettext_lazy(
+        "Outside what this measurement can be, so it was not used."
+    ),
+    "repaired": gettext_lazy("Characters had to be repaired before this was a number."),
+    "low_confidence": gettext_lazy("This was hard to read off the photograph."),
+    "not_beside_its_label": gettext_lazy(
+        "Printed away from its label, so it may belong elsewhere."
+    ),
+    "missing": gettext_lazy("Some of what this test usually prints was not found."),
+    "no_timestamp": gettext_lazy("This receipt carried no time of its own."),
+    "serial_disagrees": gettext_lazy(
+        "Two different tester serials on one strip of paper."
+    ),
+    "unclassified": gettext_lazy(
+        "Part of the picture looked like a report and could not be read."
+    ),
+}
+
+
+def test_results(session) -> list[dict]:
+    """Whole results from a bench tester, ready to show (§8.3a, FR-INT-4).
+
+    A scan tool's answer is a list of codes and fits the table above. A battery
+    tester's answer is a verdict, a clock and a handful of readings, printed
+    once per test — and one photograph can hold two of those. So they get their
+    own section, one card per receipt, rather than being flattened into the
+    field list where the second test's voltage would overwrite the first's.
+    """
+    photo = ""
+    if session.raw_media_id and session.raw_media.kind == Media.Kind.PHOTO:
+        photo = session.raw_media.url_for
+
+    out = []
+    for index, result in enumerate(session.test_results or []):
+        out.append(
+            {
+                "index": index,
+                "kind": result.get("kind", ""),
+                "title": TEST_KINDS.get(result.get("kind", ""), _("Test result")),
+                "verdict": _value(result.get("verdict"), index, photo),
+                "performed_on": _value(result.get("performed_on"), index, photo, edit=True),
+                # Split by what kind of fact each is, not by where the parser
+                # happened to put it. A capacity the operator keyed into the
+                # tester and a capacity it measured are both numbers in CCA,
+                # and showing them in one list invites the reader to take the
+                # first for a reading of the battery.
+                "readings": [
+                    _value(v, index, photo, edit=True)
+                    for v in (result.get("readings") or [])
+                    if not v.get("entered")
+                ],
+                # An attribute is offered read-only, and that is not a design
+                # preference: `correct_results` accepts readings and the clock
+                # and nothing else, so a box beside a battery chemistry was a
+                # box whose contents were discarded on submit. Asking for a
+                # value and then ignoring it is worse than not asking.
+                "entered": [
+                    _value(v, index, photo, edit=v in (result.get("readings") or []))
+                    for v in (result.get("attributes") or [])
+                    + (result.get("readings") or [])
+                    if v.get("entered")
+                ],
+                "warnings": [
+                    VALUE_WARNINGS.get(w, w) for w in result.get("warnings") or []
+                ],
+                "band": _band(float(result.get("confidence") or 0)),
+            }
+        )
+    return out
+
+
+#: Where the session's own field for an extracted value lives, so the review
+#: screen can show that a correction landed.
+CORRECTED_TO = {
+    "tool_vendor": lambda s: s.tool,
+    "tool_model": lambda s: s.tool_model,
+    "odometer": lambda s: "" if s.odometer is None else f"{s.odometer:f}".rstrip("0").rstrip("."),
+    "odometer_unit": lambda s: s.odometer_unit,
+}
+
+
+def _now(session, name: str, was: str) -> str:
+    """What this value is *now*, where somebody has changed it.
+
+    The extraction is never edited — it is the record of what the machine read,
+    and overwriting it would answer "what did the tool say?" with whatever
+    somebody typed afterwards. But leaving the screen showing only the machine's
+    answer meant a reader who retyped a misread clock, saved it, and came back
+    still saw the misreading presented as the reading. The correction was kept;
+    the page just never mentioned it. Asking somebody for a value and then
+    appearing to ignore it is worse than not asking.
+    """
+    if name == "performed_on":
+        if session.performed_on is None:
+            return ""
+        before = services._datetime(was) if was else None
+        if before is not None and abs((session.performed_on - before).total_seconds()) < 1:
+            return ""
+        return timezone.localtime(session.performed_on).strftime("%Y-%m-%d %H:%M:%S")
+    reader = CORRECTED_TO.get(name)
+    if reader is None:
+        return ""
+    current = str(reader(session) or "")
+    return current if current and current != was else ""
+
+
+def _display(raw: dict) -> str:
+    """What to show where there is no box to type in.
+
+    **The reading, not the characters it was read from.** Those live in their
+    own column beside the crop, which is where a reader compares them against
+    the paper; putting them in the value column meant a confirmed scan showed
+    `79% CS,` as the health of the battery, with the `CS,` being a smudge on
+    the next line and no way to be rid of it. The reading was `79` the whole
+    time.
+
+    The exceptions are values that are not numbers. A battery chemistry is
+    stored as `regular_flooded` so anything downstream can switch on it, and
+    the tester's own `REGULAR FLOODED` is what a person should see — until
+    somebody corrects it, at which point what they typed is the answer.
+    """
+    value, printed = raw.get("value", ""), raw.get("raw", "")
+    if value and (raw.get("unit") or raw.get("corrected")):
+        return value
+    return printed or value
+
+
+def _folded(text: str) -> str:
+    return "".join(ch for ch in str(text).lower() if ch.isalnum())
+
+
+def _value(raw, index: int, photo: str, *, edit: bool = False) -> dict | None:
+    if not isinstance(raw, dict):
+        return None
+    key = raw.get("key", "")
+    confidence = float(raw.get("confidence") or 0)
+    printed = raw.get("label", "")
+    label = VALUE_LABELS.get(key) or printed or key
+    return {
+        "key": key,
+        "name": services.CORRECTION.format(index=index, key=key),
+        "label": str(label),
+        # Only where it adds something. `Charge CHARGE` is a word said twice;
+        # `Internal resistance INTERNAL R` tells the reader which row on the
+        # paper to look at. Under a translated locale every printed label
+        # differs from its caption, which is exactly when it is most useful —
+        # the paper is in English whatever the shop speaks.
+        "printed": printed if _folded(printed) != _folded(label) else "",
+        "value": raw.get("value", ""),
+        "display": _display(raw),
+        "unit": raw.get("unit", ""),
+        "raw": raw.get("raw", ""),
+        "corrected": bool(raw.get("corrected")),
+        "entered": bool(raw.get("entered")),
+        "editable": edit,
+        # A unit is what makes a value a number here: `HEALTH` is a percentage
+        # and `TYPE` is a word. It decides the keyboard a phone offers and how
+        # wide the box is, which matters in a garage.
+        "numeric": bool(raw.get("unit")),
+        "confidence": confidence,
+        "band": _band(confidence),
+        "warnings": [VALUE_WARNINGS.get(w, w) for w in raw.get("warnings") or []],
+        "crop": _crop(raw.get("source") or {}, photo),
+    }
+
+
+#: How much of the paper around a value to show with it. A number on its own
+#: proves nothing; the label printed beside it is what tells the reader they
+#: are looking at the right row.
+CROP_PAD_X = 0.35
+CROP_PAD_Y = 1.1
+
+
+def _crop(source: dict, photo: str) -> dict | None:
+    """The patch of the photograph a value was read from.
+
+    The offsets are **fractions of the image itself**, applied with a
+    `transform`, whose percentages resolve against the element's own box. The
+    first version positioned the image with `inset-*` percentages instead,
+    which resolve against the *container* — and the container is a span in a
+    table cell whose width comes out of table layout, so the image rendered
+    narrower than it was told to and every crop drifted upward in proportion
+    to how far down the receipt it was. The timestamp, at the very bottom,
+    missed the paper entirely. Nothing about the arithmetic was wrong; it was
+    measured against the photograph with PIL before this was touched.
+
+    Returns already-formatted CSS lengths rather than floats for the template
+    to render, because `{{ 33.33 }}` under fr-CA is `33,33` and a stylesheet
+    does not read French. The same trap the budget bars fell into (§17, R-6).
+
+    Nothing where there is no photograph or no box — a session re-parsed from
+    stored text has neither, and offering an empty frame would be worse than
+    offering nothing.
+    """
+    box = source.get("box") or []
+    page = source.get("page") or []
+    if not photo or len(box) != 4 or len(page) != 2 or not all(page):
+        return None
+
+    width, height = float(page[0]), float(page[1])
+    pad_x = (box[2] - box[0]) * CROP_PAD_X + 8
+    pad_y = (box[3] - box[1]) * CROP_PAD_Y + 6
+    left = max(0.0, box[0] - pad_x) / width
+    top = max(0.0, box[1] - pad_y) / height
+    right = min(width, box[2] + pad_x) / width
+    bottom = min(height, box[3] + pad_y) / height
+    across, down = right - left, bottom - top
+    if across <= 0 or down <= 0:
+        return None
+
+    return {
+        "url": photo,
+        # Of the container's width; the container is then given the crop's own
+        # shape, so exactly this window shows through it.
+        "zoom": f"{100 / across:.2f}%",
+        # Of the image's own width and height, via `transform`.
+        "x": f"{-left * 100:.4f}%",
+        "y": f"{-top * 100:.4f}%",
+        "ratio": f"{across * width:.0f} / {down * height:.0f}",
+    }
 
 
 def _pairs(value) -> list[tuple[str, str]]:
@@ -261,7 +551,18 @@ def session_confirm(request, pk):
         return redirect("session_detail", pk=session.pk)
     form.save()
 
-    recurring = services.confirm(session, user=request.user)
+    # Whatever the operator typed over a tester's readings goes in with the
+    # confirmation, not before it — a draft is a draft until this moment.
+    _saved, problems = services.correct_results(session, request.POST)
+    for problem in problems:
+        messages.warning(request, problem)
+
+    recurring, displaced = services.confirm(session, user=request.user)
+    if displaced is not None:
+        messages.info(
+            request,
+            _("This replaced the earlier reading of the same report, which is now in the trash.")
+        )
     if recurring:
         messages.warning(
             request,
@@ -274,12 +575,56 @@ def session_confirm(request, pk):
 
 @require_POST
 @login_required
+def session_correct(request, pk):
+    """Save corrections to a bench tester's readings without confirming yet.
+
+    Separate from confirming because they are separate decisions. Correcting a
+    misread voltage is looking at the paper; confirming is admitting the whole
+    session to the vehicle's history, and a screen that only offered the second
+    would make every correction an act of commitment.
+    """
+    session = get_object_or_404(DiagnosticSession, pk=pk)
+    require(request.user, "asset.edit", session.asset)
+
+    saved, problems = services.correct_results(session, request.POST)
+    for problem in problems:
+        messages.warning(request, problem)
+    if saved:
+        messages.success(
+            request,
+            ngettext("%(n)d correction saved.", "%(n)d corrections saved.", saved)
+            % {"n": saved},
+        )
+    elif not problems:
+        messages.info(request, _("Nothing was changed."))
+    return redirect("session_detail", pk=session.pk)
+
+
+@require_POST
+@login_required
 def session_discard(request, pk):
+    """Take a scan out — a draft, or one already in the history.
+
+    Removal used to be offered on drafts alone, which left no way to undo a
+    mistake that had already been confirmed. Since the same report can be read
+    twice — from a re-parse, or from the same photograph uploaded again — that
+    meant a duplicate in a vehicle's history was permanent.
+
+    Soft, like every other delete here, and the trash lists sessions so this is
+    reversible for thirty days rather than being a delete that is permanent and
+    invisible at once.
+    """
     session = get_object_or_404(DiagnosticSession, pk=pk)
     require(request.user, "asset.edit", session.asset)
     asset_id = session.asset_id
+    was_draft = session.is_draft
     session.delete()
-    messages.success(request, _("Draft discarded. It is in the trash for 30 days."))
+    messages.success(
+        request,
+        _("Draft discarded. It is in the trash for 30 days.")
+        if was_draft
+        else _("Removed from the history. It is in the trash for 30 days."),
+    )
     return redirect("asset_diagnostics", pk=asset_id)
 
 
@@ -310,6 +655,10 @@ def session_reparse(request, pk):
             extracted_text=session.extracted_text,
             extracted_words=session.extracted_words,
             notes=session.notes,
+            # What it is a re-reading *of*. Without this the copy was an
+            # unrelated second scan, and confirming it filed the same test in
+            # the vehicle's history twice.
+            supersedes=session,
             created_by=request.user,
         )
 
@@ -598,6 +947,7 @@ def code_reference(request, code):
         DiagnosticCode.objects.filter(
             code=canonical,
             session__asset__in=visible_assets(request.user, Asset.objects.all()),
+            session__deleted_at__isnull=True,
         )
         .select_related("session", "session__asset")
         .order_by("-session__performed_on")[:25]

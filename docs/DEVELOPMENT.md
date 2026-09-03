@@ -113,7 +113,7 @@ real thing.
 venv/Scripts/python manage.py test
 ```
 
-2,256 tests, ~3½ min. They cover the invariants that are cheap to break and expensive
+2,372 tests, ~3½ min. They cover the invariants that are cheap to break and expensive
 to find later: unit round-trips, money arithmetic, optimistic concurrency, the
 append-only guarantee, the work-order state machine, VIN check digits, decode
 override preservation, the outbound allowlist, media deduplication, and export
@@ -121,6 +121,12 @@ readability.
 
 Two conventions worth keeping:
 
+- **A string in a module-level constant must be `gettext_lazy`.**
+  `gettext` resolves when it is *called*, and a dict built at import time is
+  built before any language is active — so the English is frozen in and the
+  caption stays English on a translated page while everything around it
+  translates. `check_translations` cannot see this: the string is wrapped, which
+  is all that check is about.
 - **Fixtures must be verifiable.** The VIN tests use the published ISO 3779
   worked example rather than an invented VIN, because an invented VIN with a
   made-up check digit tests only that the code agrees with the test author.
@@ -132,6 +138,20 @@ Two conventions worth keeping:
   test process, where the next *case* inherits it. Add
   `self.addCleanup(translation.deactivate)`. This cost months of an
   intermittent failure in `tests_search.py` that read as flakiness.
+- **A fixture for a photograph is OCR's output, never a transcription.**
+  Captures under `Artifacts/samples/scan-reports/` record how they were read and
+  the suite refuses an image capture that does not say `ocr`. Typing the words
+  out by hand is tempting when the JPEG cannot be committed and Tesseract is not
+  installed locally, and it produces a record of what somebody imagined OCR
+  does. Capture in the container, which has Tesseract:
+
+  ```bash
+  docker compose run --rm app python -m homeautoshop.scantools.capture       "Artifacts/samples/scan-reports/topdon bt600 plus/20260830_105614.jpg"
+  venv/Scripts/python -m homeautoshop.scantools.fixtures --write
+  ```
+
+  Read the diff both times. A fixture regenerated without looking is a test that
+  has been switched off.
 - **No test may touch the network.** The media tests pin `STORAGES` to a
   temporary directory rather than inheriting `STORAGE_DRIVER` from whatever
   `.env` happens to say — a suite that depends on ambient configuration passes

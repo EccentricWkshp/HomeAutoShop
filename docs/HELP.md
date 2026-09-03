@@ -557,11 +557,59 @@ native text or CSV export when available. A photo can be used for a battery
 tester, charging-system printout, or another device that produces only paper;
 OCR output must be checked before confirmation.
 
+**Photographing a printout.** Lay the slip flat, fill the frame with it, and
+avoid a shadow falling across part of the paper. The photo does not need to be
+straight or rotated first — the reader handles the phone's own orientation — but
+a receipt half in shade reads much worse than one evenly lit. If a strip holds
+several test results, one photo of the whole strip is fine: each is read as its
+own result.
+
 An imported scan starts as a draft. The review screen shows the parser profile
 and match confidence, extracted fields, trouble codes and descriptions, live
 data when present, and the original report. Nothing enters the vehicle history
 until **Add to the history** is pressed. Correct the date, tool, model, meter,
 or notes first, or discard the draft.
+
+### Bench tester results
+
+A battery, cranking or charging tester prints a verdict and a handful of
+readings rather than trouble codes, so those appear in their own **Test
+results** section — one card per receipt, with the verdict, the tester's own
+clock and each reading beside the patch of the photograph it was read from.
+
+Anything marked *hard to read* is worth comparing against that crop. That mark
+is about the photograph, not about the reading — a rated capacity is no less
+true for having been printed faintly.
+
+What the tester **measured** and what it was **set to** are listed separately.
+The capacity, rating standard and battery type are read off the battery's own
+label and typed into the tester before the test runs; `Measured 755 CCA` against
+`Rated 850 CCA` is the result.
+
+A reading can be typed over while the scan is a draft, and doing so re-dates the
+scan if it was the clock that was wrong. Corrections are saved separately from
+what the reader saw, which is kept unchanged so it stays possible to ask later
+what the tool actually printed — where a value has been corrected, the original
+is shown struck through beside it. A value the reader could not make sense of is
+shown as the characters it saw with the reason beside it, rather than being
+dropped or guessed at.
+
+A battery, cranking or charging tester never reports trouble codes, so that
+section is not shown for one, and its line in the scan history names what it
+found rather than saying "0 codes". Which tools can report what is part of the
+parser profile, so a new tool declares it rather than the screens guessing.
+
+### Re-reading, and taking a scan back out
+
+**Re-read** on a scan already in the history makes a new draft and leaves the
+original alone, so two profiles' answers can be compared before choosing. That
+draft says which reading it replaces, and confirming it *replaces* that one
+rather than adding a second — the earlier reading goes to the trash. Uploading
+the same file again behaves the same way, because it is the same report.
+
+A scan already in the history can be taken back out with **Remove from the
+history**. It and its codes leave the vehicle at once and sit in the trash,
+where they can be restored for 30 days.
 
 ISO/SAE codes — the ones that mean the same thing on every vehicle — use the
 built-in offline dictionary, which needs no network and no setup.

@@ -591,3 +591,62 @@ pre.scroll { white-space: pre-wrap; word-break: break-word; }
    phone does not catch the other — they are adjacent and one of them discards
    what you just typed. */
 .formactions { gap: .75rem; margin-block-start: 1rem; align-items: center; }
+
+/* Bench-tester results on the scan review screen (SPEC §8.3a).
+   ------------------------------------------------------------------ */
+
+.result {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: .75rem;
+  margin-block-end: .75rem;
+}
+
+.result > header h3 { margin: 0; font-size: 1rem; }
+
+/* A value and its unit read as one thing, and the unit stays out of the box:
+   a field holding `12.62 V` is a field somebody types `12.6V` into, and then a
+   trend has a string in it. */
+.measure { display: inline-flex; align-items: baseline; gap: .3rem; }
+.measure .unit { color: var(--muted); font-size: .85em; }
+
+/* A reading the reader was unsure of. Marked, not blocked. */
+input.doubtful { border-color: var(--warn, #b58900); }
+
+/* The patch of the photograph a value was read from.
+
+   `direction: ltr` because the contents are a picture, not text: a photograph
+   does not mirror when the page reads right to left, and forcing the frame's
+   direction is what lets the offset inside it stay logical. */
+.crop {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  direction: ltr;
+  /* A definite length, not a percentage. These sit in a table cell, and a
+     percentage width inside auto table layout is resolved against a width the
+     table is still working out — which made the image inside render narrower
+     than it was told to and threw every crop off. */
+  inline-size: 14rem;
+  max-inline-size: 100%;
+  margin-block-start: .3rem;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) / 2);
+  background: var(--bg-soft, #fff);
+}
+
+.crop img {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  max-inline-size: none;
+  /* Rotated by the browser from the photograph's own EXIF, which is the
+     default for an `img` and is *not* applied to a background image — the
+     reason this is an element rather than a `background-image`. Every box the
+     parser records is measured in that upright frame. */
+  image-orientation: from-image;
+}
+
+/* A value the reader saw that somebody has since corrected. Struck rather than
+   removed: the point of that table is what the machine said. */
+.struck { text-decoration: line-through; color: var(--muted); }

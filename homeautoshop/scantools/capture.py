@@ -263,11 +263,38 @@ def redact_document(text: str) -> tuple[str, set[str]]:
 #: backstop, not the rule — the rule is the line and the next label.
 VALUE_WORDS = 12
 
-#: Two words are on the same printed line if their tops agree to within this.
+#: Two words are on the same printed line if their tops agree to within this,
+#: in whatever units the geometry uses. Two points is right for a PDF and
+#: nonsense for a photograph: image geometry is pixels, a printed line is sixty
+#: of them tall, and at two the answer is always *no*. Which matters here more
+#: than anywhere — the redaction rules that protect a serial all work by asking
+#: what is printed **beside** it, so a tolerance too small for the units does
+#: not degrade the redaction, it switches it off.
 LINE_TOLERANCE = 2.0
 
 
-def redact_words(words: list[dict]) -> tuple[list[str], set[str]]:
+def line_tolerance(words: list[dict]) -> float:
+    """Half a line of text, measured off the words themselves.
+
+    Falls back to :data:`LINE_TOLERANCE` where the capture carries no
+    `bottom` — a PDF's word geometry, which is where that constant came from
+    and where it is still right.
+    """
+    heights = []
+    for word in words:
+        try:
+            height = float(word.get("bottom", 0)) - float(word.get("top", 0))
+        except (TypeError, ValueError):
+            continue
+        if height > 0:
+            heights.append(height)
+    if not heights:
+        return LINE_TOLERANCE
+    heights.sort()
+    return max(LINE_TOLERANCE, 0.6 * heights[len(heights) // 2])
+
+
+def redact_words(words: list[dict], *, tolerance: float | None = None) -> tuple[list[str], set[str]]:
     """Redact one page of word geometry, reading each word in its context.
 
     A word on its own cannot tell you it is a shop's name. What it follows can,
@@ -289,6 +316,7 @@ def redact_words(words: list[dict]) -> tuple[list[str], set[str]]:
     every word taken is a word no fingerprint can match on.
     """
     produced: set[str] = set()
+    near = line_tolerance(words) if tolerance is None else tolerance
     texts = [str(word.get("text", "")) for word in words]
     out: list[str] = []
     blanking = 0
@@ -300,13 +328,13 @@ def redact_words(words: list[dict]) -> tuple[list[str], set[str]]:
         # reports, on the strength of a label two lines above it.
         window = (
             " ".join(texts[max(0, index - LABEL_REACH) : index])
-            if index and _same_line(words[index - 1], words[index])
+            if index and _same_line(words[index - 1], words[index], near)
             else ""
         )
         value, made = redact(text, vin_expected=bool(VIN_LABEL_BEFORE.search(window)))
         produced |= made
 
-        if blanking and not _still_the_value(words, texts, index, blanking):
+        if blanking and not _still_the_value(words, texts, index, blanking, near):
             blanking = 0
 
         if value == text and _is_value(text):
@@ -327,11 +355,13 @@ def redact_words(words: list[dict]) -> tuple[list[str], set[str]]:
     return out, produced
 
 
-def _still_the_value(words: list[dict], texts: list[str], index: int, left: int) -> bool:
+def _still_the_value(
+    words: list[dict], texts: list[str], index: int, left: int, tolerance: float
+) -> bool:
     """Is this word still part of the value that started a few words back?"""
     if left <= 0 or _is_label(texts[index]) or _next_is_a_label(texts, index):
         return False
-    return _same_line(words[index - 1], words[index])
+    return _same_line(words[index - 1], words[index], tolerance)
 
 
 def _next_is_a_label(texts: list[str], index: int) -> bool:
@@ -347,11 +377,29 @@ def _is_label(text: str) -> bool:
     return text.strip().endswith((":", "：", "#"))
 
 
-def _same_line(first: dict, second: dict) -> bool:
+def _same_line(first: dict, second: dict, tolerance: float = LINE_TOLERANCE) -> bool:
+    """Were these two words printed beside each other?
+
+    Compared by the **middle** of each word rather than its top, which is not
+    fussiness: it is what decides whether a tester serial is redacted. On a
+    real OCR capture of a BT600 Plus slip, `SN:` and the serial beside it have
+    tops 24 pixels apart — the colon is a full cap height and the serial is
+    digits — against a tolerance of 21, so they were not the same line, so no
+    label preceded the serial, so it was written into the corpus in full.
+
+    Their middles are 14 apart. Every rule here that protects a value works by
+    asking what is printed beside it, so getting *beside* wrong does not
+    weaken the redaction, it switches it off.
+    """
     try:
-        return abs(float(first.get("top", 0)) - float(second.get("top", 0))) <= LINE_TOLERANCE
+        return abs(_middle(first) - _middle(second)) <= tolerance
     except (TypeError, ValueError):
         return False
+
+
+def _middle(word: dict) -> float:
+    top = float(word.get("top", 0) or 0)
+    return (top + float(word.get("bottom", top) or top)) / 2.0
 
 
 def _is_value(text: str) -> bool:
@@ -400,6 +448,61 @@ def capture(pdf_path: pathlib.Path) -> tuple[dict, set[str]]:
             f"{pdf_path.name} has no text layer — it is an image-only PDF"
         )
     return {"source": pdf_path.name, "pages": pages}, produced
+
+
+#: Keys a captured word carries. `color` is a PDF's; `conf`, `bottom` and
+#: `line` are a photograph's. Listed rather than copied wholesale so a future
+#: OCR engine cannot smuggle an extra field into the committed corpus.
+WORD_KEYS = ("text", "x0", "x1", "top", "bottom", "conf", "line")
+
+
+def capture_photo(image_path: pathlib.Path) -> tuple[dict, set[str]]:
+    """Read a photographed printout into redacted word geometry (§7.9).
+
+    The same trade as a PDF, for the same reason: what is committed is words
+    and positions, not the photograph. The photograph is somebody's driveway,
+    somebody's bench, and — on a battery slip — a tester serial that identifies
+    a specific piece of equipment. The words are the whole of what a parser
+    ever sees, so the corpus loses nothing a test could have used.
+
+    JPEGs are already excluded from the repository by `.gitignore`; this is
+    what makes that exclusion survivable rather than merely tidy.
+    """
+    from homeautoshop.mediafiles.services import image_size, read_image_words
+
+    raw = image_path.read_bytes()
+    pages = read_image_words(raw)
+    if not any(pages):
+        raise NothingToCapture(
+            f"{image_path.name} yielded no words — is OCR_ENABLED set, and is "
+            f"tesseract installed?"
+        )
+
+    produced: set[str] = set()
+    out = []
+    for page in pages:
+        texts, made = redact_words(page)
+        produced |= made
+        out.append(
+            [
+                {**{k: word[k] for k in WORD_KEYS if k in word}, "text": text}
+                for word, text in zip(page, texts)
+            ]
+        )
+    return (
+        {
+            "source": image_path.name,
+            "media_type": "image",
+            "read_by": "ocr",
+            # As OCR saw it — rotated upright and capped, not as the camera
+            # wrote it. Every box in this capture is measured in this frame,
+            # and a reader with the box and not the frame has a rectangle in
+            # unknown units.
+            "image_size": list(image_size(raw)),
+            "pages": out,
+        },
+        produced,
+    )
 
 
 def capture_by_ocr(pdf_path: pathlib.Path) -> tuple[dict, set[str]]:
@@ -516,10 +619,21 @@ def capture_path(source: pathlib.Path, tool: str = "", *, kind: str = "") -> pat
     return folder / (source.stem + suffix_for(source, kind=kind))
 
 
+#: Which capture kind keeps geometry. A photograph does, now that OCR is asked
+#: for words rather than for a string — the whole reason the BT600 Plus can be
+#: read at all is that its labels and its values are in two columns and the
+#: parser can see that they are.
+GEOMETRIC = ("pdf", "image")
+
+
 def suffix_for(source: pathlib.Path, *, kind: str = "") -> str:
     if kind:
-        return ".words.json" if kind == "pdf" else ".text.json"
-    return ".words.json" if source.suffix.lower() == ".pdf" else ".text.json"
+        return ".words.json" if kind in GEOMETRIC else ".text.json"
+    return (
+        ".words.json"
+        if source.suffix.lower() in (".pdf", ".jpg", ".jpeg", ".png", ".webp", ".heic")
+        else ".text.json"
+    )
 
 
 def synthetic_vins() -> set[str]:
@@ -555,11 +669,16 @@ def write(source: pathlib.Path, tool: str = "") -> tuple[pathlib.Path, set[str]]
     # Decided from the content, like everywhere else here. A file fetched from
     # the web has whatever extension its publisher chose, and one of them
     # serves a PDF under a name that says otherwise.
-    if source.open("rb").read(5) == b"%PDF-":
+    from homeautoshop.diagnostics import engine
+
+    head = source.open("rb").read(64)
+    if head[:5] == b"%PDF-":
         try:
             data, produced = capture(source)
         except NothingToCapture:
             data, produced = capture_by_ocr(source)
+    elif engine.media_type(head, filename=source.name) == "image":
+        data, produced = capture_photo(source)
     else:
         data, produced = capture_document(source)
     target = capture_path(source, tool, kind=data.get("media_type", ""))
@@ -587,15 +706,21 @@ def verify_synthetic_vins() -> list[str]:
 if __name__ == "__main__":  # pragma: no cover - developer tool
     import sys
 
-    targets = [pathlib.Path(a) for a in sys.argv[1:] if a.endswith(".pdf")]
-    targets = targets or sorted(CORPUS.glob("*.pdf"))
+    CAPTURABLE = (".pdf", ".jpg", ".jpeg", ".png", ".webp", ".heic")
+    targets = [pathlib.Path(a) for a in sys.argv[1:] if a.lower().endswith(CAPTURABLE)]
+    # Recursive, because the corpus is filed one folder per tool and the
+    # photographs of a battery tester's paper are three levels down.
+    targets = targets or sorted(
+        path for suffix in CAPTURABLE for path in CORPUS.rglob("*" + suffix)
+    )
     if not targets:
-        print(f"no PDFs found in {CORPUS}")
+        print(f"nothing capturable found in {CORPUS}")
         raise SystemExit(1)
 
     everything: set[str] = set()
-    for pdf in targets:
-        target, produced = write(pdf)
+    for original in targets:
+        folder = original.parent.name if original.parent != CORPUS else ""
+        target, produced = write(original, folder)
         everything |= produced
         print(f"captured {target.name}" + (f" (redacted {len(produced)})" if produced else ""))
 

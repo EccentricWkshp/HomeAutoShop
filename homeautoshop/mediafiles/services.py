@@ -321,7 +321,17 @@ def ocr(media: Media) -> None:
             with media.file.open("rb") as fh:
                 image = Image.open(fh)
                 image.load()
-            text = pytesseract.image_to_string(image, lang=_ocr_language())
+            # Rotated and flattened before reading, like every other OCR path
+            # here. A sideways photograph is not merely read badly, it is read
+            # as nothing — so a receipt photographed on a bench used to be
+            # filed with an empty `ocr_text` and a `done` status, which is a
+            # document that quietly cannot be searched for. The same picture
+            # has to read the same way whether it arrived as a document or as
+            # a scan report; two answers to what one photograph says is the
+            # disagreement this codebase keeps having to undo.
+            text = pytesseract.image_to_string(
+                _prepared(image, flatten=True), lang=_ocr_language()
+            )
     except Exception as exc:
         log.warning("OCR failed for %s: %s", media.pk, exc)
         media.ocr_status = Media.OcrStatus.FAILED
@@ -333,6 +343,124 @@ def ocr(media: Media) -> None:
     media.save(update_fields=["ocr_text", "ocr_status", "updated_at"])
 
 
+#: Beyond this, an image is scaled down before OCR. Tesseract gets slower than
+#: linearly with pixel count and reads no better above roughly 300 dpi of
+#: document, which a modern phone passes several times over.
+OCR_MAX_PIXELS = 4000
+
+
+def upright(image):
+    """Rotate an image the way its own metadata says to display it.
+
+    **Mandatory, not a nicety.** A phone held sideways writes the pixels in
+    sensor order and records the rotation as EXIF orientation, and Pillow's
+    `Image.open` hands back the sensor order. Every photograph of a scan-tool
+    printout in the sample corpus is orientation 6 — a receipt lying on a
+    bench, photographed by somebody standing beside it — and OCR of a page
+    rotated ninety degrees does not return poor text, it returns *no* text.
+    So the one format that most needed reading was the one that could not be
+    read at all, and nothing said why.
+
+    `exif_transpose` also drops the orientation tag it has just honoured, so
+    this cannot be applied twice.
+    """
+    from PIL import ImageOps
+
+    try:
+        return ImageOps.exif_transpose(image) or image
+    except Exception:  # noqa: BLE001 - a corrupt EXIF block is not a reason to fail
+        return image
+
+
+#: How wide a blur has to be to hold the *lighting* and none of the text.
+#: A fraction of the picture rather than a constant: the same forty pixels that
+#: separate a bench shadow from a printed digit at two megapixels is inside a
+#: single glyph at twelve.
+FLAT_FIELD_DIVISOR = 36
+
+#: Percent of the histogram discarded at each end before the contrast is
+#: stretched. Without it a single blown-out highlight sets the white point for
+#: the whole page.
+AUTOCONTRAST_CUTOFF = 2
+
+
+def flatten_lighting(grey):
+    """Give every part of the page its own black and white points.
+
+    Subtracting a heavily blurred copy of the picture from itself leaves what
+    differs from its own surroundings, which is the ink — and removes what
+    varies slowly across the frame, which is the light. Global autocontrast
+    cannot do this by construction: it has one curve for the whole image, so a
+    strip of paper that is bright at the top and shadowed at the bottom gets a
+    curve that is wrong at both ends.
+
+    **This is the difference between reading these reports and not.** Measured
+    over the five BT600 Plus photographs against the values a person can read
+    off the paper: 73 of 86 without it, 84 with. The seven that appear only
+    with it are the whole second half of `20260830_105647` — a charging test
+    that lay in the shadow of the photographer.
+
+    Nothing is thresholded. Thin thermal glyphs and a one-pixel graph trace are
+    the first things a threshold eats, and the trace is what tells a reviewer
+    they are looking at the right receipt.
+    """
+    from PIL import ImageChops, ImageFilter, ImageOps
+
+    radius = max(12, round(min(grey.size) / FLAT_FIELD_DIVISOR))
+    background = grey.filter(ImageFilter.GaussianBlur(radius=radius))
+    return ImageOps.invert(ImageChops.subtract(background, grey))
+
+
+def image_size(raw: bytes) -> tuple[int, int]:
+    """How big a picture is once it is the right way up.
+
+    Reads the header only — Pillow does not decode pixels for `.size` — so this
+    is cheap enough to ask alongside OCR rather than threading the answer back
+    out of it. `(0, 0)` where the bytes are not an image this build can open,
+    which a caller treats as "no frame", not as a frame of no size.
+    """
+    from PIL import Image
+
+    try:
+        image = Image.open(BytesIO(raw))
+        width, height = image.size
+        if (image.getexif().get(0x0112) or 1) in (5, 6, 7, 8):
+            width, height = height, width
+        if max(width, height) > OCR_MAX_PIXELS:
+            scale = OCR_MAX_PIXELS / max(width, height)
+            width, height = int(width * scale), int(height * scale)
+        return width, height
+    except Exception:  # noqa: BLE001
+        return (0, 0)
+
+
+def _prepared(image, *, flatten: bool = False):
+    """An image as OCR wants to see it.
+
+    Rotation and the size cap apply to everything, because both are about the
+    pixels being wrong rather than about what is in them. The rest is asked for
+    by the caller: it is what a photograph of paper needs and a page rendered
+    out of a PDF does not, being already evenly lit by construction.
+
+    Deliberately **not** here: upscaling and sharpening, both of which were
+    tried and both of which made these five worse — twice the pixels scored 55
+    of 86 against 66 at native size, because interpolation softens a thermal
+    glyph that was already only two pixels wide. And cropping to the paper,
+    which scored exactly what flattening alone scores and adds a way to fail:
+    a bright window behind the bench is a brighter rectangle than the receipt.
+    """
+    from PIL import ImageOps
+
+    image = upright(image)
+    if max(image.size) > OCR_MAX_PIXELS:
+        image.thumbnail((OCR_MAX_PIXELS, OCR_MAX_PIXELS))
+    if flatten:
+        image = ImageOps.autocontrast(
+            flatten_lighting(image.convert("L")), cutoff=AUTOCONTRAST_CUTOFF
+        )
+    return image
+
+
 def read_image_text(raw: bytes) -> str:
     """OCR an image already in memory (§7.9).
 
@@ -341,19 +469,134 @@ def read_image_text(raw: bytes) -> str:
     raising: a report that could not be read still becomes a session the
     operator can map by hand (FR-INT-6), and that is a better outcome than an
     error page.
+
+    Reads the words and joins them, rather than asking for a string, so that
+    the text a profile is scored against and the geometry a built-in parser
+    reads are the *same reading* of the *same picture*. They were not: the
+    scored text came from `image_to_string` and there was no geometry at all.
+    """
+    pages = read_image_words(raw)
+    if not pages:
+        return ""
+    from homeautoshop.diagnostics.engine import lines_from_words
+
+    return "\n".join(lines_from_words(pages))
+
+
+#: Tesseract page-segmentation modes, tried in this order, and the order was
+#: measured rather than reasoned. 6 — "a single uniform block of text" — is the
+#: obvious choice for a receipt and is the *worst* of the three on these
+#: photographs (77 of 86), because a receipt photographed on a bench is not a
+#: uniform block: it is a strip of paper with two bar graphs, a voltage trace
+#: and a wooden table around it. 3, full automatic segmentation, handles that
+#: (84). 11, sparse text, is the fallback for a page 3 finds no structure in.
+SEGMENTATION_MODES = (3, 11)
+
+#: Confidence at or above which a word counts as read rather than guessed at,
+#: for the purpose of choosing between two passes.
+USABLE_CONFIDENCE = 60
+
+# Per-*character* confidence was tried here and is deliberately not used.
+# Tesseract will report it — `-c lstm_choice_mode=2` with hOCR output, at no
+# extra cost, returning the same words in the same order as `image_to_data` —
+# and on a damaged glyph the character stream does show a run of low-confidence
+# marks that never reach the decoded word. It looked like exactly the signal
+# for "this value is printed over something".
+#
+# It is not. On one BT600 Plus photograph it marks 21 of 41 words, including
+# `79%`, `100%` and `SN:`, every one of which was read perfectly; what it is
+# actually detecting is the texture of photographed thermal paper. A review
+# screen that flags half of what it shows teaches the reader to stop looking,
+# which is worse than flagging nothing. See SPEC §19.
+
+#: Enough confident words to be a report rather than a caption. Below this the
+#: second segmentation mode is worth what it costs.
+ENOUGH_WORDS = 20
+
+
+def read_image_words(raw: bytes) -> list[list[dict]]:
+    """OCR an image and keep where every word was.
+
+    One page, because an image is one page. Each word carries its box and
+    Tesseract's own confidence for it, and both are load-bearing further on: a
+    parser groups words into printed lines by position, and a review screen
+    shows the crop of the paper a doubtful value came off. All of that used to
+    be thrown away the moment `image_to_string` returned.
+
+    Two passes at most, and the better one wins. "Better" is measured by how
+    much of the recognized text a caller could use, not by Tesseract's own
+    average confidence, which rewards a pass that found three clean words and
+    missed the report.
     """
     if not conf.OCR_ENABLED:
-        return ""
+        return []
     try:
         import pytesseract
         from PIL import Image
+    except ImportError:
+        log.info("OCR skipped: pytesseract is not installed")
+        return []
 
+    try:
         image = Image.open(BytesIO(raw))
         image.load()
-        return pytesseract.image_to_string(image, lang=_ocr_language())
+        image = _prepared(image, flatten=True)
     except Exception as exc:  # noqa: BLE001
-        log.warning("could not read text from an image: %s", exc)
-        return ""
+        log.warning("could not open an image for OCR: %s", exc)
+        return []
+
+    best: list[dict] = []
+    best_score = -1
+    for mode in SEGMENTATION_MODES:
+        try:
+            data = pytesseract.image_to_data(
+                image,
+                lang=_ocr_language(),
+                config=f"--psm {mode}",
+                output_type=pytesseract.Output.DICT,
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.warning("could not read words from an image: %s", exc)
+            return []
+        words = _words_from(data)
+        # Confident words, not Tesseract's mean confidence. The mean rewards a
+        # pass that found three clean words and missed the report, which is
+        # exactly the pass a fallback exists to replace.
+        confident = sum(1 for word in words if word["conf"] >= USABLE_CONFIDENCE)
+        if confident > best_score:
+            best, best_score = words, confident
+        if best_score >= ENOUGH_WORDS:
+            break
+    return [best] if best else []
+
+
+def _words_from(data: dict) -> list[dict]:
+    out: list[dict] = []
+    for index, text in enumerate(data.get("text") or []):
+        stripped = (text or "").strip()
+        if not stripped:
+            continue
+        try:
+            confidence = float(data["conf"][index])
+        except (KeyError, IndexError, TypeError, ValueError):
+            confidence = -1.0
+        left, top = float(data["left"][index]), float(data["top"][index])
+        out.append(
+            {
+                "text": stripped,
+                "x0": round(left, 1),
+                "x1": round(left + float(data["width"][index]), 1),
+                "top": round(top, 1),
+                "bottom": round(top + float(data["height"][index]), 1),
+                "conf": round(confidence, 1),
+                # Tesseract's own idea of which printed line this is. Carried
+                # for a person reading the capture; nothing here relies on it,
+                # because its line breaks on a curled receipt are its weakest
+                # answer and the geometry is right there.
+                "line": int(data.get("line_num", [0] * (index + 1))[index] or 0),
+            }
+        )
+    return out
 
 
 def read_pdf_text_by_ocr(raw: bytes) -> str:

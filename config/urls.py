@@ -219,6 +219,7 @@ urlpatterns = [
     path("diagnostics/profiles/<uuid:pk>/delete/", diagnostics.profile_delete, name="profile_delete"),
     path("diagnostics/sessions/<uuid:pk>/", diagnostics.session_detail, name="session_detail"),
     path("diagnostics/sessions/<uuid:pk>/confirm/", diagnostics.session_confirm, name="session_confirm"),
+    path("diagnostics/sessions/<uuid:pk>/correct/", diagnostics.session_correct, name="session_correct"),
     path("diagnostics/sessions/<uuid:pk>/discard/", diagnostics.session_discard, name="session_discard"),
     path("diagnostics/sessions/<uuid:pk>/reparse/", diagnostics.session_reparse, name="session_reparse"),
     path("diagnostics/sessions/<uuid:pk>/map/", diagnostics.session_map, name="session_map"),

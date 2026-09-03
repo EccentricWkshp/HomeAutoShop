@@ -8385,3 +8385,185 @@ msgstr "Ce que ce travail est censé coûter. Laissez vide pour aucun budget —
 #, python-format
 msgid "%(amount)s left"
 msgstr "%(amount)s restants"
+
+# -- Reading a bench tester's printed slip (SPEC §8.3a). Machine-drafted,
+# -- like the rest of this catalog, and wanting review by a speaker.
+msgid "%(label)s has to be a number."
+msgstr "%(label)s doit être un nombre."
+
+msgid "%(label)s is not a date and time."
+msgstr "%(label)s n'est pas une date et une heure."
+
+msgid "Battery test"
+msgstr "Test de batterie"
+
+msgid "Characters had to be repaired before this was a number."
+msgstr "Des caractères ont dû être corrigés pour en faire un nombre."
+
+msgid "Charge"
+msgstr "Charge"
+
+msgid "Charging test"
+msgstr "Test de charge"
+
+msgid "Cranking test"
+msgstr "Test de démarrage"
+
+msgid "Cranking time"
+msgstr "Temps de démarrage"
+
+msgid "Health"
+msgstr "Santé"
+
+msgid "Internal resistance"
+msgstr "Résistance interne"
+
+msgid "Loaded"
+msgstr "En charge"
+
+msgid "Nothing could be made of these characters."
+msgstr "Impossible de tirer une valeur de ces caractères."
+
+msgid "Nothing was changed."
+msgstr "Rien n'a été modifié."
+
+msgid "Outside what this measurement can be, so it was not used."
+msgstr "Hors des valeurs possibles pour cette mesure; elle n'a donc pas été utilisée."
+
+msgid "Part of the picture looked like a report and could not be read."
+msgstr "Une partie de la photo ressemblait à un rapport et n'a pas pu être lue."
+
+msgid "Printed away from its label, so it may belong elsewhere."
+msgstr "Imprimée loin de son étiquette; elle appartient peut-être ailleurs."
+
+msgid "Rated"
+msgstr "Nominal"
+
+msgid "Rating standard"
+msgstr "Norme de classement"
+
+msgid "Ripple"
+msgstr "Ondulation"
+
+msgid "Some of what this test usually prints was not found."
+msgstr "Une partie de ce que ce test imprime d'habitude est introuvable."
+
+msgid "Taken at"
+msgstr "Pris à"
+
+msgid "Test result"
+msgstr "Résultat de test"
+
+msgid "The reader was unsure of this one."
+msgstr "Le lecteur n'était pas sûr de celle-ci."
+
+msgid "This receipt carried no time of its own."
+msgstr "Ce reçu ne portait pas d'heure."
+
+msgid "Two different tester serials on one strip of paper."
+msgstr "Deux numéros de série d'appareil différents sur une même bande de papier."
+
+msgid "Unloaded"
+msgstr "Sans charge"
+
+msgid "Verdict"
+msgstr "Verdict"
+
+msgid "Voltage"
+msgstr "Tension"
+
+msgid "Test results"
+msgstr "Résultats des tests"
+
+msgid "What the tester printed, one card per receipt. Anything marked low is worth checking against the photo beside it."
+msgstr "Ce que l'appareil a imprimé, une fiche par reçu. Tout ce qui est marqué faible mérite une vérification sur la photo à côté."
+
+msgid "Save these corrections"
+msgstr "Enregistrer ces corrections"
+
+msgid "Corrections are kept separately from what the machine read, which is never overwritten."
+msgstr "Les corrections sont conservées à part de ce que la machine a lu, qui n'est jamais écrasé."
+
+msgid "As printed"
+msgstr "Tel qu'imprimé"
+
+msgid "corrected"
+msgstr "corrigé"
+
+msgid "%(name)s, as read"
+msgstr "%(name)s, tel que lu"
+
+msgid "%(n)d correction saved."
+msgid_plural "%(n)d corrections saved."
+msgstr[0] "%(n)d correction enregistrée."
+msgstr[1] "%(n)d corrections enregistrées."
+
+# -- Reviewing a bench tester's slip, second pass. Machine-drafted and wanting
+# -- review by a speaker, like the rest of this catalog.
+msgid "What the reader saw"
+msgstr "Ce que le lecteur a vu"
+
+msgid "Kept exactly as it was read and never edited, so it stays possible to ask what the tool actually said. Where a value has been corrected, the correction is shown beside it."
+msgstr "Conservé exactement tel qu'il a été lu et jamais modifié, pour qu'on puisse toujours savoir ce que l'outil a réellement indiqué. Lorsqu'une valeur a été corrigée, la correction est affichée à côté."
+
+msgid "Confidence is the parser's own estimate of how clearly it read the value, not a judgement of the value."
+msgstr "La confiance est l'estimation de l'analyseur quant à la netteté de sa lecture, et non un jugement sur la valeur."
+
+msgid "corrected to %(corrected)s"
+msgstr "corrigé à %(corrected)s"
+
+msgid "What the tester printed, one card per receipt. Where a value is marked hard to read, that is about the photograph and not about the reading — compare it against the crop beside it."
+msgstr "Ce que l'appareil a imprimé, une fiche par reçu. Lorsqu'une valeur est marquée difficile à lire, cela concerne la photo et non le relevé — comparez-la au recadrage à côté."
+
+msgid "On the paper"
+msgstr "Sur le papier"
+
+msgid "Set on the tester"
+msgstr "Réglé sur l'appareil"
+
+msgid "Read off the battery's own label and typed into the tester before the test — not something it measured."
+msgstr "Lu sur l'étiquette de la batterie et saisi dans l'appareil avant le test — ce n'est pas une mesure."
+
+msgid "hard to read"
+msgstr "difficile à lire"
+
+msgid "This was hard to read off the photograph."
+msgstr "Ceci était difficile à lire sur la photo."
+
+# -- Removing a scan, replacing a re-read one, and what a tool can report.
+# -- Machine-drafted and wanting review by a speaker.
+msgid "Readiness monitors"
+msgstr "Moniteurs de disponibilité"
+
+msgid "Bench test results"
+msgstr "Résultats de tests d'appareil"
+
+msgid "%(value)s is not something a report can contain."
+msgstr "%(value)s n'est pas un contenu possible pour un rapport."
+
+msgid "This replaced the earlier reading of the same report, which is now in the trash."
+msgstr "Ceci a remplacé la lecture précédente du même rapport, qui est maintenant dans la corbeille."
+
+msgid "Removed from the history. It is in the trash for 30 days."
+msgstr "Retiré de l'historique. C'est dans la corbeille pour 30 jours."
+
+msgid "Take it out again"
+msgstr "Le retirer"
+
+msgid "Removes this scan and its codes from the vehicle's history. It goes to the trash, where it can be restored for 30 days."
+msgstr "Retire cette analyse et ses codes de l'historique du véhicule. Elle va à la corbeille, d'où elle peut être restaurée pendant 30 jours."
+
+msgid "Remove from the history"
+msgstr "Retirer de l'historique"
+
+msgid "See the one it replaces"
+msgstr "Voir celle qu'elle remplace"
+
+msgid "This is the same report as the one already in the history from %(when)s. Confirming this reading replaces that one, which goes to the trash."
+msgstr "C'est le même rapport que celui déjà dans l'historique du %(when)s. Confirmer cette lecture remplace celle-là, qui va à la corbeille."
+
+msgid "%(n)d code"
+msgid_plural "%(n)d codes"
+msgstr[0] "%(n)d code"
+msgstr[1] "%(n)d codes"
+

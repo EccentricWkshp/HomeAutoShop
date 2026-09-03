@@ -1,0 +1,262 @@
+{
+  "tool": {
+    "vendor": "TOPDON",
+    "model": "BT600 Plus",
+    "serial": "00000000000000"
+  },
+  "page": [
+    1524,
+    2032
+  ],
+  "test_results": [
+    {
+      "kind": "cranking",
+      "index": 0,
+      "confidence": 0.87,
+      "verdict": {
+        "key": "verdict",
+        "label": "",
+        "value": "cranking_low",
+        "unit": "",
+        "raw": "CRANKING LOW",
+        "confidence": 0.91,
+        "corrected": false,
+        "entered": false,
+        "source": {
+          "result": 0,
+          "box": [
+            497.0,
+            532.0,
+            796.0,
+            558.0
+          ],
+          "page": [
+            1524,
+            2032
+          ]
+        },
+        "warnings": []
+      },
+      "performed_on": {
+        "key": "performed_on",
+        "label": "",
+        "value": "2026-01-31T14:55:18",
+        "unit": "",
+        "raw": "2026-01-31 14:55:18",
+        "confidence": 0.93,
+        "corrected": false,
+        "entered": false,
+        "source": {
+          "result": 0,
+          "box": [
+            485.0,
+            1021.0,
+            846.0,
+            1046.0
+          ],
+          "page": [
+            1524,
+            2032
+          ]
+        },
+        "warnings": []
+      },
+      "attributes": [],
+      "readings": [
+        {
+          "key": "voltage",
+          "label": "VOLTAGE",
+          "value": "8.85",
+          "unit": "V",
+          "raw": "8.85V",
+          "confidence": 0.87,
+          "corrected": false,
+          "entered": false,
+          "source": {
+            "result": 0,
+            "box": [
+              876.0,
+              898.0,
+              978.0,
+              922.0
+            ],
+            "page": [
+              1524,
+              2032
+            ]
+          },
+          "warnings": []
+        },
+        {
+          "key": "time",
+          "label": "TIME",
+          "value": "2274",
+          "unit": "ms",
+          "raw": "2274ms",
+          "confidence": 0.9,
+          "corrected": false,
+          "entered": false,
+          "source": {
+            "result": 0,
+            "box": [
+              834.0,
+              939.0,
+              978.0,
+              963.0
+            ],
+            "page": [
+              1524,
+              2032
+            ]
+          },
+          "warnings": []
+        }
+      ],
+      "warnings": [],
+      "box": [
+        327.0,
+        245.0,
+        978.0,
+        1323.0
+      ]
+    },
+    {
+      "kind": "charging",
+      "index": 1,
+      "confidence": 0.37,
+      "verdict": {
+        "key": "verdict",
+        "label": "",
+        "value": "charging_normal",
+        "unit": "",
+        "raw": "CHARGING NORMAL",
+        "confidence": 0.91,
+        "corrected": false,
+        "entered": false,
+        "source": {
+          "result": 1,
+          "box": [
+            484.0,
+            1756.0,
+            839.0,
+            1781.0
+          ],
+          "page": [
+            1524,
+            2032
+          ]
+        },
+        "warnings": []
+      },
+      "performed_on": {
+        "key": "performed_on",
+        "label": "",
+        "value": "2026-01-31T14:54:36",
+        "unit": "",
+        "raw": "2026-01-31 14:54:36",
+        "confidence": 0.93,
+        "corrected": false,
+        "entered": false,
+        "source": {
+          "result": 1,
+          "box": [
+            494.0,
+            1978.0,
+            859.0,
+            2006.0
+          ],
+          "page": [
+            1524,
+            2032
+          ]
+        },
+        "warnings": []
+      },
+      "attributes": [],
+      "readings": [
+        {
+          "key": "unloaded",
+          "label": "UNLOADED",
+          "value": "14.69",
+          "unit": "V",
+          "raw": "14.69V",
+          "confidence": 0.9,
+          "corrected": false,
+          "entered": false,
+          "source": {
+            "result": 1,
+            "box": [
+              868.0,
+              1825.0,
+              982.0,
+              1849.0
+            ],
+            "page": [
+              1524,
+              2032
+            ]
+          },
+          "warnings": []
+        },
+        {
+          "key": "loaded",
+          "label": "LOADED",
+          "value": "14.58",
+          "unit": "V",
+          "raw": "14.58V",
+          "confidence": 0.91,
+          "corrected": false,
+          "entered": false,
+          "source": {
+            "result": 1,
+            "box": [
+              868.0,
+              1865.0,
+              982.0,
+              1890.0
+            ],
+            "page": [
+              1524,
+              2032
+            ]
+          },
+          "warnings": []
+        },
+        {
+          "key": "ripple",
+          "label": "RIPPLE",
+          "value": "12",
+          "unit": "mV",
+          "raw": "12mvV",
+          "confidence": 0.37,
+          "corrected": false,
+          "entered": false,
+          "source": {
+            "result": 1,
+            "box": [
+              890.0,
+              1906.0,
+              983.0,
+              1931.0
+            ],
+            "page": [
+              1524,
+              2032
+            ]
+          },
+          "warnings": [
+            "low_confidence"
+          ]
+        }
+      ],
+      "warnings": [],
+      "box": [
+        344.0,
+        1488.0,
+        983.0,
+        2006.0
+      ]
+    }
+  ],
+  "warnings": []
+}

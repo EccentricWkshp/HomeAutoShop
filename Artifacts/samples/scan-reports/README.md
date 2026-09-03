@@ -18,10 +18,26 @@ gathered from the web are somebody else's besides, published to be read rather
 than for us to redistribute.
 
 So what ships is a **capture**: for a PDF, every word with its position and
-colour; for anything else, the text. Identifying values are rewritten on the
-way in. The parser consumes words rather than documents, so the corpus loses
-nothing that matters — the wrapped labels, the coloured banners, the status
-line that renders above its own row are all preserved exactly.
+colour; for a photograph, every word OCR found with its box and its confidence;
+for anything else, the text. Identifying values are rewritten on the way in. The
+parser consumes words rather than documents, so the corpus loses nothing that
+matters — the wrapped labels, the coloured banners, the status line that renders
+above its own row are all preserved exactly.
+
+**A photograph's capture is OCR's own output and never a transcription.** It
+says so in `read_by`, and the suite refuses a capture that says anything else.
+Writing the words out by hand looks reasonable when the JPEG cannot be committed
+and the machine in front of you has no Tesseract on it, and it produces a record
+of what somebody *imagined* OCR does. Every hard case in the BT600 Plus format
+is a case where OCR does something surprising — `850CCA(CCA)` read as
+`BSOCCA(CCA)`, a value landing on the line above its own label, a section banner
+torn in half — and a transcription would have passed on all of them.
+
+Capture a photograph inside the application container, which has Tesseract:
+
+```sh
+docker compose run --rm app python -m homeautoshop.scantools.capture     "Artifacts/samples/scan-reports/topdon bt600 plus/20260830_105614.jpg"
+```
 
 ```text
 scan-reports/

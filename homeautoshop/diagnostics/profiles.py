@@ -21,7 +21,7 @@ import re
 import yaml
 from django.utils.translation import gettext_lazy as _
 
-from .models import MediaType, ParserProfile, ProfileSource
+from .models import MediaType, ParserProfile, ProfileSource, Reports
 
 FIELDS = (
     "name",
@@ -36,6 +36,10 @@ FIELDS = (
     "tool_vendor",
     "tool_model",
     "version",
+    # What this tool's reports can contain, so the screens stop guessing. A
+    # battery tester does not report trouble codes, and a session page showing
+    # one "0 codes" reports the absence of a thing it cannot produce.
+    "reports",
     "media_type",
     "engine",
     "fingerprint",
@@ -109,6 +113,7 @@ def from_yaml(text: str, *, source: str = ProfileSource.IMPORTED) -> ParserProfi
         version=int(data.get("version", 1) or 1),
         media_type=media_type,
         engine=str(data.get("engine", ""))[:40],
+        reports=_reports(data.get("reports")),
         fingerprint=data.get("fingerprint") or {},
         field_extractors=data.get("field_extractors") or {},
         table_extractor=data.get("table_extractor") or {},
@@ -127,6 +132,29 @@ def from_yaml(text: str, *, source: str = ProfileSource.IMPORTED) -> ParserProfi
                 % {"where": where, "detail": exc}
             ) from exc
     return profile
+
+
+def _reports(value) -> list[str]:
+    """What the profile says its tool's reports contain.
+
+    A closed vocabulary, checked here, because the point of declaring it is to
+    stop the screens guessing — and a typo that silently declares nothing would
+    hide a section rather than fail.
+    """
+    if value in (None, ""):
+        return []
+    if isinstance(value, str):
+        value = [value]
+    out = []
+    for name in value:
+        name = str(name).strip()
+        if name not in Reports.values:
+            raise ProfileInvalid(
+                _("%(value)s is not something a report can contain.") % {"value": name}
+            )
+        if name not in out:
+            out.append(name)
+    return out
 
 
 def _patterns(profile: ParserProfile):
@@ -163,6 +191,7 @@ tool_model: D8
 version: 1
 media_type: pdf
 engine: xtool_d8
+reports: [codes, live_data]
 fingerprint:
   threshold: 0.5
   signals:
@@ -195,6 +224,7 @@ tool_vendor: ''
 tool_model: ''
 version: 1
 media_type: text
+reports: [codes]
 fingerprint:
   threshold: 0.5
   signals:
@@ -235,7 +265,61 @@ table_extractor:
       - '(?i)no (fault|trouble) codes? (found|detected)'
 """
 
-SEED = (XTOOL_D8, GENERIC_TEXT)
+#: The other format a regex cannot read, and for a different reason from the
+#: D8's. This one is a *photograph*: the geometry is the only thing separating
+#: a label from its value, one picture can hold two whole reports, and the
+#: receipt draws a graph whose axis ticks read as voltages. The rules are in
+#: homeautoshop/scantools/topdon_bt600_plus.py and this row names them.
+#:
+#: The fingerprint deliberately needs more than one group to agree. Every
+#: battery slip ever printed says `BATTERY TEST` and prints a voltage — the
+#: mocked Midtronics GR8 in `tests_photo.py` says both — so a signal on either
+#: would claim another maker's paper and hand it to a parser that knows nothing
+#: about it. The threshold sits above what the loudest single signal is worth.
+TOPDON_BT600_PLUS = r"""
+name: TOPDON BT600 Plus - printed test report
+tool_vendor: TOPDON
+tool_model: BT600 Plus
+version: 1
+media_type: image
+engine: topdon_bt600_plus
+# A battery tester has no idea what a trouble code is. Declared rather than
+# inferred from an empty list, because a scan tool that found none is a result
+# worth printing and this is not the same fact.
+reports: [test_results]
+fingerprint:
+  threshold: 0.55
+  signals:
+    - kind: doc_text
+      pattern: '(?i)[B8]\s*T\s*[6G]\s*[0OQD]\s*[0OQD]\s*P\s*[LI1|]\s*[UV]\s*[S5$]'
+      weight: 0.35
+    - kind: doc_text
+      pattern: '(?i)TE[S5]T\s*REP[O0Q]RT'
+      weight: 0.15
+    - kind: doc_text
+      pattern: '(?i)\b(?:BATTERY|CRANK[I1]NG|CHARG[I1]NG)\s*TE[S5]T\b'
+      weight: 0.2
+    - kind: doc_text
+      pattern: '(?i)(?=[\s\S]*\bHEA[L1I|]TH\b)(?=[\s\S]*\bMEA[S5]URED\b)(?=[\s\S]*\b[I1|]NTERNA[L1|]\s*R\b)'
+      weight: 0.15
+    - kind: doc_text
+      # One `(?i)`, at the very front. Python 3.11 refuses a global flag
+      # anywhere else, and `from_yaml` compiles every pattern precisely so a
+      # profile that cannot fire is a refusal rather than a silent zero.
+      pattern: '(?i)(?:(?=[\s\S]*\bUN\s*[L1|][O0Q]ADED\b)(?=[\s\S]*\bR[I1|]PP[L1|]E\b)|(?=[\s\S]*\bCRANK[I1|]NG\b)(?=[\s\S]*\bT[I1|]ME\b)(?=[\s\S]*\bV[O0Q]LTAGE\b))'
+      weight: 0.15
+notes: >
+  Photographed thermal paper, read by OCR. Positional rather than declarative:
+  a label and its value are two columns of one printed line and nothing but
+  their positions joins them, one photograph can hold several whole reports,
+  and the printed graphs put numbers on the page that are not measurements.
+  Results land in DiagnosticSession.test_results rather than in the flat
+  extraction, because a strip holding a cranking test and a charging test has
+  two timestamps and two voltages.
+"""
+
+
+SEED = (XTOOL_D8, TOPDON_BT600_PLUS, GENERIC_TEXT)
 
 
 # --------------------------------------------------------------------------

@@ -70,12 +70,16 @@
       {% for session in sessions %}
         <article class="row spread" style="align-items:baseline">
           <div>
-            <a href="{% url 'session_detail' session.pk %}">
+            <a href="{% url 'session_detail' session.pk %}?from=vehicle">
               {{ session.performed_on|date:"SHORT_DATE_FORMAT" }} — {{ session.tool|default:_("scan") }}
             </a>
             <p class="small muted">
-              {% blocktranslate count counter=session.codes.count %}{{ counter }} code{% plural %}{{ counter }} codes{% endblocktranslate %}
-              · {{ session.get_source_display }}
+              {% comment %}
+              What the scan found, in the terms its own tool reports in. A
+              battery tester's line said "0 codes", which is the absence of a
+              thing it cannot produce; it says GOOD BATTERY now.
+              {% endcomment %}
+              {% if session.headline %}{{ session.headline }} · {% endif %}{{ session.get_source_display }}
               {% if session.parser_profile %}· {{ session.parser_profile.label }}{% endif %}
             </p>
           </div>
@@ -93,7 +97,7 @@
           {% translate "A scan stays out of the history until somebody has checked it over." %}
         </p>
         {% for draft in drafts %}
-          <p><a href="{% url 'session_detail' draft.pk %}">
+          <p><a href="{% url 'session_detail' draft.pk %}?from=vehicle">
             {{ draft.created_at|date:"SHORT_DATE_FORMAT" }} — {{ draft.get_parse_status_display }}
           </a></p>
         {% endfor %}

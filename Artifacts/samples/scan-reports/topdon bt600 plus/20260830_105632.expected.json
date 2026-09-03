@@ -1,0 +1,270 @@
+{
+  "tool": {
+    "vendor": "TOPDON",
+    "model": "BT600 Plus",
+    "serial": "00000000000000"
+  },
+  "page": [
+    1397,
+    1863
+  ],
+  "test_results": [
+    {
+      "kind": "battery",
+      "index": 0,
+      "confidence": 0.69,
+      "verdict": {
+        "key": "verdict",
+        "label": "",
+        "value": "good_recharge",
+        "unit": "",
+        "raw": "GOOD, RECHARGE",
+        "confidence": 0.93,
+        "corrected": false,
+        "entered": false,
+        "source": {
+          "result": 0,
+          "box": [
+            504.0,
+            844.0,
+            894.0,
+            874.0
+          ],
+          "page": [
+            1397,
+            1863
+          ]
+        },
+        "warnings": []
+      },
+      "performed_on": {
+        "key": "performed_on",
+        "label": "",
+        "value": "2026-01-19T15:53:03",
+        "unit": "",
+        "raw": "2026-01-19 15:53:03",
+        "confidence": 0.89,
+        "corrected": false,
+        "entered": false,
+        "source": {
+          "result": 0,
+          "box": [
+            500.0,
+            1645.0,
+            941.0,
+            1680.0
+          ],
+          "page": [
+            1397,
+            1863
+          ]
+        },
+        "warnings": []
+      },
+      "attributes": [
+        {
+          "key": "standard",
+          "label": "STANDARD",
+          "value": "CCA",
+          "unit": "",
+          "raw": "CCA",
+          "confidence": 0.96,
+          "corrected": false,
+          "entered": true,
+          "source": {
+            "result": 0,
+            "box": [
+              1000.0,
+              1415.0,
+              1090.0,
+              1445.0
+            ],
+            "page": [
+              1397,
+              1863
+            ]
+          },
+          "warnings": []
+        },
+        {
+          "key": "type",
+          "label": "TYPE",
+          "value": "regular_flooded",
+          "unit": "",
+          "raw": "REGULAR FLOODED",
+          "confidence": 0.95,
+          "corrected": false,
+          "entered": true,
+          "source": {
+            "result": 0,
+            "box": [
+              654.0,
+              1506.0,
+              1092.0,
+              1543.0
+            ],
+            "page": [
+              1397,
+              1863
+            ]
+          },
+          "warnings": []
+        }
+      ],
+      "readings": [
+        {
+          "key": "health",
+          "label": "HEALTH",
+          "value": "57",
+          "unit": "%",
+          "raw": "57%",
+          "confidence": 0.95,
+          "corrected": false,
+          "entered": false,
+          "source": {
+            "result": 0,
+            "box": [
+              997.0,
+              890.0,
+              1083.0,
+              918.0
+            ],
+            "page": [
+              1397,
+              1863
+            ]
+          },
+          "warnings": []
+        },
+        {
+          "key": "charge",
+          "label": "CHARGE",
+          "value": "35",
+          "unit": "%",
+          "raw": "35%",
+          "confidence": 0.94,
+          "corrected": false,
+          "entered": false,
+          "source": {
+            "result": 0,
+            "box": [
+              998.0,
+              1119.0,
+              1086.0,
+              1148.0
+            ],
+            "page": [
+              1397,
+              1863
+            ]
+          },
+          "warnings": []
+        },
+        {
+          "key": "voltage",
+          "label": "VOLTAGE",
+          "value": "12.21",
+          "unit": "V",
+          "raw": "12.21V",
+          "confidence": 0.88,
+          "corrected": false,
+          "entered": false,
+          "source": {
+            "result": 0,
+            "box": [
+              958.0,
+              1316.0,
+              1088.0,
+              1346.0
+            ],
+            "page": [
+              1397,
+              1863
+            ]
+          },
+          "warnings": []
+        },
+        {
+          "key": "measured",
+          "label": "MEASURED",
+          "value": "640",
+          "unit": "CCA",
+          "raw": "640CCA",
+          "confidence": 0.89,
+          "corrected": false,
+          "entered": false,
+          "source": {
+            "result": 0,
+            "box": [
+              916.0,
+              1365.0,
+              1090.0,
+              1395.0
+            ],
+            "page": [
+              1397,
+              1863
+            ]
+          },
+          "warnings": []
+        },
+        {
+          "key": "rated",
+          "label": "RATED",
+          "value": "850",
+          "unit": "CCA",
+          "raw": "850CCA(CCA)",
+          "confidence": 0.69,
+          "corrected": false,
+          "entered": true,
+          "source": {
+            "result": 0,
+            "box": [
+              795.0,
+              1460.0,
+              1091.0,
+              1497.0
+            ],
+            "page": [
+              1397,
+              1863
+            ]
+          },
+          "warnings": []
+        },
+        {
+          "key": "internal_r",
+          "label": "INTERNAL R",
+          "value": "4.18",
+          "unit": "mΩ",
+          "raw": "04.18mN",
+          "confidence": 0.73,
+          "corrected": false,
+          "entered": false,
+          "source": {
+            "result": 0,
+            "box": [
+              912.0,
+              1559.0,
+              1093.0,
+              1592.0
+            ],
+            "page": [
+              1397,
+              1863
+            ]
+          },
+          "warnings": []
+        }
+      ],
+      "warnings": [],
+      "box": [
+        318.0,
+        517.0,
+        1093.0,
+        1840.0
+      ]
+    }
+  ],
+  "warnings": []
+}

@@ -370,6 +370,11 @@ TRASHABLE = {
     # permanent and invisible at once, which is the pair the three entries
     # above were added to fix.
     "fluid_sample": ("homeautoshop.fluids.models", "FluidSample"),
+    # Sessions have been soft-deleted since drafts were discardable, and the
+    # message has always promised thirty days in the trash — which nothing
+    # showed and nothing could restore. The third time this file has had to
+    # name that pair.
+    "diagnostic_session": ("homeautoshop.diagnostics.models", "DiagnosticSession"),
 }
 
 

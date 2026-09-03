@@ -81,8 +81,15 @@ def session_from_upload(asset, upload, *, user=None, work_order=None) -> Diagnos
         work_order=work_order,
         source=_source_for(document.media_type),
         raw_media=media,
+        # The same file, on the same vehicle, already read and confirmed: this
+        # is that report again, not a second one. Recorded so confirming
+        # replaces it rather than filing the same test twice.
+        supersedes=already_in_history(asset, media),
         extracted_text=document.text[:200_000],
-        extracted_words=document.pages if document.media_type == "pdf" else [],
+        # Whatever geometry the format had. A photograph has some now, and
+        # keeping it is what lets a parser written next year read a receipt
+        # somebody uploaded today by its columns rather than by its text.
+        extracted_words=document.pages,
         parser_profile=profile,
         parser_version=profile.version if profile else None,
         parse_status=ParseStatus.PARSED if profile else ParseStatus.UNMATCHED,
@@ -137,6 +144,7 @@ def _apply_extraction(
     session.odometer_unit = extraction.value("odometer_unit") or session.odometer_unit
     session.live_data = extraction.live_data
     session.readiness_monitors = extraction.readiness
+    session.test_results = extraction.test_results
     if performed := extraction.value("performed_on"):
         parsed = _datetime(performed)
         if parsed is not None:
@@ -184,6 +192,102 @@ def _replace_codes(session: DiagnosticSession, rows: list[dict], *, make: str = 
         )
 
 
+#: How a corrected value is named on the review form: which receipt, which
+#: value. Flat rather than nested because an HTML form is flat, and because the
+#: alternative — one form per receipt — makes "save what I changed" several
+#: buttons instead of one.
+CORRECTION = "tr-{index}-{key}"
+
+
+def correct_results(session: DiagnosticSession, data) -> tuple[int, list[str]]:
+    """Write an operator's corrections onto a draft's test results (FR-INT-4).
+
+    **`extraction` is not touched.** That column is what the machine read, and
+    it is the only way to answer "what did the tool actually say?" a year from
+    now — a question that stops being answerable the moment an edit overwrites
+    it. `test_results` is the corrected copy, and every value it holds records
+    whether a person put it there.
+
+    A value that fails its own shape is refused rather than stored: a reading
+    has to be a number and a timestamp has to be a timestamp, because both feed
+    trends that nothing downstream re-validates. The refusal comes back as a
+    sentence for the operator, not as an exception.
+    """
+    if session.review_status != ReviewStatus.DRAFT:
+        return 0, []
+
+    results = session.test_results or []
+    changed, problems, clocks = 0, [], False
+    for index, result in enumerate(results):
+        for value in _correctable(result):
+            name = CORRECTION.format(index=index, key=value.get("key", ""))
+            if name not in data:
+                continue
+            typed = str(data.get(name) or "").strip()
+            if typed == (value.get("value") or ""):
+                continue
+            label = value.get("label") or value.get("key") or name
+            if value.get("key") == "performed_on":
+                parsed = _datetime(typed) if typed else None
+                if typed and parsed is None:
+                    problems.append(
+                        _("%(label)s is not a date and time.") % {"label": label}
+                    )
+                    continue
+                value["value"] = parsed.isoformat() if parsed else ""
+                clocks = True
+            else:
+                if typed and _decimal(typed) is None:
+                    problems.append(_("%(label)s has to be a number.") % {"label": label})
+                    continue
+                value["value"] = typed
+            value["corrected"] = True
+            # A person looked at the paper. That is not a guess with a
+            # confidence attached to it, and showing it beside the machine's
+            # own numbers as "0.93" would invite exactly the wrong comparison.
+            value["confidence"] = 1.0
+            changed += 1
+
+    if not changed:
+        return 0, problems
+
+    fields = ["test_results", "updated_at"]
+    session.test_results = results
+    if clocks:
+        # **The correction has to reach the session, or it was not a
+        # correction.** A reader who retypes a misread clock and then sees the
+        # scan filed under the misreading has been asked for something that was
+        # thrown away, which is worse than not offering the box. The session is
+        # dated the way the parser dates it — by the *latest* test on the strip,
+        # because print order is not time order.
+        when = _latest(results)
+        if when is not None:
+            session.performed_on = when
+            fields.append("performed_on")
+    session.save(update_fields=fields)
+    return changed, problems
+
+
+def _latest(results: list[dict]):
+    found = []
+    for result in results:
+        value = result.get("performed_on")
+        if isinstance(value, dict) and value.get("value"):
+            parsed = _datetime(value["value"])
+            if parsed is not None:
+                found.append(parsed)
+    return max(found) if found else None
+
+
+def _correctable(result: dict) -> list[dict]:
+    """Readings and the clock, and **exactly** what the review screen offers a
+    box for. A verdict and a battery chemistry are words from the tester's own
+    vocabulary, not numbers to retype."""
+    found = [v for v in (result.get("readings") or []) if isinstance(v, dict)]
+    when = result.get("performed_on")
+    return found + ([when] if isinstance(when, dict) else [])
+
+
 def reparse(session: DiagnosticSession, *, profile: ParserProfile | None = None) -> DiagnosticSession:
     """Read a stored report again with a better profile (FR-INT-5).
 
@@ -191,12 +295,15 @@ def reparse(session: DiagnosticSession, *, profile: ParserProfile | None = None)
     otherwise, so it needs neither the original upload nor object storage to be
     reachable. A confirmed session is never rewritten in place — see
     :func:`_replace_codes`.
+
+    A photograph is the exception, and re-reads its pixels where they are still
+    reachable. For every other format the stored extraction *is* the report —
+    a PDF's word geometry is lossless and re-extracting it would produce the
+    same words — but a photograph's words are whatever OCR made of it on the
+    day, so an improvement to the image pipeline is worth nothing to the
+    reports already uploaded unless re-reading means re-reading the picture.
     """
-    document = engine.Document(
-        text=session.extracted_text,
-        pages=session.extracted_words or [],
-        media_type="pdf" if session.extracted_words else "text",
-    )
+    document = _document_for(session)
     chosen = profile
     match = 0.0
     if chosen is None:
@@ -214,6 +321,51 @@ def reparse(session: DiagnosticSession, *, profile: ParserProfile | None = None)
     return _apply_extraction(
         session, engine.apply(chosen, document), asset=session.asset, confidence=match
     )
+
+
+#: What a stored session was read from, so a re-parse offers a profile the same
+#: kind of document the import did. Inferred from `extracted_words` once, which
+#: was right while only PDFs had any: a photograph with word geometry then
+#: re-parsed as a PDF and matched no image profile at all.
+MEDIA_FOR_SOURCE = {
+    SessionSource.PDF_REPORT: "pdf",
+    SessionSource.PHOTO: "image",
+}
+
+
+def _document_for(session: DiagnosticSession) -> engine.Document:
+    media_type = MEDIA_FOR_SOURCE.get(
+        session.source, "pdf" if session.extracted_words else "text"
+    )
+    if media_type == "image" and session.raw_media_id:
+        fresh = _reread_photo(session)
+        if fresh is not None:
+            return fresh
+    return engine.Document(
+        text=session.extracted_text,
+        pages=session.extracted_words or [],
+        media_type=media_type,
+    )
+
+
+def _reread_photo(session: DiagnosticSession) -> engine.Document | None:
+    """OCR the original photograph again, and keep the better reading.
+
+    Returns nothing where the file is gone, the object store is unreachable or
+    OCR is switched off — all of which are ordinary, and none of which is a
+    reason to refuse to re-parse. The stored text is still there.
+    """
+    try:
+        with session.raw_media.file.open("rb") as handle:
+            document = engine.read(handle.read())
+    except Exception:  # noqa: BLE001
+        log.exception("could not re-read the photograph for session %s", session.pk)
+        return None
+    if not document.text.strip():
+        return None
+    session.extracted_text = document.text[:200_000]
+    session.extracted_words = document.pages
+    return document
 
 
 def session_from_codes(
@@ -263,6 +415,11 @@ def recurrence_check(session: DiagnosticSession) -> int:
             status=CodeStatus.ADDRESSED,
         )
         .exclude(session=session)
+        # A session in the trash is not history. Joining through a foreign key
+        # does not consult the related model's manager, so `session__...` sees
+        # soft-deleted rows unless it is told not to — and a reading that was
+        # removed from the history should not be able to say a fix did not hold.
+        .filter(session__deleted_at__isnull=True)
         .filter(session__performed_on__lt=session.performed_on)
         .values_list("code", flat=True)
     )
@@ -275,10 +432,46 @@ def recurrence_check(session: DiagnosticSession) -> int:
     return flagged
 
 
-def confirm(session: DiagnosticSession, *, user=None) -> int:
-    """Admit a draft to vehicle history and check for recurrences."""
+@transaction.atomic
+def confirm(session: DiagnosticSession, *, user=None) -> tuple[int, DiagnosticSession | None]:
+    """Admit a draft to vehicle history, replacing what it re-read.
+
+    Returns how many codes came back after being addressed, and the session
+    this one displaced, if any.
+
+    **A re-reading is not a second scan.** Re-parsing a confirmed report makes
+    a new draft rather than rewriting the original — that part is right, and
+    it is what lets somebody compare two profiles' answers before choosing.
+    But confirming the new one used to leave both in the vehicle's history:
+    the same battery test, twice, an hour apart in the list and identical in
+    every other respect. So the one that was re-read is retired here, into the
+    trash, where it can be brought back for thirty days.
+    """
+    displaced = session.supersedes
     session.confirm(user=user)
-    return recurrence_check(session)
+    if displaced is not None and not displaced.is_deleted:
+        displaced.delete()
+    else:
+        displaced = None
+    return recurrence_check(session), displaced
+
+
+def already_in_history(asset, media) -> DiagnosticSession | None:
+    """The confirmed session this exact file is already in the history as.
+
+    Media is deduplicated by SHA-256, so the same photograph uploaded twice is
+    the same `Media` row — which makes this the same question as "have I read
+    this report before", asked of the bytes rather than of the operator.
+    """
+    if media is None:
+        return None
+    return (
+        DiagnosticSession.objects.filter(
+            asset=asset, raw_media=media, review_status=ReviewStatus.CONFIRMED
+        )
+        .order_by("-performed_on")
+        .first()
+    )
 
 
 @transaction.atomic

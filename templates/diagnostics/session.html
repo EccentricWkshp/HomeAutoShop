@@ -1,8 +1,13 @@
 {% extends "base.html" %}{% load i18n %}
 {% block title %}{% translate "Review a scan" %} — {{ session.asset.nickname }}{% endblock %}
 {% block content %}
-{% url 'diagnostic_queue' as back_url %}
-{% include "partials/_back.html" with url=back_url label=_("Scans to check") %}
+{% comment %}
+Worked out in the view rather than fixed here. This pointed at the import queue
+unconditionally, which is wrong for a confirmed scan in the plainest way there
+is: that list holds drafts, so the way back led to a page that does not contain
+what you were looking at.
+{% endcomment %}
+{% include "partials/_back.html" with url=back.url label=back.label %}
 <div class="spread">
   <div>
     <h1>{% translate "Review a scan" %}</h1>
@@ -32,12 +37,23 @@
   <p class="msg info">
     {% translate "Nothing here is in the vehicle's history yet. Correct anything the tool got wrong, then confirm." %}
   </p>
+  {% if session.supersedes %}
+    {% comment %}
+    Said before confirming, not after. This is a second reading of a report the
+    vehicle already has, and knowing that is what stops somebody confirming it
+    expecting to end up with two.
+    {% endcomment %}
+    <p class="msg warn">
+      {% blocktranslate with when=session.supersedes.performed_on|date:"SHORT_DATE_FORMAT" %}This is the same report as the one already in the history from {{ when }}. Confirming this reading replaces that one, which goes to the trash.{% endblocktranslate %}
+      <a href="{% url 'session_detail' session.supersedes.pk %}">{% translate "See the one it replaces" %}</a>
+    </p>
+  {% endif %}
 {% endif %}
 
 <div class="cols two">
   <div class="stack">
     <section class="card">
-      <h2>{% translate "What was read" %}</h2>
+      <h2>{% translate "What the reader saw" %}</h2>
       {% if match.confidence %}
         <p class="small muted">
           {% blocktranslate with score=match.value %}Profile matched this report at {{ score }}.{% endblocktranslate %}
@@ -60,7 +76,10 @@
                   {% endfor %}
                 </dl>
               {% else %}
-                <span class="mono">{{ row.value|truncatechars:80 }}</span>
+                <span class="mono{% if row.now %} struck{% endif %}">{{ row.value|truncatechars:80 }}</span>
+                {% if row.now %}
+                  <div class="small">{% blocktranslate with corrected=row.now %}corrected to {{ corrected }}{% endblocktranslate %}</div>
+                {% endif %}
               {% endif %}
             </td>
             <td>
@@ -75,10 +94,20 @@
         </tbody>
       </table></div>
       <p class="small muted">
-        {% translate "Confidence is the parser's own estimate, not a verdict. Anything marked low is worth a second look." %}
+        {% translate "Kept exactly as it was read and never edited, so it stays possible to ask what the tool actually said. Where a value has been corrected, the correction is shown beside it." %}
+        {% translate "Confidence is the parser's own estimate of how clearly it read the value, not a judgement of the value." %}
       </p>
     </section>
 
+    {% comment %}
+    Hidden where the tool's own profile says its reports cannot contain any. A
+    battery, cranking or charging tester never reports a trouble code, so "No
+    codes in this scan." is not a result — it is the absence of a thing that was
+    never going to be there. Where a *scan tool* finds none, that is the best
+    outcome available and the sentence is the whole answer, which is why this
+    is declared in the profile rather than inferred from an empty list.
+    {% endcomment %}
+    {% if session.shows_codes %}
     <section class="card">
       <h2>{% translate "Trouble codes" %}</h2>
       {% if manuals %}
@@ -144,6 +173,11 @@
         </tbody>
       </table></div>
     </section>
+    {% endif %}
+
+    {% if results %}
+      {% include "diagnostics/_test_results.html" %}
+    {% endif %}
 
     {% if session.live_data %}
       <section class="card">
@@ -186,6 +220,21 @@
         </form>
         <form method="post" action="{% url 'session_discard' session.pk %}">{% csrf_token %}
           <button class="linkish small" type="submit">{% translate "Discard this draft" %}</button>
+        </form>
+      </section>
+    {% else %}
+      {% comment %}
+      Removal was offered on drafts alone, which left no way to undo a mistake
+      that had already been confirmed — and since the same report can reach the
+      history twice, that made a duplicate permanent.
+      {% endcomment %}
+      <section class="card">
+        <h2>{% translate "Take it out again" %}</h2>
+        <p class="small muted">
+          {% translate "Removes this scan and its codes from the vehicle's history. It goes to the trash, where it can be restored for 30 days." %}
+        </p>
+        <form method="post" action="{% url 'session_discard' session.pk %}">{% csrf_token %}
+          <button type="submit">{% translate "Remove from the history" %}</button>
         </form>
       </section>
     {% endif %}

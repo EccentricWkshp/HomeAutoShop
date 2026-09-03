@@ -54,6 +54,27 @@ class MediaType(models.TextChoices):
     IMAGE = "image", _("Photo")
 
 
+class Reports(models.TextChoices):
+    """What a tool's report can contain, declared by its profile.
+
+    A battery tester does not report trouble codes. Neither does a charging
+    tester, a compression tester or an alignment rack — and a screen that shows
+    one "0 codes" is not reporting a result, it is reporting the absence of a
+    thing that was never going to be there. Guessing from an empty list would be
+    wrong the other way just as often: a scan tool that found nothing is the
+    best possible outcome and needs saying out loud.
+
+    So the profile declares it. Adding a tool stays a data change, which is
+    §8.3a's whole rule, and the answer comes from whoever wrote the profile and
+    has actually seen the tool's output.
+    """
+
+    CODES = "codes", _("Trouble codes")
+    LIVE_DATA = "live_data", _("Live data")
+    READINESS = "readiness", _("Readiness monitors")
+    TEST_RESULTS = "test_results", _("Bench test results")
+
+
 class ProfileSource(models.TextChoices):
     BUILTIN = "builtin", _("Shipped")
     USER = "user", _("Written here")
@@ -90,6 +111,13 @@ class ParserProfile(BaseModel):
         blank=True,
         help_text=_("Name of a built-in parser, for formats that regex cannot read."),
     )
+
+    #: Which of :class:`Reports` this tool's reports contain. **Empty means
+    #: undeclared, not "nothing"** — every profile written before this existed
+    #: has an empty list, and a screen that read that as "reports nothing" would
+    #: hide the codes those profiles do read. Undeclared falls back to showing
+    #: whatever the session turns out to hold.
+    reports = models.JSONField(default=list, blank=True)
 
     fingerprint = models.JSONField(default=dict, blank=True)
     field_extractors = models.JSONField(default=dict, blank=True)
@@ -140,6 +168,16 @@ class ParserProfile(BaseModel):
     def label(self) -> str:
         return f"{self.name} v{self.version}"
 
+    def could_report(self, what: str) -> bool:
+        """Whether a report from this tool can contain `what` at all.
+
+        True where the profile has not said, because an undeclared profile
+        is one nobody has answered the question for — and hiding a section
+        on the strength of a field that was never filled in would lose real
+        content.
+        """
+        return not self.reports or what in self.reports
+
 
 class DiagnosticSession(RevisionedModel):
     """One scan of one vehicle, from any of the three paths in §8.3.
@@ -182,6 +220,22 @@ class DiagnosticSession(RevisionedModel):
     #: and re-parsing a PDF from flattened text would have thrown it away.
     extracted_words = models.JSONField(default=list, blank=True)
 
+    #: The session in the history this one is a **re-reading of**, where it is
+    #: one. Confirming a session that supersedes another retires that one.
+    #:
+    #: Without this a re-read was a second scan. Re-parsing a confirmed report
+    #: copies it to a new draft — deliberately, so a reading somebody vouched
+    #: for is never rewritten under them — and nothing recorded that the copy
+    #: was the *same report*, so confirming it put the same test in the
+    #: vehicle's history twice with no way to take either out.
+    supersedes = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="superseded_by",
+    )
+
     parser_profile = models.ForeignKey(
         ParserProfile, null=True, blank=True, on_delete=models.SET_NULL, related_name="sessions"
     )
@@ -206,6 +260,16 @@ class DiagnosticSession(RevisionedModel):
     reviewed_at = models.DateTimeField(null=True, blank=True)
     readiness_monitors = models.JSONField(default=dict, blank=True)
     live_data = models.JSONField(default=list, blank=True)
+    #: Whole results from a bench tester, one per receipt — verdict, clock,
+    #: readings, each with its own confidence, bounding box and warnings. See
+    #: `scantools/report.py` for the shape and why it is not flattened into
+    #: `extraction`.
+    #:
+    #: This is the **operator-correctable** copy. `extraction` stays exactly as
+    #: the machine read it, forever, because the whole value of retaining a
+    #: reading is being able to ask later what the tool actually said — and an
+    #: edit that overwrote it would answer that question with the edit.
+    test_results = models.JSONField(default=list, blank=True)
     notes = models.TextField(blank=True)
 
     class Meta(RevisionedModel.Meta):
@@ -221,6 +285,33 @@ class DiagnosticSession(RevisionedModel):
     @property
     def is_draft(self) -> bool:
         return self.review_status == ReviewStatus.DRAFT
+
+    @property
+    def shows_codes(self) -> bool:
+        """Whether this scan's screens should have a trouble-code section.
+
+        `0 codes` beside a battery test is not a result — it is the absence of
+        a thing that was never going to be there. Where a scan *tool* found
+        none, that is the best possible outcome and needs saying out loud, so
+        this asks the profile rather than inferring from an empty list.
+        """
+        if self.parser_profile_id and not self.parser_profile.could_report(Reports.CODES):
+            return False
+        return True
+
+    @property
+    def headline(self) -> str:
+        """One line saying what this scan found, for a list of scans."""
+        from django.utils.translation import ngettext
+
+        count = self.codes.count()
+        if count or self.shows_codes:
+            return ngettext("%(n)d code", "%(n)d codes", count) % {"n": count}
+        verdicts = [
+            (result.get("verdict") or {}).get("raw", "")
+            for result in self.test_results or []
+        ]
+        return " · ".join(v for v in verdicts if v)
 
     def confirm(self, user=None) -> None:
         """Admit the session to vehicle history (§8.3a).

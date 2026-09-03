@@ -1,0 +1,75 @@
+{% load i18n %}
+{% comment %}
+One reading, with everything needed to check it: what the reader made of it,
+what it was read from, and — where the report was a photograph — the patch of
+paper it came off.
+
+The unit is printed beside the box rather than inside it. A field holding
+`12.62 V` is a field somebody will type `12.6V` into, and then a trend has a
+string in it.
+{% endcomment %}
+<tr>
+  <th scope="row">
+    {{ value.label }}
+    {% if value.printed %}<span class="small muted mono"> {{ value.printed }}</span>{% endif %}
+  </th>
+  <td>
+    {% comment %}
+    A box only where the value is actually correctable. `correct_results`
+    accepts readings and the clock and nothing else, so a box beside a battery
+    chemistry was a box whose contents were discarded on submit — and a screen
+    that asks for a value and then ignores it is worse than one that does not
+    ask. Those show the tester's own wording instead, which is what a reader
+    checking against the paper wants anyway.
+    {% endcomment %}
+    {% if editable and value.editable %}
+      <span class="measure">
+        <input type="text" name="{{ value.name }}" value="{{ value.value }}"
+               inputmode="{% if value.numeric %}decimal{% else %}text{% endif %}"
+               size="{% if value.numeric %}8{% else %}20{% endif %}"
+               class="mono{% if value.band == 'low' %} doubtful{% endif %}"
+               aria-label="{% blocktranslate with name=value.label %}{{ name }}, as read{% endblocktranslate %}">
+        {% if value.unit %}<span class="unit">{{ value.unit }}</span>{% endif %}
+      </span>
+    {% else %}
+      <span class="mono">{{ value.display|default:"—" }}{% if value.unit and value.display == value.value %} {{ value.unit }}{% endif %}</span>
+    {% endif %}
+    {% if value.corrected %}
+      <span class="pill">{% translate "corrected" %}</span>
+    {% elif value.band == 'low' %}
+      {% comment %}
+      "Hard to read", not "low". The old wording sat beside a rated capacity and
+      read as doubt about the battery's rating; every confidence on this screen
+      is about how clearly the characters came off the photograph.
+      {% endcomment %}
+      <span class="pill warn">{% translate "hard to read" %}</span>
+    {% endif %}
+    {% for warning in value.warnings %}
+      <div class="small warn">{{ warning }}</div>
+    {% endfor %}
+  </td>
+  <td>
+    <span class="small muted mono">{{ value.raw|default:"—" }}</span>
+    {% if value.crop %}
+      {% comment %}
+      The crop is a photograph, so it is laid out left to right whichever way
+      the page reads: `direction: ltr` on the frame is what a picture needs and
+      what keeps a physical offset out of the stylesheet (SPEC §5.6, R-8).
+
+      The offset is a `transform`, whose percentages resolve against the image's
+      own box. Positioning it with `inset-*` instead resolves them against the
+      container — a span in a table cell, whose width table layout decides — so
+      the image rendered narrower than it was told to and every crop drifted
+      upward in proportion to how far down the receipt it was.
+
+      The numbers are formatted in the view rather than here, because
+      `{{ 33.33 }}` renders as `33,33` under fr-CA and a stylesheet does not
+      read French — the same trap the budget bars fell into.
+      {% endcomment %}
+      <span class="crop" style="aspect-ratio: {{ value.crop.ratio }}">
+        <img src="{{ value.crop.url }}" alt=""
+             style="inline-size: {{ value.crop.zoom }}; transform: translate({{ value.crop.x }}, {{ value.crop.y }})">
+      </span>
+    {% endif %}
+  </td>
+</tr>

@@ -12,8 +12,18 @@ fails if the parser stops reproducing one. The point is regression, not proof:
 a fixture records what the parser did on a day someone checked, so a profile
 change that quietly breaks a two-year-old report cannot reach a release.
 
-    python -m homeautoshop.scantools.capture      # PDFs  -> redacted captures
+    python -m homeautoshop.scantools.capture      # reports -> redacted captures
     python -m homeautoshop.scantools.fixtures --write   # captures -> fixtures
+
+A photograph is captured the same way and needs Tesseract, so run that first
+command in the container:
+
+    docker compose run --rm app python -m homeautoshop.scantools.capture <file>.jpg
+
+Never by hand. A capture records how it was read and the suite refuses an image
+capture that does not say `ocr` — a transcription is a record of what somebody
+imagined OCR does, and every hard case in a photographed format is a case where
+OCR does something surprising.
 
 Regenerate deliberately and read the diff. A fixture updated without looking is
 a test that has been switched off.
@@ -138,6 +148,11 @@ def media_type(capture: pathlib.Path) -> str:
     return data.get("media_type") or "pdf"
 
 
+def image_size(capture: pathlib.Path) -> list:
+    """The frame a photograph's boxes are measured in, if it was one."""
+    return json.loads(capture.read_text(encoding="utf-8")).get("image_size") or []
+
+
 def document(capture: pathlib.Path):
     """A capture as the :class:`engine.Document` the parsers actually take."""
     from homeautoshop.diagnostics import engine
@@ -146,6 +161,7 @@ def document(capture: pathlib.Path):
         text=text(capture),
         pages=pages(capture),
         media_type=media_type(capture),
+        metadata={"image_size": image_size(capture)} if image_size(capture) else {},
     )
 
 
@@ -159,23 +175,48 @@ def document(capture: pathlib.Path):
 #: the corpus's answer to *what produced this* — and because a fixture that
 #: silently changed shape when a profile's score moved would be a regression
 #: test that rewrites its own expectations.
-BUILT_IN_PARSERS = {"xtool d8": "xtool_d8"}
+BUILT_IN_PARSERS = {
+    "xtool d8": "xtool_d8",
+    "topdon bt600 plus": "topdon_bt600_plus",
+}
+
+
+def _xtool_d8(capture: pathlib.Path) -> dict:
+    from .xtool_d8 import parse_pages
+
+    return parse_pages(pages(capture)).to_dict()
+
+
+def _topdon_bt600_plus(capture: pathlib.Path) -> dict:
+    from .topdon_bt600_plus import parse_pages
+
+    return parse_pages(pages(capture), image_size(capture)).to_dict()
+
+
+#: The parser behind each name in :data:`BUILT_IN_PARSERS`. A table rather than
+#: a chain of `if`s because the previous version simply named the XTOOL parser
+#: inline — which meant the second built-in format would have been parsed by
+#: the first one's rules and its fixture would have recorded the result as
+#: correct.
+BUILDERS = {"xtool_d8": _xtool_d8, "topdon_bt600_plus": _topdon_bt600_plus}
 
 
 def build(capture: pathlib.Path) -> dict:
     """The expected output for a capture, from whatever reads its tool.
 
-    Two shapes, because there are two kinds of parser and each is recorded as
-    what it actually produces. A built-in parser yields a whole
-    :class:`report.ScanReport` — vehicle, modules, codes, live data. A
-    declarative profile yields an extraction: named fields with confidence, and
-    a code table. Flattening them into one shape would mean throwing away most
-    of the first to match the second.
-    """
-    if BUILT_IN_PARSERS.get(tool(capture)) == "xtool_d8":
-        from .xtool_d8 import parse_pages
+    Several shapes, because there are several kinds of parser and each is
+    recorded as what it actually produces. The XTOOL parser yields a whole
+    :class:`report.ScanReport` — vehicle, modules, codes, live data. The TOPDON
+    battery tester yields a :class:`report.TesterReport`, which is a list of
+    results rather than a list of codes. A declarative profile yields an
+    extraction: named fields with confidence, and a code table.
 
-        return parse_pages(pages(capture)).to_dict()
+    Flattening them into one shape would mean throwing away most of each to
+    match the smallest.
+    """
+    builder = BUILDERS.get(BUILT_IN_PARSERS.get(tool(capture), ""))
+    if builder is not None:
+        return builder(capture)
     return extraction(capture)
 
 
@@ -219,7 +260,18 @@ def write_all() -> int:
 
 
 if __name__ == "__main__":  # pragma: no cover - developer tool
+    import os
     import sys
+
+    # Set up Django before touching anything. The header advertises this as a
+    # command to run, and it has not been one: every capture that a declarative
+    # profile reads goes through `engine`, which imports the DTC table, which
+    # is lazily translated — so the first fixture built raised
+    # `ImproperlyConfigured` from four frames deep in gettext.
+    import django
+
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+    django.setup()
 
     if "--write" in sys.argv:
         print(f"wrote {write_all()} fixtures to {CORPUS}")

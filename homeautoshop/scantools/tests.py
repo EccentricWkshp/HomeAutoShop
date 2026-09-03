@@ -352,11 +352,74 @@ class RedactionTests(unittest.TestCase):
                         self.assertIn(found, ALLOWED_VINS, f"{found} is not a stand-in")
 
 
+class MachineReadTests(unittest.TestCase):
+    """A capture is what a reader produced, never what a person typed.
+
+    This matters most for photographs, and it is the one place the temptation
+    is real: a JPEG cannot be committed, OCR needs Tesseract installed, and
+    writing the words out by hand looks like a reasonable way to get a fixture
+    when the machine in front of you has no OCR on it.
+
+    It is not. A hand-made capture is a record of what somebody *imagined* OCR
+    does, and every hard case in the BT600 Plus format is a case where OCR does
+    something surprising — `850CCA(CCA)` read as `BSOCCA(CCA)`, a value landing
+    a line above its own label, a section banner torn in half. A fixture built
+    on a transcription would have passed on all of them and shipped a parser
+    that failed on all of them.
+
+    So the capture says how it was read, and this refuses anything that does
+    not say `ocr`. `python -m homeautoshop.scantools.capture <file>.jpg`, in the
+    container, which has Tesseract.
+    """
+
+    @unittest.skipIf(not SAMPLES, "no captured samples in the corpus")
+    def test_every_photograph_was_read_by_a_machine(self):
+        import json
+
+        for sample in SAMPLES:
+            data = json.loads(sample.read_text(encoding="utf-8"))
+            if data.get("media_type") != "image":
+                continue
+            with self.subTest(capture=sample.name):
+                self.assertEqual(
+                    data.get("read_by"),
+                    "ocr",
+                    "an image capture must record that OCR produced it",
+                )
+
+    @unittest.skipIf(not SAMPLES, "no captured samples in the corpus")
+    def test_a_photograph_keeps_the_confidence_its_reader_reported(self):
+        """Without it every value would be assumed good, which is the opposite
+        of what a photograph deserves."""
+        import json
+
+        for sample in SAMPLES:
+            data = json.loads(sample.read_text(encoding="utf-8"))
+            if data.get("media_type") != "image":
+                continue
+            words = [w for page in data.get("pages") or [] for w in page]
+            with self.subTest(capture=sample.name):
+                self.assertTrue(words, "no words at all")
+                self.assertTrue(all("conf" in w for w in words))
+                self.assertTrue(all("bottom" in w for w in words))
+
+
 class ShapeTests(unittest.TestCase):
     def test_a_report_serializes_to_plain_json_types(self):
         import json
 
         json.dumps(ScanReport().to_dict())
+
+    def test_a_tester_report_serializes_to_plain_json_types(self):
+        import json
+
+        from .report import TesterReport, TestResult, Value
+
+        json.dumps(
+            TesterReport(
+                results=[TestResult(kind="battery", readings=[Value(key="health")])]
+            ).to_dict()
+        )
 
 
 class TheCorpusIsWhereItSaysItIsTests(unittest.TestCase):
@@ -555,6 +618,68 @@ class RedactingWordGeometryTests(unittest.TestCase):
         page = self._page(("Customer:", 267.4), ("Technician:", 267.4))
         out, _ = capture.redact_words(page)
         self.assertEqual(out, ["Customer:", "Technician:"])
+
+
+#: A **made-up** serial of the shape a BT600 Plus prints. The real one lives in
+#: the private JPEGs and belongs nowhere else: it names a specific piece of
+#: equipment, this repository is public, and a public repository is forever.
+#: Writing the genuine value into a test *about redacting it* is the mistake
+#: this class exists to catch, and it was made here once.
+SERIAL = "470815Y7M3118T"
+
+
+class RedactingABenchTesterTests(unittest.TestCase):
+    """The rule that reaches a photograph, using the geometry that broke it.
+
+    Every redaction rule here works by asking what is printed *beside* a value,
+    and `_same_line` is what answers. It compared word **tops** against a
+    tolerance scaled from the words' own height — which is correct arithmetic
+    and the wrong statistic. On a real OCR capture of a BT600 Plus slip, `SN:`
+    and the serial beside it have tops 24 pixels apart, because the colon runs
+    a full cap height and the serial is digits, against a tolerance of 21.
+
+    So they were not the same line, so no label preceded the serial, so the
+    tester's real serial number was written into this repository and committed.
+    Getting *beside* wrong does not weaken the redaction; it switches it off.
+    """
+
+    #: The geometry is from `20260830_105632.words.json` exactly as captured;
+    #: only the serial is a stand-in.
+    SERIAL_ROW = [
+        {"text": "SN:", "x0": 320.0, "x1": 388.0, "top": 1579.0, "bottom": 1634.0},
+        {
+            "text": SERIAL,
+            "x0": 719.0,
+            "x1": 1094.0,
+            "top": 1603.0,
+            "bottom": 1639.0,
+        },
+    ]
+
+    def test_a_tester_serial_is_zeroed_even_when_its_label_sits_higher(self):
+        texts, _made = capture.redact_words(self.SERIAL_ROW)
+
+        self.assertEqual(texts, ["SN:", "0" * len(SERIAL)])
+
+    def test_the_label_beside_it_is_kept_because_a_parser_matches_on_it(self):
+        texts, _made = capture.redact_words(self.SERIAL_ROW)
+
+        self.assertEqual(texts[0], "SN:")
+
+    def test_the_tolerance_is_taken_from_the_words_not_from_a_constant(self):
+        """Two points is right for a PDF and meaningless for a photograph."""
+        self.assertEqual(capture.line_tolerance([]), capture.LINE_TOLERANCE)
+        self.assertGreater(capture.line_tolerance(self.SERIAL_ROW), 20)
+
+    def test_a_value_on_the_line_below_is_still_a_different_line(self):
+        """The fix must not join the whole page into one row."""
+        below = [
+            self.SERIAL_ROW[0],
+            {**self.SERIAL_ROW[1], "top": 1750.0, "bottom": 1786.0},
+        ]
+        texts, _made = capture.redact_words(below)
+
+        self.assertEqual(texts[1], SERIAL)
 
 
 class CapturingATextReportTests(unittest.TestCase):

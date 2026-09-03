@@ -254,6 +254,51 @@ That is the wall the D8 hit, and the answer is the same: no profile is published
 
 The same rule settled TOPDON, where the two tablets in the corpus differ: one wraps to a fixed two lines and is read completely, the other to a variable depth and is not. Fingerprinting on the shared header claimed both and read one fault in eleven out of the second — recognized and effectively unread, which is the worst answer a fingerprint can give. **A profile should claim the layout it can read, not every report the vendor has ever printed.**
 
+### `reports` — what this tool's reports can contain
+
+```yaml
+reports: [codes, live_data]     # a scan tool
+reports: [test_results]         # a battery tester
+```
+
+Optional, and **omitting it means "not said" rather than "nothing"** — every
+profile written before the field existed omits it, and a screen reading that as
+"reports nothing" would hide what those profiles do read.
+
+Worth filling in, because the alternative is the screens guessing. A battery
+tester cannot produce a trouble code, so a session page offering "No codes in
+this scan." reports the absence of a thing that was never going to be there;
+and a *scan tool* that found none is the best outcome available, which needs
+saying out loud. Those are different facts and an empty list cannot tell them
+apart. The vocabulary is closed and a value outside it is refused at import.
+
+### `media_type: image` — a report that is a photograph
+
+Some equipment prints paper and nothing else. A profile can declare
+`media_type: image` and be matched against a phone photo, whose text comes from
+OCR of the words rather than from a text layer.
+
+Everything about the contract is the same and one thing about the input is not:
+**a photograph's geometry is measured, not authored.** Word tops on one printed
+line differ by tens of pixels, which is why line reconstruction groups by the
+middle of a word and takes its tolerance from the words' own height rather than
+from a constant that was right for a PDF's points.
+
+The second built-in parser lives behind such a profile
+(`engine: topdon_bt600_plus`), for reasons the D8 did not have: one picture can
+hold several complete reports with a clock each, and the receipt prints graphs
+whose axis ticks read as numbers with units beside them. SPEC §8.3a (a2) has the
+detail. Results from it land in `DiagnosticSession.test_results` rather than in
+the flat extraction, because a strip holding a cranking test and a charging test
+has two timestamps and two voltages and the flat shape has room for one of each.
+
+Fingerprint an image profile on **several signal groups**, not one. Every
+battery slip ever printed says `BATTERY TEST` and shows a voltage, so a profile
+resting on either claims another maker's paper and hands it to a parser that
+knows nothing about it. Allow for the substitutions a camera and a thermal
+printer actually produce — `G` for `6`, `O`/`Q`/`D` for `0` — rather than the
+ones that seem plausible; the corpus says which.
+
 ## 2. Development workflow for a new profile
 
 ```

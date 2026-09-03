@@ -1,0 +1,107 @@
+{% load i18n %}
+{% comment %}
+One card per receipt (SPEC §8.3a, FR-INT-4).
+
+A scan tool's answer is a list of codes and fits the table above it. A bench
+tester's answer does not: it is a verdict, a clock and a handful of readings,
+printed once per test — and one photograph of a strip of thermal paper can hold
+two of them, forty seconds apart, each with its own idea of what VOLTAGE means.
+
+Every value shows what it was read from and, where the original was a
+photograph, the patch of paper it came off. That crop is the whole review: the
+question in front of the operator is "does this match the paper", and the paper
+is a phone photo they would otherwise have to open in another tab, rotate and
+scroll.
+{% endcomment %}
+<section class="card" id="test-results">
+  <h2>{% translate "Test results" %}</h2>
+  <p class="small muted">
+    {% comment %}
+    Said plainly because it was read the other way. A confidence beside `RATED`
+    looks like doubt about the battery's rating; it is doubt about the
+    photograph. Nothing here judges a reading — only how clearly it came off
+    the paper.
+    {% endcomment %}
+    {% translate "What the tester printed, one card per receipt. Where a value is marked hard to read, that is about the photograph and not about the reading — compare it against the crop beside it." %}
+  </p>
+
+  <form method="post" action="{% url 'session_correct' session.pk %}" class="stack">
+    {% csrf_token %}
+    {% comment %}
+    Names the region so the redirect lands back here rather than at the top of
+    the page — the convention in `KeepYourPlaceMiddleware` and the reason
+    `AnchorTests` exists.
+    {% endcomment %}
+    <input type="hidden" name="_anchor" value="test-results">
+
+    {% for result in results %}
+      <article class="result">
+        <header class="spread">
+          <h3>
+            {{ result.title }}
+            {% if result.verdict %}
+              <span class="pill{% if result.verdict.band == 'low' %} warn{% endif %}">{{ result.verdict.raw }}</span>
+            {% endif %}
+          </h3>
+          {% if result.performed_on and result.performed_on.value %}
+            <span class="small muted mono">{{ result.performed_on.value }}</span>
+          {% endif %}
+        </header>
+
+        {% for warning in result.warnings %}
+          <p class="small warn">{{ warning }}</p>
+        {% endfor %}
+
+        <div class="tablewrap"><table>
+          <thead><tr>
+            <th>{% translate "Measured" %}</th>
+            <th>{% translate "Value" %}</th>
+            <th>{% translate "On the paper" %}</th>
+          </tr></thead>
+          <tbody>
+          {% for value in result.readings %}
+            {% include "diagnostics/_test_value.html" with value=value editable=session.is_draft %}
+          {% endfor %}
+          {% if result.performed_on %}
+            {% include "diagnostics/_test_value.html" with value=result.performed_on editable=session.is_draft %}
+          {% endif %}
+          </tbody>
+        </table></div>
+
+        {% if result.entered %}
+          {% comment %}
+          Kept apart from the measurements deliberately. A battery tester is
+          keyed with the capacity, standard and chemistry printed on the
+          battery's own label before the test runs, and prints them back on the
+          slip; `MEASURED: 755CCA` against `RATED: 850CCA` is the entire result.
+          In one list the reader takes the second for a reading of the battery.
+          {% endcomment %}
+          <div class="tablewrap"><table>
+            <thead><tr>
+              <th>{% translate "Set on the tester" %}</th>
+              <th>{% translate "Value" %}</th>
+              <th>{% translate "On the paper" %}</th>
+            </tr></thead>
+            <tbody>
+            {% for value in result.entered %}
+              {% include "diagnostics/_test_value.html" with value=value editable=session.is_draft %}
+            {% endfor %}
+            </tbody>
+          </table></div>
+          <p class="small muted">
+            {% translate "Read off the battery's own label and typed into the tester before the test — not something it measured." %}
+          </p>
+        {% endif %}
+      </article>
+    {% endfor %}
+
+    {% if session.is_draft %}
+      <div>
+        <button type="submit">{% translate "Save these corrections" %}</button>
+        <span class="small muted">
+          {% translate "Corrections are kept separately from what the machine read, which is never overwritten." %}
+        </span>
+      </div>
+    {% endif %}
+  </form>
+</section>

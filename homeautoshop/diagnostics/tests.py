@@ -515,7 +515,7 @@ class CodeWorkflowTests(TestCase):
         first.codes.update(status=CodeStatus.ADDRESSED)
 
         later = services.session_from_codes(self.asset, [{"code": "P0420"}], user=self.user)
-        recurring = services.confirm(later, user=self.user)
+        recurring, _displaced = services.confirm(later, user=self.user)
 
         self.assertEqual(recurring, 1)
         self.assertEqual(later.codes.get().status, CodeStatus.RECURRING)
@@ -526,7 +526,7 @@ class CodeWorkflowTests(TestCase):
         first.codes.update(status=CodeStatus.IGNORED)
 
         later = services.session_from_codes(self.asset, [{"code": "P0420"}], user=self.user)
-        self.assertEqual(services.confirm(later, user=self.user), 0)
+        self.assertEqual(services.confirm(later, user=self.user), (0, None))
 
     def test_another_vehicles_history_does_not_flag_this_one(self):
         other = Asset.objects.create(nickname="Van", vin="1FTFW1ET5DFC10312")
@@ -535,7 +535,7 @@ class CodeWorkflowTests(TestCase):
         theirs.codes.update(status=CodeStatus.ADDRESSED)
 
         mine = services.session_from_codes(self.asset, [{"code": "P0420"}], user=self.user)
-        self.assertEqual(services.confirm(mine, user=self.user), 0)
+        self.assertEqual(services.confirm(mine, user=self.user), (0, None))
 
     def test_a_reading_cannot_be_edited_into_being_right(self):
         code = self._scan().codes.get()

@@ -76,6 +76,14 @@ class Extraction:
     codes: list[dict] = field(default_factory=list)
     live_data: list[dict] = field(default_factory=list)
     readiness: dict = field(default_factory=dict)
+    #: Whole results from a bench tester — see `scantools/report.py`. A scan
+    #: tool answers *what is wrong* and fills `codes`; a battery tester answers
+    #: *what did this measure* and prints its answer once per test, with its own
+    #: verdict and its own clock each time. One photograph of a BT600 Plus
+    #: printout holds a cranking test and a charging test taken forty seconds
+    #: apart, so a flat `{field: value}` dictionary would have to throw one of
+    #: the two timestamps and one of the two voltages away.
+    test_results: list[dict] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
     def value(self, name: str, default: str = "") -> str:
@@ -196,11 +204,23 @@ def _read_image(raw: bytes) -> Document:
     The difference is that this one has somebody standing in front of it
     waiting to review what was read, and a review screen that appears empty and
     fills in later is worse than a request that takes two seconds.
-    """
-    from homeautoshop.mediafiles.services import read_image_text
 
-    text = normalize(read_image_text(raw))
-    return Document(text=text, media_type="image")
+    **The words are kept, not only the text.** A photograph of a printout has
+    exactly the property that made the D8 need a positional parser: labels in
+    one column and values in another, meaningful only together. That geometry
+    was recognized, used to produce a string, and thrown away — so an image was
+    the one format where a built-in parser had nothing to stand on.
+    """
+    from homeautoshop.mediafiles.services import image_size, read_image_words
+
+    pages = read_image_words(raw)
+    text = normalize("\n".join(lines_from_words(pages)))
+    return Document(
+        text=text,
+        pages=pages,
+        media_type="image",
+        metadata={"image_size": list(image_size(raw))},
+    )
 
 
 def _looks_delimited(text: str) -> bool:
@@ -216,8 +236,40 @@ def _looks_delimited(text: str) -> bool:
     return len(counts) == 1 and counts.pop() >= 2
 
 
-#: Tops within this far apart were printed on the same line.
+#: Tops within this far apart were printed on the same line — in a PDF, where
+#: the units are points and a line of body text is ten of them. A photograph's
+#: geometry is pixels and a printed line is sixty of them tall, so the constant
+#: is scaled by :func:`_line_tolerance` wherever the words say how tall they
+#: are. Left as the floor rather than replaced: a PDF's word geometry carries
+#: no height, and two points is the right answer there.
 LINE_TOLERANCE = 2.0
+
+
+def _line_tolerance(page: list[dict]) -> tuple[float, bool]:
+    """How far apart two words can be and still share a line, and whether the
+    page carries real glyph heights — which is also whether its word order
+    means anything.
+    """
+    heights = sorted(
+        height
+        for word in page
+        if (height := float(word.get("bottom", 0) or 0) - float(word.get("top", 0) or 0)) > 0
+    )
+    if not heights:
+        return LINE_TOLERANCE, False
+    return max(LINE_TOLERANCE, 0.6 * heights[len(heights) // 2]), True
+
+
+def _row_of(word: dict) -> float:
+    """A word's vertical middle, which is what shares a line with its neighbour.
+
+    Not its top. `HEALTH:` and `79%` are printed on one line by a tester whose
+    two glyph heights differ, and on a photograph of that line the tops differ
+    by more than the `%` is tall — so grouping by top splits a label from its
+    own value, which is the only thing on the receipt that matters.
+    """
+    top = float(word.get("top", 0) or 0)
+    return (top + float(word.get("bottom", top) or top)) / 2.0
 
 
 def lines_from_words(pages: list[list[dict]]) -> list[str]:
@@ -246,17 +298,39 @@ def lines_from_words(pages: list[list[dict]]) -> list[str]:
     """
     out: list[str] = []
     for page in pages:
-        rows: list[list[str]] = []
-        top_of: float | None = None
-        for word in sorted(
-            page, key=lambda w: (float(w.get("top", 0)), float(w.get("x0", 0)))
-        ):
-            top = float(word.get("top", 0))
-            if top_of is None or abs(top - top_of) > LINE_TOLERANCE:
+        tolerance, measured = _line_tolerance(page)
+        rows: list[list[dict]] = []
+        row_at: float | None = None
+        for word in sorted(page, key=lambda w: (_row_of(w), float(w.get("x0", 0)))):
+            here = _row_of(word)
+            if row_at is None or abs(here - row_at) > tolerance:
                 rows.append([])
-                top_of = top
-            rows[-1].append(normalize(str(word.get("text", ""))))
-        out.extend(" ".join(row) for row in rows)
+                row_at = here
+            rows[-1].append(word)
+        for row in rows:
+            if measured:
+                # Left to right, but only for geometry that was *measured* —
+                # which in practice means OCR. Grouping walks the page top to
+                # bottom, so words arrive in the order their lines start, and
+                # that is reading order only when every word on a line shares a
+                # top. On a photograph none of them do: `BATTERY TEST` came out
+                # as `TEST "BATTERY`, costing the profile the section heading
+                # it fingerprints on.
+                #
+                # A PDF is deliberately left alone, and this is a compatibility
+                # decision rather than a claim that it is right. It is not
+                # right — a Toyota report prints a module's fault count in a
+                # narrow column to the *right* of its name and one point
+                # higher, so extraction order gives `2 EOBD/OBD II` where the
+                # page says `EOBD/OBD II 2`. But the catalog's section patterns
+                # were written against what this function returns, and two of
+                # them stop finding their headings when it changes: nine
+                # modules' worth of code attribution on two real reports,
+                # silently, plus four summary rows that then look like data
+                # stream readings. Fixing it means new profile versions, which
+                # is its own change. Recorded in SPEC §19.
+                row.sort(key=lambda w: float(w.get("x0", 0)))
+            out.append(" ".join(normalize(str(word.get("text", ""))) for word in row))
     return out
 
 
@@ -343,7 +417,63 @@ def _xtool_d8(document: Document) -> Extraction:
     return out
 
 
-BUILTINS = {"xtool_d8": _xtool_d8}
+def _topdon_bt600_plus(document: Document) -> Extraction:
+    """A battery tester's paper, read off a photograph of it.
+
+    Only four scalars come out of here, and that is the point. The readings
+    live in `test_results`, whole, because they belong to a test rather than to
+    the session — a photograph holding a cranking test and a charging test has
+    two voltages and neither of them is *the* voltage.
+
+    What is scalar is what is true of the encounter: which tool, whose serial,
+    and when the last test on the strip finished. Those are the fields the
+    confirm form edits, and they are the ones a session has room for.
+    """
+    from homeautoshop.scantools import topdon_bt600_plus as bt600
+
+    report = (
+        bt600.parse_pages(document.pages, document.metadata.get("image_size") or ())
+        if document.pages
+        else bt600.parse_text(document.text)
+    )
+    out = Extraction(warnings=list(report.warnings))
+    # With the frame the boxes are measured in. Without it every box is a
+    # rectangle in unknown units and the review screen can show no crop —
+    # which is exactly what happened, silently, because a box with no page
+    # beside it still looks like a perfectly good box.
+    out.test_results = [result.to_dict(report.page) for result in report.results]
+
+    def put(name: str, value, confidence: float, label: str) -> None:
+        if value in (None, ""):
+            return
+        out.fields[name] = Field(
+            value=str(value), confidence=confidence, page=1, label=label
+        )
+
+    put("tool_vendor", report.tool.vendor, 1.0, str(_("Tool")))
+    put("tool_model", report.tool.model, 1.0, str(_("Model")))
+    put("tool_serial", report.tool.serial, 0.8, str(_("Serial")))
+
+    when = report.performed_on
+    if when is not None:
+        # Carried at the confidence of the receipt it came off, not at the
+        # parser's. The one sample with a damaged timestamp is damaged on the
+        # paper, and a review screen that showed it as certain would be lying
+        # about the only value on the page nobody can check twice.
+        latest = max(
+            (r for r in report.results if r.when == when),
+            key=lambda r: r.performed_on.confidence,
+        )
+        put(
+            "performed_on",
+            when.isoformat(),
+            latest.performed_on.confidence,
+            str(_("Date")),
+        )
+    return out
+
+
+BUILTINS = {"xtool_d8": _xtool_d8, "topdon_bt600_plus": _topdon_bt600_plus}
 
 
 # --------------------------------------------------------------------------
@@ -372,7 +502,10 @@ def score(profile, document: Document) -> float:
             continue
         haystack = document.text
         if kind == "pdf_metadata":
-            haystack = " ".join(document.metadata.values())
+            # Stringified, because metadata is no longer only a PDF's own
+            # `/Producer` strings: a photograph carries the size of the frame
+            # its boxes are measured in, which is a list.
+            haystack = " ".join(str(v) for v in document.metadata.values())
         elif kind == "page_text":
             haystack = document.text.split("\n", 1)[0]
         try:

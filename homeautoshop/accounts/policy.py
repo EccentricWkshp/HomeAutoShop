@@ -89,7 +89,7 @@ VEHICLE = frozenset({
     "fluid_sample_edit", "fluid_sample_delete", "fluid_sample_report",
     # Diagnostics
     "diagnostic_queue", "session_detail", "session_import", "session_confirm",
-    "session_discard", "session_map", "session_reparse", "code_status",
+    "session_discard", "session_correct", "session_map", "session_reparse", "code_status",
     "code_describe", "code_promote", "code_reference", "elm327", "elm_capture",
 })
 

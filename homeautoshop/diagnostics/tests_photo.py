@@ -42,6 +42,34 @@ VOLTAGE   12.61 V
 """
 
 
+def as_words(text: str) -> list[list[dict]]:
+    """A slip of text as the word geometry OCR would have returned.
+
+    The image path asks for words rather than a string now (§7.9): a
+    photographed printout puts its labels in one column and its values in
+    another, and a parser that cannot see the columns cannot read it. Mocking
+    the words rather than the text is what keeps these tests testing the path
+    the application takes.
+    """
+    page, top = [], 0.0
+    for line in text.splitlines():
+        left = 0.0
+        for word in line.split():
+            page.append(
+                {
+                    "text": word,
+                    "x0": left,
+                    "x1": left + len(word) * 9.0,
+                    "top": top,
+                    "bottom": top + 14.0,
+                    "conf": 92.0,
+                }
+            )
+            left += len(word) * 9.0 + 9.0
+        top += 20.0
+    return [page]
+
+
 def a_photo(name: str = "slip.jpg") -> SimpleUploadedFile:
     """A real JPEG, so the signature check is doing the work, not the name."""
     from PIL import Image
@@ -56,16 +84,29 @@ class RecognitionTests(TestCase):
 
     def test_a_jpeg_is_read_as_an_image_not_as_text(self):
         with mock.patch(
-            "homeautoshop.mediafiles.services.read_image_text", return_value=BATTERY_SLIP
+            "homeautoshop.mediafiles.services.read_image_words",
+            return_value=as_words(BATTERY_SLIP),
         ):
             document = engine.read(a_photo())
         self.assertEqual(document.media_type, "image")
         self.assertIn("612 CCA", document.text)
 
+    def test_the_words_are_kept_and_not_only_the_text(self):
+        """Geometry is the whole of what separates a label from its value on a
+        photograph, and it used to be recognized and then discarded."""
+        with mock.patch(
+            "homeautoshop.mediafiles.services.read_image_words",
+            return_value=as_words(BATTERY_SLIP),
+        ):
+            document = engine.read(a_photo())
+        self.assertTrue(document.pages)
+        self.assertEqual(document.pages[0][0]["text"], "MIDTRONICS")
+
     def test_the_signature_decides_rather_than_the_file_name(self):
         """A phone hands over a HEIC named `.jpg` often enough to matter."""
         with mock.patch(
-            "homeautoshop.mediafiles.services.read_image_text", return_value="x"
+            "homeautoshop.mediafiles.services.read_image_words",
+            return_value=as_words("x"),
         ):
             self.assertEqual(engine.read(a_photo("report.pdf")).media_type, "image")
 
@@ -80,6 +121,7 @@ class RecognitionTests(TestCase):
 
         with mock.patch.dict("sys.modules", {"pytesseract": None}):
             self.assertEqual(services.read_image_text(b"\xff\xd8\xff not a jpeg"), "")
+            self.assertEqual(services.read_image_words(b"\xff\xd8\xff not a jpeg"), [])
 
     @override_settings(OCR_ENABLED=False)
     def test_with_ocr_switched_off_it_says_nothing_rather_than_guessing(self):
@@ -137,7 +179,8 @@ class ImportTests(TestCase):
 
     def upload(self, field="report", **kwargs):
         with mock.patch(
-            "homeautoshop.mediafiles.services.read_image_text", return_value=BATTERY_SLIP
+            "homeautoshop.mediafiles.services.read_image_words",
+            return_value=as_words(BATTERY_SLIP),
         ):
             return self.client.post(
                 reverse("session_import", args=[self.asset.pk]),
