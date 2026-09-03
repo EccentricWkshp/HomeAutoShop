@@ -54,7 +54,20 @@ services:
     # only somebody wanting a provider outside the four built in has to.
     image: eccentricwkshp/homeautoshop-caddy:${HOMEAUTOSHOP_TAG:-latest}
     restart: unless-stopped
-    ports: ["80:80", "443:443", "443:443/udp"]
+    # Only what the *host* publishes changes here — Caddy always listens on 80
+    # and 443 inside the container, so moving these needs no Caddy config and
+    # no new certificate. A machine already running something on 80, which is
+    # most machines that have ever hosted anything, sets HTTP_PORT=8080 and
+    # HTTPS_PORT=8443 in .env and is done.
+    #
+    # HTTPS_PORT must agree with the port in BASE_URL. That is what QR labels
+    # are printed from (core/labels.py) and what notification links use, and a
+    # label carrying the wrong port is found by somebody scanning a bin months
+    # later. The proxy says so at startup if the two disagree.
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+      - "${HTTPS_PORT:-443}:443/udp"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       # All strategies are mounted; the entrypoint picks one from TLS_MODE and
@@ -70,6 +83,11 @@ services:
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:-shop.home.arpa}
       TLS_MODE: ${TLS_MODE:-internal}
+      # For the http:// → https:// redirect, which has to name a non-default
+      # port or it sends the browser somewhere nothing is listening. And
+      # BASE_URL only so the entrypoint can check the two agree.
+      HTTPS_PORT: ${HTTPS_PORT:-443}
+      BASE_URL: ${BASE_URL:-}
       ACME_EMAIL: ${ACME_EMAIL:-}
       ACME_DNS_PROVIDER: ${ACME_DNS_PROVIDER:-}
       ACME_DNS_TOKEN: ${ACME_DNS_TOKEN:-}

@@ -123,7 +123,7 @@ All three must print a version. Then go to step 2.
 `docker.io` is usually old and ships no Compose v2 at all, and the symptom is
 unhelpful — the command simply does not exist:
 
-```
+```text
 $ docker compose version
 docker: unknown command: docker compose
 ```
@@ -391,6 +391,49 @@ terminates TLS and forwards to the app.
 TLS is not decoration here: service workers, the camera used for VIN barcode
 scanning, and Web Serial all refuse to run outside a secure context, so there
 is no plain-HTTP mode to fall back to.
+
+### If ports 80 or 443 are already taken
+
+A machine that already runs something on those ports — a NAS web interface,
+another reverse proxy, IIS on Windows — fails at `docker compose up` with:
+
+```text
+failed to bind host port 0.0.0.0:80/tcp: address already in use
+```
+
+Set both ports in `.env` and start again:
+
+```ini
+HTTP_PORT=8080
+HTTPS_PORT=8443
+BASE_URL=https://shop.home.arpa:8443
+```
+
+```bash
+docker compose up -d
+```
+
+**Only the host side moves.** Caddy still listens on 80 and 443 inside the
+container, so there is no Caddy configuration to edit, no new certificate, and
+nothing about TLS changes. The site is simply at `https://shop.home.arpa:8443`.
+
+`BASE_URL` is the part worth getting right, and the reason it is listed above.
+It is what **printed QR labels** for bins and vehicles encode, and what
+notification links use — so a wrong port there is discovered by somebody
+standing at a shelf months later, scanning a label that goes nowhere. The proxy
+checks the two agree and says so at startup if they do not:
+
+```text
+warning: BASE_URL says port 443, but HTTPS is published on 8443.
+```
+
+Everything else follows automatically. `CSRF_TRUSTED_ORIGINS` defaults to
+`BASE_URL`, and the `http://` → `https://` redirect is given the port so it
+does not send browsers to a port nothing is listening on.
+
+> Pick ports above 1024. Below that, Linux and macOS need root to bind, which
+> is a separate problem from the one you are solving. 8080 and 8443 are the
+> conventional pair.
 
 **Make the name resolve — to the host's LAN address.** Caddy answers for
 `SITE_ADDRESS` and nothing else, so `https://localhost` fails even though the

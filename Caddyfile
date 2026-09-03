@@ -36,5 +36,10 @@
 }
 
 http:// {
-	redir https://{host}{uri} permanent
+	# `{host}` is the hostname without a port, which is right when HTTPS is on
+	# 443 and wrong the moment it is not: the redirect would land on a port
+	# nothing is listening on, and read as the site being down rather than as a
+	# redirect being wrong. The entrypoint sets HTTPS_PORT_SUFFIX to `:8443` or
+	# to nothing at all, from the same HTTPS_PORT compose publishes.
+	redir https://{host}{$HTTPS_PORT_SUFFIX}{uri} permanent
 }
