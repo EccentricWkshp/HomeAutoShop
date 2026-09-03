@@ -1,7 +1,7 @@
 # Installing HomeAutoShop
 
 From nothing to a working instance you can sign in to. About fifteen minutes,
-most of it waiting for images to pull.
+most of it waiting for container images to download and build.
 
 The one thing worth knowing up front: **a new instance has no accounts.** That
 is deliberate — there is no default login to forget to change — but it means
@@ -11,8 +11,9 @@ from an empty database volume.
 
 ## 1. Prerequisites
 
-Docker with the **Compose v2 plugin**. On Debian and Ubuntu the distribution's
-`docker.io` package does not include it, and the symptom is unhelpful:
+You need Git and Docker with the **Compose v2 plugin**. On Debian and Ubuntu the
+distribution's `docker.io` package does not include Compose v2, and the symptom
+is unhelpful:
 
 ```
 $ docker compose version
@@ -26,10 +27,57 @@ before going further:
 docker compose version
 ```
 
-## 2. Configure
+### Windows
+
+Install [Git for Windows](https://git-scm.com/download/win) and
+[Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/),
+using Docker Desktop's WSL 2 backend and Linux containers. You do not need to
+install Docker Engine inside a separate WSL distribution: Docker Desktop makes
+`docker` available directly in PowerShell. Start Docker Desktop, wait until it
+says the engine is running, and verify both parts:
+
+```powershell
+git --version
+docker version
+docker compose version
+```
+
+If Docker Desktop offers **Switch to Linux containers**, select it. These
+images are Linux images and do not run in Windows-container mode. If Windows
+Firewall asks whether to allow Docker Desktop, allow it on **Private networks**
+so phones and tablets on the LAN can reach ports 80 and 443; public-network
+access is not needed.
+
+## 2. Get and configure HomeAutoShop
+
+Clone the repository and enter it:
+
+```bash
+git clone https://github.com/EccentricWkshp/HomeAutoShop.git
+cd HomeAutoShop
+```
+
+In Windows PowerShell the equivalent is:
+
+```powershell
+git clone https://github.com/EccentricWkshp/HomeAutoShop.git
+Set-Location .\HomeAutoShop
+```
+
+Keep the repository directory: the Compose stack reads its Caddy configuration
+from it, and future upgrades begin with `git pull` there.
+
+Copy the example configuration:
 
 ```bash
 cp .env.example .env
+```
+
+In Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+notepad .env
 ```
 
 Three values matter before first boot. The rest have working defaults.
@@ -55,17 +103,27 @@ Two things stay here because they cannot live in the database:
 | | |
 | --- | --- |
 | `CREDENTIAL_KEY` | Encrypts the integration keys you enter in the UI. A key kept in the database it protects is not a key. Leave it blank and it is derived from `SECRET_KEY` — that works, and it is weaker, because then one secret protects two things. Changing it invalidates every stored credential at once, which is the intended emergency behaviour. |
-| `TESSERACT_LANGS` | Which OCR language packs go **into the image**, so it is a build-time choice: `eng` by default, and `TESSERACT_LANGS="eng fra spa" docker compose build` to add more. It also sets what the application asks for, so the two halves cannot drift. |
+| `TESSERACT_LANGS` | Which OCR language packs go **into the image**, so it is a build-time choice: `eng` by default. To add more, set `TESSERACT_LANGS=eng fra spa` in `.env` before `docker compose build`. It also sets what the application asks for, so the two halves cannot drift. |
 
-## 3. Start it
+## 3. Pull, build and start it
+
+The application and its DNS-enabled Caddy proxy are built from this checkout;
+PostgreSQL is the pre-built image pulled from its registry. Pull it explicitly,
+then build the other two images while refreshing their base images:
 
 ```bash
+docker compose pull db
+docker compose build --pull
 docker compose up -d
 ```
 
-Four containers. The `app` container runs migrations, collects static files and
-seeds the built-in templates before gunicorn starts, so the first boot takes
-longer than later ones. Watch it settle:
+Those commands are the same in Bash and PowerShell. The first two make the
+downloads visible instead of leaving `docker compose up` to fetch missing
+layers implicitly.
+
+Four containers start. The `app` container runs migrations, collects static
+files and seeds the built-in templates before gunicorn starts, so the first
+boot takes longer than later ones. Watch it settle:
 
 ```bash
 docker compose ps          # all should reach healthy
@@ -141,7 +199,8 @@ DNS first and confirm a second device can reach the instance; then a loopback
 entry is a local convenience rather than a mask.
 
 There is one case where it is the answer rather than a workaround, and it is
-common enough to name: see *Running Docker inside WSL* below.
+common enough to name: see *Running Docker Engine inside your own WSL
+distribution* below.
 
 If DNS is not yours to configure, a hosts entry per device is the fallback —
 `/etc/hosts` on Linux and macOS, `C:\Windows\System32\drivers\etc\hosts` on
@@ -225,9 +284,12 @@ is one install per phone, tablet and laptop, repeated whenever any of them is
 replaced, and on iOS it is buried behind a second *trust* toggle in Settings
 that almost nobody finds unaided.
 
+After the proxy has started, copy its public root certificate into the current
+directory. This command works unchanged in Bash and PowerShell and does not
+copy any private key:
+
 ```bash
-docker run --rm -v homeautoshop_caddy-data:/d alpine \
-  cat /d/caddy/pki/authorities/local/root.crt > caddy-root.crt
+docker compose cp proxy:/data/caddy/pki/authorities/local/root.crt ./caddy-root.crt
 ```
 
 Keychain Access on macOS (set to *Always Trust*);
@@ -241,6 +303,47 @@ Import-Certificate -FilePath caddy-root.crt -CertStoreLocation Cert:\LocalMachin
 Firefox keeps its own trust store and needs the certificate added separately,
 under Settings → Privacy & Security → Certificates.
 
+##### Android phones and tablets
+
+Copy `caddy-root.crt` to the device over a connection you trust, such as a USB
+cable or your own local file share. Do not install a certificate sent from an
+unknown source: trusting a root certificate allows it to authenticate sites to
+that device.
+
+Android menu names vary by manufacturer. On current Pixel devices, open
+**Settings → Security & privacy → More security settings → Encryption &
+credentials → Install a certificate → CA certificate**, then select
+`caddy-root.crt` and approve the warning. Samsung and other devices commonly
+put the same action under **Security → More security settings → Install from
+device storage**. A persistent notice that the network may be monitored is
+normal after installing a user-controlled CA.
+
+Open `https://<SITE_ADDRESS>` in Chrome or Edge and confirm there is no
+certificate warning before adding HomeAutoShop to the home screen. A managed
+phone or tablet may prohibit user-installed CAs; its administrator must install
+the root, or the instance must use `acme-dns` or another publicly trusted
+certificate.
+
+##### iPhone and iPad
+
+Transfer `caddy-root.crt` with AirDrop, Files, or another channel you trust,
+then tap it. iOS or iPadOS reports that a profile was downloaded. Complete both
+of Apple's required steps:
+
+1. Open **Settings**, tap **Profile Downloaded** (or open **General → VPN &
+   Device Management**), select the downloaded Caddy certificate profile, and
+   tap **Install**.
+2. Open **Settings → General → About → Certificate Trust Settings** and turn
+   on **Enable Full Trust for Root Certificates** for that root.
+
+Installing the profile without the second trust switch does not enable it for
+HTTPS. Open `https://<SITE_ADDRESS>` in Safari and confirm there is no warning
+before adding HomeAutoShop to the Home Screen.
+
+The root remains the same while the `caddy-data` volume exists, including
+normal container rebuilds and upgrades. Export and install a new copy if that
+volume is deleted or the internal CA is deliberately replaced.
+
 #### custom
 
 Put `fullchain.pem` and `privkey.pem` in `config/caddy/certs` and set
@@ -248,7 +351,11 @@ Put `fullchain.pem` and `privkey.pem` in `config/caddy/certs` and set
 
 Now open your instance and sign in.
 
-### Running Docker inside WSL
+### Running Docker Engine inside your own WSL distribution
+
+This section is for Docker Engine installed inside a Linux distribution under
+WSL. It does not apply to the recommended Windows setup above, where Docker
+Desktop publishes the ports for you.
 
 **Check the networking mode first.** It decides whether anything but this one
 machine can reach the instance, and the default answer is no.
@@ -478,7 +585,8 @@ Test-NetConnection -ComputerName <the address it returned> -Port 443
 
 If the name resolves correctly but the address does not answer, nothing is
 listening on the interface DNS is pointing at. Under WSL that means NAT
-networking — see *Running Docker inside WSL* above. `Get-NetTCPConnection
+networking — see *Running Docker Engine inside your own WSL distribution*
+above. `Get-NetTCPConnection
 -State Listen -LocalPort 443` showing only `127.0.0.1` and `::1` is the
 signature.
 
