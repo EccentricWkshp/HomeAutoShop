@@ -260,12 +260,12 @@ jobs:
             repo: docker.io/eccentricwkshp/homeautoshop
             hub: eccentricwkshp/homeautoshop
             readme: README.md
-            short: "Self-hosted, local-first shop management for a home garage"
+            short: "HomeAutoShop is a record of vehicles and equipment for a home garage."
           - image: proxy
             repo: docker.io/eccentricwkshp/homeautoshop-caddy
             hub: eccentricwkshp/homeautoshop-caddy
             readme: docs/DOCKERHUB-CADDY.md
-            short: "Caddy with DNS-01 providers compiled in, for HomeAutoShop"
+            short: "Caddy for HomeAutoShop - a record of vehicles and equipment for a home garage."
 
     steps:
       - uses: actions/checkout@v4
