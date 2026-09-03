@@ -1,0 +1,144 @@
+# The suite runs inside the image the release publishes, with the checkout
+# mounted over /app.
+#
+# Two arrangements were available and only one of them proves anything about
+# what ships. Installing Python, Tesseract, gettext and a Postgres client onto
+# the runner tests the runner's package versions, which are not the image's — a
+# green run there says nothing about whether the thing people pull works.
+# Building the image and running the suite inside it tests the dependency set
+# that actually ships, which is the only question CI is here to answer.
+#
+# The mount is what makes that possible. The image deliberately omits material
+# the tests need: .dockerignore keeps out the .po sources (Django reads the
+# compiled .mo, so the sources would be dead weight in a runtime image) and
+# every .md but README.md. Mounting the checkout over /app puts them back for
+# the length of the run without putting them in the image. That gap was not
+# theoretical — the in-container suite had never been green, because
+# tests_locales reads .po files and failed on every build since the rule was
+# written.
+#
+# `-u` is not decoration either. The image runs as uid 10001 and a checkout
+# belongs to the runner's user, so a corpus test that writes a fixture — capture
+# creates a `test scanner` folder under Artifacts/samples/scan-reports — dies on
+# PermissionError against a tree it can read perfectly well. Four tests, and the
+# failure names a directory rather than a permission, so it is worth knowing
+# about in advance.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Gates and suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      db:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: homeautoshop
+          POSTGRES_USER: shop
+          POSTGRES_PASSWORD: shop
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U shop -d homeautoshop"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+
+    env:
+      # 127.0.0.1 rather than a service alias. The suite runs in a container of
+      # its own on --network host, not in the job's container, so it reaches
+      # Postgres through the port the runner published rather than by service
+      # name. Loopback is also the only thing the test runner's socket guard
+      # allows: it refuses every other address by design, with the host named.
+      DATABASE_URL: postgresql://shop:shop@127.0.0.1:5432/homeautoshop
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Read the version
+        id: version
+        run: echo "value=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: Build the image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: homeautoshop:ci
+          build-args: |
+            VERSION=${{ steps.version.outputs.value }}
+            VCS_REF=${{ github.sha }}
+          # Without this every run reinstalls the PGDG client, Tesseract and the
+          # whole of requirements.txt to change nothing.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Run before the suite because they take seconds and the suite takes four
+      # minutes, and because each already runs as a test — this is about which
+      # line of the log a person reads first, not about extra coverage.
+      - name: Gates
+        run: |
+          gate() {
+            echo "::group::manage.py $*"
+            docker run --rm --network host -v "$PWD:/app" -u "$(id -u):$(id -g)" \
+              -e HOME=/tmp -e DATABASE_URL="$DATABASE_URL" homeautoshop:ci \
+              python manage.py "$@"
+            echo "::endgroup::"
+          }
+          gate check_translations
+          gate check_accessibility
+          gate check_rtl
+          gate build_catalog --check
+
+      - name: Test suite
+        run: |
+          docker run --rm --network host -v "$PWD:/app" -u "$(id -u):$(id -g)" \
+            -e HOME=/tmp -e DATABASE_URL="$DATABASE_URL" \
+            -e MEDIA_ROOT=/tmp/media -e BACKUP_DIR=/tmp/backups \
+            homeautoshop:ci python manage.py test
+
+  proxy:
+    name: Proxy image builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Read the version
+        id: version
+        run: echo "value=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+
+      # Nothing to run afterwards: the Dockerfile ends by asserting that at
+      # least one DNS provider compiled in, so a build that succeeds has already
+      # answered the only question worth asking of this image. It is here
+      # because a DNS module that stops compiling would otherwise be found at
+      # release time, or by somebody's certificate failing to renew.
+      - name: Build the proxy image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.caddy
+          load: true
+          tags: homeautoshop-caddy:ci
+          build-args: |
+            VERSION=${{ steps.version.outputs.value }}
+            VCS_REF=${{ github.sha }}
+          cache-from: type=gha,scope=caddy
+          cache-to: type=gha,mode=max,scope=caddy
