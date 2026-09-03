@@ -70,6 +70,13 @@ KNOWN_THIRD_PARTIES = {
     # decision rather than an oversight.
     "docs.docker.com",
     "git-scm.com",
+    # Docker's own package repository, which the Linux install instructions add
+    # to apt or dnf. A heavier claim than the two above and listed separately
+    # for that reason: those are pages a reader visits, while this is a signing
+    # key and a repository the machine is told to trust for the life of the
+    # install. The distribution's own Docker packages would avoid it and ship
+    # no Compose v2, which is the trade the install guide explains.
+    "download.docker.com",
     "pypi.org",
     "www.w3.org",
     "schema.org",
