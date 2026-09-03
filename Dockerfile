@@ -56,6 +56,35 @@ USER shop
 # the templates would look for hashed names that were never written.
 RUN STATIC_HASHED=true python manage.py collectstatic --noinput --clear
 
+# Build-time identity. Declared down here rather than beside the other ARGs on
+# purpose: VCS_REF changes with every commit, and an ARG invalidates the build
+# cache from the line it appears on downward. At the top of the file it would
+# rebuild the apt and pip layers on every push to name a label.
+ARG VERSION=0.0.0+unknown
+ARG VCS_REF=""
+
+# The commit the image was built from, readable by the application as
+# settings.APP_REVISION. The version is deliberately not passed the same way:
+# it is in the VERSION file the image already carries, and a number read from
+# two places is a number that will eventually disagree with itself.
+ENV APP_REVISION=${VCS_REF}
+
+# One instruction per label, which is only a style choice, and readable diffs
+# are worth more here than one long continued line nobody re-reads.
+#
+# `source` and `revision` are the load-bearing pair: they are what makes the
+# AGPL's source offer answerable from the image itself, so anyone who pulls
+# this can find the exact tree it was built from without being told where to
+# look. Everything else is convenience.
+LABEL org.opencontainers.image.title="HomeAutoShop"
+LABEL org.opencontainers.image.description="Self-hosted, local-first shop management for a home garage."
+LABEL org.opencontainers.image.version="${VERSION}"
+LABEL org.opencontainers.image.revision="${VCS_REF}"
+LABEL org.opencontainers.image.source="https://github.com/EccentricWkshp/HomeAutoShop"
+LABEL org.opencontainers.image.url="https://github.com/EccentricWkshp/HomeAutoShop"
+LABEL org.opencontainers.image.documentation="https://github.com/EccentricWkshp/HomeAutoShop/blob/main/docs/INSTALL.md"
+LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
+
 EXPOSE 8080
 # `--pid` is not decoration: it is what lets the settings screen reload the web
 # tier after a restart-class change (SPEC §17.2). SIGHUP to the master retires

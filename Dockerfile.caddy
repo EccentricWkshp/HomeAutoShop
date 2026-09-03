@@ -46,3 +46,19 @@ CMD ["run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
 # Fail the build rather than the first renewal if nothing was compiled in.
 RUN caddy list-modules | grep -q '^dns\.providers\.' \
     || (echo "no DNS provider modules compiled in" && exit 1)
+
+# Build-time identity, matching the application image. This one is a build of
+# somebody else's server with plugins compiled in, so `title` says that plainly
+# rather than implying we wrote Caddy — and `source` points at the Dockerfile
+# that produced it, which is the thing a puller actually wants to read.
+ARG VERSION=0.0.0+unknown
+ARG VCS_REF=""
+
+LABEL org.opencontainers.image.title="HomeAutoShop Caddy"
+LABEL org.opencontainers.image.description="Caddy with DNS-01 provider modules compiled in, for HomeAutoShop."
+LABEL org.opencontainers.image.version="${VERSION}"
+LABEL org.opencontainers.image.revision="${VCS_REF}"
+LABEL org.opencontainers.image.source="https://github.com/EccentricWkshp/HomeAutoShop"
+LABEL org.opencontainers.image.url="https://github.com/EccentricWkshp/HomeAutoShop"
+LABEL org.opencontainers.image.documentation="https://github.com/EccentricWkshp/HomeAutoShop/blob/main/docs/INSTALL.md"
+LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"

@@ -13,6 +13,10 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+# Safe to import this early: the package `__init__` reads a file and imports no
+# Django, so it cannot participate in the settings-import cycle.
+from homeautoshop import __version__ as _app_version
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
@@ -39,6 +43,20 @@ def env_int(key: str, default: int) -> int:
 # --------------------------------------------------------------------------
 # Core
 # --------------------------------------------------------------------------
+
+# What this instance is running. The version is the repository's, read from the
+# VERSION file by `homeautoshop/__init__.py`; the revision is the commit the
+# image was built from and can only come from the build, so it arrives as an
+# environment variable the Dockerfile sets from a build argument. Blank outside
+# a built image, which is the honest answer for a checkout that may have
+# uncommitted changes in it.
+#
+# Both are for reading, never for asking: nothing here checks whether a newer
+# version exists. PRIVACY.md rules out update checks along with the rest of the
+# phone-home surface, and a version string is only a liability if something
+# sends it somewhere.
+APP_VERSION = _app_version
+APP_REVISION = env("APP_REVISION", "")
 
 SECRET_KEY = env("SECRET_KEY", "dev-only-insecure-key-change-me")
 # Encrypts integration credentials stored in the database (R-9, §17.1). It

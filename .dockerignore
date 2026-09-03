@@ -35,11 +35,37 @@ staticfiles/
 # The originals behind the scan-report corpus: real VINs, real vehicles. The
 # redacted .words.json captures beside them are safe and stay, so a test run
 # inside the container still has a corpus to work with.
+#
+# These rules mirror .gitignore's, and that is the point rather than a
+# coincidence: what must not reach a public repository and what must not reach
+# a published image are the same set. The two lists drifting apart is how 349 MB
+# of untracked research and five photographs of our own vehicles came to be
+# inside a locally built image. Change one, change the other.
+#
+# Excluding `Artifacts/samples/` wholesale is the obvious-looking version, and
+# it is wrong. Every corpus test skips politely when the corpus is absent
+# (scantools/fixtures.py says so, having been caught by it once), so the suite
+# would go green in the container having read none of the 343 captures. Keep
+# the captures; drop what produced them.
 Artifacts/samples/**/*.pdf
-Artifacts/samples/*.jpg
+# `**/`, not `*/` — the same bug .gitignore carries a comment about, which was
+# fixed there and never mirrored here. This line read `Artifacts/samples/*.jpg`
+# while its three neighbours matched at any depth, so the BT600 Plus printouts
+# one folder further down were photographed, gitignored, and then shipped.
+Artifacts/samples/**/*.jpg
 Artifacts/samples/**/*.jpeg
 Artifacts/samples/**/*.png
 Artifacts/samples/backups/
+# Somebody else's reports, kept for their formats, and the manifests whose URLs
+# carry the VIN the report was made for. Not ours to redistribute — in a public
+# repository or in a published image. 333 MB of the two.
+Artifacts/samples/**/originals/
+Artifacts/samples/**/automotive_scan_tool_public_examples*.json
+# Source documents for the transcribed code lists, and LMC Truck's published
+# chassis-identification sheets. Both are cited by what was read out of them and
+# read by nothing: what ships is the transcription, which names its source.
+Artifacts/samples/dtc-lists/
+Artifacts/VIN Decoding/
 Data/
 
 # History, tooling and editor noise.
@@ -48,7 +74,13 @@ Data/
 .github/
 .idea/
 .vscode/
-*.md
+# `**/`, not bare `*.md`, for the same reason as the .jpg line above: a
+# dockerignore `*` does not cross a `/`, so this rule read `*.md` and excluded
+# the four at the root while shipping SPEC.md, REFERENCE.md, both integration
+# contracts and four stray READMEs — about a megabyte of design documents in
+# every image, none of which anything reads at runtime. The repository is where
+# those are read; `org.opencontainers.image.source` on the image points at it.
+**/*.md
 !README.md
 docs/
 locale/*/LC_MESSAGES/*.po
