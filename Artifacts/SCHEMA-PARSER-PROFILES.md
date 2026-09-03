@@ -272,6 +272,15 @@ and a *scan tool* that found none is the best outcome available, which needs
 saying out loud. Those are different facts and an empty list cannot tell them
 apart. The vocabulary is closed and a value outside it is refused at import.
 
+**On an instance that already had the profile**, the declaration arrives at the
+next boot. `seed()` installs a bundled profile once and steps over it forever
+afterwards, so that an operator's changes are never overwritten — which also
+means a field added to a bundle later reaches fresh installs and nobody else.
+Versioning is no help: a bumped version is a *new row*, and the sessions in a
+vehicle's history point at the old one. So seeding now fills in a bundled field
+the installed row has **never held a value for**, which is not an edit being
+clobbered, and leaves any value that is actually there alone.
+
 ### `media_type: image` — a report that is a photograph
 
 Some equipment prints paper and nothing else. A profile can declare

@@ -385,6 +385,9 @@ def seed(*, revive: bool = False) -> int:
     Without it, removing the XTOOL D8 profile would be a one-way door once the
     trash aged out, and the catalog deliberately publishes nothing that
     duplicates what ships.
+
+    A field the bundled profile has now and the installed row has *never* had
+    is the one exception, and `_answer_what_was_never_asked` says why.
     """
     installed = 0
     for document in SEED:
@@ -396,7 +399,48 @@ def seed(*, revive: bool = False) -> int:
             if revive and existing.is_deleted:
                 existing.restore()
                 installed += 1
+            _answer_what_was_never_asked(existing, candidate)
             continue
         candidate.save()
         installed += 1
     return installed
+
+
+def _answer_what_was_never_asked(existing: ParserProfile, candidate: ParserProfile) -> list[str]:
+    """Fill in bundled fields the installed row has never held a value for.
+
+    Not a clobber, and the distinction is the whole point: this only ever
+    writes where the stored value is empty, so an answer somebody gave is left
+    exactly as they gave it. What it catches is the other case — a field added
+    to a bundled profile *after* an operator installed it, whose row was
+    written when the column did not exist and which re-seeding would otherwise
+    step over forever.
+
+    Versioning is the documented answer to a bundled profile changing, and it
+    genuinely cannot serve here: a bumped version is a *new row*, and the
+    sessions already in a vehicle's history point at the old one. So a screen
+    asking `session.parser_profile` what its tool can report would keep getting
+    silence on every instance that predates the field, while a fresh install
+    answered correctly — the kind of difference that only shows up on somebody
+    else's machine.
+
+    `reports` is the first field this mattered for, and it arrived with a data
+    migration of its own; this is so the next one does not need one.
+    """
+    # Only a row that came from the bundle. `(name, version)` is unique, so an
+    # operator who imported their own YAML under a bundled profile's name owns
+    # that row outright and is not looking for the shipped answers in it.
+    if existing.source != ProfileSource.BUILTIN:
+        return []
+
+    filled = []
+    for field in FIELDS:
+        if field in ("name", "version"):
+            continue
+        if getattr(existing, field, None) or not getattr(candidate, field, None):
+            continue
+        setattr(existing, field, getattr(candidate, field))
+        filled.append(field)
+    if filled:
+        existing.save(update_fields=filled)
+    return filled

@@ -2005,3 +2005,86 @@ class TheImportBoxesTests(Base):
         depend on that having happened."""
         self.assertIn('enctype="multipart/form-data"', self.body)
         self.assertIn('name="codelist"', self.body)
+
+
+class ASeededProfileLearnsWhatWasAddedToItTests(Base):
+    """Reported as: the profile declares `reports` and the screens ignore it.
+
+    They did not. The code was right on both ends and the row in the middle
+    was written before the column existed — `seed()` runs on every boot and
+    skips a profile it has already installed, so the declaration reached fresh
+    installs and nobody who was already running. Versioning, the documented
+    answer to a bundled profile changing, cannot serve here either: a bumped
+    version is a new row, and the sessions in a vehicle's history point at the
+    old one.
+    """
+
+    def installed(self):
+        from homeautoshop.diagnostics import profiles as profile_seed
+        from homeautoshop.diagnostics.models import ParserProfile
+
+        profile_seed.seed()
+        return ParserProfile.objects.get(name="TOPDON BT600 Plus - printed test report")
+
+    def test_a_field_the_row_has_never_held_is_filled_in(self):
+        from homeautoshop.diagnostics import profiles as profile_seed
+
+        profile = self.installed()
+        profile.reports = []
+        profile.save(update_fields=["reports"])
+
+        profile_seed.seed()
+        profile.refresh_from_db()
+
+        self.assertEqual(profile.reports, ["test_results"])
+
+    def test_but_an_answer_somebody_gave_is_left_alone(self):
+        """The rule `seed()` exists to protect. Empty means never asked; a
+        value means somebody said so, whatever the bundle now thinks."""
+        from homeautoshop.diagnostics import profiles as profile_seed
+
+        profile = self.installed()
+        profile.reports = ["codes"]
+        profile.save(update_fields=["reports"])
+
+        profile_seed.seed()
+        profile.refresh_from_db()
+
+        self.assertEqual(profile.reports, ["codes"])
+
+    def test_nor_is_an_imported_profile_given_the_bundled_answers(self):
+        """`(name, version)` is unique, so a profile imported under a bundled
+        name is that row — and it is the operator's, not the bundle's."""
+        from homeautoshop.diagnostics import profiles as profile_seed
+        from homeautoshop.diagnostics.models import ProfileSource
+
+        profile = self.installed()
+        profile.reports = []
+        profile.source = ProfileSource.IMPORTED
+        profile.save(update_fields=["reports", "source"])
+
+        profile_seed.seed()
+        profile.refresh_from_db()
+
+        self.assertEqual(profile.reports, [])
+
+    def test_filling_one_in_is_not_counted_as_an_install(self):
+        """`restore_builtins` says "already here" off this number."""
+        from homeautoshop.diagnostics import profiles as profile_seed
+
+        profile = self.installed()
+        profile.reports = []
+        profile.save(update_fields=["reports"])
+
+        self.assertEqual(profile_seed.seed(), 0)
+
+    def test_every_bundled_profile_says_what_its_tool_reports(self):
+        """The declaration is only useful if it is not optional in practice:
+        an undeclared profile falls back to showing whatever it happens to
+        hold, which is the guessing this replaced."""
+        from homeautoshop.diagnostics import profiles as profile_seed
+
+        profile_seed.seed()
+        for document in profile_seed.SEED:
+            profile = profile_seed.from_yaml(document)
+            self.assertTrue(profile.reports, profile.name)

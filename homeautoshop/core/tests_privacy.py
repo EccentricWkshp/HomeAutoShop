@@ -63,6 +63,13 @@ KNOWN_THIRD_PARTIES = {
     "acme-staging-v02.api.letsencrypt.org",
     "developer.mozilla.org",
     "hub.docker.com",
+    # Where the install guide sends somebody to get the two things they need
+    # before any of this runs. Named here for the same reason as the rest: a
+    # hostname in the documentation is either an RFC-reserved example or a real
+    # third party this project points a reader at, and the second kind is a
+    # decision rather than an oversight.
+    "docs.docker.com",
+    "git-scm.com",
     "pypi.org",
     "www.w3.org",
     "schema.org",
