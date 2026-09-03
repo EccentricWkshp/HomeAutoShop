@@ -1,0 +1,52 @@
+# Build the images instead of pulling them.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml build
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d
+#
+# Or, so the flags stop being something to remember every time, put this line
+# in `.env` and carry on using plain `docker compose` as before:
+#
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.build.yml
+#
+# There are three reasons to want this, and no others are expected: your own
+# changes to the source, an OCR language the published image does not carry,
+# or a DNS provider that is not one of the four compiled into the published
+# proxy. Everyone else should pull. A build is minutes of apt and pip and a
+# Go compile; a pull is one download, already built for your architecture.
+
+x-build: &build
+  build:
+    context: .
+    args:
+      # Building puts this back to being one variable, which is most of the
+      # point of building. The image installs exactly these packs and
+      # `OCR_LANGUAGES` in the base file asks for exactly these, so the two
+      # halves cannot drift apart. `eng fra spa deu ita` are the ones most
+      # likely to be wanted; each adds a few megabytes.
+      TESSERACT_LANGS: ${TESSERACT_LANGS:-eng}
+  # A local tag, so a built image is never mistaken for a published one and
+  # `docker compose pull` cannot quietly replace what you compiled.
+  image: homeautoshop:local
+
+services:
+  app:
+    <<: *build
+
+  worker:
+    <<: *build
+
+  proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile.caddy
+    # The DNS provider list is deliberately not repeated here. It has a default
+    # in Dockerfile.caddy and a second copy in this file would be a second copy
+    # to disagree with it. To use a provider from https://github.com/caddy-dns
+    # — a list of about a hundred — pass it at build time instead:
+    #
+    #   docker compose -f docker-compose.yml -f docker-compose.build.yml \
+    #     build --build-arg CADDY_DNS_MODULES=github.com/caddy-dns/hetzner proxy
+    #
+    # The build fails rather than succeeding empty if nothing compiles in, so a
+    # typo here surfaces now instead of at the first certificate renewal.
+    image: homeautoshop-caddy:local

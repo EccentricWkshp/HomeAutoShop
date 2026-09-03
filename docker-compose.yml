@@ -4,16 +4,18 @@
 name: homeautoshop
 
 x-app: &app
-  build:
-    context: .
-    args:
-      # OCR language packs. The image installs exactly these and the
-      # application is told to use exactly these, from one variable, because the
-      # two halves failing apart is silent both ways: an uninstalled language is
-      # an error on a background job, and an unused pack is megabytes of image
-      # nobody asked for. Add a language here, rebuild, and it is available.
-      TESSERACT_LANGS: ${TESSERACT_LANGS:-eng}
-  image: homeautoshop:local
+  # Pulled, not built. `docker-compose.build.yml` puts the build back for
+  # anyone who wants it — their own changes, an OCR language the published
+  # image does not carry, or a DNS provider that is not compiled in:
+  #
+  #   docker compose -f docker-compose.yml -f docker-compose.build.yml build
+  #
+  # `latest` on purpose, for now. The interfaces are still moving and an
+  # instance that follows the newest release gets fixes without anybody
+  # editing a file. That trade stops being right around 1.0, when an
+  # unattended upgrade in the middle of a repair is the worse outcome; pin
+  # earlier by setting HOMEAUTOSHOP_TAG=0.7.1 in .env.
+  image: eccentricwkshp/homeautoshop:${HOMEAUTOSHOP_TAG:-latest}
   restart: unless-stopped
   env_file: [.env]
   environment:
@@ -28,6 +30,14 @@ x-app: &app
     STATIC_HASHED: "true"
     MEDIA_ROOT: /data/media
     BACKUP_DIR: /data/backups
+    # What the application asks Tesseract for. This and the packs the image
+    # carries used to be one variable, which they can no longer be: with a
+    # pulled image the installed set was decided by the published build, and
+    # that is English. They do not need to agree — `_usable_languages`
+    # narrows to the intersection and logs once what it dropped, because
+    # Tesseract fails the whole call for one missing language rather than
+    # skipping it (mediafiles/services.py). So asking for more than the image
+    # has costs a warning, not OCR. Actually having more means building.
     OCR_LANGUAGES: ${TESSERACT_LANGS:-eng}
   volumes:
     - media-data:/data/media
@@ -37,12 +47,12 @@ x-app: &app
 
 services:
   proxy:
-    # Built rather than pulled: DNS-01 providers are compiled into Caddy, and
-    # a LAN instance has no other way to pass an ACME challenge.
-    build:
-      context: .
-      dockerfile: Dockerfile.caddy
-    image: homeautoshop-caddy:local
+    # Caddy with DNS-01 providers compiled in, which the stock image cannot do:
+    # every provider is a separate Go module and Caddy has no runtime plugin
+    # loading. DNS-01 is the only challenge a LAN instance can pass. This used
+    # to mean everyone compiled Caddy on first boot; now it is published, and
+    # only somebody wanting a provider outside the four built in has to.
+    image: eccentricwkshp/homeautoshop-caddy:${HOMEAUTOSHOP_TAG:-latest}
     restart: unless-stopped
     ports: ["80:80", "443:443", "443:443/udp"]
     volumes:

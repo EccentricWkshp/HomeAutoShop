@@ -340,6 +340,17 @@ jobs:
 
       # Runs after the manifest is tagged, never before: a description
       # promising a release that failed to publish is worse than a stale one.
+      #
+      # DOCKERHUB_TOKEN must carry **read, write and delete** scope. Pushing an
+      # image needs only write, so a read/write token publishes both images
+      # perfectly and then fails here alone — which is exactly what 0.7.1 did,
+      # and it is not a failure the error message explains. The narrower token
+      # is the tempting choice and the one that does not work.
+      #
+      # Left able to fail the job rather than `continue-on-error`. The images
+      # are already published by this point so nothing is broken by it, and a
+      # description that quietly stopped syncing is the kind of thing nobody
+      # notices for a year.
       - name: Sync the Docker Hub description
         uses: peter-evans/dockerhub-description@v4
         with:

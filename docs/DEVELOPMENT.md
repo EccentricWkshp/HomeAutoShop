@@ -25,6 +25,18 @@ cp .env.example .env      # edit SECRET_KEY and the passwords
 docker compose up -d
 ```
 
+That pulls the published release, which is genuinely "as deployed" — it is the
+image other people are running. **It is not your working tree.** To run the
+stack against the code in front of you, add the build override:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+```
+
+or put `COMPOSE_FILE=docker-compose.yml:docker-compose.build.yml` in `.env` and
+forget about the flags. Editing a file and wondering why nothing changed is the
+failure this paragraph exists to prevent.
+
 Then open the site and fill in the setup page. The account is not part of the
 image because the database is a volume: recreate the volume and you have a
 working instance with nobody in it, which is exactly when the setup page comes

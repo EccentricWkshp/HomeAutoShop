@@ -86,6 +86,6 @@ docs/
 locale/*/LC_MESSAGES/*.po
 
 # Compose builds the image; the image does not need to describe itself.
-docker-compose.yml
+docker-compose*.yml
 Dockerfile*
 .dockerignore

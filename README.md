@@ -92,6 +92,13 @@ cp .env.example .env      # edit SECRET_KEY and the passwords
 docker compose up -d
 ```
 
+Nothing is compiled. The application and its proxy are published on Docker Hub
+as [`eccentricwkshp/homeautoshop`](https://hub.docker.com/r/eccentricwkshp/homeautoshop),
+one manifest each covering **amd64 and arm64**, so a Raspberry Pi pulls the same
+release a desktop does. To build them yourself instead — your own changes, an
+extra OCR language, a DNS provider that is not compiled in — see
+[docker-compose.build.yml](docker-compose.build.yml).
+
 Then open the site. **A new instance ships with no accounts, on purpose** —
 there is no default login to forget to change — so it sends you to a setup page
 that makes the first one, names the shop, sets units and timezone, and tells you
