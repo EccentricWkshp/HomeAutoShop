@@ -8,7 +8,7 @@ Design documentation for a self-hosted, local-first application managing a home/
 
 | Document | What it is | Read it when |
 | --- | --- | --- |
-| **[SPEC.md](SPEC.md)** | Goals, principles, architecture, domain model, ~150 numbered requirements, NFRs, security, phasing, resolved decisions, roadmap | Always. Start at §1–§4 for intent, §6–§7 for the model and requirements, **§15.1 for what is actually built**. |
+| **[SPEC.md](SPEC.md)** | Goals, principles, architecture, domain model, ~150 numbered requirements, NFRs, security, phasing, resolved decisions, roadmap | Always. Start at §1–§4 for intent, §6–§7 for the model and requirements, and **§15 / §15.1 / §15.2 — the plan, what was built, what remains**. |
 | [REFERENCE.md](REFERENCE.md) | Work order state machine · seed data · glossary | Looking up a term or a lifecycle rule. |
 | [SCHEMA-PARSER-PROFILES.md](SCHEMA-PARSER-PROFILES.md) | YAML contract for scan-tool report extraction, and why the D8 does not use it | Writing or debugging a parser profile. Implements SPEC §8.3a. |
 | [SCHEMA-INSPECTION-TEMPLATES.md](SCHEMA-INSPECTION-TEMPLATES.md) | YAML contract for DVI templates, points, positions, and thresholds | Authoring an inspection template. Implements SPEC §7.8. |
@@ -30,7 +30,7 @@ state each one is in and nothing a header already answers.
 
 | Document | Status |
 | --- | --- |
-| SPEC.md | **Phases 1–4 built, and R-1, R-2, R-5 through R-10 with them.** §15.1 records what shipped and where the implementation decided differently; **§19 records claims this document made in the present tense that were not true**, and how each was found — two of them found by building a roadmap item on top of the claim. |
+| SPEC.md | **Phases 1–4 built, and R-1, R-2, R-5 through R-10 with them.** Status lives in three sections and nowhere else: §15 is the plan, **§15.1 what shipped** and where the implementation decided differently, **§15.2 what remains** — seven deferred items, six claims the code does not answer, and no open questions. §19 keeps the record of claims this document made in the present tense that were not true, and how each was found; two of those turned up by building a roadmap item on top of the claim. |
 | INTEGRATION-WRENCHLEDGER.md | Draft — WL-Q1–Q11 all resolved against source and a live workspace. Built: the readiness gate. Not built: the webhook receiver and the three optional Shop-plan surfaces. |
 | INTEGRATION-LUBELOGGER.md | Draft — LL-Q1–Q3 open. Built: one-time import and scheduled pull. |
 | SCHEMA-PARSER-PROFILES.md | **Engine implemented**, and the seven profiles in `catalog/profiles/` are written against it. The contract stays a draft where it describes something no profile has needed yet. |
@@ -39,6 +39,6 @@ state each one is in and nothing a header already answers.
 
 ## Open questions
 
-Consolidated in SPEC §16.2 (OQ-17 onward), with integration-specific questions held in their own documents: `WL-Q*` in the WrenchLedger document, `LL-Q*` in the LubeLogger document.
+**None are open in SPEC.** OQ-1 through OQ-19 are answered, §16 keeps each decision with its consequence, and §15.2 records that nothing is outstanding — OQ-17 was the last, and it closed as WL-Q4 in the WrenchLedger document rather than in SPEC, which is why it outlived itself on the list. `WL-Q1–Q12` are likewise all answered. **`LL-Q1–Q3` in the LubeLogger document are the only live questions**, and none blocks anything.
 
 Nothing is blocked on an answer — every question carries a stated default. The one exception has resolved itself: the XTOOL D8 parser profile could not be written until a real report existed, nine arrived, and it is written. Six of the assumptions it was going to be built on turned out to be wrong, which is the argument for having waited.

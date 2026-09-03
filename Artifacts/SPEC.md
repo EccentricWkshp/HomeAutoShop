@@ -4,25 +4,12 @@
 | --- | --- |
 | **Document** | `Artifacts/SPEC.md` |
 | **Companion documents** | [README.md](README.md) · [REFERENCE.md](REFERENCE.md) · [SCHEMA-PARSER-PROFILES.md](SCHEMA-PARSER-PROFILES.md) · [SCHEMA-INSPECTION-TEMPLATES.md](SCHEMA-INSPECTION-TEMPLATES.md) · [INTEGRATION-LUBELOGGER.md](INTEGRATION-LUBELOGGER.md) · [INTEGRATION-WRENCHLEDGER.md](INTEGRATION-WRENCHLEDGER.md) |
-| **Status** | Draft for review |
-| **Version** | 0.6.7 |
-| **Date** | 2026-09-02 |
+| **Status** | **Built.** v1 scope is complete. §15.1 records what shipped; §15.2 records what remains. |
+| **Version** | 0.7.0 |
+| **Date** | 2026-09-03 |
 | **Scope decisions** | Docker Compose deployment · all four feature modules in scope · household multi-user with garage PWA · four external integrations |
-| **v0.6.7 changes** | **The first tool whose report is a photograph.** A TOPDON BT600 Plus prints a paper slip and nothing else, and five phone photos of one are now in the corpus as OCR captures with a built-in parser behind them (§8.3a). Three findings are load-bearing and none of them is about batteries. **§7.9's "a photographed report is read by OCR" was true and read nothing**: every phone photo carries an EXIF orientation, Pillow hands back sensor order, and Tesseract returns *no* text from a page rotated ninety degrees — while the media pipeline filed the result `done` with an empty `ocr_text`. **Uneven light was the rest of it**: subtracting a blurred copy of the picture from itself took the corpus from 73 of 86 legible values to 84, and the seven that appear only with it are one whole receipt that lay in the photographer's shadow. And **NFR-S-5's redaction was switched off on photographs** — every rule here asks what is printed *beside* a value, and `_same_line` compared word tops, which on a real capture put `SN:` 24 pixels from its own serial against a threshold of 21; a real tester serial was written into this repository and committed. A bench tester's answer also does not fit the flat extraction: one photograph holds a cranking test and a charging test taken forty seconds apart, so `DiagnosticSession.test_results` keeps whole results, each value with its own confidence, bounding box and warnings, corrected by the operator without ever overwriting what the machine read. |
-| **v0.6.6 changes** | **The second scan tool arrived, and thirteen more with it.** 169 reports published on the public web are now in the corpus as redacted captures, and **seven parser profiles** came out of them — Ross-Tech VCDS, Autel MaxiSys, THINKCAR, TOPDON, Carly, BlueDriver, Car Scanner ELM OBD2 — **published in the catalog rather than bundled in the image**, because there are hundreds of scan tools and an operator owns one. §15.1 records what the profile contract could not express and now can. Three findings are load-bearing. §8.3a's "word geometry is necessary" is a fact about the D8, not about scan reports. **A PDF was being read in extraction order rather than as the lines it was printed as** — which made three formats unparseable and reported a VIN for a car whose tablet printed `VIN: --`; the fix also lets a code carry the module heading above it, so 388 of the 398 codes the catalog reads now arrive attributed where none did. And NFR-S-5's redaction rule, which keys off the ISO 3779 check digit, would have published every **European** VIN in the corpus unredacted: position 9 is a check digit only where a regulator requires one. A VIN is now also anything VIN-shaped following a VIN label, and licence plates, shop details and workshop codes are redacted by rule, with an audit pass over what was written because a rule cannot know that a technician signed page four. |
-| **v0.6.5 changes** | **No object store in the stack.** Media lives under `MEDIA_ROOT`, which is what §13.1 backs up; the earlier design put it in MinIO, where no backup reached it. That container had been justified by a presigned URL streaming photos straight to the browser, and v0.6.2 had already turned that off for good reason — such a link works for anyone who copies it, so `app` serves the bytes and reading a photo requires a login (§5.1, §12.3). Four services instead of five, and the measured idle footprint is now 338 MB against NFR-P-6's 900. The `s3` driver stays, vendor-neutral, for media on a NAS or on rented storage, with `manage.py migrate_storage` to move files either direction without touching the database. Backup and restore now say out loud when media is somewhere they cannot reach. |
-| **v0.6.4 changes** | Follow-ups from using the parts-order import. The preview now **leads to the import**: a browser clears a file input on submit, so previewing and then importing meant uploading the same file twice — which is how a preview stops being used. The document is stored on the way past (deduplicated by SHA-256) and the review screen carries a signed reference to it. Money is shown as money: the review screen and the purchase screens printed minor units, so a $155.87 order read as `15587`. And **every full-page form has a Cancel beside its Save** — without one the only exits were the browser's back button, which re-posts, or saving changes nobody wanted. |
-| **v0.6.3 changes** | **Supplier order confirmations are read into the catalog** (FR-PUR-1, FR-PART-2/3). A RockAuto order PDF becomes a purchase with its lines, the parts in it — brand, manufacturer part number, part type, price, core charge, quantity — and fitment against the vehicle each was looked up under, recorded as *stated by vendor* rather than confirmed (FR-PART-4). Read by word geometry for the same reason §8.3a needs it: both text columns wrap, and they wrap above as well as below their own row. Kits are charged once and their contents catalogd but not billed; a rebate is money, not part of a part number. It rehearses before it writes, and `external_ref` makes a second read of the same file update rather than duplicate (§6.2). Also: the main navigation is reachable on a phone, where it had been hidden entirely below 800px with no route to seven of the nine sections. |
-| **v0.6.2 changes** | Fixes from first real use, three of which were load-bearing. **Uploaded files are served by the application** rather than linked to object storage: a presigned URL is signed against `http://storage:9000`, which resolves only inside Compose, so every photo was a broken image — and the route that replaces it needs a login, which a presigned link does not (§5.1, §12.3). **`capture` is no longer the only way to attach a photo** — it means camera-only, so the phone's library was unreachable. **A scan-tool report may be a photograph**, read by OCR, which is what §7.9 always promised for equipment that only prints paper. Plus: any open work order can return to `planned` (REFERENCE.md §1); work orders can be deleted from any state; the status form marks the field a chosen transition needs *before* it is submitted; the parent picker excludes cycles and explains itself when empty; the tool box searches WrenchLedger instead of asking for an id from memory; the timezone is a picker; a credential set in the environment no longer reports itself as unset. |
-| **v0.6.1 changes** | **R-9 and R-10 are built**, and §17 records them as shipped rather than planned. Instance settings now live in a typed registry with **database → environment → default** precedence, credentials in a separate encrypted table excluded from both backup paths and from the export, and a non-dismissible pending-restart banner for the three settings Django resolves at startup (§17.2). Backup, export, download and retention are a screen; restore stays a command, printed with this instance's paths. Two §14 entries that were documented and unread — `OCR_ENABLED` and `RECALLS_ENABLED` — now gate something, and the image-only-PDF OCR fallback §7.9 promised is implemented. `SCAN_IMPORT_ENABLED` and `EQUIPMENT_ENABLED` remain unread and are deliberately **absent** from the settings screen. |
-| **v0.6.0 changes** | **Phase 4 is built.** New §15.1 records what shipped against each phase, and what the implementation decided differently from this document — the parser-profile engine is data *plus* a built-in-parser escape hatch (§8.3a), Web Push is the one place a local-first instance must talk to a cloud service (§9.4), and recurring work is enqueued by the worker rather than by cron (§5.2). §14 gains the settings Phase 4 introduced. OQ-16, OQ-19 and R-3's remainder are unchanged; **OQ-18 is now answered by omission and says so.** |
-| **v0.5.3 changes** | **R-9 credentials resolved**: they move to the UI, in a separate encrypted `credential` table stripped from the portable export and from both backup paths, with a restored instance stating which integrations need re-authenticating (§17.1). New §17.2 defines how a changed setting reaches a running process — per-setting `immediate` vs `restart`, a non-dismissible pending-restart banner, `SIGHUP` for the web tier and a `config_generation` self-exit for the worker. New **R-10**: backup and export operable from the UI, since the app currently warns that a backup is overdue without offering any way to take one. |
-| **v0.5.2 changes** | New roadmap item **R-9** (§17, §17.1): move instance configuration out of `.env` and into the UI, with the environment retained for bootstrap and lock-out-risk values, and the handling of credentials called out as unresolved. §14 now points at it. |
-| **v0.5.0 changes** | Split into a document set: §8.6 LubeLogger and the five appendices moved to companion documents, leaving summaries and pointers. Base spec is now requirements only. |
-| **v0.4.1 changes** | §8.7 WrenchLedger reduced to a summary; full contract split into [INTEGRATION-WRENCHLEDGER.md](INTEGRATION-WRENCHLEDGER.md), written against the shipped WrenchLedger API. **Key finding: webhooks cannot reach a LAN-only instance, so sync is pull-first** — FR-WL-5 revised. |
-| **v0.4.0 changes** | OQ-13/14/15 resolved · **serviceable equipment in scope** (generators, mowers) driving the `asset`/`asset_kind` and `usage_reading` generalizations · **tool inventory permanently out** (NG-8/NG-9) · new §8.7 **WrenchLedger** integration and house-placement rules · locales scoped to North America, exposing a US-only recall gap · C-1 accepted |
-| **v0.3.0 changes** | All 12 open questions resolved (§16) · **stack decided: Python/Django** (§5.7) · **localization from commit one** (§5.6) · new **DVI + component tracking** module (§7.8, [SCHEMA-INSPECTION-TEMPLATES.md](SCHEMA-INSPECTION-TEMPLATES.md)) · vehicle scope widened to anything plated · helper-role and offline-VIN-dataset scaffolding · LubeLogger demoted to strictly optional · new §17 roadmap and §18 candidate features |
-| **v0.2.0 changes** | §8.3 rewritten around scan-tool **PDF report** ingestion (XTOOL D8 scaffold, Appendix D) · new §8.5 service-information link-out (LEMON / CHARM / ALLDATA DIY) · new §8.6 **LubeLogger** integration · new §7.10 `FR-INT` · new entities `parser_profile`, `external_ref`, `service_info_provider`, `vehicle_service_info_link` · OQ-3 answered, OQ-9–12 added |
+| **Where status lives** | **§15 is the plan · §15.1 is what was built · §15.2 is what remains.** No other section carries a status of its own. §17 (roadmap), §18 (candidates) and §19 (claims that outran the code) keep the reasoning behind each decision and point at those three for its state. When two sections disagree, §15.1 and §15.2 are the ones that are right. |
+| **v0.7.0 changes** | **Status consolidated, and four contradictions removed.** It had accumulated in six places: a phase table, a roadmap where eight of ten rows were struck through, a candidate list still calling three shipped features *not yet in scope*, an open-questions table holding two questions §15.1 had already answered, and a *stated but not built* section that was the only honest inventory of the gaps. Those are now one plan (§15), one done-ledger (§15.1) and one remaining-list (§15.2), with the rationale left where it was written rather than copied forward. Every remaining claim was re-checked against the code while doing it, and three had moved: the translation catalogs are **597 untranslated and 317 fuzzy** after a fresh `makemessages` rather than *about a thousand behind*; **C-3 and C-5 are built**; and **FR-WO-11 — duplicate a work order as a template — is not**. That last one matters more than its size: C-6 cited FR-WO-11 as the reason not to build a checklist system, which is §19's failure mode exactly — a decision resting on a requirement nobody had checked. Release history moved to the appendix, one line each. **And no question in this document is open**: OQ-17 had been answered as WL-Q4 in the WrenchLedger document, so it went on being listed here long after it was settled — the same drift in the other direction. |
 
 ---
 
@@ -523,9 +510,9 @@ Small powered equipment is in scope (OQ-15). It reuses the asset, work order, pa
 | FR-WO-8 | Support parent/child work orders for multi-session projects, with costs and time rolling up to the parent. **The roll-up was stated here from the first draft and did not exist**: `parent_work_order_id` was written, read by the picker, and by nothing else — a project's page showed neither its children nor their spend, so the one record the field was added for was the one the screen could not display. Found by building R-6 on top of it, which is the expensive way: a burn-down over a project's own line items would have reported an engine swap as barely started. `WorkOrder.tree_ids()` walks it now, `project_cost()` sums it, and the project's page lists what is under it. |
 | FR-WO-9 | Prompt for `odometer_out` at completion. |
 | FR-WO-10 | Show a live cost rollup (parts + expenses + optional labor value) as the job progresses. |
-| FR-WO-11 | Duplicate a work order as a template ("annual service") including job items and expected parts, without copying notes, photos, or costs. |
+| FR-WO-11 | Duplicate a work order as a template ("annual service") including job items and expected parts, without copying notes, photos, or costs. **Not built** — no view, no service, no template flag, and the three FR-WO-11 citations in the code sit on the *planned parts* feature instead, so a grep reads as though it exists. §18's C-6 declined to build a checklist system partly because this one was already there. §15.2. |
 | FR-WO-12 | **Job items are editable, re-orderable and removable.** They were write-once: a typo stayed a typo, and the checkbox is a toggle, so `doing` and `skipped` existed in the model and were unreachable from any screen — **Skipped** most of all, which is what distinguishes work considered and declined from work still waiting, and only one of those belongs on next week's list. Order is set with **up and down buttons, not dragging**: dragging cannot exist without a script, needs a second mechanism built beside it to be reachable from a keyboard, and is unpleasant on the phone the list is read on. Moving renumbers the whole list rather than swapping two values, so items that share a sequence still reorder. An item **parts were used on refuses removal** — a soft delete does not take the usages with it, so the item would vanish from the screen while its cost stayed in the job total; skipping it is the answer. Its tool references go with it; a part requirement is a claim about the job and moves up to the work order. |
-| FR-WO-12 | *(SHOULD)* Offer a running timer, resilient to the tab closing (start time is server-recorded). |
+| FR-WO-13 | *(SHOULD)* Offer a running timer, resilient to the tab closing (start time is server-recorded). |
 
 ### 7.4 Parts and inventory — `FR-PART`, `FR-INV`
 
@@ -754,7 +741,7 @@ Two consequences of shape. Results are **rows, not columns**, because engine oil
 | FR-ADM-5 | Trigger a full export and download it. |
 | FR-ADM-6 | Import from CSV with column mapping for vehicles, parts, and service history — **so the spreadsheet this replaces can actually come along**. |
 | FR-ADM-7 | Show a 30-day trash with restore for soft-deleted records. | Schedule templates and inspection checklists are trashable too — they were soft-deleted and listed nowhere, which made a removal permanent and invisible at once.
-| FR-ADM-8 | Show instance health: version, DB size, media size and count, job queue depth, failed jobs, last backup. |
+| FR-ADM-8 | Show instance health: version, DB size, media size and count, job queue depth, failed jobs, last backup. **This number is used twice.** §7.4 carries a second FR-ADM-8 (*the small records are correctable and removable*) and an FR-ADM-9 beside it, both added later and both now cited under those numbers in the code. Renumbering either would make eight comments point at the wrong row, so the collision is recorded rather than repaired: cite §7.4 or §7.12 alongside the number. |
 
 ---
 
@@ -1050,7 +1037,7 @@ Per NG-8/NG-9, HomeAutoShop builds none of that. **WrenchLedger tracks the tools
 | FR-WL-6 | *(MAY, opt-in)* Mirror work orders as WrenchLedger projects, record tool custody for the duration of a job, and post meter increments back on completion. |
 | FR-WL-7 | Degrade completely cleanly. With the integration absent, broken, unsubscribed, or disabled, HomeAutoShop is a **complete and correct** application — only less convenient. |
 | FR-WL-8 | Cache only id, display name, availability, due dates, and a checked-at timestamp. Storage locations, valuations, serial numbers, photos, and **borrower contact details are never mirrored** — the scope granting contact details is deliberately never requested. |
-| FR-WL-10 | The cached tools have a screen of their own, searching WrenchLedger and the local shadow together — previously that search existed only inside a job item, so "do I own a vacuum pump?" had no answer anywhere. A tool **named by hand** on a job is marked as such, because nothing knows where it is and a blank availability column otherwise reads as a fault; it can be forgotten, taking its job-item references with it. A tool that came from WrenchLedger cannot be deleted here — the next sync would bring it back — and the refusal says where to remove it instead. |
+| FR-WL-11 | The cached tools have a screen of their own, searching WrenchLedger and the local shadow together — previously that search existed only inside a job item, so "do I own a vacuum pump?" had no answer anywhere. A tool **named by hand** on a job is marked as such, because nothing knows where it is and a blank availability column otherwise reads as a fault; it can be forgotten, taking its job-item references with it. A tool that came from WrenchLedger cannot be deleted here — the next sync would bring it back — and the refusal says where to remove it instead. |
 | FR-WL-9 | Keep HomeAutoShop's own consumable tracking complete and standalone, and let the operator choose which system owns shop consumables when a connection exists — **basic shop functionality is never conditional on a paid third-party subscription**, and the setting exists to prevent double-counted cost. |
 | FR-WL-10 | Present the house placement per the rules in the integration document — **static, bundled, zero network calls, dismissible, disclosed, and suppressed once connected**. NFR-S-1 admits no exception, including for first-party promotion. |
 
@@ -1396,7 +1383,11 @@ values a wrong answer would lock an operator out of the settings screen with.
 
 ---
 
-## 15. Delivery phases
+## 15. Delivery phases — the plan
+
+This section is the plan as committed, kept unchanged so that what was
+predicted can be read against what happened. **§15.1 is what was built and
+§15.2 is what remains** — neither is recorded here.
 
 Each phase is independently useful — **the shop must be able to start using it at the end of Phase 1**, not at the end of Phase 4.
 
@@ -1424,10 +1415,15 @@ Scan-tool import pipeline — **PDF report ingestion, parser-profile engine, ext
 
 ## 15.1 What is built
 
-Phases 1–4 are implemented. This section is the honest record: what shipped
-against each phase, and — more usefully — **where the implementation decided
-something different from the rest of this document, and why**. A status section
-that only says "done" stops being worth reading.
+Phases 1–4 are implemented. This section is the honest record and the **single
+ledger of everything that shipped**: what was delivered against each phase, what
+shipped after the phases closed, and — more usefully — **where the
+implementation decided something different from the rest of this document, and
+why**. A status section that only says "done" stops being worth reading.
+
+The roadmap (§17) and the candidate list (§18) keep the reasoning behind each
+item and no longer carry its state; every item either appears in the table below
+or in §15.2.
 
 | Phase | State |
 | --- | --- |
@@ -1587,15 +1583,26 @@ guardrails exist to prevent.
 
 ### Built after Phase 4 closed
 
-| Requirement | What shipped |
-| --- | --- |
-| FR-VEH-5 | VIN barcode scanning off the door jamb, decoded **on the device** by the browser's own `BarcodeDetector`. No frame leaves the phone, so it works with the WAN unplugged — the only version of this consistent with P-1. Code 39, QR, Data Matrix and PDF417, because jamb labels use all four. The payload is searched for something VIN-shaped rather than trusted whole: real labels wrap the VIN in Code 39 start/stop asterisks, prefix it, or append a checksum. |
-| FR-INV-2 | Printable QR labels for storage locations, and scanning one opens that location's contents — its child locations included, since an empty cabinet is not the answer when the parts are in its drawers. |
-| FR-INV-3 | Scan a part's barcode to find it, **or create it with the barcode already recorded** as a UPC cross-reference. Without that last step a scan-and-miss teaches the shop nothing and the same box is a dead end again next month. |
-| C-4 | Vehicle tags, from the same machinery. |
-| R-8 | RTL verified rather than assumed. `dir` on `<html>`, `lang` that reflects the language actually being served, twelve physical declarations in `app.css` and two inline styles made logical, and `check_rtl` as the gate that keeps it that way. |
-| FR-WO-8, FR-COST-8 (R-6) | The project cost roll-up that had been claimed since the first draft, and the budget burn-down built on it. §7.6b. |
-| FR-FLU-1–6 (R-5) | Oil and fluid analysis: samples, pasted panels, and trends expressed as a rate per unit of *fluid* life wherever a rate means anything. §7.9a. |
+Everything that shipped outside the four phases, including the eight roadmap
+items and the three candidate features that were built. The **Why** column names
+the section that still holds the reasoning.
+
+| Requirement | What shipped | Why |
+| --- | --- | --- |
+| FR-VEH-5 | VIN barcode scanning off the door jamb, decoded **on the device** by the browser's own `BarcodeDetector`. No frame leaves the phone, so it works with the WAN unplugged — the only version of this consistent with P-1. Code 39, QR, Data Matrix and PDF417, because jamb labels use all four. The payload is searched for something VIN-shaped rather than trusted whole: real labels wrap the VIN in Code 39 start/stop asterisks, prefix it, or append a checksum. | §7.1 |
+| FR-INV-2 | Printable QR labels for storage locations, and scanning one opens that location's contents — its child locations included, since an empty cabinet is not the answer when the parts are in its drawers. | §7.4 |
+| FR-INV-3 | Scan a part's barcode to find it, **or create it with the barcode already recorded** as a UPC cross-reference. Without that last step a scan-and-miss teaches the shop nothing and the same box is a dead end again next month. | §7.4 |
+| C-4 | Vehicle tags, from the same machinery. | §18 |
+| R-8 | RTL verified rather than assumed. `dir` on `<html>`, `lang` that reflects the language actually being served, twelve physical declarations in `app.css` and two inline styles made logical, and `check_rtl` as the gate that keeps it that way. | §17 |
+| FR-WO-8, FR-COST-8 (R-6) | The project cost roll-up that had been claimed since the first draft, and the budget burn-down built on it. §7.6b. | §17 |
+| FR-FLU-1–6 (R-5) | Oil and fluid analysis: samples, pasted panels, and trends expressed as a rate per unit of *fluid* life wherever a rate means anything. §7.9a. | §17 |
+| R-1 | The shared template catalog — schedule templates, inspection checklists, parser profiles and per-make DTC lists, published as reviewed files in `catalog/` rather than served by anything. The file formats came first, because two of the four artifacts had no portable format at all. §8.1b. | §17 |
+| R-2 | The `helper` role, as a request gate over an allow-list of URL names rather than the policy-layer fill-in the roadmap predicted — see §12.2a for the measurement that changed the approach. | §17 |
+| R-7 | Maintenance cost forecasting: the next twelve months of spend projected from due service items and historical part costs. §7.6a. | §17 |
+| R-9 | Instance settings in the UI, on a typed registry with **database → environment → default** precedence, credentials in a separate encrypted table excluded from both backup paths and from the export, and a non-dismissible pending-restart banner for the settings Django resolves at startup. §17.1, §17.2. | §17 |
+| R-10 | Backup operable from the UI: back up now, the held backups with timestamp and size, download, and the portable export on the same screen. **Restore stays on the command line**, with the screen printing the exact command against this instance's real paths. | §17 |
+| C-3 | The warranty report — parts still under warranty, sorted by expiry — turning `part_usage.warranty_*`, collected since Phase 2 and surfaced nowhere, into money recoverable. `core/costs.py`, on the shop reports screen. | §18 |
+| C-5 | `asset_spec.is_sensitive`, defaulted on for the security-adjacent seed groups, and honored by the vehicle report, the shared export and every screen a non-owner can reach. Key codes, radio codes and wheel-lock locations are exactly what P-4's portability goal would otherwise have handed to a buyer. | §18 |
 
 **One label format for everything.** A label carries `{BASE_URL}/s/{uuid}/`, and
 `/s/` resolves the id against locations, vehicles and parts. Primary keys are
@@ -1639,6 +1646,61 @@ guess is only defensible if there is a way to say which vehicle is which.
 
 ---
 
+## 15.2 What remains
+
+Everything outstanding, in one place: **seven items deferred on purpose, six
+claims the code does not answer, and no open questions.** Nothing here has to be
+discovered by reading another section — §17, §18 and §19 hold the reasoning and
+point back here for the state. Re-verified against the code on 2026-09-03.
+
+### Deferred on purpose
+
+Decided, not forgotten. Each has a reason that is still good.
+
+| Item | Where | Why it is not built |
+| --- | --- | --- |
+| **R-4** — read-only share link for one report | §17 | A share link is only a share link if somebody outside the LAN can open it, which means a permanent inbound hole in the router for an occasional convenience. The existing answer is a PDF sent by whatever channel the operator already trusts. Worth building if this ever runs somewhere already reachable. |
+| **R-3 remnant** — stand-alone engines and project drivetrains | §17, OQ-15 | Equipment is in scope and shipped; what is left is the narrower case of an asset with no meter and no identity of its own. Nothing in the schema precludes it. |
+| **OQ-6** — the offline VIN dataset | §8.1 | Still the right design, still an admin-triggered download nobody has needed. Network VIN decode plus local validation has covered every case so far. |
+| **C-6** — reusable procedure checklists | §18 | *Recommendation stands, its stated basis does not.* C-6 declined to build a third checklist system because FR-WO-11 and the DVI template engine already covered it — **but FR-WO-11 is itself not built** (see below), so only one of the two exists. Extending the DVI engine remains the right move; the reasoning needs redoing before anyone acts on it. |
+| **WrenchLedger webhook receiver, project mirroring, tool custody, meter post-back** | §8.7, integration doc §5, §6.3–6.5 | Pull is the default precisely because a LAN instance cannot receive a webhook; the other three are gated on WrenchLedger features absent from the smaller plan. All are marked optional there. The readiness gate is the integration. |
+| **Canadian and Mexican recall sources** | §8.4, OQ-18 | Each needs its own adapter and its own data model. v1 ships US-only coverage and the UI says unavailable-for-region rather than showing an empty list. |
+| **Tool and toolbox inventory** | §18 C-2, NG-8/NG-9 | Rejected permanently, not deferred. WrenchLedger does it, and this integrates rather than rebuilds. |
+
+### Claimed in this document, absent from the code
+
+The live half of §19. Each row is a capability this specification describes in
+the present tense that nothing implements — recorded here rather than left to be
+rediscovered, because a claim nobody has built on is a claim nobody has checked.
+
+| Claimed | Where | What is actually there |
+| --- | --- | --- |
+| **Duplicate a work order as a template** ("annual service"), with job items and expected parts | FR-WO-11 | Nothing. No view, no service, no template flag on `work_order`. The three FR-WO-11 citations in the code all sit on the *planned parts* feature, which is a different requirement that was never given a number — so the requirement reads as implemented to anyone grepping for it. **§18's C-6 rests on this row**, which is the §19 pattern exactly. |
+| Every report exports to CSV; no report is a dead end | FR-REP-4 | Two exports: the shop reports screen and the per-asset report. The per-vehicle costs screen, the due list, the wear chart and the shelf do not. |
+| Fitment data is publishable to the catalog | R-1, §8.1b | No portable format exists for it. Schedule templates, inspection checklists, parser profiles and DTC lists all publish; fitment is the one artifact the catalog is partly about that cannot. |
+| The ship set is `en-US`, `en-CA`, `fr-CA`, `es-MX`, with the three non-source catalogs **complete** | §5.6, DEVELOPMENT.md | A fresh extraction puts `fr_CA` and `es_MX` at **597 untranslated and 317 fuzzy** of 2,926 — better than the ~1,000 behind recorded at v0.6.5, and still a picker offering four languages where a fifth of the newest screens fall through to English. `en_CA` carries 1,853 untranslated, which is mostly harmless (it falls through to the US source, which is usually right) and hides the handful where it is not. Only `makemessages` can find this: `check_translations` proves each string is *wrapped*, a property of the source, and is silent on whether any catalog answers for it. |
+| A PDF's words are read as **the lines they were printed as** | §8.3a | True between lines and not within one. `lines_from_words` sorts a row left to right **only for measured geometry — in practice OCR** — so a Toyota report's module fault count, printed to the right of the module name and one point higher, still comes out in front of it as `2 EOBD/OBD II`. The fix is one `sort` already written and deliberately not applied: two catalog profiles' section patterns were authored against the current output and lose their headings without it, costing nine modules' worth of code attribution across two real reports. Correcting it means new profile versions, which is its own change. |
+| The build is gated: CI fails on unwrapped strings, on a stale catalog index, and exercises restore against the prior release's backup format | §5.6, §8.1b, §13.2 | **There is no CI.** `.github/` does not exist. All four gates are real and each runs as a test — `check_translations`, `check_accessibility`, `check_rtl`, `build_catalog --check` — but what enforces them is somebody remembering `manage.py test`. The restore round-trip is not covered at all: a sample backup sits in `Artifacts/samples/backups/` and no test loads it. |
+
+### Questions still open
+
+**None in this document.** OQ-1 through OQ-19 are all answered — §16 holds each decision with its
+consequence — and **OQ-17 was the last of them**, closed in the integration
+document rather than here, which is why §16.2 went on listing it: **WL-Q4 answers
+no reciprocal pairing at this time**, with the proposal preserved verbatim in
+[INTEGRATION-WRENCHLEDGER.md](INTEGRATION-WRENCHLEDGER.md) §13 for manual transfer
+to the WrenchLedger backlog when it is wanted. WL-Q1–Q12 are likewise all
+answered against source and a live workspace.
+
+The one live set is **LL-Q1–Q3** in
+[INTEGRATION-LUBELOGGER.md](INTEGRATION-LUBELOGGER.md), and none blocks anything:
+the exact endpoint paths of a running instance, whether the ongoing pull is still
+wanted now that the import has landed, and whether Supply Records import as parts
+or as expenses. Each carries a stated default and imports as a draft for review
+either way.
+
+---
+
 ## 16. Resolved decisions
 
 All twelve open questions from v0.2.0 are answered. Recorded here with their consequences, because a decision without its rationale becomes an open question again in six months.
@@ -1669,20 +1731,24 @@ All twelve open questions from v0.2.0 are answered. Recorded here with their con
 
 ### 16.2 Questions this round opened
 
+**All of them are answered.** OQ-17 was the last, and it closed in the
+integration document as WL-Q4 rather than here — which is how it stayed on this
+list after it had stopped being a question. §15.2 records that nothing is open.
+
 | ID | Question | Bearing |
 | --- | --- | --- |
 | OQ-16 | ~~Does WrenchLedger's API cover what this needs?~~ **Answered by reading the implementation.** It does — REST v1 with OpenAPI 3.1, scoped keys, idempotent writes, signed outbound webhooks, and Projects/assignments/meters already shipped. The real constraints turned out to be different: the **Shop-plan gate**, and the fact that **cloud webhooks cannot reach a LAN instance**. Remaining questions moved to the integration document (WL-Q1–Q6). |
-| OQ-17 | Should the pairing be reciprocal — a HomeAutoShop mention inside WrenchLedger? | Tracked as WL-Q4. WrenchLedger's roadmap has **no vehicle-side concept at all**, so this is greenfield rather than a conflict. The audiences overlap heavily. |
-| OQ-18 | Do Canadian or Mexican recall sources get wired up, or does v1 ship US-only with an honest gap? | Follows from OQ-14. Each is a separate adapter with a separate data model, so this is real work rather than a config entry. |
-| OQ-19 | Should equipment support the DVI module, or is inspection vehicle-only in v1? | A generator arguably wants a pre-season checklist. The template engine is class-scoped already (FR-EQP-4), so this is a question of authoring templates, not of building anything. |
+| ~~OQ-17~~ | ~~Should the pairing be reciprocal — a HomeAutoShop mention inside WrenchLedger?~~ **Answered as WL-Q4: no WrenchLedger changes at this time.** | Answered in the integration document rather than here, which is why this row outlived it. The proposal is preserved verbatim in [INTEGRATION-WRENCHLEDGER.md](INTEGRATION-WRENCHLEDGER.md) §13 for manual transfer to the WrenchLedger backlog when it is wanted — greenfield rather than a conflict, since WrenchLedger's roadmap has no vehicle-side concept at all. |
+| ~~OQ-18~~ | ~~Do Canadian or Mexican recall sources get wired up, or does v1 ship US-only with an honest gap?~~ **Answered: US-only, stated rather than silently absent.** | Each source needs its own adapter and its own data model, so neither is wired up and the UI says unavailable-for-region rather than showing an empty list. Recorded in §15.1 and carried in §15.2 as deferred. |
+| ~~OQ-19~~ | ~~Should equipment support the DVI module, or is inspection vehicle-only in v1?~~ **Answered: not taken up, and nothing needs building.** | The DVI template engine is class-scoped already (FR-EQP-4), so equipment inspection is a matter of authoring a template. No pre-season equipment template ships; the capability is there the moment somebody writes one. §15.1. |
 
 ---
 
-## 17. Roadmap (post-v1)
+## 17. Roadmap (post-v1) — what each item turned out to be
 
-Explicitly out of v1 scope, retained so the decisions are not re-litigated and so the schema does not accidentally preclude them.
+Explicitly out of v1 scope when written, retained so the decisions are not re-litigated and so the schema does not accidentally preclude them.
 
-**Most of it is built.** Eight of the ten shipped; R-3 was superseded by OQ-15; **R-4 alone is still deferred**, and for a reason about deployment rather than design. The struck-out rows are kept rather than deleted because several of them predicted the work wrongly, and *how* they were wrong is the part worth having: R-1's stated reason for deferring turned out to rest on a capability that did not exist, R-6 could not be built until a requirement claimed since the first draft was actually implemented, and R-8's premise was almost right and worth nothing. A roadmap item is a load test for the requirements underneath it (§19).
+**This section holds the reasoning, not the status.** Eight of the ten shipped and are listed in §15.1; R-3 was superseded by OQ-15; **R-4 alone is still deferred** and is carried in §15.2 with the rest of what remains. The struck-out rows are kept rather than deleted because several of them predicted the work wrongly, and *how* they were wrong is the part worth having: R-1's stated reason for deferring turned out to rest on a capability that did not exist, R-6 could not be built until a requirement claimed since the first draft was actually implemented, and R-8's premise was almost right and worth nothing. A roadmap item is a load test for the requirements underneath it (§19).
 
 | ID | Item | From | Notes |
 | --- | --- | --- | --- |
@@ -1697,7 +1763,7 @@ Explicitly out of v1 scope, retained so the decisions are not re-litigated and s
 | ~~R-9~~ | **Instance settings in the UI** — *built in v0.6.1* | new | The `setting` entity already exists and already promises this — *"instance configuration surfaced in the UI, overriding environment defaults"* — but holds only `last_backup_at`. Today, renaming the shop, changing the reminder cooldown, or throwing the Offline Mode kill switch means a text editor and a container restart, which puts routine choices behind a deployment step and puts an emergency control (NFR-S-2) out of reach of the person who needs it. Precedence becomes **database → environment → default**, so an instance nobody has touched behaves exactly as it does now. See §17.1 for what moves and what cannot. |
 | ~~R-10~~ | **Backup operable from the UI** — *built in v0.6.1* | new | The health page reports how long ago the last backup ran, and the reminder digest raises a warning when it goes stale — and neither offers any way to act. Telling someone their backup is overdue while making them go and find a shell is worse than saying nothing at all. The machinery already exists: `backup.run` is a registered job handler and `manage.py backup` ships, so this is a screen over finished work. Scope: **Back up now**, enqueued and showing progress · the held backups with timestamp, size and contents · download · the portable export (P-4) on the same screen · retention and schedule, which arrive with R-9. **Restore stays on the command line** — swapping the database underneath a running process is not something a web request should attempt — but the screen shows the exact command with this instance's real paths filled in, rather than leaving an operator to reassemble it from the docs during the one hour they can least afford it. |
 
-### 17.1 R-9 — what moves, and what does not
+### 17.1 R-9 — what moves, and what does not *(shipped; this is how it behaves)*
 
 > **Built in v0.6.1.** The registry is `homeautoshop/core/settings_registry.py`;
 > the accessor and the credential store are `homeautoshop/core/runtime.py`. Two
@@ -1775,7 +1841,7 @@ Two further constraints apply to everything that moves:
   credential values recorded as changed rather than quoted. Offline Mode is the
   case that most needs an answer to *who turned this off*.
 
-### 17.2 R-9 — making a change take effect
+### 17.2 R-9 — making a change take effect *(shipped; this is how it behaves)*
 
 > **Built in v0.6.1**, with one correction. The overlay for restart-class
 > settings does **not** run in `AppConfig.ready()`, which is the obvious place
@@ -1822,9 +1888,18 @@ what its own settings page displays.
 
 ---
 
-## 18. Candidate features — recommended, not yet in scope
+## 18. Candidate features — the answer to "what else is missing?"
 
-Answering *"what else is missing?"* C-1 and part of C-2 were **accepted into scope** (OQ-15) and now live in the requirements; they are kept here with their reasoning. The rest remain deliberately **outside** the requirement set so nothing creeps in silently.
+Four were built outright, one was split — serviceable equipment accepted and shipped, tool inventory rejected permanently — and **C-6 is the only one still outstanding**, carried in §15.2. The rows are kept here with their reasoning, which is the part worth having: three times now the best answer to a candidate feature has been a boundary rather than a build.
+
+| ID | State |
+| --- | --- |
+| C-1 Installed component tracking | Accepted into scope (OQ-15) and shipped in Phase 3 |
+| C-2 Shop tooling | **Split** — serviceable equipment shipped, tool inventory rejected permanently |
+| C-3 Warranty dashboard | Built — §15.1 |
+| C-4 Vehicle QR tag | Built — §15.1 |
+| C-5 Sensitive spec handling | Built — §15.1 |
+| C-6 Reusable procedure checklists | **Outstanding, and its stated reasoning is wrong** — §15.2 |
 
 ### C-1 — Installed component tracking · **ACCEPTED — now in scope**
 
@@ -1842,21 +1917,25 @@ The original candidate bundled two things that turned out to be entirely differe
 
 > The general principle worth extracting: *the correct response to an adjacent product that already solves a problem well is a boundary and an integration, not a reimplementation.* The same reasoning already retired fuel logging to LubeLogger (OQ-3) and repair procedures to LEMON/ALLDATA (NG-5). Three times now, the best feature decision has been not to build something.
 
-### C-3 — Warranty dashboard · trivial
+### C-3 — Warranty dashboard · **BUILT**
 
 `part_usage` already carries `warranty_months` and `warranty_distance`, and `asset_component` extends it. Nothing currently *surfaces* it. One report — parts still under warranty, sorted by expiry — turns data already being collected into money recovered. Add to FR-REP-1.
 
-### C-4 — Vehicle QR tag · trivial
+### C-4 — Vehicle QR tag · **BUILT**
 
 QR label printing already exists for storage bins (FR-INV-2). The same machinery on a windshield or door-jamb tag means scanning a car opens its record — useful with five vehicles in a driveway, and very useful for logging an odometer reading in three seconds.
 
-### C-5 — Sensitive spec handling · trivial, and a real gap
+### C-5 — Sensitive spec handling · **BUILT** — it was trivial, and it was a real gap
 
 Key codes, radio codes, alarm PINs, and wheel-lock key locations are exactly what `asset_spec` is for, and exactly what must **not** land in a shared export, a service-history PDF handed to a buyer, or an unencrypted backup. Adding `is_sensitive` to `asset_spec`, defaulting the security-adjacent seed groups to sensitive, and excluding them from reports and shareable bundles closes a hole that P-4's portability goal would otherwise open.
 
-### C-6 — Reusable procedure checklists · small, but check for overlap first
+### C-6 — Reusable procedure checklists · **still outstanding**
 
-A repeatable job (brake fluid flush, valve adjustment) as a template that materializes into job items. FR-WO-11 already covers most of this by duplicating a work order as a template. The DVI template engine (§7.8) is also structurally the same thing. **Recommendation: do not build a third checklist system** — extend one of the two that will already exist.
+A repeatable job (brake fluid flush, valve adjustment) as a template that materializes into job items.
+
+The recommendation was **do not build a third checklist system — extend one of the two that already exist**, naming FR-WO-11 (duplicate a work order as a template) and the DVI template engine (§7.8). The recommendation survives; its arithmetic does not. **FR-WO-11 was never built** — no view, no service, no template flag — so there is one existing checklist system, not two, and this row talked itself out of a feature by counting one that did not exist. Extending the DVI engine is still the right move, and §15.2 carries both halves: the checklist and the missing FR-WO-11 underneath it.
+
+> This is §19's failure mode with a candidate feature instead of a design decision, and it is the fourth instance: a requirement nobody doubts is a requirement nobody checks, and whatever leans on it inherits the mistake.
 
 ---
 
@@ -1886,15 +1965,11 @@ Found and closed:
 | A scan session soft-deletes into a **30-day trash** | `session_discard`, since drafts became discardable | The message said so and nothing listed sessions in the trash, so the delete was permanent and invisible at once — the pair the three entries above `parser_profile` in `TRASHABLE` were each added to fix, now the fourth. | `TRASHABLE["diagnostic_session"]` |
 | Equipment is created **with no VIN, plate, title, or registration fields shown** | FR-EQP-1 | One flat form, showing both kinds' fields to both kinds. Adding a mower offered a VIN, a licence plate, a registration expiry and a vehicle class — and `Asset.clean()` refuses a VIN on equipment outright, so the screen invited an entry the record would then reject. Found the ordinary way: somebody went to add a mower. | FR-EQP-1 unchanged — the form now matches it |
 
-Still open, named rather than assumed:
-
-| Claimed | Where | Reality |
-| --- | --- | --- |
-| Every report exports to CSV; no report is a dead end | FR-REP-4 | The shop reports and the vehicle report export. The per-vehicle costs screen, the due list, the wear chart and the shelf do not. |
-| Fitment data is publishable to the catalog | R-1 | No portable format exists for it. |
-| The ship set is `en-US`, `en-CA`, `fr-CA`, `es-MX`, with the three non-source catalogs **complete** | §5.6, DEVELOPMENT.md | They were about **a thousand msgids behind the code**. Everything built since the last extraction — most of two phases of screens — fell through to English in every locale, while the picker went on offering four languages. Found by running `makemessages` for the first time in a while, which is the only thing that can find it: `check_translations` proves each string is *wrapped*, a property of the source, and is silent on whether any catalog answers for it. The strings added alongside this row are translated; the ~1,000 before them are not. |
-| A PDF's words are read as **the lines they were printed as** | §8.3a, v0.6.6 | True between lines and not within one. Words in a row are still emitted in extraction order, so a Toyota report's module fault count — printed to the *right* of the module name and one point higher — comes out in front of it as `2 EOBD/OBD II`. The fix is one `sort` and it is applied to OCR geometry only, because two catalog profiles' section patterns were authored against the current output and lose their headings without it: nine modules' worth of code attribution across two real reports, plus four summary rows that then read as data-stream readings. Correcting it means new versions of those profiles, which is its own change. |
-| The build is gated: CI fails on unwrapped strings (§5.6), on a stale catalog index (§8.1b), and exercises the restore path against the prior release's backup format (§13.2) | §5.6, §8.1b, §13.2 | **There is no CI.** All four checks exist and are real — `check_translations`, `check_accessibility`, `check_rtl` and `build_catalog --check` each run as a test — but the gate is somebody remembering to run `manage.py test`, not a pipeline that refuses a merge. The restore round-trip is not covered at all: nothing loads a backup taken by an earlier version. Found while cleaning the public documentation, by checking each claim of the word "CI" against `.github/`, which does not exist. |
+**Still open: see §15.2.** The live half of this list is kept there with the
+rest of what remains, so that there is one place to look rather than two. Six
+claims stand open, one of them found while consolidating this document —
+FR-WO-11's work-order template, which §18's C-6 had cited as a reason not to
+build something else.
 
 **The lesson is about how the gaps were found, not about the gaps.** Three were discovered by a person trying to use the feature, months apart. One was found in ten minutes by grepping this document for rows claiming a portable format and checking each against the code — which is what produced the "still open" list above as well. One was found while adding a delete button to the screen that was missing the check, which is the ordinary way: you look at the lock when you are already at the door.
 
@@ -1908,6 +1983,32 @@ The last two arrived by a third route worth naming, because it is the one that s
 
 A specification is a set of claims about a program. Anything in it that is mechanically checkable should be mechanically checked, and where a claim is load-bearing for a *decision* — as FR-MAINT-9 was for OQ-2, and §12.2 was for R-2 — the cost of it being wrong is not one missing feature but a design conclusion drawn from a false premise. New capability claims should arrive with the test that proves them, and existing ones are worth sweeping again whenever a decision is about to lean on one.
 
+
+## Appendix — Release history
+
+One line per release. What each one decided is in the body of the document, at
+the section named; §15.1 and §15.2 are always the current state.
+
+| Version | What it changed |
+| --- | --- |
+| 0.7.0 | Status consolidated into §15 (plan), §15.1 (built) and §15.2 (remaining); four contradictions between the six places it had been kept removed; every open claim re-verified against the code, which found FR-WO-11 unbuilt underneath §18's C-6. |
+| 0.6.7 | The first tool whose report is a photograph — a TOPDON BT600 Plus receipt, five phone photos, and a built-in parser. Found that OCR read *nothing* from a rotated capture and filed it `done`; that subtracting a blurred copy of a photo from itself took the corpus from 73 legible values to 84; and that NFR-S-5's redaction was switched off on photographs, committing a real tester serial. §8.3a, §19. |
+| 0.6.6 | The second scan tool and thirteen more: 169 public reports redacted into the corpus, **seven parser profiles published rather than bundled**, and the discovery that `_read_pdf` had been joining words in extraction order — which made three formats unparseable and let an Autel report printing `VIN: --` yield a VIN. §8.3a, §8.1b. |
+| 0.6.5 | **No object store in the stack.** Media lives under `MEDIA_ROOT`, which is what §13.1 backs up; MinIO held it where no backup reached it. §5.1, §13.1. |
+| 0.6.4 | Follow-ups from using the parts-order import: the preview now leads into the import rather than asking for the same file twice, and the document is stored on the way past, deduplicated by SHA-256. §8.3a. |
+| 0.6.3 | Supplier order confirmations read into the catalog — a RockAuto PDF becomes a purchase, its lines, and the parts in it, with fitment recorded as *stated by vendor*. FR-PUR-1, FR-PART-2/3/4. |
+| 0.6.2 | Fixes from first real use: uploaded files served by the application rather than by presigned URL against a hostname that resolves only inside Compose. §5.1, §12.3. |
+| 0.6.1 | **R-9 and R-10 built** — instance settings in the UI on a typed registry, credentials in a separate encrypted table, and backup operable from a screen. §17.1, §17.2. |
+| 0.6.0 | **Phase 4 built.** §15.1 opened, recording what shipped and where the implementation disagreed with this document. |
+| 0.5.3 | R-9 credentials resolved: a separate encrypted table stripped from the export and both backup paths, and a restored instance stating which integrations need re-authenticating. §17.1. |
+| 0.5.2 | R-9 added — instance configuration moves out of `.env` and into the UI. §14, §17. |
+| 0.5.0 | Split into a document set; the base spec becomes requirements only. |
+| 0.4.1 | WrenchLedger contract split out and written against the shipped API. **Key finding: webhooks cannot reach a LAN-only instance, so sync is pull-first.** FR-WL-5. |
+| 0.4.0 | OQ-13/14/15 resolved · **serviceable equipment in scope**, driving the `asset`/`usage_reading` generalizations · **tool inventory permanently out** · §8.7 WrenchLedger · locales scoped to North America, exposing a US-only recall gap · C-1 accepted. |
+| 0.3.0 | All 12 open questions resolved · **stack decided: Python/Django** · **localization from commit one** · the DVI and component-tracking module · vehicle scope widened to anything plated. |
+| 0.2.0 | §8.3 rewritten around scan-tool PDF ingestion · §8.5 service-information link-out · §8.6 LubeLogger · new entities `parser_profile`, `external_ref`, `service_info_provider`, `vehicle_service_info_link`. |
+
+---
 
 ## Appendix — Companion documents
 
