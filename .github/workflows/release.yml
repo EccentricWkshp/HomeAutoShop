@@ -258,10 +258,20 @@ jobs:
         include:
           - image: app
             repo: docker.io/eccentricwkshp/homeautoshop
+            hub: eccentricwkshp/homeautoshop
+            readme: README.md
+            short: "Self-hosted, local-first shop management for a home garage"
           - image: proxy
             repo: docker.io/eccentricwkshp/homeautoshop-caddy
+            hub: eccentricwkshp/homeautoshop-caddy
+            readme: docs/DOCKERHUB-CADDY.md
+            short: "Caddy with DNS-01 providers compiled in, for HomeAutoShop"
 
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
       - uses: actions/download-artifact@v4
         with:
           path: /tmp/digests
@@ -300,3 +310,41 @@ jobs:
 
       - name: Show what was published
         run: docker buildx imagetools inspect "${{ matrix.repo }}:${RELEASE_TAG#v}"
+
+      # Docker Hub renders the markdown but has no repository behind it, so
+      # every relative link in the README — eleven of them — would resolve
+      # against hub.docker.com and 404. They are rewritten to absolute GitHub
+      # URLs on the way past rather than in the file itself, because in the
+      # repository the relative ones are correct and are what GitHub renders.
+      - name: Point relative links at GitHub
+        run: |
+          python3 - <<'PY'
+          import pathlib, re
+          BASE = "https://github.com/EccentricWkshp/HomeAutoShop"
+          def fix(m):
+              text, url = m.group(1), m.group(2)
+              if url.startswith(("http://", "https://", "#", "mailto:")):
+                  return m.group(0)
+              kind = "tree" if url.endswith("/") else "blob"
+              return f"[{text}]({BASE}/{kind}/main/{url})"
+          src = pathlib.Path("${{ matrix.readme }}").read_text(encoding="utf-8")
+          out = re.sub(r"\[([^\]]*)\]\(([^)]+)\)", fix, src)
+          pathlib.Path("/tmp/hub.md").write_text(out, encoding="utf-8")
+          # Counted outside the f-string: a backslash inside one is a syntax
+          # error before Python 3.12, and the runner's version is not ours to
+          # assume.
+          total = len(re.findall(r"\]\(", src))
+          rewritten = sum(1 for a, b in zip(src.splitlines(), out.splitlines()) if a != b)
+          print(f"{total} links, {rewritten} lines rewritten")
+          PY
+
+      # Runs after the manifest is tagged, never before: a description
+      # promising a release that failed to publish is worse than a stale one.
+      - name: Sync the Docker Hub description
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ matrix.hub }}
+          readme-filepath: /tmp/hub.md
+          short-description: ${{ matrix.short }}
