@@ -1,5 +1,7 @@
 # HomeAutoShop
 
+[![CI](https://github.com/EccentricWkshp/HomeAutoShop/actions/workflows/ci.yml/badge.svg)](https://github.com/EccentricWkshp/HomeAutoShop/actions/workflows/ci.yml)[![Release](https://github.com/EccentricWkshp/HomeAutoShop/actions/workflows/release.yml/badge.svg)](https://github.com/EccentricWkshp/HomeAutoShop/actions/workflows/release.yml)
+
 Self-hosted, local-first shop management for a home garage working on personally
 owned vehicles and equipment.
 
