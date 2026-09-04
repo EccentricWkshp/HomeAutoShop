@@ -1,10 +1,12 @@
-# GEARWRENCH GWSCAN — a rebadged XTOOL, and not readable
+# GEARWRENCH GWSCAN — a rebadged XTOOL, readable but not read
 
 Probed 2026-09-03 with the adapter plugged into a vehicle, ignition on, from a
 Windows machine over Bluetooth LE. Read-only throughout: mode 04 was never sent.
 
-**It cannot be read by the browser code reader**, and the reason is the
-protocol rather than the transport.
+**It cannot be read by the browser code reader as things stand**, and the reason
+is the protocol rather than the transport. A capture of its own app has since
+been decoded far enough that supporting it would be practical — the title is
+"not read" rather than "not readable" for that reason.
 
 ## It is Bluetooth LE, and it does not pair
 
@@ -79,10 +81,20 @@ is waiting for its own framing, and ASCII is not it.
 ## The protocol, from a capture
 
 An Android `btsnoop_hci` log of the vendor's app talking to the adapter settled
-in twenty minutes what guessing could not. **There is no authentication.** The
-session enables notifications and goes straight to reading the serial number —
-no challenge, no key exchange — so the activation code is licence enforcement
-inside the app, not a gate on the device.
+in twenty minutes what guessing could not.
+
+**No authentication appears in the session.** It enables notifications and goes
+straight to reading the serial number — no challenge, no key exchange, no
+session key — and every later command is answered on its merits. So a
+third-party client should be able to drive *this* adapter.
+
+That is not the same as "the adapter has no lock", and the difference is worth
+keeping straight. The activation screen was photographed at 20:03 and the
+capture began at 20:15, so whatever activation does had already been done before
+recording started. A device-side binding that happens once, at first activation,
+would be invisible here. What can be said is that an **activated** adapter
+answers a plain client without further ceremony; whether a factory-fresh one
+does is untested.
 
 Writes go to the Nordic UART RX characteristic and replies arrive as
 notifications on TX, split across 20-byte BLE writes and reassembled into one
@@ -152,21 +164,28 @@ healthy cars fails exactly when somebody needs it.
 
 *The capture itself is ignored by git (`Artifacts/samples/**/*.cfa`) and must
 stay that way — it carries the vehicle's VIN and the adapter's serial in
-cleartext.* Recovering that means
-capturing the vendor's app talking to the adapter and decoding what it sends,
-which is days of work, for one model, unverifiable in CI, and undone by a
-firmware update. The report-import path below costs minutes and does not care
-about any of it.
+cleartext.*
 
-That mattered, because an empty reply decodes to zero trouble codes, and the
-page used to report zero codes as *"Read complete — no codes found."* A tool
-that had never spoken to the car produced a clean bill of health. Silence is
-now reported as silence, and the same fix covers clearing — which had been
-claiming that codes were cleared on no evidence whatsoever.
+## What probing it found
 
-## What to do with one instead
+An adapter that could not be read still paid for itself. Every command was
+answered with silence, and an empty reply decodes to zero trouble codes — so the
+page reported *"Read complete — no codes found."* A device that had never spoken
+to the car produced a clean bill of health. Silence is now reported as silence,
+and the same fix covers clearing, which had been claiming codes were cleared on
+no evidence at all.
 
-Read it with the GWSCAN app and bring the result back: Diagnostics takes the
-report it exports and learns the layout the first time. Worth trying the
-**XTOOL D8 profile first** — the same vendor builds both, so the export may
-already parse, or need only small changes.
+## What to do with one
+
+**There is no report to import.** The usual answer for a tool with its own
+protocol — read the car with the maker's app, export the report, bring it here —
+does not apply: no way to save or share a report was found in the GWSCAN app.
+So there are two options rather than three.
+
+* **Use a different adapter.** Any ELM327-compatible one works today, and the
+  OBDLink MX+ is the one proven against this application.
+* **Implement this protocol.** Everything above is what that needs, and it is a
+  smaller job than it first looked: the framing is simple, the payload is
+  ordinary OBD-II, and the existing byte decoder already handles it unchanged.
+  The open questions are multi-frame replies, non-CAN buses, and whether a
+  factory-fresh adapter behaves like this activated one.

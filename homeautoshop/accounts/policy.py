@@ -53,6 +53,10 @@ ALWAYS = frozenset({
 VEHICLE = frozenset({
     # The vehicle and its history
     "asset_list", "asset_detail", "asset_timeline", "asset_schedule",
+    # Arranging your own board. A helper sees three vehicles and may still want
+    # them in an order that is not alphabetical; the preference is per user and
+    # names only vehicles they were already shown, so it grants nothing.
+    "asset_move", "asset_reorder",
     "asset_specs", "asset_diagnostics", "asset_recalls", "asset_photo_upload",
     "reading_create", "component_add", "component_remove", "media_unlink",
     "media_rename", "recall_status",

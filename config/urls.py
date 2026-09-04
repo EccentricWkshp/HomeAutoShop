@@ -111,10 +111,15 @@ urlpatterns = [
     # Assets
     path("vehicles/", assets.asset_list, name="asset_list"),
     path("vehicles/new/", assets.asset_create, name="asset_create"),
+    # Arranging the board. `order` takes a whole sequence, which is what a
+    # finished drag posts; `move` takes one card and a direction, which is what
+    # the two buttons post and what a keyboard can reach.
+    path("vehicles/order/", assets.asset_reorder, name="asset_reorder"),
     path("vehicles/vin-check/", assets.vin_validate, name="vin_validate"),
     path("vehicles/plate-lookup/", assets.plate_lookup, name="plate_lookup"),
     path("vehicles/<uuid:pk>/", assets.asset_detail, name="asset_detail"),
     path("vehicles/<uuid:pk>/edit/", assets.asset_edit, name="asset_edit"),
+    path("vehicles/<uuid:pk>/move/", assets.asset_move, name="asset_move"),
     # For a vehicle added twice, not for one that was sold — a sold car keeps
     # its history, and `status = sold` is what says so.
     path("vehicles/<uuid:pk>/delete/", assets.asset_delete, name="asset_delete"),

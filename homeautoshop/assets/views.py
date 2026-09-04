@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import json
 import logging
+import uuid
+from urllib.parse import urlencode
+
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -29,11 +32,14 @@ from homeautoshop.mediafiles.models import Media, MediaLink
 from homeautoshop.mediafiles.services import ingest
 from homeautoshop.work.models import WorkOrder
 
+from . import board
+from . import cards as cardlib
 from . import vin as vinlib
 from . import vindecode
 from . import vpic_fields
 from .models import (
     Asset,
+    AssetCardPreference,
     AssetLink,
     AssetSpec,
     Recall,
@@ -107,6 +113,34 @@ FULL_WIDTH = ("nickname", "notes")
 
 
 class AssetForm(forms.ModelForm):
+    """The vehicle, plus how this person wants its card to look.
+
+    The card fields are not columns on `Asset` — order, colour and pins are per
+    *user* (`AssetCardPreference`), because "which of these six is the one I
+    mean" is a question two people in the same shop answer differently. They
+    are on this form anyway, and not on a screen of their own, because the one
+    moment somebody knows what a vehicle should be recognisable by is while
+    they are typing in what it is.
+
+    `card_prefs` is the marker that says the card section was on the screen. A
+    checkbox group submits nothing at all when every box is cleared, which is
+    indistinguishable from a post that never carried the section — and one of
+    those means "pin nothing", while the other must leave the card alone.
+    """
+
+    card_prefs = forms.CharField(required=False, initial="1", widget=forms.HiddenInput)
+    # Labelled rather than left to Django, which would derive "Card color" and
+    # "Card pins" from the column names. US English in the `msgid`, because
+    # that is the source language — `locale/en_CA` carries `Colour` (README).
+    card_color = forms.ChoiceField(
+        required=False, choices=cardlib.COLORS, label=gettext_lazy("Color")
+    )
+    card_pins = forms.MultipleChoiceField(
+        required=False,
+        choices=[(pin.key, pin.label) for pin in cardlib.PINS],
+        label=gettext_lazy("What this card shows"),
+    )
+
     class Meta:
         model = Asset
         fields = [
@@ -123,8 +157,10 @@ class AssetForm(forms.ModelForm):
             "acquired_on": forms.DateInput(attrs={"type": "date"}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.user = user
+        self._load_card_preference()
         # FR-VEH-1: only a nickname is required. A half-known project car must
         # still be recordable.
         for name, field in self.fields.items():
@@ -135,6 +171,87 @@ class AssetForm(forms.ModelForm):
             elif isinstance(field.widget, forms.Textarea):
                 css = "input textarea"
             field.widget.attrs.setdefault("class", css)
+
+    # -- the card ---------------------------------------------------------
+
+    def _load_card_preference(self) -> None:
+        """Fill the card fields in from this person's row, if there is one.
+
+        No row is the ordinary state and is not a gap to be filled: it means
+        the card has never been touched, so it takes the defaults, and the
+        boxes open showing what the card is actually displaying today.
+        """
+        self.card_preference = None
+        if not (self.user and self.instance.pk):
+            self.initial.setdefault("card_pins", list(cardlib.DEFAULT_PINS))
+            return
+        self.card_preference = AssetCardPreference.objects.filter(
+            user=self.user, asset=self.instance
+        ).first()
+        stored = self.card_preference.pins if self.card_preference else None
+        self.initial.setdefault(
+            "card_pins", list(cardlib.DEFAULT_PINS) if stored is None else list(stored)
+        )
+        self.initial.setdefault(
+            "card_color", self.card_preference.color if self.card_preference else ""
+        )
+
+    def color_options(self):
+        chosen = self["card_color"].value() or ""
+        return [
+            {"value": key, "label": label, "checked": key == chosen}
+            for key, label in cardlib.COLORS
+        ]
+
+    def pin_options(self):
+        """Every pin, with the ones this kind has no use for marked hidden.
+
+        Rendered and hidden rather than omitted, exactly as `sections()` does
+        it, so switching between vehicle and equipment is instant and the
+        server still decides the state the page opens in.
+        """
+        value = self["card_pins"].value() or ()
+        # A bare string here is one pin, not a set of its letters — which is
+        # what `set("photo")` quietly produces.
+        chosen = {value} if isinstance(value, str) else set(value)
+        kind = self.current_kind()
+        return [
+            {
+                "value": pin.key,
+                "label": pin.label,
+                "kind": pin.kind,
+                "checked": pin.key in chosen,
+                "hidden": bool(pin.kind) and pin.kind != kind,
+            }
+            for pin in cardlib.PINS
+        ]
+
+    def clean_card_pins(self):
+        return cardlib.valid_pins(self.cleaned_data.get("card_pins"), kind=self.current_kind())
+
+    def save_card_preference(self, asset) -> None:
+        """Write this person's card settings, or clear the row if there is nothing to keep."""
+        if not (self.user and self.cleaned_data.get("card_prefs")):
+            return
+        color = self.cleaned_data.get("card_color") or ""
+        pins = list(self.cleaned_data.get("card_pins") or [])
+        pref = AssetCardPreference.objects.filter(user=self.user, asset=asset).first()
+        # A card back at its defaults keeps no row *unless* it has a position:
+        # the board order lives in the same row, and dropping it would move the
+        # card somebody had placed. Absent means default, which is the state
+        # every card starts in.
+        default = not color and pins == list(cardlib.DEFAULT_PINS)
+        if pref is None:
+            if default:
+                return
+            AssetCardPreference.objects.create(user=self.user, asset=asset, color=color, pins=pins)
+            return
+        if default and pref.board_order is None:
+            pref.delete()
+            return
+        pref.color = color
+        pref.pins = pins
+        pref.save(update_fields=["color", "pins", "updated_at"])
 
     # -- what this kind actually has ------------------------------------
 
@@ -218,6 +335,7 @@ class AssetForm(forms.ModelForm):
                     mark_override(asset, name, self.cleaned_data.get(name))
         if commit:
             asset.save()
+            self.save_card_preference(asset)
         return asset
 
 
@@ -240,12 +358,86 @@ def asset_list(request):
         request,
         "assets/list.html",
         {
-            "assets": qs,
+            # Cards rather than assets: what each one says is per-vehicle and
+            # per-person, and resolving it in the template would mean a query
+            # per pin per card. See `board.cards_for`.
+            "cards": board.cards_for(request.user, qs),
             "kind": kind,
             "show_all": show_all,
             "kinds": AssetKind.choices,
+            # Carried on every reorder form so the redirect lands back on the
+            # tab the person was on rather than dropping them to "All".
+            "board_scope": board.SCOPE_VEHICLES,
         },
     )
+
+
+@require_POST
+@login_required
+def asset_move(request, pk):
+    """Move one card up or down its board — the path that needs no script.
+
+    Dragging is the asked-for gesture and `static/board.js` provides it, but it
+    cannot be the only one: it is unreachable from a keyboard, it is unreliable
+    on a phone held in one oily hand, and it does not exist at all until a
+    script has loaded. These two buttons work everywhere and are what the drag
+    is an enhancement *of* — the same POST, from the same list, with the
+    neighbour worked out on the server either way.
+    """
+    asset = get_object_or_404(Asset, pk=pk)
+    require(request.user, "asset.read", asset)
+    scope = request.POST.get("scope") or board.SCOPE_VEHICLES
+    everything, visible = board.scope_for(
+        request.user,
+        scope,
+        kind=request.POST.get("kind", ""),
+        show_all=request.POST.get("all") == "1",
+    )
+    board.move(request.user, everything, visible, asset, request.POST.get("direction", "down"))
+    return redirect(_board_return(request, scope))
+
+
+@require_POST
+@login_required
+def asset_reorder(request):
+    """Store a whole sequence at once — what a finished drag posts.
+
+    Deliberately not a bespoke JSON endpoint. It is an ordinary form post with
+    repeated `ids`, so the enhanced path and a hand-written form say the same
+    thing, and a failure here is a redirect to a page that is still correct
+    rather than a silent 500 behind a `fetch`.
+    """
+    scope = request.POST.get("scope") or board.SCOPE_VEHICLES
+    everything, visible = board.scope_for(
+        request.user,
+        scope,
+        kind=request.POST.get("kind", ""),
+        show_all=request.POST.get("all") == "1",
+    )
+    ids = []
+    for raw in request.POST.getlist("ids"):
+        try:
+            ids.append(uuid.UUID(raw))
+        except (ValueError, AttributeError):
+            # A malformed id is one card the request cannot be about. Dropping
+            # it leaves that card where it was, which beats refusing the whole
+            # rearrangement over one bad value.
+            continue
+    board.reorder(request.user, everything, visible, ids)
+    return redirect(_board_return(request, scope))
+
+
+def _board_return(request, scope: str) -> str:
+    """Back to the screen the rearrangement came from, filter and all."""
+    if scope == board.SCOPE_FLEET:
+        return reverse("dashboard")
+    query = {}
+    if request.POST.get("kind"):
+        query["kind"] = request.POST["kind"]
+    if request.POST.get("all") == "1":
+        query["all"] = "1"
+    url = reverse("asset_list")
+    return f"{url}?{urlencode(query)}" if query else url
 
 
 @login_required
@@ -540,7 +732,11 @@ def _lookup_into_form(request):
         request.session.pop(DECODE_STASH, None)
         messages.warning(request, result.message)
 
-    return AssetForm(initial=data)
+    # `.dict()` above keeps one value per key, which is right for every field
+    # on this form but the checkbox group: it would arrive as the single last
+    # box that happened to be ticked, and the rest would come back cleared.
+    data["card_pins"] = request.POST.getlist("card_pins")
+    return AssetForm(initial=data, user=request.user)
 
 
 def _apply_stashed_decode(request, asset) -> None:
@@ -568,7 +764,7 @@ def asset_create(request):
                 "assets/form.html",
                 {"form": _lookup_into_form(request), "asset": None},
             )
-        form = AssetForm(request.POST)
+        form = AssetForm(request.POST, user=request.user)
         if form.is_valid():
             asset = form.save()
             _apply_stashed_decode(request, asset)
@@ -585,7 +781,7 @@ def asset_create(request):
         if kind == AssetKind.EQUIPMENT:
             initial["meter"] = "engine_hours"
             initial["meter_unit"] = "hours"
-        form = AssetForm(initial=initial)
+        form = AssetForm(initial=initial, user=request.user)
     return render(request, "assets/form.html", {"form": form, "asset": None})
 
 
@@ -594,13 +790,13 @@ def asset_edit(request, pk):
     asset = get_object_or_404(Asset, pk=pk)
     require(request.user, "asset.edit", asset)
     if request.method == "POST":
-        form = AssetForm(request.POST, instance=asset)
+        form = AssetForm(request.POST, instance=asset, user=request.user)
         if form.is_valid():
             form.save()
             messages.success(request, _("Saved."))
             return redirect("asset_detail", pk=asset.pk)
     else:
-        form = AssetForm(instance=asset)
+        form = AssetForm(instance=asset, user=request.user)
     return render(request, "assets/form.html", {"form": form, "asset": asset})
 
 

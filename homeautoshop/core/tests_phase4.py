@@ -13,8 +13,10 @@ from __future__ import annotations
 
 import json
 from datetime import date, timedelta
+from pathlib import Path
 from unittest.mock import patch
 
+from django.conf import settings
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -833,6 +835,42 @@ class PwaTests(TestCase):
         """A stale worker keeps serving a stale app, and it looks like a failed
         deploy rather than a caching problem."""
         self.assertEqual(self.client.get("/sw.js")["Cache-Control"], "no-cache")
+
+    def test_the_page_registers_the_worker_from_the_root(self):
+        """The gap the two tests above left, and it cost the whole feature.
+
+        They proved `/sw.js` was served correctly and said nothing about
+        whether anything asked for it — and `offline.js` asked for
+        `/static/sw.js`. So the worker registered with a scope of `/static/`:
+        no page was ever cached, the offline landing was unreachable, and
+        Background Sync woke a worker watching a directory of stylesheets.
+
+        Worse than the missing half was the half that did run. `/static/` is
+        cache-first against a literal `VERSION`, so `shell-v1` was written on a
+        browser's first ever visit and served for the life of the install —
+        every later release of the stylesheet and of every script was fetched
+        into a cache nothing read, and looked to the operator like a change
+        that had not deployed.
+        """
+        source = (Path(settings.BASE_DIR) / "static" / "offline.js").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('register("/sw.js")', source)
+        self.assertNotIn('register("/static/sw.js")', source)
+
+    def test_a_worker_left_at_the_wrong_scope_is_retired(self):
+        """An upgrade has to undo the bad registration, not just stop making it.
+
+        Where two registrations match a request the more specific scope wins,
+        so a browser still holding the `/static/` worker would go on being
+        served the frozen shell by it while the correct one sat at `/` with
+        nothing to do.
+        """
+        source = (Path(settings.BASE_DIR) / "static" / "offline.js").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("getRegistrations", source)
+        self.assertIn("unregister()", source)
 
     def test_the_manifest_has_the_icons_installability_needs(self):
         import json as _json

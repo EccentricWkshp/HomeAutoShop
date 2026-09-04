@@ -128,6 +128,12 @@
 {# Form behaviour only — every form it touches works correctly without it. #}
 <script src="{% static 'forms.js' %}" defer></script>
 {% comment %}
+Dragging cards on the Vehicles board and the Fleet panel. The gesture only;
+both boards reorder from ↑/↓ buttons that post ordinary forms, and this file
+being blocked costs the drag and nothing else.
+{% endcomment %}
+<script src="{% static 'board.js' %}" defer></script>
+{% comment %}
 Keeps your place when a form updates part of the page. Loaded after forms.js so
 its delegated submit handler runs after that file's per-form confirmations —
 a cancelled confirmation must stop the post, not merely stop the navigation.

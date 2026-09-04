@@ -93,6 +93,33 @@ read from uploaded documents.
 
 ## Vehicles and equipment
 
+### Arrange the board
+
+The Vehicles screen is a board you arrange, and how you arrange it is yours —
+everyone with an account keeps their own order, colours and pins, so nobody
+else's board moves when you tidy yours.
+
+**Order.** Drag a card by the handle at its top left, or use the ↑ and ↓
+buttons on it. The buttons do the whole job on their own, which is what to
+reach for on a phone with a glove on. A vehicle you add later goes to the end
+rather than being slotted in alphabetically, so adding one never reshuffles a
+board you have arranged. Rearranging while a filter is on — the Equipment tab,
+say — moves the card past what you can see and leaves everything hidden where
+it was. The **Fleet** panel on the Today screen is the same board, showing its
+first few, so arranging it in either place arranges both.
+
+**Colour and what each card shows.** Both live on the vehicle's own **Edit**
+screen, under *On the board*. Pick a colour to make one easy to spot, and tick
+what the card should carry: year/make/model, status, a photo, the meter, VIN,
+plate, engine, owner, driver, what is coming due, open work orders, open
+trouble codes. Choose per vehicle — a plate means nothing on a generator, and
+engine hours identify it better than anything else would. The nickname is
+always shown. Anything you tick that a particular vehicle has no value for is
+simply left off its card rather than drawn empty.
+
+A pinned VIN shows masked, as it does everywhere else. Reveal it on the
+vehicle's own page when you need it.
+
 ### Add and identify an asset
 
 Choose **Vehicles → Add**. A record can represent either a vehicle or

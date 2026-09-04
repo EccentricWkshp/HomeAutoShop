@@ -650,3 +650,184 @@ input.doubtful { border-color: var(--warn, #b58900); }
 /* A value the reader saw that somebody has since corrected. Struck rather than
    removed: the point of that table is what the machine said. */
 .struck { text-decoration: line-through; color: var(--muted); }
+
+/* ---------- the board (SPEC §9.3) ---------- */
+
+/* The Vehicles screen and the dashboard's Fleet panel. Both are lists that can
+   be rearranged: `<ul>`/`<li>` in the markup so the sequence is real, laid out
+   as a grid here. */
+.board { list-style: none; padding: 0; }
+
+.boardcard {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: .5rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: .85rem;
+  /* The tinted stripe a colour paints. Transparent by default, so a card with
+     no colour keeps exactly the geometry of one that has it and the grid does
+     not shift when somebody picks one. */
+  border-inline-start: 4px solid transparent;
+}
+
+.boardbody { grid-column: 2; grid-row: 1 / span 2; text-decoration: none; color: inherit; min-width: 0; }
+.boardsub, .boardmeter { margin: .25rem 0; }
+.boardline { margin: .35rem 0 0; display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; }
+.boardcard .factline { margin-block-start: .35rem; }
+
+.boardphoto {
+  display: block;
+  inline-size: 100%;
+  block-size: 7rem;
+  object-fit: cover;
+  border-radius: calc(var(--radius) / 2);
+  border: 1px solid var(--line);
+  margin-block: .4rem;
+}
+
+/* Both reorder controls live in the first column, above one another: the grip
+   for a pointer, the arrows for everything else. The arrows are the mechanism
+   and are never hidden. The grip is, until `board.js` puts `can-drag` on the
+   document element — an affordance a browser cannot honour is worse than none,
+   and doing it from a class rather than per element means a board swapped in
+   later by `liveform.js` is already right. */
+.boardmove { grid-column: 1; grid-row: 2; }
+.boardgrip {
+  display: none;
+  grid-column: 1; grid-row: 1;
+  cursor: grab;
+  color: var(--muted);
+  font-size: 1.2rem;
+  line-height: 1;
+  /* A full tap target (§9.2), not a glyph. The thing you take hold of to move
+     a card has to be catchable by a gloved thumb, and `⠿` with a little
+     padding round it was about a fifth of the area that asks for. */
+  min-block-size: var(--tap);
+  min-inline-size: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  /* Or the page scrolls under the finger instead of the card moving. */
+  touch-action: none;
+  user-select: none;
+}
+.can-drag .boardgrip { display: flex; }
+.boardgrip:active { cursor: grabbing; }
+
+/* While a drag is in progress. The cards are moved with `transform` and never
+   reflowed (see `board.js`), so the transition animates the preview rather than
+   the layout — there is no layout change to animate. `prefers-reduced-motion`
+   is answered by the blanket rule further up this file, which leaves the cards
+   stepping straight to their new places. */
+.board.is-sorting > [data-board-item] {
+  transition: transform 140ms ease;
+  will-change: transform;
+}
+/* The card under the finger tracks it exactly: a transition here would put the
+   card a fraction of a second behind the pointer for the whole gesture. */
+.board.is-sorting > .is-dragging { transition: none; }
+
+.is-dragging {
+  /* Above its neighbours as they slide underneath it. `.boardcard` and
+     `.fleetrow` are both already positioned, so this takes effect. */
+  z-index: 3;
+  cursor: grabbing;
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / .35);
+}
+
+/* The Fleet panel: the same board, one column, names only. */
+.fleetrow {
+  /* Positioned so a lifted row's `z-index` means something and it passes over
+     its neighbours rather than under them. */
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  border-inline-start: 4px solid transparent;
+  padding-inline-start: .4rem;
+}
+.fleetrow .reorder { flex: 0 0 auto; }
+.fleetboard .boardgrip { padding: .2rem .15rem; }
+
+/* Card colours. Decoration only — the status pill, the due badges and the code
+   count each carry their own words, so losing the colour loses a recognition
+   aid and no information (§9.5). One hue per key, mixed against the surface so
+   the same key is legible in both themes rather than being a fixed swatch that
+   glares in one of them. */
+[data-card-color] { --card-hue: var(--accent); }
+[data-card-color="red"]    { --card-hue: #f87171; }
+[data-card-color="orange"] { --card-hue: #fb923c; }
+[data-card-color="yellow"] { --card-hue: #facc15; }
+[data-card-color="green"]  { --card-hue: #4ade80; }
+[data-card-color="teal"]   { --card-hue: #2dd4bf; }
+[data-card-color="blue"]   { --card-hue: #60a5fa; }
+[data-card-color="violet"] { --card-hue: #a78bfa; }
+[data-card-color="pink"]   { --card-hue: #f472b6; }
+[data-card-color="slate"]  { --card-hue: #94a3b8; }
+
+@media (prefers-color-scheme: light) {
+  /* The dark-theme hues are pastels chosen to sit on a near-black surface;
+     on white they wash out to nothing. Darker equivalents, same order. */
+  [data-card-color="red"]    { --card-hue: #dc2626; }
+  [data-card-color="orange"] { --card-hue: #ea580c; }
+  [data-card-color="yellow"] { --card-hue: #ca8a04; }
+  [data-card-color="green"]  { --card-hue: #16a34a; }
+  [data-card-color="teal"]   { --card-hue: #0d9488; }
+  [data-card-color="blue"]   { --card-hue: #2563eb; }
+  [data-card-color="violet"] { --card-hue: #7c3aed; }
+  [data-card-color="pink"]   { --card-hue: #db2777; }
+  [data-card-color="slate"]  { --card-hue: #475569; }
+}
+
+.boardcard[data-card-color] {
+  border-inline-start-color: var(--card-hue);
+  /* A wash, not a fill. Card text is checked for contrast against `--surface`,
+     and a tint heavy enough to change that answer would be a colour choice
+     that quietly breaks the page it decorates. */
+  background: color-mix(in srgb, var(--card-hue) 7%, var(--surface));
+}
+.fleetrow[data-card-color] { border-inline-start-color: var(--card-hue); }
+
+/* ---------- choosing a card's colour and pins ---------- */
+
+.swatches, .pinlist { border: 0; padding: 0; margin: .75rem 0 0; }
+.swatches legend, .pinlist legend { color: var(--muted); font-size: .85rem; padding: 0; }
+.swatches { display: flex; flex-wrap: wrap; gap: .4rem; }
+
+.swatch {
+  display: inline-flex; align-items: center; gap: .4rem;
+  margin: 0; padding: .4rem .6rem;
+  min-height: var(--tap);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  cursor: pointer;
+}
+/* The radio is left visible rather than hidden behind a styled chip. A
+   hand-drawn selected state would rest on `:has()`, and a browser without it
+   would show ten swatches with no way to tell which one is chosen — for a
+   control whose entire subject is colour, that is the one failure that cannot
+   be shrugged off. The native control says it, and the ring below is the
+   decoration on top. */
+.swatch input { flex: 0 0 auto; inline-size: 1.1rem; block-size: 1.1rem; margin: 0; }
+.swatch .chip {
+  inline-size: 1.1rem; block-size: 1.1rem; border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--card-hue, transparent);
+}
+.swatch[data-card-color=""] .chip { background: repeating-linear-gradient(
+  45deg, transparent, transparent 3px, var(--line) 3px, var(--line) 4px); }
+.swatch:has(input:checked) { border-color: var(--accent); background: var(--surface-2); }
+.swatch:has(input:focus-visible) { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.pinlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: .1rem .75rem; }
+.pinlist legend, .pinlist .helptext, .pinlist .msg { grid-column: 1 / -1; }
+.pin {
+  display: flex; align-items: center; gap: .5rem;
+  margin: 0; min-height: var(--tap); cursor: pointer;
+  font-size: .9rem; color: var(--text);
+}
+.pin input { inline-size: 1.1rem; block-size: 1.1rem; flex: 0 0 auto; }

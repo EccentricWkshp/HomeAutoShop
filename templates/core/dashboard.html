@@ -79,11 +79,51 @@
   </section>
 
   <aside class="stack">
-    <section class="card">
+    <section class="card" id="fleet" data-live="fleet">
       <h2>{% translate "Fleet" %}</h2>
       <p style="font-size:2rem;margin:0">{{ fleet_count }}</p>
-      <ul class="list small">
-        {% for a in recent_assets %}<li><a href="{% url 'asset_detail' a.pk %}">{{ a.nickname }}</a></li>{% endfor %}
+      {% comment %}
+      The same board as the Vehicles screen, showing its first few. It used to
+      be "whatever was touched most recently", which reshuffled itself every
+      time anybody recorded an odometer reading — so the panel could never be
+      learned, and a panel you cannot learn is one you read from the top every
+      time. It is now in the order this person put their vehicles in, and
+      rearranging it here rearranges the same one board.
+
+      Names only, not cards: this panel answers "take me to the truck", and
+      running the pin queries to draw six links would be paying for a card
+      nobody asked for on the busiest screen in the application.
+      {% endcomment %}
+      <ul class="list small board fleetboard" data-board
+          data-board-url="{% url 'asset_reorder' %}"
+          data-board-scope="fleet">
+        {% for card in fleet_cards %}
+          <li class="fleetrow" data-board-item data-id="{{ card.asset.pk }}"
+              {% if card.color %}data-card-color="{{ card.color }}"{% endif %}>
+            <span class="boardgrip" data-board-grip aria-hidden="true">⠿</span>
+            <div class="reorder">
+              <form method="post" action="{% url 'asset_move' card.asset.pk %}">{% csrf_token %}
+                <input type="hidden" name="_anchor" value="fleet">
+                <input type="hidden" name="scope" value="fleet">
+                <input type="hidden" name="direction" value="up">
+                <button class="iconbtn small" type="submit" {% if forloop.first %}disabled{% endif %}
+                        aria-label="{% blocktranslate with name=card.asset.nickname %}Move {{ name }} up{% endblocktranslate %}">
+                  <span aria-hidden="true">↑</span>
+                </button>
+              </form>
+              <form method="post" action="{% url 'asset_move' card.asset.pk %}">{% csrf_token %}
+                <input type="hidden" name="_anchor" value="fleet">
+                <input type="hidden" name="scope" value="fleet">
+                <input type="hidden" name="direction" value="down">
+                <button class="iconbtn small" type="submit" {% if forloop.last %}disabled{% endif %}
+                        aria-label="{% blocktranslate with name=card.asset.nickname %}Move {{ name }} down{% endblocktranslate %}">
+                  <span aria-hidden="true">↓</span>
+                </button>
+              </form>
+            </div>
+            <a href="{% url 'asset_detail' card.asset.pk %}">{{ card.asset.nickname }}</a>
+          </li>
+        {% endfor %}
       </ul>
       <a class="btn" href="{% url 'asset_list' %}">{% translate "All vehicles" %}</a>
     </section>

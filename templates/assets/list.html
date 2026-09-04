@@ -10,25 +10,51 @@
   {% for value, label in kinds %}<a class="btn" href="?kind={{ value }}">{{ label }}</a>{% endfor %}
   <a class="btn" href="?all=1">{% translate "Include sold" %}</a>
 </p>
-<div class="grid">
-  {% for asset in assets %}
-  <a class="card" href="{% url 'asset_detail' asset.pk %}" style="text-decoration:none;color:inherit">
-    <div class="spread">
-      <strong>{{ asset.nickname }}</strong>
-      <span class="pill">{{ asset.get_status_display }}</span>
-    </div>
-    <p class="muted small" style="margin:.25rem 0">{{ asset.descriptor|default:"—" }}</p>
-    {% if asset.current_usage %}
-      <p class="small mono">{{ asset.current_usage|floatformat:0 }} {{ asset.meter_unit }}</p>
-    {% else %}
-      <p class="small muted">{% translate "No meter reading yet" %}</p>
-    {% endif %}
-  </a>
-  {% empty %}
-  <div class="empty card">
-    <p>{% translate "No vehicles yet." %}</p>
-    <a class="btn primary" href="{% url 'asset_create' %}{% if kind %}?kind={{ kind }}{% endif %}">{% translate "Add the first one" %}</a>
-  </div>
-  {% endfor %}
-</div>
+
+{% comment %}
+The board. Three things are true of it at once and each one is load-bearing:
+
+* **It is a list.** `<ul>`/`<li>`, laid out as a grid by CSS, because a screen
+  reader is told "list, six items" and a rearrangement is only meaningful
+  against a sequence. A grid of `<a>` elements has no sequence to speak of.
+* **It reorders with no script.** Every card carries two buttons that post an
+  ordinary form. That is the mechanism; it works from a keyboard, it works with
+  scripting off, and it is the only way this is reachable on a phone if a drag
+  goes wrong.
+* **Dragging is an enhancement of those buttons.** `board.js` shows the grip,
+  makes the card draggable, and posts the finished sequence to `asset_reorder`
+  — the same rearrangement the buttons make, said all at once. With the script
+  blocked the grip never appears and nothing is lost but the gesture.
+
+The filter is carried on every one of those forms. Reordering on the Equipment
+tab and being returned to "All" would be the screen forgetting what you were
+doing, and the server needs it anyway to know which card is "the one above".
+
+The `<section>` around it is the live region (§9.2) and has no styling of its
+own: a card moved with the arrows replaces the board in place rather than
+reloading the screen, and the `_anchor` on each form is the same landing for
+anybody without the script.
+{% endcomment %}
+<section id="board" data-live="board">
+  <ul class="grid board" data-board
+      data-board-url="{% url 'asset_reorder' %}"
+      data-board-scope="{{ board_scope }}"
+      data-board-kind="{{ kind }}"
+      data-board-all="{% if show_all %}1{% endif %}">
+    {% for card in cards %}
+      {% include "partials/_asset_card.html" with card=card is_first=forloop.first is_last=forloop.last %}
+    {% empty %}
+    <li class="empty card">
+      <p>{% translate "No vehicles yet." %}</p>
+      <a class="btn primary" href="{% url 'asset_create' %}{% if kind %}?kind={{ kind }}{% endif %}">{% translate "Add the first one" %}</a>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+
+{% if cards %}
+  <p class="small muted">
+    {% translate "Drag a card by its handle to rearrange, or use the arrows. What each card shows, and its color, are set on the vehicle's own edit screen — and both are yours alone." %}
+  </p>
+{% endif %}
 {% endblock %}

@@ -223,6 +223,58 @@
     });
   }
 
+  // -- the worker -----------------------------------------------------------
+
+  /*
+   * `/sw.js`, not `/static/sw.js`.
+   *
+   * A worker's scope is the directory it is served from, so the version
+   * registered at `/static/sw.js` controlled `/static/` and nothing else. It
+   * installed, reported active, and never saw a single page — which quietly
+   * cost the whole read half of §5.4: no page ever entered the cache, the
+   * offline landing was never reachable, and Background Sync woke a worker
+   * scoped to a directory of stylesheets.
+   *
+   * What it *did* still intercept was `/static/` itself, cache-first, and that
+   * is the half that was actively harmful: `sw.js` carries a literal
+   * `VERSION`, so `shell-v1` was written on a browser's first ever visit and
+   * served from then on. Every later release of the stylesheet and of every
+   * script was invisible to anybody who had used the app before.
+   *
+   * `core.views.service_worker` exists precisely for this — it serves the file
+   * from the root with `Service-Worker-Allowed`, and it is where the version
+   * is stamped with a fingerprint of the assets. Registering the static path
+   * bypassed it and took the `"v1"` fallback with it. The view had a test; the
+   * one line that used it did not.
+   */
+  function registerWorker() {
+    return navigator.serviceWorker.register("/sw.js").catch(function () {
+      /* no worker, no cache */
+    });
+  }
+
+  /*
+   * Retire a worker an older version left at `/static/sw.js`.
+   *
+   * Not tidiness. Where two registrations both match a request the **more
+   * specific scope wins**, so a browser that still holds the old one would go
+   * on being served the frozen `shell-v1` copy of every script by it, while
+   * the correctly scoped worker sat at `/` watching. Unregistering leaves the
+   * stale caches behind, and the new worker's `activate` drops them: it
+   * deletes every cache whose name does not carry the current version, which
+   * `shell-v1` does not.
+   */
+  function retireMisscopedWorkers() {
+    if (!navigator.serviceWorker.getRegistrations) { return Promise.resolve(); }
+    return navigator.serviceWorker.getRegistrations().then(function (found) {
+      return Promise.all(found.map(function (registration) {
+        var path;
+        try { path = new URL(registration.scope).pathname; } catch (err) { return null; }
+        return path === "/" ? null : registration.unregister();
+      }));
+    }).catch(function () { /* nothing to retire */ });
+  }
+
   // -- wiring -------------------------------------------------------------
 
   function init() {
@@ -231,7 +283,7 @@
     element = document.getElementById("sync-indicator");
 
     if ("serviceWorker" in navigator && window.isSecureContext) {
-      navigator.serviceWorker.register("/static/sw.js").catch(function () { /* no worker, no cache */ });
+      retireMisscopedWorkers().then(registerWorker);
       navigator.serviceWorker.addEventListener("message", function (event) {
         if (event.data && event.data.type === "drain-queue") { drain(); }
       });

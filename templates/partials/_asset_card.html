@@ -1,0 +1,101 @@
+{% load i18n %}
+{% comment %}
+One card on the board. Takes `card` (a `board.Card`), and the filter the
+screen is under so the reorder posts come back to the same tab.
+
+Everything on it has already been resolved by `board.cards_for` — which pins
+apply to this kind of machine, whether the plate is worth a row, how many codes
+are standing. A template asking whether a mower has a plate is the rule living
+in the one place nobody can test it.
+
+The nickname is not a pin and never becomes one: it is the link's accessible
+name, and a card that could switch it off would be an unlabelled link to
+somewhere (§9.5).
+
+The colour is decoration. It is a stripe and a tint, never the only thing
+saying something — the status pill, the due badges and the code count each
+carry their own words, so somebody who cannot distinguish these loses a
+recognition aid and no information at all.
+{% endcomment %}
+<li class="boardcard" data-board-item data-id="{{ card.asset.pk }}"
+    {% if card.color %}data-card-color="{{ card.color }}"{% endif %}>
+
+  {% comment %}
+  Handle first in the source, so the reading order is "this is a thing you can
+  move, and here is what it is". It is `display: none` until `board.js` puts
+  `can-drag` on the document element, because an affordance a browser cannot
+  honour must not be advertised — the buttons beside it are the mechanism, and
+  this is only a shortcut to them.
+  {% endcomment %}
+  <span class="boardgrip" data-board-grip aria-hidden="true">⠿</span>
+
+  {% comment %}
+  `is_first` and `is_last` come from the caller rather than `forloop`: an
+  included template inherits the loop variable of whatever loop happens to
+  surround the include, which is true here today and is not a thing to rely on
+  from a partial that does not own the loop.
+  {% endcomment %}
+  <div class="reorder boardmove">
+    <form method="post" action="{% url 'asset_move' card.asset.pk %}">{% csrf_token %}
+      <input type="hidden" name="_anchor" value="board">
+      <input type="hidden" name="scope" value="{{ board_scope }}">
+      <input type="hidden" name="kind" value="{{ kind }}">
+      <input type="hidden" name="all" value="{% if show_all %}1{% endif %}">
+      <input type="hidden" name="direction" value="up">
+      <button class="iconbtn small" type="submit" {% if is_first %}disabled{% endif %}
+              aria-label="{% blocktranslate with name=card.asset.nickname %}Move {{ name }} up{% endblocktranslate %}">
+        <span aria-hidden="true">↑</span>
+      </button>
+    </form>
+    <form method="post" action="{% url 'asset_move' card.asset.pk %}">{% csrf_token %}
+      <input type="hidden" name="_anchor" value="board">
+      <input type="hidden" name="scope" value="{{ board_scope }}">
+      <input type="hidden" name="kind" value="{{ kind }}">
+      <input type="hidden" name="all" value="{% if show_all %}1{% endif %}">
+      <input type="hidden" name="direction" value="down">
+      <button class="iconbtn small" type="submit" {% if is_last %}disabled{% endif %}
+              aria-label="{% blocktranslate with name=card.asset.nickname %}Move {{ name }} down{% endblocktranslate %}">
+        <span aria-hidden="true">↓</span>
+      </button>
+    </form>
+  </div>
+
+  <a class="boardbody" href="{% url 'asset_detail' card.asset.pk %}">
+    <div class="spread">
+      <strong>{{ card.asset.nickname }}</strong>
+      {% if card.status %}<span class="pill">{{ card.status }}</span>{% endif %}
+    </div>
+
+    {% if card.shows_descriptor %}
+      <p class="muted small boardsub">{{ card.asset.descriptor|default:"—" }}</p>
+    {% endif %}
+
+    {% if card.photo and card.photo.display_url %}
+      {# Decorative: the heading above it already names the vehicle. #}
+      <img class="boardphoto" src="{{ card.photo.display_url }}" alt="" loading="lazy">
+    {% endif %}
+
+    {% if card.shows_meter %}
+      {% if card.meter %}
+        <p class="small mono boardmeter">{{ card.meter }}</p>
+      {% else %}
+        <p class="small muted boardmeter">{% translate "No meter reading yet" %}</p>
+      {% endif %}
+    {% endif %}
+
+    {% if card.facts %}
+      <dl class="factline small">
+        {% for fact in card.facts %}
+          <div><dt>{{ fact.label }}</dt><dd{% if fact.mono %} class="mono"{% endif %}>{{ fact.value }}</dd></div>
+        {% endfor %}
+      </dl>
+    {% endif %}
+
+    {% for line in card.lines %}
+      <p class="boardline small">
+        <span class="muted">{{ line.label }}</span>
+        {% for badge in line.badges %}<span class="pill {{ badge.level }}">{{ badge.text }}</span>{% endfor %}
+      </p>
+    {% endfor %}
+  </a>
+</li>

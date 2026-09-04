@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
@@ -22,6 +23,7 @@ from homeautoshop.core.models import (
     RevisionedModel,
     SoftDeleteQuerySet,
     alive_manager,
+    uuid7,
 )
 
 from . import vin as vinlib
@@ -671,3 +673,56 @@ class AssetLink(BaseModel):
         from urllib.parse import urlparse
 
         return urlparse(self.url).netloc or self.url
+
+
+class AssetCardPreference(models.Model):
+    """How one person wants one vehicle to look on the board (SPEC §9.3).
+
+    Per user, not per shop. Order, colour and pins are answers to "which of
+    these is the one I mean", and that is a question each person answers
+    differently: the person who drives the truck every day wants it first, and
+    the person who only ever services the mower does not.
+
+    Not a `BaseModel`. Provenance and a thirty-day trash are for records of
+    work; this is a display preference, and a soft-deleted one — a row that
+    exists, is invisible, and blocks the unique constraint on the row that
+    would replace it — would be a bug with no upside. Deleting one means the
+    card goes back to its default, which is exactly what the absent row means.
+
+    Every field is optional in effect: no row at all is a valid, complete
+    answer, and it is the state every card starts in.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="asset_cards"
+    )
+    asset = models.ForeignKey(Asset, on_delete=models.CASCADE, related_name="card_preferences")
+
+    #: Position on this person's board. `NULL` means unplaced — a vehicle added
+    #: since they last arranged anything — and unplaced cards sort after placed
+    #: ones, alphabetically, so a new vehicle appears in a predictable spot
+    #: rather than being silently inserted into the middle of somebody's board.
+    board_order = models.PositiveIntegerField(null=True, blank=True)
+    color = models.CharField(max_length=16, blank=True)
+    #: Pin keys from `cards.PINS`, in that module's order.
+    #:
+    #: `NULL`, not `[]`, when nobody has chosen — and the difference is the
+    #: whole field. An empty list is a real choice ("show me nothing but the
+    #: nickname") and is honoured; `NULL` takes `cards.DEFAULT_PINS`. With
+    #: `default=list` the two were the same value, so the first time anybody
+    #: dragged a card, `ensure_placed` wrote a row to hold its position and
+    #: every card on the board went blank.
+    pins = models.JSONField(null=True, blank=True, default=None)
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["board_order"]
+        constraints = [
+            models.UniqueConstraint(fields=["user", "asset"], name="unique_asset_card_preference"),
+        ]
+        indexes = [models.Index(fields=["user", "board_order"])]
+
+    def __str__(self) -> str:
+        return f"{self.user} · {self.asset}"

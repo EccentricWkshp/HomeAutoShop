@@ -18,6 +18,10 @@ Two layers, and both are tested because both have to be true:
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
+from django.conf import settings
 from django.test import TestCase
 from django.urls import reverse
 
@@ -305,3 +309,75 @@ class RecallPageTests(TestCase):
 
         self.recall.refresh_from_db()
         self.assertEqual(self.recall.owner_status, Recall.OwnerStatus.COMPLETED)
+
+
+class ServiceWorkerVersionTests(Base):
+    """A released change to a script or the stylesheet has to actually arrive.
+
+    `/static/` is cache-first in `sw.js`, and `activate` only deletes caches
+    whose name lacks the current `VERSION`. With that version a constant, the
+    shell cache was written on a browser's first ever visit and served for the
+    life of the installation: every later release of `app.css`, `forms.js`,
+    `board.js` and the rest was fetched into a cache nothing read.
+
+    It is invisible from a developer's machine and from a private window, which
+    is what makes it worth a test rather than a comment. The bug surfaced as a
+    drag fix that was correct, deployed, and still flickering on the one
+    browser that had used the app before.
+    """
+
+    def test_the_worker_carries_a_version_that_is_not_the_placeholder(self):
+        from homeautoshop.core.views import asset_version
+
+        body = self.client.get(reverse("service_worker")).content.decode()
+        self.assertIn(f'var VERSION = "{asset_version()}";', body)
+
+    def test_the_unstamped_fallback_is_not_the_original_constant(self):
+        """What rescues a browser that already carries the bug.
+
+        The corrected registration lives in `offline.js`, and a misscoped
+        worker is serving `offline.js` from a frozen cache — so the page cannot
+        learn better on its own. A worker's own script *is* fetched from the
+        network, so the file reaches that worker anyway, and `activate` drops
+        `shell-v1` only if the version in it has moved off `v1`.
+        """
+        raw = (Path(settings.BASE_DIR) / "static" / "sw.js").read_text(encoding="utf-8")
+        self.assertIn("var VERSION = ", raw)
+        self.assertNotIn('var VERSION = "v1";', raw)
+
+    def test_a_worker_that_is_not_scoped_to_the_site_retires_itself(self):
+        """The page cannot retire it — the worker is serving the page's script."""
+        raw = (Path(settings.BASE_DIR) / "static" / "sw.js").read_text(encoding="utf-8")
+        self.assertIn("self.registration.unregister()", raw)
+        self.assertIn('pathname !== "/"', raw)
+
+    def test_editing_a_script_changes_the_version(self):
+        """The whole point: the worker differs exactly when what it caches does."""
+        from homeautoshop.core.views import asset_version
+
+        before = asset_version()
+        script = Path(settings.BASE_DIR) / "static" / "board.js"
+        stamp = script.stat()
+        try:
+            os.utime(script, (stamp.st_atime, stamp.st_mtime + 120))
+            self.assertNotEqual(asset_version(), before)
+        finally:
+            os.utime(script, (stamp.st_atime, stamp.st_mtime))
+        self.assertEqual(asset_version(), before)
+
+    def test_a_new_favicon_does_not_throw_away_the_page_cache(self):
+        """Icons are static too, and change about once a year.
+
+        Versioning against them would drop every cached page for a file the
+        worker does not even precache.
+        """
+        from homeautoshop.core.views import asset_version
+
+        before = asset_version()
+        icon = Path(settings.BASE_DIR) / "static" / "icons" / "favicon-32.png"
+        stamp = icon.stat()
+        try:
+            os.utime(icon, (stamp.st_atime, stamp.st_mtime + 120))
+            self.assertEqual(asset_version(), before)
+        finally:
+            os.utime(icon, (stamp.st_atime, stamp.st_mtime))

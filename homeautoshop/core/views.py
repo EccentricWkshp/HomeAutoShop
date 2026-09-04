@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import pathlib
+import re
 from datetime import timedelta
 
 from django.conf import settings
@@ -21,6 +22,7 @@ from homeautoshop.accounts.policy import visible_assets, visible_assets_for
 
 from .runtime import allowlist, conf
 from homeautoshop.accounts.models import can
+from homeautoshop.assets import board
 from homeautoshop.assets.models import Asset
 from homeautoshop.work.models import WorkOrder, WorkOrderStatus
 
@@ -276,7 +278,13 @@ def dashboard(request):
             "short_of_parts": short_of_parts,
             "expiring": expiring,
             "alerts": alerts,
-            "recent_assets": fleet.order_by("-updated_at")[:6],
+            # The board this person arranged, not "whatever changed last".
+            # Sorting by `updated_at` meant the panel reshuffled itself every
+            # time anybody touched a vehicle, so it could never be learned —
+            # and a panel you cannot learn is one you read from the top every
+            # time. `board.FLEET_PREVIEW` is the count, shared with the
+            # reorder so both agree about what the third card is.
+            "fleet_cards": board.panel_for(request.user, fleet),
             "failed_jobs": Job.objects.filter(state=Job.State.FAILED).count(),
         },
     )
@@ -714,12 +722,58 @@ def service_worker(request):
     if not path:
         raise Http404("sw.js")
     body = pathlib.Path(path).read_text(encoding="utf-8")
+    # The half this view was missing. Serving the worker uncached only
+    # guarantees the browser *looks*; a worker whose bytes never change is a
+    # worker the browser sees no reason to replace, and `sw.js` carried a
+    # constant `VERSION = "v1"`. Since `/static/` is cache-first and `activate`
+    # only drops caches that do not carry the current version, `shell-v1` was
+    # filled on a browser's first ever visit and served from then on — so a
+    # released change to `app.css` or to any script reached new visitors and
+    # nobody else. Stamping the assets' own fingerprint in makes the worker
+    # differ exactly when what it caches differs, which is when it should.
+    body = re.sub(
+        r'var VERSION = "[^"]*";',
+        f'var VERSION = "{asset_version()}";',
+        body,
+        count=1,
+    )
     response = HttpResponse(body, content_type="text/javascript; charset=utf-8")
     response["Service-Worker-Allowed"] = "/"
     # Never cached: a stale worker keeps serving a stale app, and the usual
     # symptom is an update that "did not deploy".
     response["Cache-Control"] = "no-cache"
     return response
+
+
+#: Files whose contents the worker caches and therefore has to be versioned
+#: against. The icons and the manifest are in `static/` too and are left out on
+#: purpose: they change about once a year, and a fingerprint that moves for
+#: them would throw away the page cache for a new favicon.
+_VERSIONED_SUFFIXES = (".css", ".js", ".html")
+
+
+def asset_version() -> str:
+    """A short token that changes whenever a cached static asset does.
+
+    Size and modification time rather than a content hash: this runs on every
+    request for `sw.js`, which is every page load, and reading a dozen files to
+    answer a question that a `stat` answers is a cost paid constantly for a
+    difference nobody can observe. A file edited back to its original bytes
+    within the same second is the case this misses, and it is not a case.
+
+    Includes the release version, so an image built with different assets is
+    distinguishable even where mtimes survive the build unchanged.
+    """
+    import hashlib
+
+    digest = hashlib.sha256(settings.APP_VERSION.encode())
+    root = pathlib.Path(settings.BASE_DIR) / "static"
+    for item in sorted(root.rglob("*")):
+        if item.suffix not in _VERSIONED_SUFFIXES or not item.is_file():
+            continue
+        stat = item.stat()
+        digest.update(f"{item.name}:{stat.st_size}:{int(stat.st_mtime)}".encode())
+    return digest.hexdigest()[:12]
 
 
 @login_required

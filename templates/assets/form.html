@@ -61,6 +61,57 @@ select afterwards.
     </section>
   {% endfor %}
 
+  {% comment %}
+  How this vehicle's card reads on the board. Rendered by hand rather than
+  through `form.sections()` because neither control is a box you type in: the
+  colour is a row of swatches, and the pins are a checklist whose entries are
+  gated by kind one at a time — the same `data-kind` attribute the script at
+  the bottom of this page already watches, so switching between vehicle and
+  equipment updates it with no round trip.
+
+  It is on this screen and not one of its own because the moment somebody knows
+  what a vehicle should be recognisable by is while they are typing in what it
+  is. What it writes is not a column on the vehicle, though: order, colour and
+  pins are **per person** (`AssetCardPreference`), so this changes your board
+  and nobody else's — which is what the note under the heading says out loud,
+  because a control on a shared record that quietly is not shared is worse than
+  no control.
+  {% endcomment %}
+  <section class="card">
+    <h2>{% translate "On the board" %}</h2>
+    <p class="muted small">
+      {% translate "How this shows up on the Vehicles screen. Yours alone — everyone else keeps their own arrangement." %}
+    </p>
+    {{ form.card_prefs }}
+
+    <fieldset class="swatches">
+      <legend>{{ form.card_color.label }}</legend>
+      {% for option in form.color_options %}
+        <label class="swatch" data-card-color="{{ option.value }}">
+          <input type="radio" name="card_color" value="{{ option.value }}"
+                 {% if option.checked %}checked{% endif %}>
+          <span class="chip" aria-hidden="true"></span>
+          <span class="small">{{ option.label }}</span>
+        </label>
+      {% endfor %}
+    </fieldset>
+
+    <fieldset class="pinlist">
+      <legend>{{ form.card_pins.label }}</legend>
+      <p class="helptext">
+        {% translate "The nickname is always shown. Anything here that this vehicle has no value for is simply left off the card." %}
+      </p>
+      {% for option in form.pin_options %}
+        <label class="pin"{% if option.kind %} data-kind="{{ option.kind }}"{% endif %}{% if option.hidden %} hidden{% endif %}>
+          <input type="checkbox" name="card_pins" value="{{ option.value }}"
+                 {% if option.checked %}checked{% endif %}>
+          <span>{{ option.label }}</span>
+        </label>
+      {% endfor %}
+      {% for error in form.card_pins.errors %}<p class="msg error">{{ error }}</p>{% endfor %}
+    </fieldset>
+  </section>
+
   {% if asset %}{% url 'asset_detail' asset.pk as cancel_to %}{% else %}{% url 'asset_list' as cancel_to %}{% endif %}
   {% include "partials/_formactions.html" with cancel_url=cancel_to %}
 </form>

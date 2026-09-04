@@ -17,7 +17,29 @@
  */
 "use strict";
 
-var VERSION = "v1";
+/*
+ * Rewritten by `core.views.service_worker` before this file is served, to a
+ * token that changes whenever a static asset does. The literal below is the
+ * fallback and is only ever reached if that substitution fails.
+ *
+ * It has to change, and `"v1"` did not. `/static/` is cache-first (below), and
+ * `activate` only deletes caches whose name lacks the current VERSION — so a
+ * constant meant `shell-v1` was written once, on the first visit a browser
+ * ever made, and served for the life of the installation. Every later release
+ * of the stylesheet and of every script was fetched into a cache nobody read.
+ * The symptom is an edit that works for the developer, works in a private
+ * window, and is simply absent for everybody who had used the app before.
+ *
+ * The fallback is deliberately not `"v1"` any more, and that is what rescues a
+ * browser already carrying the bug. A worker's own script is fetched from the
+ * network rather than through its own `fetch` handler, so this file reaches an
+ * installed worker even while that worker is serving a frozen copy of every
+ * other asset — and `activate` then drops `shell-v1`, because the name no
+ * longer carries the version. Without that the recovery cannot bootstrap: the
+ * corrected registration lives in `offline.js`, and `offline.js` was one of
+ * the files being served stale.
+ */
+var VERSION = "v2-unstamped";
 var SHELL = "shell-" + VERSION;
 var PAGES = "pages-" + VERSION;
 var MEDIA = "media-" + VERSION;
@@ -43,7 +65,25 @@ self.addEventListener("activate", function (event) {
         if (name.indexOf(VERSION) < 0) { return caches.delete(name); }
         return null;
       }));
-    }).then(function () { return self.clients.claim(); })
+    }).then(function () {
+      /*
+       * Retire a copy of this worker that an older version registered at
+       * `/static/sw.js`, where the scope is a directory of stylesheets rather
+       * than the site.
+       *
+       * Done here, by the worker itself, because it is the only party that can
+       * still be reached. The corrected registration is in `offline.js` — and
+       * a misscoped worker is serving `offline.js` from a frozen cache, so the
+       * page can never learn better on its own. A worker's own script is
+       * exempt from its own `fetch` handler, so this line arrives regardless,
+       * and once it has unregistered, the next load fetches everything from
+       * the network and the page registers `/sw.js` properly.
+       */
+      if (new URL(self.registration.scope).pathname !== "/") {
+        return self.registration.unregister();
+      }
+      return self.clients.claim();
+    })
   );
 });
 

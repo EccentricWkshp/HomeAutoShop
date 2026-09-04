@@ -63,14 +63,18 @@ those adapters use in practice — OBDLink's `FFF0`, the common clone `FFE0`, an
 Nordic UART — but nobody has tested one, and those UUIDs come from vendor
 documentation rather than from anything observed here.
 
-**GEARWRENCH GWSCAN** — a rebadged XTOOL, advertising over BLE as `AD20-…`. It
-exposes Nordic UART and connects perfectly happily, then answers nothing,
-because it speaks its maker's framing rather than ELM327. The protocol has since
-been decoded far enough to show it is an ordinary CAN pass-through with no
-authentication at all — the activation code is licence enforcement inside the
-app, not a lock on the device — so support would be practical if wanted.
+**GEARWRENCH GWSCAN** — a rebadged XTOOL, advertising over BLE as `AD20-…`
+(XTOOL sell an *Advancer AD20* smart OBD dongle of their own). It exposes Nordic
+UART and connects perfectly happily, then answers nothing, because it speaks its
+maker's framing rather than ELM327. No way to export a report was found in its
+app either, which is what leaves it with no route in at all.
+
+A capture of its own app has since been decoded far enough to show the protocol
+is an ordinary CAN pass-through, so support would be practical if wanted.
 `Artifacts/samples/code-reader/GEARWRENCH GWSCAN/notes.md` has the framing, the
-commands, and the one question still open.
+commands, and the two questions still open — one of which is whether an adapter
+that has *not* been activated behaves the same way, since the capture recorded
+an already-activated one.
 
 ---
 

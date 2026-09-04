@@ -28,6 +28,7 @@ Artifacts/samples/**/*.jpeg
 Artifacts/samples/**/*.png
 Artifacts/samples/**/*.cfa
 Artifacts/samples/backups/
+Artifacts/Feedback/
 
 # Research notes for a later phase: manifests of third-party scan reports found
 # on the public web, kept for their formats. Not ours to republish, and some of

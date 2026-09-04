@@ -92,7 +92,14 @@ class CreateWithLookupTests(TestCase):
         response = self.client.post(self.url, {"vin": VIN, "action": "lookup"})
 
         form = response.context["form"]
-        for name in form.fields:
+        for name, field in form.fields.items():
+            # A field that genuinely holds several values is not the bug. The
+            # card's pin checkboxes are a list because a list is what they are,
+            # and asserting otherwise would be asserting that this form may
+            # never carry a multiple-choice field again. The rendered-output
+            # check below is the one that catches the real fault either way.
+            if getattr(field.widget, "allow_multiple_selected", False):
+                continue
             value = form[name].value()
             with self.subTest(field=name):
                 self.assertNotIsInstance(value, (list, tuple))
