@@ -36,7 +36,7 @@ from django.views.decorators.http import require_POST
 from homeautoshop.accounts.models import require
 
 from . import runtime
-from .backup import last_backup_age_days
+from .backup import UploadRejected, assemble_uploaded, last_backup_age_days
 from .models import AuditLog, Job
 from .runtime import conf
 from .settings_registry import BY_KEY, GROUPS, RESTART, entries_for, settings_currency
@@ -328,6 +328,54 @@ def backup_now(request):
         if kind == "backup.run"
         else _("Building the export. It appears below when it is ready."),
     )
+    return redirect("backups")
+
+
+@require_POST
+@login_required
+def backup_upload(request):
+    """Put a backup taken elsewhere where the restore command can reach it.
+
+    This exists because the screen's own downloads cannot be fed back to it.
+    `backup_download` hands over the database file alone and an export comes
+    down as its own ZIP; the `manifest.json` that `restore` insists on lives in
+    the folder and so is in neither. Carrying an instance to a new machine
+    therefore meant reading `backup.py` to hand-write a manifest, which is not
+    a thing to discover on the day the old disk died.
+
+    **It still does not restore.** The module docstring's rule holds: the file
+    lands in BACKUP_DIR and the operator gets the command. All this removes is
+    the part that was archaeology.
+    """
+    require(request.user, "settings.manage")
+
+    dump = request.FILES.get("database")
+    if dump is None:
+        messages.error(request, _("Choose the database file from the backup you want to restore."))
+        return redirect("backups")
+
+    try:
+        target, notes = assemble_uploaded(dump, request.FILES.get("export"))
+    except UploadRejected as exc:
+        # Said back verbatim. Every one of these names the actual problem with
+        # the file offered, and replacing them with "upload failed" would throw
+        # away the only thing that tells somebody what to do next.
+        messages.error(request, str(exc))
+        return redirect("backups")
+
+    AuditLog.objects.create(
+        entity_type="Backup",
+        action=AuditLog.Action.BACKUP,
+        user=request.user,
+        summary=_("Uploaded %(name)s for restore") % {"name": target.name},
+        source="upload",
+    )
+    messages.success(
+        request,
+        _("Uploaded as %(name)s. Run the command below to restore it.") % {"name": target.name},
+    )
+    for note in notes:
+        messages.warning(request, note)
     return redirect("backups")
 
 

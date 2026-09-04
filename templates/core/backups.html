@@ -112,6 +112,27 @@
   <p class="small muted">
     {% blocktranslate %}Integration keys are not in the backup, on purpose. After a restore the settings screen lists which ones need entering again.{% endblocktranslate %}
   </p>
+
+  <h3>{% translate "Restoring a backup from another machine" %}</h3>
+  <p class="small">
+    {% blocktranslate %}A backup lives in a folder, and what this page hands you are the two files out of it: the database, and the export holding your photos. Neither carries the folder's manifest, so neither can be restored on its own. Upload them here and they are put back together into a folder the command above can read.{% endblocktranslate %}
+  </p>
+  <form method="post" action="{% url 'backup_upload' %}" enctype="multipart/form-data">{% csrf_token %}
+    <p>
+      <label for="database-file">{% translate "Database file" %}</label>
+      <input type="file" id="database-file" name="database" required>
+      <span class="small muted">{% translate "database.dump, or database.sqlite3 — downloaded from What is held, above." %}</span>
+    </p>
+    <p>
+      <label for="export-file">{% translate "Export ZIP (optional)" %}</label>
+      <input type="file" id="export-file" name="export" accept=".zip">
+      <span class="small muted">{% translate "export-….zip from the same instance. It carries the photos and documents, and it is the only thing that says which version the database was taken under." %}</span>
+    </p>
+    <button type="submit">{% translate "Upload for restore" %}</button>
+  </form>
+  <p class="small muted">
+    {% blocktranslate %}Uploading changes nothing by itself. The files are placed where the restore command can reach them and you are told the command to run — swapping the database out is still yours to do, on purpose.{% endblocktranslate %}
+  </p>
 </div>
 
 {% if recent %}

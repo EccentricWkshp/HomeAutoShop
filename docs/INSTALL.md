@@ -733,7 +733,111 @@ whether the destination is writable:
 docker compose exec app python manage.py backup
 ```
 
-## 7. Worth doing next
+## 7. Bringing an existing shop onto this machine
+
+Moving from another machine, or rebuilding after a disk died. Finish everything
+above first — this puts your data onto a working instance, it does not replace
+setting one up.
+
+A backup is a **folder**, not a file:
+
+```text
+20260903-233128/
+  database.dump      the database
+  media/             every photo and document
+  manifest.json      what this folder is, and what it was taken from
+```
+
+`restore` reads all three, and the manifest is the one people arrive without.
+It is the only part that cannot be downloaded on its own, and without it the
+command refuses rather than restoring a dump it has no way to identify.
+
+### If you can copy the whole folder
+
+The clean path. On the old machine:
+
+```bash
+docker compose exec app python manage.py backup
+docker compose exec app ls /data/backups
+docker compose cp app:/data/backups/20260903-233128 ./20260903-233128
+```
+
+Copy that folder to the new machine — into `./backup/`, say — and then mount it
+in. **The repository directory is not mounted into the container**, so a path
+like `./backup/20260903-233128` does not exist inside it, which is what
+`is not a directory` means if you hit it:
+
+```bash
+docker compose stop app worker
+docker compose run --rm -v "$PWD/backup:/restore:ro" app python manage.py restore /restore/20260903-233128 --dry-run
+docker compose run --rm -v "$PWD/backup:/restore:ro" app python manage.py restore /restore/20260903-233128
+docker compose start app worker
+```
+
+Stop `app` and `worker` first. `pg_restore` drops and recreates every object and
+needs exclusive locks; the worker polls the queue continuously and will fight it.
+
+The dry run reports the backup's date, the dump size and the media count, then
+stops without touching anything. Run it every time.
+
+Add `--force` only if it says the instance already contains data — an admin
+account alone does not count, since it checks for vehicles and work orders.
+
+**If it stops on `Permission denied: .../manifest.json`**, the container runs as
+uid 10001 and cannot read files that came off the other machine as root:
+
+```bash
+sudo chmod -R a+rX backup
+```
+
+Do not run the container as root to get past this. Media would then be restored
+root-owned into a volume the application reads and writes as uid 10001 — trading
+a restore that fails loudly for uploads that fail afterwards.
+
+### If all you have are the downloads
+
+The Backup screen hands out the database file and the export ZIP separately —
+the media tree is gigabytes and is meant to be copied rather than downloaded —
+and the manifest lives in the folder, so it is in neither. **Settings → Backup →
+Restoring a backup from another machine** takes those two files back and
+rebuilds the folder they came out of:
+
+1. Upload `database.dump` (required) and `export-….zip` (optional, and where
+   your photos are).
+2. It writes a `…-uploaded` folder into the backup directory and prints the
+   restore command for it.
+3. Run that command, as above.
+
+Uploading changes nothing by itself. Restore stays a command you run, for the
+reason the screen gives: swapping the database out from underneath a running
+application is not something a web request should attempt.
+
+Without the export there is no media to restore, and no way to tell which
+schema version the dump was taken under — it is recorded as this build's, which
+means `restore` cannot catch a dump too old to apply. The screen says so rather
+than leaving you to find out.
+
+### Afterwards
+
+```bash
+docker compose exec app python manage.py migrate
+```
+
+Needed when the backup came from an older build, harmless when it did not.
+
+Two things deliberately do not come back:
+
+- **Integration keys.** They are excluded from the dump, so a backup carried on
+  a USB stick is not a credential leak. *Settings* lists which ones need
+  entering again.
+- **Nothing else** — but if previews or thumbnails look missing,
+  `docker compose exec app python manage.py rederive` regenerates them.
+
+Check the shop is really there before deleting anything on the old machine:
+open a vehicle, confirm its photos load, and look at *Instance health* to see
+which machine you are actually on.
+
+## 8. Worth doing next
 
 - **Add your vehicles**, then run the VIN lookup on each to fill in the details.
 - **Set a schedule** per vehicle from a built-in template, so *Due* has
@@ -754,7 +858,7 @@ docker compose exec app python manage.py backup
   Note what a backup deliberately does *not* contain: the integration keys you
   entered. A restored instance says which ones need typing in again.
 
-## 8. Installing it on the phone
+## 9. Installing it on the phone
 
 Open the site in Chrome or Safari on the phone and use *Add to home screen*. It
 then runs without browser chrome, remembers pages you have visited, and keeps
@@ -777,7 +881,7 @@ cloud service, so it is opt-in per device, disabled entirely by Offline Mode,
 and the message it sends says only that something is due — never which vehicle
 or what. That detail stays behind the tap.
 
-## 9. Reading a scan tool
+## 10. Reading a scan tool
 
 Vehicle → *Diagnostics* takes a PDF report from a scan tool, or a CSV or text
 export if yours makes one. Prefer the export where you have it: it is cheaper

@@ -35,7 +35,8 @@ from homeautoshop.work.models import JobItem, WorkOrder
 #: already refused, and this is the record that keeps the refusal visible.
 CLOSED_TO_HELPERS = frozenset({
     "asset_costs", "asset_create", "asset_delete", "asset_edit",
-    "asset_report", "asset_report_csv", "asset_report_pdf", "backup_delete", "backup_download", "backup_now",
+    "asset_report", "asset_report_csv", "asset_report_pdf", "backup_delete",
+    "backup_download", "backup_now", "backup_upload",
     "backups", "core_list", "core_update", "crossref_add",
     "crossref_remove", "data_import", "dismiss_product_link",
     "expense_delete", "expense_edit", "export_csv", "fitment_add",

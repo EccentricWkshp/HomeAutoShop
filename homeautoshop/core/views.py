@@ -292,6 +292,60 @@ def search_view(request):
     )
 
 
+def _identity() -> dict:
+    """Which machine this is, for somebody holding two of them.
+
+    A home shop ends up with more instances than anyone plans on — the one on
+    the NAS, the one on a laptop that was meant to be a test, the one on the
+    Pi in the garage — and every one of them says "Home Shop" at the top. This
+    is the card that answers *which* before somebody restores a backup onto
+    the wrong one.
+
+    **`revision` is the honest part.** It is stamped in by the release build
+    from the git commit, so a published image names the exact tree it came
+    from and a locally built one carries nothing. Blank here therefore means
+    "built on this machine", which is worth knowing before believing a bug
+    report about a version.
+    """
+    import platform
+    import socket
+
+    from django.db import connection
+
+    database_version = ""
+    try:
+        database_version = ".".join(str(part) for part in connection.get_database_version())
+    except Exception:
+        # Vendor-specific and not worth failing a health screen over: the point
+        # of this page is to work when things are broken.
+        pass
+
+    cfg = connection.settings_dict
+    return {
+        "version": settings.APP_VERSION,
+        "revision": settings.APP_REVISION,
+        "built_locally": not settings.APP_REVISION,
+        # The container's own name, which Compose leaves as the container ID
+        # unless somebody set one. Still the fastest way to tell two apart.
+        "hostname": socket.gethostname(),
+        # Worth its own row now that the image is published for both: an
+        # instance that is slow on a Pi is a different conversation from one
+        # that is slow on a desktop.
+        "architecture": platform.machine(),
+        "platform": f"{platform.system()} {platform.release()}",
+        "python": platform.python_version(),
+        "timezone": str(timezone.get_current_timezone()),
+        "site_address": settings.SITE_ADDRESS or "",
+        "base_url": settings.BASE_URL,
+        "database": {
+            "vendor": connection.vendor,
+            "version": database_version,
+            "host": cfg.get("HOST") or "local",
+            "name": cfg.get("NAME", ""),
+        },
+    }
+
+
 @login_required
 def health(request):
     """Instance health (FR-ADM-8)."""
@@ -307,10 +361,21 @@ def health(request):
         request,
         "core/health.html",
         {
+            "identity": _identity(),
             "vendor": connection.vendor,
             "media_count": media["n"],
             "media_bytes": sum(Media.objects.values_list("bytes", flat=True)),
-            "jobs": Job.objects.values("state").annotate(n=Count("id")),
+            # The queue itself, not a tally of it. "3 pending" tells you the
+            # number and not the one thing you came here to find out, which is
+            # *what* is stuck — a count cannot distinguish a backup that has
+            # been retrying for an hour from three thumbnails.
+            "queue": Job.objects.filter(
+                state__in=(Job.State.RUNNING, Job.State.PENDING)
+            ).order_by("state", "run_after")[:40],
+            "failed_jobs": Job.objects.filter(state=Job.State.FAILED).order_by(
+                "-finished_at", "-created_at"
+            )[:20],
+            "job_counts": Job.objects.values("state").annotate(n=Count("id")),
             "ocr": tesseract_status(),
             "ocr_pending": Media.objects.filter(ocr_status=Media.OcrStatus.PENDING).count(),
             "ocr_failed": Media.objects.filter(ocr_status=Media.OcrStatus.FAILED).count(),

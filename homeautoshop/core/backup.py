@@ -26,6 +26,7 @@ from django.conf import settings
 from django.core import serializers
 from django.db import connection
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 from .runtime import conf
 
 log = logging.getLogger(__name__)
@@ -41,6 +42,134 @@ class BackupFailed(RuntimeError):
 
 EXPORTED_APPS = ("core", "accounts", "people", "assets", "work", "mediafiles")
 SCHEMA_VERSION = 1
+
+#: What a database file has to start with to be the thing it claims to be.
+#: Checked because the alternative is discovering it at `pg_restore`, after the
+#: running database has already been dropped.
+DUMP_MAGIC = {
+    "postgresql": (b"PGDMP", "database.dump"),
+    "sqlite": (b"SQLite format 3\x00", "database.sqlite3"),
+}
+
+
+class UploadRejected(ValueError):
+    """The offered files are not a backup this instance could restore."""
+
+
+def assemble_uploaded(dump, export=None) -> tuple[Path, list[str]]:
+    """Rebuild a restorable backup directory from the two halves the UI hands out.
+
+    There is a loop in this application that does not close on its own, and
+    this is it. `backup_download` streams a backup folder's *database file*
+    alone — the media tree is gigabytes and is meant to be copied, not
+    downloaded — and an export downloads as its own ZIP. Neither carries
+    `manifest.json`, because the manifest lives in the folder rather than in
+    either file. So the two artifacts the Backup screen gives you are exactly
+    the two artifacts `manage.py restore` refuses, and moving an instance to a
+    new machine meant hand-writing a manifest after reading the source.
+
+    Given the same two files back, this writes the folder that was taken apart:
+    the database file under the name the vendor expects, `media/` out of the
+    export, and the manifest neither of them carried.
+
+    Returns the folder and a list of things the operator should know — empty
+    when there is nothing worth saying. Restoring is still a command they run
+    themselves; nothing here touches the live database.
+    """
+    magic, dump_name = DUMP_MAGIC.get(connection.vendor, (None, "database.dump"))
+    head = dump.read(len(magic) if magic else 16)
+    dump.seek(0)
+    if magic and not head.startswith(magic):
+        raise UploadRejected(
+            _(
+                "That file does not start like a %(vendor)s dump. A backup taken from a "
+                "different database engine cannot be restored here — the portable export "
+                "is the path between engines."
+            )
+            % {"vendor": connection.vendor}
+        )
+
+    notes: list[str] = []
+    schema_version = SCHEMA_VERSION
+    created_at = timezone.now().isoformat()
+    media_members: list[zipfile.ZipInfo] = []
+    archive: zipfile.ZipFile | None = None
+
+    if export is not None:
+        try:
+            archive = zipfile.ZipFile(export)
+        except zipfile.BadZipFile as exc:
+            raise UploadRejected(_("That export is not a readable ZIP: %(why)s") % {"why": exc}) from exc
+        try:
+            manifest = json.loads(archive.read("manifest.json"))
+        except KeyError as exc:
+            raise UploadRejected(
+                _("That ZIP has no manifest.json, so it is not an export from this application.")
+            ) from exc
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise UploadRejected(_("That export's manifest.json is unreadable: %(why)s") % {"why": exc}) from exc
+
+        # The export is the only evidence available about which schema the
+        # dump beside it was taken under, since a dump carries no version this
+        # can read. Believing it is better than asserting the running one,
+        # which would defeat the check `restore` makes for exactly this case.
+        schema_version = manifest.get("schema_version", SCHEMA_VERSION)
+        created_at = manifest.get("exported_at") or created_at
+        media_members = [
+            info
+            for info in archive.infolist()
+            if not info.is_dir() and info.filename.startswith("media/")
+        ]
+        if not media_members:
+            notes.append(_("The export held no media, so this backup restores the database only."))
+    else:
+        notes.append(
+            _(
+                "No export was supplied, so there is no media to restore and no way to "
+                "tell which schema version the dump was taken under. It is recorded as "
+                "this build's, which means restore cannot catch a dump that is too old."
+            )
+        )
+
+    stamp = timezone.now()
+    target = Path(settings.BACKUP_DIR) / f"{stamp:%Y%m%d-%H%M%S}-uploaded"
+    target.mkdir(parents=True, exist_ok=True)
+
+    with open(target / dump_name, "wb") as handle:
+        for chunk in iter(lambda: dump.read(1024 * 1024), b""):
+            handle.write(chunk)
+
+    if archive is not None:
+        media_root = (target / "media").resolve()
+        for info in media_members:
+            # Zip entries are attacker-controlled paths. `..` in one of them
+            # writes wherever it likes, and this archive arrived over an upload
+            # form. Resolve first, then refuse anything that left the folder.
+            destination = (media_root / Path(info.filename).relative_to("media")).resolve()
+            if not destination.is_relative_to(media_root):
+                raise UploadRejected(_("That export contains an unsafe path: %(name)s") % {"name": info.filename})
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            with archive.open(info) as source, open(destination, "wb") as handle:
+                shutil.copyfileobj(source, handle)
+        archive.close()
+
+    (target / "manifest.json").write_text(
+        json.dumps(
+            {
+                "created_at": created_at,
+                "vendor": connection.vendor,
+                "schema_version": schema_version,
+                "media": "included" if media_members else "none",
+                # Not written by `run_backup`. It says this folder was put back
+                # together from downloads rather than taken here, which is the
+                # first thing worth knowing when one of these restores oddly.
+                "assembled_from_upload": True,
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    return target, notes
 
 # Never leaves the instance in an export: password hashes and token hashes are
 # credentials, not data the operator needs in a portable archive.

@@ -15,6 +15,8 @@ The risks here are not "does the form save". They are:
 
 from __future__ import annotations
 
+import io
+import json
 import shutil
 import sqlite3
 import subprocess
@@ -24,6 +26,8 @@ from pathlib import Path
 from unittest import mock
 
 from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
 from django.db import connection
 from django.test import TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
@@ -31,7 +35,14 @@ from django.urls import reverse
 from homeautoshop.accounts.models import Role, User
 
 from . import runtime
-from .backup import build_export, run_backup
+from .backup import (
+    DUMP_MAGIC,
+    SCHEMA_VERSION,
+    UploadRejected,
+    assemble_uploaded,
+    build_export,
+    run_backup,
+)
 from .models import AuditLog, Credential, Job, Setting
 from .settings_registry import BY_KEY, REGISTRY, RESTART_KEYS, children_of, coerce
 
@@ -765,3 +776,122 @@ class DeletingABackupTests(BackupBase):
             )
         self.assertContains(response, "could not be deleted")
         self.assertTrue(target.exists())
+
+
+class UploadedBackupTests(TestCase):
+    """Putting back together what the download path takes apart (R-10).
+
+    The point of these is the loop, not the plumbing: this screen hands out a
+    database file and an export ZIP, `restore` demands a folder with a manifest
+    neither of them carries, and until now nothing in the product joined the
+    two. `test_the_assembled_folder_is_one_restore_accepts` is the test that
+    actually says the feature works — the rest guard the ways it could be fed
+    something it should refuse.
+    """
+
+    def setUp(self):
+        self.directory = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.directory, ignore_errors=True)
+
+    def _dump(self):
+        """A file that starts like this engine's dump, whichever engine it is."""
+        magic, name = DUMP_MAGIC[connection.vendor]
+        return SimpleUploadedFile(name, magic + b"\x00 and then the rest of a dump")
+
+    def _export(self, *, media=("media/photos/rocker.jpg",), manifest=None):
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as archive:
+            archive.writestr(
+                "manifest.json",
+                json.dumps(
+                    manifest
+                    if manifest is not None
+                    else {
+                        "application": "HomeAutoShop",
+                        "schema_version": SCHEMA_VERSION,
+                        "exported_at": "2026-09-03T23:31:28+00:00",
+                    }
+                ),
+            )
+            for name in media:
+                archive.writestr(name, b"not really a jpeg")
+        buffer.seek(0)
+        return SimpleUploadedFile("export-20260903-233128.zip", buffer.read())
+
+    def test_the_assembled_folder_is_one_restore_accepts(self):
+        """The whole feature, asserted end to end.
+
+        `restore --dry-run` makes every check that matters — manifest present,
+        schema version current, vendor matching, database file where it expects
+        — and stops before touching anything. If this passes, the folder this
+        builds is restorable.
+        """
+        with override_settings(BACKUP_DIR=self.directory):
+            target, notes = assemble_uploaded(self._dump(), self._export())
+            call_command("restore", str(target), "--dry-run")
+
+        self.assertEqual(notes, [])
+        manifest = json.loads((target / "manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(manifest["vendor"], connection.vendor)
+        self.assertEqual(manifest["schema_version"], SCHEMA_VERSION)
+        self.assertEqual(manifest["media"], "included")
+        self.assertTrue(manifest["assembled_from_upload"])
+        self.assertTrue((target / DUMP_MAGIC[connection.vendor][1]).exists())
+        self.assertTrue((target / "media" / "photos" / "rocker.jpg").exists())
+
+    def test_it_sorts_beside_the_backups_taken_here(self):
+        """Named stamp-first so the newest really is the newest.
+
+        `held_backups` sorts by name, so `uploaded-...` would have sorted above
+        every dated folder for ever and the restore command on the page would
+        have gone on naming an old upload after a fresh backup was taken.
+        """
+        with override_settings(BACKUP_DIR=self.directory):
+            target, _notes = assemble_uploaded(self._dump(), self._export())
+        self.assertTrue(target.name.endswith("-uploaded"))
+        self.assertTrue(target.name[:8].isdigit())
+
+    def test_a_file_that_is_not_a_dump_is_refused(self):
+        """Caught here, or discovered by pg_restore after the drop."""
+        with override_settings(BACKUP_DIR=self.directory):
+            with self.assertRaises(UploadRejected):
+                assemble_uploaded(SimpleUploadedFile("database.dump", b"PK\x03\x04 a zip, actually"))
+
+    def test_a_zip_that_writes_outside_the_folder_is_refused(self):
+        """This archive arrived over an upload form; its paths are not ours."""
+        with override_settings(BACKUP_DIR=self.directory):
+            with self.assertRaises(UploadRejected):
+                assemble_uploaded(
+                    self._dump(), self._export(media=("media/../../../etc/escaped",))
+                )
+        self.assertFalse((self.directory.parent / "escaped").exists())
+
+    def test_without_an_export_it_says_what_it_could_not_check(self):
+        """No media, and no evidence of the schema the dump was taken under."""
+        with override_settings(BACKUP_DIR=self.directory):
+            target, notes = assemble_uploaded(self._dump())
+        manifest = json.loads((target / "manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(manifest["media"], "none")
+        self.assertTrue(any("schema version" in str(note) for note in notes))
+
+    def test_an_older_export_keeps_its_own_schema_version(self):
+        """Believed rather than overwritten, or `restore` could not refuse it.
+
+        Writing this build's version would make every uploaded backup pass the
+        one check that exists to catch a dump too old to restore.
+        """
+        with override_settings(BACKUP_DIR=self.directory):
+            target, _notes = assemble_uploaded(
+                self._dump(),
+                self._export(manifest={"schema_version": SCHEMA_VERSION - 1}),
+            )
+            manifest = json.loads((target / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["schema_version"], SCHEMA_VERSION - 1)
+            with self.assertRaises(Exception):
+                call_command("restore", str(target), "--dry-run")
+
+    def test_the_upload_needs_the_settings_permission(self):
+        User.objects.create_user(username="mechanic", password="pw", role=Role.MEMBER)
+        self.client.login(username="mechanic", password="pw")
+        response = self.client.post(reverse("backup_upload"), {})
+        self.assertIn(response.status_code, (302, 403))

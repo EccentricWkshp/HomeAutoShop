@@ -1,9 +1,41 @@
 {% extends "base.html" %}{% load i18n %}
 {% block content %}
 <h1>{% translate "Instance health" %}</h1>
+
+<div class="card">
+  <h2>{% translate "This instance" %}</h2>
+  <p class="small muted">
+    {% blocktranslate %}A shop tends to end up with more of these than anyone planned on, and they all say the same name at the top. This is which one you are looking at.{% endblocktranslate %}
+  </p>
+  <table>
+    <tr><th scope="row">{% translate "Version" %}</th>
+        <td>
+          <span class="mono">{{ identity.version }}</span>
+          {% if identity.built_locally %}
+            <span class="pill">{% translate "built here" %}</span>
+            <div class="small muted">{% translate "No build revision recorded, so this image was built on this machine rather than pulled from a published release." %}</div>
+          {% else %}
+            <div class="small mono muted">{{ identity.revision }}</div>
+          {% endif %}
+        </td></tr>
+    <tr><th scope="row">{% translate "Machine" %}</th>
+        <td>
+          <span class="mono">{{ identity.hostname }}</span>
+          <div class="small muted">{{ identity.architecture }} · {{ identity.platform }} · Python {{ identity.python }}</div>
+        </td></tr>
+    <tr><th scope="row">{% translate "Address" %}</th>
+        <td class="mono small">{{ identity.base_url }}{% if identity.site_address %} · {{ identity.site_address }}{% endif %}</td></tr>
+    <tr><th scope="row">{% translate "Time zone" %}</th><td>{{ identity.timezone }}</td></tr>
+    <tr><th scope="row">{% translate "Database" %}</th>
+        <td>
+          <span class="mono">{{ identity.database.vendor }} {{ identity.database.version }}</span>
+          <div class="small muted">{% blocktranslate with name=identity.database.name host=identity.database.host %}{{ name }} on {{ host }}{% endblocktranslate %}</div>
+        </td></tr>
+  </table>
+</div>
+
 <div class="card">
   <table>
-    <tr><th>{% translate "Database" %}</th><td>{{ vendor }}</td></tr>
     <tr><th>{% translate "Media files" %}</th><td>{{ media_count }} ({{ media_bytes|filesizeformat }})</td></tr>
     <tr><th>{% translate "Last backup" %}</th>
         <td>{% if backup_age %}{{ backup_age|floatformat:1 }} {% translate "days ago" %}
@@ -36,6 +68,51 @@
 
 <div class="card">
   <h2>{% translate "Jobs" %}</h2>
-  <ul class="list small">{% for row in jobs %}<li>{{ row.state }}: {{ row.n }}</li>{% empty %}<li class="muted">{% translate "Queue empty." %}</li>{% endfor %}</ul>
+  <p class="small muted">
+    {% for row in job_counts %}{{ row.state }}: {{ row.n }}{% if not forloop.last %} · {% endif %}{% empty %}{% translate "Nothing has ever been queued." %}{% endfor %}
+  </p>
+
+  {% if queue %}
+    <table>
+      <caption class="small muted">{% translate "Waiting or running now" %}</caption>
+      <tr>
+        <th scope="col">{% translate "Job" %}</th>
+        <th scope="col">{% translate "State" %}</th>
+        <th scope="col">{% translate "Attempts" %}</th>
+        <th scope="col">{% translate "Due" %}</th>
+      </tr>
+      {% for job in queue %}
+        <tr>
+          <td class="mono small">{{ job.type }}</td>
+          <td>{{ job.get_state_display }}</td>
+          <td class="small">{{ job.attempts }}/{{ job.max_attempts }}</td>
+          <td class="small">{{ job.run_after }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+  {% else %}
+    <p class="small muted">{% translate "Nothing waiting or running." %}</p>
+  {% endif %}
+
+  {% if failed_jobs %}
+    <h3>{% translate "Failed" %}</h3>
+    <p class="small muted">
+      {% blocktranslate %}These gave up after their last retry. The error is the one the job itself reported.{% endblocktranslate %}
+    </p>
+    <table>
+      <tr>
+        <th scope="col">{% translate "Job" %}</th>
+        <th scope="col">{% translate "Gave up" %}</th>
+        <th scope="col">{% translate "Error" %}</th>
+      </tr>
+      {% for job in failed_jobs %}
+        <tr>
+          <td class="mono small">{{ job.type }}</td>
+          <td class="small">{{ job.finished_at|default:job.created_at }}</td>
+          <td class="small mono">{{ job.last_error|truncatechars:160 }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+  {% endif %}
 </div>
 {% endblock %}
