@@ -77,6 +77,10 @@ urlpatterns = [
     path("settings/<str:group>/", instance_settings.settings_view, name="settings"),
     path("backups/", instance_settings.backups, name="backups"),
     path("backups/run/", instance_settings.backup_now, name="backup_now"),
+    # Giving up on a job whose worker is not coming back. The worker reclaims
+    # one on its own within JOB_STALE_AFTER_MINUTES; this is the way to not
+    # wait, because what is waiting is the instance's backups.
+    path("backups/stop/", instance_settings.backup_stop, name="backup_stop"),
     path("backups/upload/", instance_settings.backup_upload, name="backup_upload"),
     path("backups/<str:name>/download/", instance_settings.backup_download, name="backup_download"),
     path("backups/<str:name>/delete/", instance_settings.backup_delete, name="backup_delete"),

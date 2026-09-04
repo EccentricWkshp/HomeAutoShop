@@ -970,6 +970,23 @@ database from a web request risks a half-restored instance. The Backup page
 prints the exact restore command for the current configuration. Integration
 secrets must be re-entered afterward.
 
+### A backup that says it is still running
+
+A backup runs in the background, so the page shows it as **running** until it
+lands. If the machine restarted, ran out of memory, or you redeployed while one
+was in flight, the job can be left marked running when nothing is working on
+it any more — and while one is marked running, the nightly backup is skipped
+and **Back up now** stays disabled, so the instance quietly stops backing
+itself up.
+
+The worker notices and puts such a job back on the queue within the hour, so
+this normally clears itself. When it does, the Backup page says so plainly
+rather than showing a *running* pill, and offers **Give up on it** if you would
+rather not wait — that frees both the scheduled backup and the button.
+
+If you have an export that legitimately takes longer than an hour, raise
+`JOB_STALE_AFTER_MINUTES` so a slow job is not mistaken for a dead one.
+
 ### Trash
 
 Supported deletions are soft deletes. **Trash** groups recoverable records and

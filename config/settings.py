@@ -555,6 +555,17 @@ BACKUP_RETENTION_WEEKLY = env_int("BACKUP_RETENTION_WEEKLY", 4)
 BACKUP_RETENTION_MONTHLY = env_int("BACKUP_RETENTION_MONTHLY", 6)
 BACKUP_WARN_AFTER_DAYS = env_int("BACKUP_WARN_AFTER_DAYS", 7)
 
+# How long a job may hold its lock before the worker running it is presumed
+# dead and the job is put back on the queue (§5.2).
+#
+# Generous on purpose, because the cost of the two mistakes is not symmetric:
+# reclaiming a job that was merely slow starts a second copy of it, while
+# leaving a genuinely dead one alone stops that job type for ever — the
+# scheduler skips a type that already has a `pending` or `running` row, so one
+# orphaned `backup.run` silently ends all future backups and disables the
+# button that would take one by hand.
+JOB_STALE_AFTER_MINUTES = env_int("JOB_STALE_AFTER_MINUTES", 60)
+
 # --------------------------------------------------------------------------
 # Logging — structured, no secrets, no full VINs at info level (NFR-R-3)
 # --------------------------------------------------------------------------

@@ -20,15 +20,34 @@
 
 <div class="card">
   <div class="row">
+    {% comment %}
+    Disabled while something is genuinely in flight, and *not* while it is
+    merely stuck. A stalled job used to disable both of these, which is how one
+    orphaned row took away the scheduled backup and the manual one together and
+    left the screen looking busy rather than broken.
+    {% endcomment %}
     <form method="post" action="{% url 'backup_now' %}">{% csrf_token %}
-      <button type="submit" {% if running %}disabled{% endif %}>{% translate "Back up now" %}</button>
+      <button type="submit" {% if running and not stalled %}disabled{% endif %}>{% translate "Back up now" %}</button>
     </form>
     <form method="post" action="{% url 'backup_now' %}">{% csrf_token %}
       <input type="hidden" name="what" value="export">
-      <button type="submit" class="btn" {% if running %}disabled{% endif %}>{% translate "Build a portable export" %}</button>
+      <button type="submit" class="btn" {% if running and not stalled %}disabled{% endif %}>{% translate "Build a portable export" %}</button>
     </form>
   </div>
-  {% if running %}
+  {% if stalled %}
+    <div class="msg warning">
+      <p>
+        <strong>{% translate "This one is not coming back." %}</strong>
+        {% blocktranslate with since=running.created_at %}It was started {{ since }} and the worker running it stopped before it finished — a redeploy, a restart, or the machine running out of memory.{% endblocktranslate %}
+      </p>
+      <p class="small">
+        {% blocktranslate %}Nothing has been backed up since, and nothing will be: a scheduled backup is skipped while one is still marked as running. The worker clears this by itself within the hour; this stops waiting for it.{% endblocktranslate %}
+      </p>
+      <form method="post" action="{% url 'backup_stop' %}">{% csrf_token %}
+        <button type="submit">{% translate "Give up on it" %}</button>
+      </form>
+    </div>
+  {% elif running %}
     <p class="small">
       <span class="pill">{% translate "running" %}</span>
       {% blocktranslate with since=running.created_at %}Started {{ since }}. Reload this page to see it land.{% endblocktranslate %}

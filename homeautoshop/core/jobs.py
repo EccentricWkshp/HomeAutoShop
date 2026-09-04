@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import logging
 import traceback
+from datetime import timedelta
 
+from django.db.models import Q
 from django.utils import timezone
 
 from .models import Job
@@ -166,6 +168,78 @@ def claim(limit: int = 10) -> list[Job]:
     return claimed
 
 
+#: What a reclaimed job records as its reason. Matched by the backups screen to
+#: tell "the worker died" apart from a job that genuinely raised.
+STALLED = "the worker stopped before this finished"
+
+
+def is_stalled(job: Job, *, now=None) -> bool:
+    """Whether this job's worker is presumed dead.
+
+    Shared with the backups screen on purpose, so what an operator is told and
+    what `reclaim` acts on cannot drift into disagreeing — a screen calling a
+    job stuck while the queue still counts it live is worse than either answer
+    alone.
+    """
+    if job.state != Job.State.RUNNING:
+        return False
+    if job.locked_at is None:
+        return True
+    now = now or timezone.now()
+    return job.locked_at < now - timedelta(minutes=conf.JOB_STALE_AFTER_MINUTES)
+
+
+def reclaim(*, now=None) -> int:
+    """Put back jobs whose worker died holding them (SPEC §5.2, NFR-R-2).
+
+    `claim` marks a job `running` and stamps `locked_at`; `run_one` moves it on
+    to `done`, `pending` or `failed`. Nothing covered the case in between — a
+    worker killed mid-job, by a redeploy, an OOM, or the host going down. The
+    row stayed `running` for ever, and `locked_at` was written by `claim` and
+    read by nothing at all.
+
+    Left alone it is not an untidy row. `schedule.tick` skips a job type that
+    already has a `pending` or `running` one, so a single orphaned `backup.run`
+    **silently ends every future backup** — and the backups screen disables
+    "Back up now" while one is running, so it also removes the way to notice by
+    taking one by hand. The instance goes on looking healthy until the
+    "last backup was N days ago" alert fires a week later.
+
+    **Attempts are counted here**, which is the part that is easy to get wrong.
+    `run_one` increments in memory and saves at the end, so a process that dies
+    mid-job never records the try. Without counting it, a job that kills its
+    worker every time — the large export that runs the container out of memory
+    is the real one — is reclaimed, retried, and kills it again, for ever. It
+    has to be able to reach `failed` and stop.
+    """
+    now = now or timezone.now()
+    cutoff = now - timedelta(minutes=conf.JOB_STALE_AFTER_MINUTES)
+    # A null lock counts as stalled whatever the clock says: `claim` always
+    # stamps one, so a `running` row without it predates this mechanism or was
+    # written by hand, and either way nothing is coming back for it.
+    stalled = Job.objects.filter(
+        Q(locked_at__lt=cutoff) | Q(locked_at__isnull=True),
+        state=Job.State.RUNNING,
+    )
+
+    count = 0
+    for job in stalled:
+        job.attempts += 1
+        job.last_error = STALLED
+        if job.attempts >= job.max_attempts:
+            job.state = Job.State.FAILED
+            job.finished_at = now
+            log.error("job %s (%s) stalled too often; giving up", job.pk, job.type)
+        else:
+            job.state = Job.State.PENDING
+            job.run_after = now + job.backoff()
+            job.locked_at = None
+            log.warning("job %s (%s) was reclaimed from a stopped worker", job.pk, job.type)
+        job.save()
+        count += 1
+    return count
+
+
 def run_one(job: Job) -> bool:
     fn = HANDLERS.get(job.type)
     job.attempts += 1
@@ -197,7 +271,12 @@ def run_one(job: Job) -> bool:
 
 
 def drain(limit: int = 100) -> int:
-    """Run every due job now. Used by the worker loop and by tests."""
+    """Run every due job now. Used by the worker loop and by tests.
+
+    Reclaiming first, so a queue holding nothing but an orphaned job is not a
+    queue this returns 0 for and sleeps on for ever.
+    """
+    reclaim()
     done = 0
     for job in claim(limit):
         if run_one(job):

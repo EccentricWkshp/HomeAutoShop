@@ -35,7 +35,7 @@ from django.views.decorators.http import require_POST
 
 from homeautoshop.accounts.models import require
 
-from . import runtime
+from . import jobs, runtime
 from .backup import UploadRejected, assemble_uploaded, last_backup_age_days
 from .models import AuditLog, Job
 from .runtime import conf
@@ -269,6 +269,13 @@ def backups(request):
     running = Job.objects.filter(
         type__in=("backup.run", "export.build"), state__in=(Job.State.PENDING, Job.State.RUNNING)
     ).first()
+    # A job holding its lock past the point a worker is presumed dead. Said out
+    # loud rather than left as a "running" pill, because that pill is what this
+    # screen showed for eighteen hours while the instance quietly took no
+    # backups at all — `schedule.tick` skips a type that already has a row in
+    # flight, and the buttons below disable themselves for the same reason, so
+    # the one orphaned job removes both the automatic backup and the manual one.
+    stalled = bool(running) and jobs.is_stalled(running)
     held = held_backups()
     newest = next((item["name"] for item in held if item["kind"] == "backup"), None)
 
@@ -284,6 +291,7 @@ def backups(request):
         {
             "held": held,
             "running": running,
+            "stalled": stalled,
             "backup_age": last_backup_age_days(),
             "warn_after": conf.BACKUP_WARN_AFTER_DAYS,
             "interval_hours": conf.BACKUP_INTERVAL_HOURS,
@@ -327,6 +335,42 @@ def backup_now(request):
         _("Started. It runs in the background — this page shows it when it finishes.")
         if kind == "backup.run"
         else _("Building the export. It appears below when it is ready."),
+    )
+    return redirect("backups")
+
+
+@require_POST
+@login_required
+def backup_stop(request):
+    """Give up on a backup whose worker is not coming back.
+
+    The worker reclaims a stalled job on its own within
+    `JOB_STALE_AFTER_MINUTES`, so this is not the mechanism — it is the way to
+    not wait for it, which matters because what is waiting is the instance's
+    backups. Marking it failed is enough to unblock both: `schedule.tick` only
+    skips a type that has a `pending` or `running` row, and this screen's
+    buttons only disable themselves for one.
+
+    Deliberately *failed* rather than deleted. A row that vanishes takes with
+    it the fact that a backup was attempted and did not finish, which is the
+    one thing somebody reading this screen next week needs to know.
+    """
+    require(request.user, "settings.manage")
+
+    running = Job.objects.filter(
+        type__in=("backup.run", "export.build"), state__in=(Job.State.PENDING, Job.State.RUNNING)
+    ).first()
+    if running is None:
+        messages.info(request, _("Nothing is running."))
+        return redirect("backups")
+
+    running.state = Job.State.FAILED
+    running.last_error = jobs.STALLED
+    running.finished_at = timezone.now()
+    running.save(update_fields=["state", "last_error", "finished_at"])
+    messages.success(
+        request,
+        _("Stopped waiting for it. You can take a backup now, and the scheduled one will run again."),
     )
     return redirect("backups")
 
