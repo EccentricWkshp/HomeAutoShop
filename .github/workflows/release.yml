@@ -135,10 +135,13 @@ jobs:
           gate check_accessibility
           gate check_rtl
           gate build_catalog --check
+          # --parallel needs a database that clones to disk; PostgreSQL does,
+          # SQLite does not, and the runner declines it there rather than check
+          # the backup tests against an in-memory database (§13.2).
           docker run --rm --network host -v "$PWD:/app" -u "$(id -u):$(id -g)" \
             -e HOME=/tmp -e DATABASE_URL="$DATABASE_URL" \
             -e MEDIA_ROOT=/tmp/media -e BACKUP_DIR=/tmp/backups \
-            homeautoshop:verify python manage.py test
+            homeautoshop:verify python manage.py test --parallel auto
 
       - uses: docker/login-action@v3
         with:

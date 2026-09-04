@@ -208,6 +208,11 @@ PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.PBKDF2PasswordHasher",
 ]
 
+# Argon2 costs ~93 ms a hash, which is what makes it worth having in production
+# and what makes a suite that creates thousands of users crawl. The test runner
+# swaps it for MD5 — see `homeautoshop/core/testrunner.py`. It is done there
+# rather than as a branch in this file so that no deployment can reach it.
+
 AUTH_PASSWORD_VALIDATORS = [
     # A length floor rather than composition rules, per SPEC §12.2.
     {

@@ -104,12 +104,16 @@ jobs:
           gate check_rtl
           gate build_catalog --check
 
+      # --parallel is safe here and only here: it needs a database that clones
+      # to disk, which PostgreSQL does and SQLite does not. The runner declines
+      # it on SQLite rather than run the backup tests against an in-memory
+      # database, so a developer gets a serial run without passing anything.
       - name: Test suite
         run: |
           docker run --rm --network host -v "$PWD:/app" -u "$(id -u):$(id -g)" \
             -e HOME=/tmp -e DATABASE_URL="$DATABASE_URL" \
             -e MEDIA_ROOT=/tmp/media -e BACKUP_DIR=/tmp/backups \
-            homeautoshop:ci python manage.py test
+            homeautoshop:ci python manage.py test --parallel auto
 
   proxy:
     name: Proxy image builds
