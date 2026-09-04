@@ -901,6 +901,81 @@ The XTOOL D8 is supported out of the box. Adding another tool is usually a
 YAML profile rather than a code change — Account menu → *Integrations* →
 *Parser profiles* imports and exports them.
 
+### Reading codes straight off the car
+
+Vehicle → *Diagnostics* → *Read the car directly* talks to an ELM327 adapter
+from the browser, with nothing to install. The server never touches the
+adapter: it runs in a container with no Bluetooth, and the phone standing next
+to the car is the thing actually in range.
+
+Chrome or Edge, over HTTPS. Safari and Firefox have not implemented either of
+the browser APIs this needs, and neither one runs over plain HTTP.
+
+Four things before the first read, in this order:
+
+1. **Plug the adapter into the OBD-II socket** — under the dash on the
+   driver's side on virtually everything since 1996.
+2. **Pair it in the system Bluetooth settings**, not on this page. The browser
+   can only offer an adapter the operating system has already paired. The
+   usual code is `1234` or `0000`.
+3. **On Android, give Chrome the “Nearby devices” permission** — *Settings →
+   Apps → Chrome → Permissions → Nearby devices → Allow*. Android 12 put every
+   Bluetooth device behind this, and Chrome cannot list one without it. Nothing
+   reports the refusal: the chooser opens empty, which looks exactly like an
+   adapter that will not pair. If Chrome has never asked you for it, it has not
+   got it.
+4. **Switch the ignition on.** This is the one that catches people. The socket
+   is powered straight from the battery, so the adapter lights up, pairs and
+   answers questions about itself whether or not the car is awake — it is the
+   *car* that stays silent. If the page says the adapter is working but the car
+   did not answer, this is why. A few cars only answer with the engine running.
+
+Then press *Read codes* and pick the adapter from the browser's list.
+
+**How the adapter connects** has two settings, because no single browser API
+reaches every adapter:
+
+- *Cable, or a paired Bluetooth adapter* — the common case, and what an
+  OBDLink MX+ or any other Bluetooth Classic adapter needs.
+- *Bluetooth LE adapter* — only for adapters that pair as Bluetooth LE. Those
+  never appear in the first list, and the first kind never appears in this one.
+
+#### When the list comes up empty
+
+The browser says *No compatible devices found*, and then reports that no
+adapter was chosen — it cannot tell an empty list from a cancelled one, so it
+blames the person either way. Work through:
+
+- The adapter is paired, plugged in, and close enough to be awake.
+- On a phone, Chrome has the **Nearby devices** permission (step 3 above —
+  this is the commonest cause by a distance) and is version 137 or newer, since
+  earlier ones cannot offer Bluetooth adapters at all. *Menu → Settings → About
+  Chrome* gives the version.
+- **If it appears on a desktop but not on a phone**, the adapter hides its
+  serial service behind the maker's own identifier rather than the standard
+  one. A desktop offers it regardless, because the operating system maps it to
+  a serial port first; a phone maps nothing and withholds anything it has not
+  been told to expect. Connect it once on the desktop, where the page prints
+  `Bluetooth service:` followed by the identifier, then add that to `.env`:
+
+  ```bash
+  ELM327_BLUETOOTH_SERVICE_UUIDS=00001101-0000-1000-8000-00805f9b34fb,<the one it printed>
+  ```
+
+  and `docker compose up -d`. The first entry is the standard profile, which
+  most adapters — the OBDLink MX+ among them — use; keep it.
+
+#### What you get
+
+Codes land as a **draft**, like a PDF report, and reach the vehicle's history
+only once you have looked at them. A $12 dongle on a corroded connector
+misreads at least as often as a parser does.
+
+*Clear codes* is behind a confirmation that names the vehicle, because it also
+resets the readiness monitors — and a car with unset monitors fails an
+emissions test on the spot, sometimes for a hundred miles of driving
+afterwards. Clear after the repair, not before the test.
+
 ## Troubleshooting
 
 ### `dependency failed to start: container homeautoshop-db-1 is unhealthy`

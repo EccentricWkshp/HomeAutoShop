@@ -401,6 +401,58 @@ OUTBOUND_ALLOWLIST = [
 # refuses it like everything else.
 CATALOG_URL = env("CATALOG_URL", "https://raw.githubusercontent.com/EccentricWkshp/HomeAutoShop/main/catalog/").rstrip("/")
 
+# --------------------------------------------------------------------------
+# ELM327 adapters (SPEC §8.3c)
+# --------------------------------------------------------------------------
+#
+# Handed to the page, not used here: the container has no Bluetooth, and the
+# browser is what talks to the adapter.
+#
+# Bluetooth service class IDs the serial chooser may offer. Standard SPP
+# (0x1101) is named for the sake of being explicit — it is offered anyway — and
+# the list earns its keep for adapters that put their RFCOMM service behind a
+# vendor UUID. Chrome withholds those from the chooser unless the page names
+# them, and an adapter that is paired, powered and simply absent from the list
+# is indistinguishable, from the garage, from one that will not pair at all.
+#
+# A vendor rarely documents that UUID. Connecting the adapter once on a desktop
+# finds it: the OS maps it to a COM port or a device node, mapped ports are
+# offered whatever their UUID, and the page prints the service class ID of
+# whatever it opened.
+ELM327_BLUETOOTH_SERVICE_UUIDS = [
+    value.strip().lower()
+    for value in env(
+        "ELM327_BLUETOOTH_SERVICE_UUIDS",
+        "00001101-0000-1000-8000-00805f9b34fb",
+    ).split(",")
+    if value.strip()
+]
+
+# BLE adapters expose a serial pipe as a pair of characteristics rather than a
+# port, and the pairing is per-vendor. Tried in order; the first that resolves
+# wins. Bluetooth Classic adapters are unreachable this way and BLE ones are
+# unreachable over RFCOMM, which is why the page offers both transports.
+ELM327_BLE_PROFILES = [
+    # OBDLink's own BLE adapters, per their published adapter notes.
+    {
+        "service": "0000fff0-0000-1000-8000-00805f9b34fb",
+        "notify": "0000fff1-0000-1000-8000-00805f9b34fb",
+        "write": "0000fff2-0000-1000-8000-00805f9b34fb",
+    },
+    # The usual inexpensive ELM327 clone: one characteristic, both directions.
+    {
+        "service": "0000ffe0-0000-1000-8000-00805f9b34fb",
+        "notify": "0000ffe1-0000-1000-8000-00805f9b34fb",
+        "write": "0000ffe1-0000-1000-8000-00805f9b34fb",
+    },
+    # Nordic UART, used by adapters built on a Nordic radio.
+    {
+        "service": "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
+        "notify": "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
+        "write": "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
+    },
+]
+
 # LubeLogger (SPEC §8.6) — optional and additive, never a dependency. An
 # instance with none configured is not a degraded instance.
 LUBELOGGER_URL = env("LUBELOGGER_URL", "").rstrip("/")

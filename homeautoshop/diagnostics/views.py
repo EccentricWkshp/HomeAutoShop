@@ -6,6 +6,7 @@ import json
 import logging
 
 from django import forms
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpResponse, JsonResponse
@@ -1079,9 +1080,17 @@ def elm327(request, pk):
                 "captureUrl": reverse("elm_capture", args=[asset.pk]),
                 "csrf": get_token(request),
                 "baudRate": 38400,
+                "bluetoothServiceUuids": settings.ELM327_BLUETOOTH_SERVICE_UUIDS,
+                "bleProfiles": settings.ELM327_BLE_PROFILES,
+                # Android negotiates a 23-byte MTU by default, leaving 20 bytes
+                # of payload, and over-long writes are rejected rather than
+                # split.
+                "bleChunkBytes": 20,
             },
             "strings": {
-                "ready": _("Ready. Plug the adapter in and press Read codes."),
+                "ready": _(
+                    "Ready. Plug the adapter in, switch the ignition on, and press Read codes."
+                ),
                 "insecure": _(
                     "This page is not on HTTPS, so the browser will not open a serial port. "
                     "See the install guide for turning on TLS."
@@ -1090,12 +1099,63 @@ def elm327(request, pk):
                     "This browser has no Web Serial. Chrome or Edge on desktop or Android "
                     "will do it; Safari and Firefox will not."
                 ),
+                "noBluetooth": _(
+                    "This browser has no Web Bluetooth. Chrome or Edge will do it; "
+                    "Safari and Firefox will not."
+                ),
+                "noTransport": _(
+                    "This browser has neither Web Serial nor Web Bluetooth, so it cannot "
+                    "reach an adapter. Chrome or Edge will; Safari and Firefox will not."
+                ),
+                "serialOnly": _(
+                    "Ready, over a cable or a paired Bluetooth adapter. This browser has no "
+                    "Web Bluetooth, so BLE-only adapters are out of reach here."
+                ),
+                "bluetoothOnly": _(
+                    "Ready, over BLE. This browser has no Web Serial, so wired and "
+                    "Bluetooth Classic adapters are out of reach here."
+                ),
                 "notConnected": _("No adapter was chosen."),
+                "nothingChosen": _("No adapter was chosen — or none was offered."),
+                # The browser reports the same error for a cancelled chooser and
+                # an empty one, and an empty one is the commoner cause by far.
+                "nothingChosenHelp": _(
+                    "The browser cannot tell these apart, so check both. On Android the "
+                    "usual cause is Chrome not holding the “Nearby devices” permission — "
+                    "Settings → Apps → Chrome → Permissions — without which no adapter can "
+                    "be listed at all; Chrome also has to be version 137 or newer. "
+                    "Otherwise, pair the adapter in the system Bluetooth settings first, "
+                    "since this page can only offer one that is already paired. An adapter "
+                    "that hides its serial service behind a maker's own identifier has to "
+                    "be named in ELM327_BLUETOOTH_SERVICE_UUIDS before a phone will list "
+                    "it; connecting it once on a desktop prints the identifier to add."
+                ),
+                "serviceClassId": _("Bluetooth service:"),
+                "usbIds": _("USB device:"),
+                "chosenDevice": _("Adapter:"),
+                "usingProfile": _("Talking to it over service"),
+                "badUuidList": _(
+                    "The browser rejected the configured adapter identifiers, so they were "
+                    "ignored for this attempt. Check ELM327_BLUETOOTH_SERVICE_UUIDS."
+                ),
+                "noBleProfile": _(
+                    "Connected to that device, but it exposes no serial service this app "
+                    "knows. If it is an OBD adapter, it may use a maker's own identifiers."
+                ),
                 "connected": _("Connected. Reading…"),
                 "stored": _("stored"),
                 "pending": _("pending"),
                 "permanent": _("permanent"),
                 "noCodes": _("Read complete — no codes found."),
+                # Not the same as "no codes", and the difference is the whole
+                # diagnosis: the adapter answered, no ECU did.
+                "noEcu": _("The adapter is working, but the car did not answer."),
+                "noEcuHelp": _(
+                    "This is not the same as finding no codes — nothing was read at all. "
+                    "The adapter has power from the socket whether or not the car is awake, "
+                    "so switch the ignition on and try again. A few cars only answer with "
+                    "the engine running."
+                ),
                 "done": _("Read. Keep it and check it over."),
                 "readFailed": _("The adapter stopped answering."),
                 "saveFailed": _("Could not save that read."),

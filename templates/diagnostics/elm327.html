@@ -8,7 +8,7 @@
     <h1>{% translate "Read the car directly" %}</h1>
     <p class="muted">
       <a href="{% url 'asset_diagnostics' asset.pk %}">{{ asset.nickname }}</a>
-      · {% translate "ELM327 over USB" %}
+      · {% translate "ELM327 over a cable, Bluetooth, or BLE" %}
     </p>
   </div>
 </div>
@@ -20,8 +20,28 @@
 <div class="cols two">
   <div class="stack">
     <section class="card">
+      <h2>{% translate "Before the first read" %}</h2>
+      <ol class="small">
+        <li>{% translate "Plug the adapter into the OBD-II socket — under the dash on the driver's side." %}</li>
+        <li>{% blocktranslate %}Pair it in the system Bluetooth settings, not here. This page can only offer an adapter the device has already paired.{% endblocktranslate %}</li>
+        <li>{% blocktranslate %}<strong>On Android, give Chrome the “Nearby devices” permission</strong> — Settings → Apps → Chrome → Permissions. Without it the adapter list comes up empty and the browser gives no reason for it.{% endblocktranslate %}</li>
+        <li>{% blocktranslate %}Switch the ignition on. The socket has power from the battery either way, so the adapter lights up and answers while the car itself stays silent.{% endblocktranslate %}</li>
+      </ol>
+    </section>
+
+    <section class="card">
       <h2>{% translate "Adapter" %}</h2>
       <p id="elm-status" role="status" aria-live="polite" class="muted">{% translate "Checking…" %}</p>
+      <p>
+        <label for="elm-transport">{% translate "How the adapter connects" %}</label>
+        <select id="elm-transport">
+          <option value="serial">{% translate "Cable, or a paired Bluetooth adapter" %}</option>
+          <option value="bluetooth">{% translate "Bluetooth LE adapter" %}</option>
+        </select>
+      </p>
+      <p class="small muted">
+        {% blocktranslate %}Most adapters are the first kind, an OBDLink MX+ among them. Pick the second only for an adapter that pairs as Bluetooth LE — the two lists never overlap, so an adapter missing from one will not appear in the other.{% endblocktranslate %}
+      </p>
       <div class="row">
         <button id="elm-read" class="primary" type="button">{% translate "Read codes" %}</button>
         <button id="elm-save" type="button" disabled>{% translate "Keep what was read" %}</button>
