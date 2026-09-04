@@ -65,6 +65,21 @@ class AdapterScriptTests(TestCase):
         self.assertIn("UNABLE TO CONNECT", self.source)
         self.assertIn("noEcu", self.source)
 
+    def test_silence_is_not_reported_as_a_clean_car(self):
+        """Found against a rebadged XTOOL dongle: it accepted the BLE
+        connection and every command, and answered nothing at all. Empty
+        replies decode to zero codes, so without this the page told somebody
+        their car was fine when it had never spoken to the car."""
+        self.assertIn("silent === modes.length", self.source)
+        self.assertIn("noReply", self.source)
+
+    def test_clearing_is_only_claimed_when_something_confirmed_it(self):
+        """The worst place on this page to report an action that did not
+        happen: somebody drives away believing the monitors were reset."""
+        clearing = self.source.split("async function clearCodes")[1]
+        self.assertIn("LINK_ERROR.test(reply)", clearing)
+        self.assertIn('reply.trim() === ""', clearing)
+
     def test_no_data_is_not_treated_as_a_dead_link(self):
         """It is the ordinary answer for pending and permanent codes on plenty
         of cars, and calling it a failure would cry wolf on every clean read."""

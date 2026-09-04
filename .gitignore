@@ -26,6 +26,7 @@ Artifacts/samples/**/*.pdf
 Artifacts/samples/**/*.jpg
 Artifacts/samples/**/*.jpeg
 Artifacts/samples/**/*.png
+Artifacts/samples/**/*.cfa
 Artifacts/samples/backups/
 
 # Research notes for a later phase: manifests of third-party scan reports found

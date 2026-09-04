@@ -420,11 +420,19 @@
       var modes = [["03", 0x43, strings.stored], ["07", 0x47, strings.pending],
                    ["0A", 0x4A, strings.permanent]];
       var reached = 0;
+      var silent = 0;
       for (var i = 0; i < modes.length; i++) {
         var mode = modes[i];
         var reply = await send(mode[0], 8000);
-        var failed = LINK_ERROR.test(reply);
-        say(mode[2] + ": " + reply.replace(/[\r\n]+/g, " "), failed ? "warn" : "muted");
+        // Silence is its own answer, and it is not an empty list of codes.
+        // A device can accept the connection, accept the writes, and never
+        // say anything — which is what a proprietary adapter does when it is
+        // handed ELM327 commands it has no idea about.
+        var quiet = reply.trim() === "";
+        var failed = quiet || LINK_ERROR.test(reply);
+        say(mode[2] + ": " + (quiet ? strings.nothingBack : reply.replace(/[\r\n]+/g, " ")),
+            failed ? "warn" : "muted");
+        if (quiet) { silent += 1; }
         if (!failed) { reached += 1; }
         decodeResponse(reply, mode[1]).forEach(function (code) {
           record(code, mode[2]);
@@ -432,7 +440,13 @@
       }
       render();
 
-      // Nothing answered, so there is nothing to say about this car yet.
+      // Connected, written to, and never answered: not an ELM327.
+      if (silent === modes.length) {
+        setStatus(strings.noReply);
+        say(strings.noReplyHelp, "warn");
+        return;
+      }
+      // The adapter answered; no ECU did.
       if (!reached) {
         setStatus(strings.noEcu);
         say(strings.noEcuHelp, "warn");
@@ -482,8 +496,20 @@
       await send("ATE0");
       await send("ATSP0");
       var reply = await send("04", 8000);
-      say("04: " + reply.replace(/[\r\n]+/g, " "));
-      setStatus(strings.cleared);
+      say("04: " + (reply.trim() === "" ? strings.nothingBack : reply.replace(/[\r\n]+/g, " ")));
+      // Only say it happened if something said it did. Reporting a clear that
+      // never reached the car is worse here than anywhere else on this page:
+      // somebody would drive away believing the monitors had been reset, and
+      // find out at the emissions test.
+      if (reply.trim() === "") {
+        setStatus(strings.noReply);
+        say(strings.noReplyHelp, "warn");
+      } else if (LINK_ERROR.test(reply)) {
+        setStatus(strings.noEcu);
+        say(strings.noEcuHelp, "warn");
+      } else {
+        setStatus(strings.cleared);
+      }
     } catch (err) {
       setStatus(strings.readFailed);
       say(String(err), "warn");

@@ -1147,6 +1147,17 @@ def elm327(request, pk):
                 "pending": _("pending"),
                 "permanent": _("permanent"),
                 "noCodes": _("Read complete — no codes found."),
+                "nothingBack": _("(nothing came back)"),
+                # Found against a rebadged XTOOL dongle, which accepted the
+                # connection and every command and said nothing at all.
+                "noReply": _("That adapter connected, but it never answered."),
+                "noReplyHelp": _(
+                    "It accepted the connection and took every command without replying, "
+                    "which is what a tool that speaks its maker's own protocol does when it "
+                    "is handed ELM327 commands. This page cannot read it. Use the maker's "
+                    "app instead and bring the result back here: Diagnostics takes the "
+                    "report it exports, and learns the layout the first time."
+                ),
                 # Not the same as "no codes", and the difference is the whole
                 # diagnosis: the adapter answered, no ECU did.
                 "noEcu": _("The adapter is working, but the car did not answer."),
