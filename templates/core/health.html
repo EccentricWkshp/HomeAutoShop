@@ -26,6 +26,15 @@
     <tr><th scope="row">{% translate "Address" %}</th>
         <td class="mono small">{{ identity.base_url }}{% if identity.site_address %} · {{ identity.site_address }}{% endif %}</td></tr>
     <tr><th scope="row">{% translate "Time zone" %}</th><td>{{ identity.timezone }}</td></tr>
+    <tr><th scope="row">{% translate "Sign-in" %}</th>
+        <td>
+          <span class="mono">{{ identity.password_policy }}</span>
+          {% if identity.no_authentication %}
+            <div class="small warn">{% translate "No sign-in. Anyone who can reach this site is the shop." %}</div>
+          {% elif identity.password_policy_is_weak %}
+            <div class="small muted">{% translate "A relaxed password rule is in force." %}</div>
+          {% endif %}
+        </td></tr>
     <tr><th scope="row">{% translate "Database" %}</th>
         <td>
           <span class="mono">{{ identity.database.vendor }} {{ identity.database.version }}</span>

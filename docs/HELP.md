@@ -913,6 +913,20 @@ catalog and record what they fitted to an allowed vehicle, but they cannot see
 shop costs, inventory quantities, suppliers, purchases, reports, or the people
 directory.
 
+**How strong a password has to be is a setting.** The default asks for twelve
+characters and refuses the well-known ones, because length is what resists
+guessing. On an instance nobody outside the room can reach, that is a toll
+rather than a defense, so an administrator can relax it with `PASSWORD_POLICY`
+in the environment — `6chars` for something you can type one-handed, `any` for
+no rule at all, `complex` for sixteen characters and mixed character kinds, or
+`noauth` to turn sign-in off entirely. See [INSTALL.md](INSTALL.md) for what
+each one means and how to set it.
+
+With `noauth` there is no sign-in screen and **anyone who can reach the site
+has full access to everything in it**, acting as the oldest administrator
+account. Every page says *Sign-in is off* while it is set, and so does
+*Instance health*.
+
 Administrators create accounts and set the initial password directly; no
 invitation email is sent. Each account can override locale, timezone, and
 display units.

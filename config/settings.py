@@ -85,6 +85,31 @@ CSRF_TRUSTED_ORIGINS = [
     o.strip() for o in env("CSRF_TRUSTED_ORIGINS", BASE_URL).split(",") if o.strip().startswith("http")
 ]
 
+# How hard a password has to be, and whether there is one at all (§12.2).
+#
+# A length floor rather than composition rules is still the default and still
+# what the spec argues for. It is a *default* rather than a law because the
+# threat model is not the same everywhere: an instance on a laptop behind a
+# locked door, reachable from nowhere else, spends twelve characters per
+# sign-in defending against somebody who would already be in the room. That is
+# a toll rather than a defense, and tolls get paid in bad passwords.
+#
+# `homeautoshop.accounts.validators.POLICIES` holds what each name means, and
+# an unknown name raises at startup rather than falling back — a misspelled
+# security setting that boots anyway leaves the operator believing something
+# untrue about their own instance, in whichever direction they guessed.
+from homeautoshop.accounts.validators import (  # noqa: E402
+    DEFAULT_POLICY, WEAK_POLICIES, validators_for,
+)
+
+PASSWORD_POLICY = env("PASSWORD_POLICY", DEFAULT_POLICY).strip().lower()
+AUTH_PASSWORD_VALIDATORS = validators_for(PASSWORD_POLICY)
+
+#: No sign-in at all: every request is the first admin account. Read straight
+#: off the policy so the two cannot disagree.
+NO_AUTHENTICATION = PASSWORD_POLICY == "noauth"
+PASSWORD_POLICY_IS_WEAK = PASSWORD_POLICY in WEAK_POLICIES
+
 INSTALLED_APPS = [
     # Not `django.contrib.admin`: the shop's own admin site adds a trash page
     # that spans every table, which the per-model filters cannot.
@@ -121,6 +146,10 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # Directly after authentication, because it stands in for it. Present
+    # only when PASSWORD_POLICY is `noauth`; see the class for why it is a
+    # middleware rather than a backend.
+    *(["homeautoshop.accounts.middleware.NoAuthMiddleware"] if NO_AUTHENTICATION else []),
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "homeautoshop.core.middleware.CurrentUserMiddleware",
@@ -215,14 +244,10 @@ PASSWORD_HASHERS = [
 # swaps it for MD5 — see `homeautoshop/core/testrunner.py`. It is done there
 # rather than as a branch in this file so that no deployment can reach it.
 
-AUTH_PASSWORD_VALIDATORS = [
-    # A length floor rather than composition rules, per SPEC §12.2.
-    {
-        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
-        "OPTIONS": {"min_length": 12},
-    },
-    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
-]
+
+# `AUTH_PASSWORD_VALIDATORS` and `PASSWORD_POLICY` are set further up, above
+# `MIDDLEWARE`, because the `noauth` policy adds a middleware and that list
+# has to be able to see the answer.
 
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "dashboard"

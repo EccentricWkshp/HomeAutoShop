@@ -32,6 +32,12 @@ def _pending_restart(request) -> dict:
 def instance(request):
     return {
         **_pending_restart(request),
+        # Said on every page, because the whole application is open to anyone
+        # who can reach it and that is not a thing to have to remember. Only
+        # `noauth` earns a banner: the weaker password floors still keep the
+        # sign-in screen, and a permanent warning about a setting somebody
+        # deliberately chose is noise they cannot clear.
+        "no_authentication": getattr(settings, "NO_AUTHENTICATION", False),
         "shop_name": conf.SHOP_NAME,
         "offline_mode": conf.OFFLINE_MODE,
         "show_product_links": conf.SHOP_NAME and conf.SHOW_PRODUCT_LINKS,

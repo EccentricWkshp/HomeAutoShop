@@ -343,6 +343,12 @@ def _identity() -> dict:
         "platform": f"{platform.system()} {platform.release()}",
         "python": platform.python_version(),
         "timezone": str(timezone.get_current_timezone()),
+        # Which sign-in rules this instance is running, said where somebody
+        # comparing two instances is already looking. An operator who relaxed
+        # this on the laptop and forgot has no other way to find out.
+        "password_policy": settings.PASSWORD_POLICY,
+        "no_authentication": settings.NO_AUTHENTICATION,
+        "password_policy_is_weak": settings.PASSWORD_POLICY_IS_WEAK,
         "site_address": settings.SITE_ADDRESS or "",
         "base_url": settings.BASE_URL,
         "database": {

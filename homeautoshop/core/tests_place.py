@@ -345,6 +345,44 @@ class ServiceWorkerVersionTests(Base):
         self.assertIn("var VERSION = ", raw)
         self.assertNotIn('var VERSION = "v1";', raw)
 
+    def test_a_write_goes_over_the_wire_exactly_once(self):
+        """The bug that made adding one vehicle add two of it.
+
+        A `fetch` handler that returns without calling `respondWith` hands the
+        request back to the browser, which performs it itself. So a branch that
+        did its own `fetch(request.clone())` and then returned put **two** POSTs
+        on the wire for every write in the application — the worker's, read only
+        to decide whether to clear a cache, and the browser's, which is the one
+        the person saw. The clone is the tell: nothing needs a second copy of a
+        body it is not sending twice.
+
+        It is invisible on every idempotent write — an edit setting the same
+        fields twice looks identical — and doubles every create, which is why it
+        survived a release. Two of the same order import racing each other also
+        both found no provenance row and both inserted it.
+        """
+        import re
+
+        raw = (Path(settings.BASE_DIR) / "static" / "sw.js").read_text(encoding="utf-8")
+        _head, marker, rest = raw.partition('if (request.method !== "GET")')
+        self.assertTrue(marker, "the non-GET branch is gone; this test needs rewriting")
+        branch = rest[: rest.index("var url = new URL(request.url)")]
+        # The comment above the branch describes the bug and names the old call,
+        # so the assertion has to read the code rather than the prose about it.
+        code = re.sub(r"/\*.*?\*/", "", branch, flags=re.DOTALL)
+
+        self.assertIn("event.respondWith(", code)
+        self.assertNotIn("request.clone()", code)
+
+    def test_and_a_redirecting_write_still_clears_the_page_cache(self):
+        """A navigation POST that redirects comes back `opaqueredirect` with a
+        status of 0, so `response.ok` is false on the most ordinary successful
+        write there is. Checking only `ok` would leave the cache holding the
+        list this write just changed."""
+        raw = (Path(settings.BASE_DIR) / "static" / "sw.js").read_text(encoding="utf-8")
+
+        self.assertIn("opaqueredirect", raw)
+
     def test_a_worker_that_is_not_scoped_to_the_site_retires_itself(self):
         """The page cannot retire it — the worker is serving the page's script."""
         raw = (Path(settings.BASE_DIR) / "static" / "sw.js").read_text(encoding="utf-8")

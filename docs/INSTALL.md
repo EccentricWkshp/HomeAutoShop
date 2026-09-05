@@ -857,6 +857,32 @@ which machine you are actually on.
   off this machine. A backup on the same disk as the database is not a backup.
   Note what a backup deliberately does *not* contain: the integration keys you
   entered. A restored instance says which ones need typing in again.
+- **Decide how hard a password has to be.** The default is twelve characters
+  plus a check against the well-known ones, because length is what resists
+  guessing. On an instance reachable only from a room you control, that is a
+  toll rather than a defense — set `PASSWORD_POLICY` in `.env` to something
+  else and restart:
+
+  | Value | What it asks for |
+  | --- | --- |
+  | `12chars` | The default. Twelve characters, not a well-known one. |
+  | `complex` | Sixteen characters, three of the four character kinds, not well known, not all digits, not like the account name. |
+  | `6chars` | Six characters. Nothing else. |
+  | `any` | Sign-in, and any password at all. |
+  | `noauth` | **No sign-in at all.** |
+
+  `noauth` means anyone who can reach the site has full access to everything in
+  it, acting as the oldest administrator account. It is for a private network
+  you control and never for anything behind a port forward. The site says
+  *Sign-in is off* on every page while it is set, the health screen names it,
+  and the container log says so at startup. With no administrator account yet
+  it changes nothing — the first-run setup page still appears, because turning
+  sign-in off cannot conjure the account it would sign you in as.
+
+  A value that is not one of those five refuses to start rather than falling
+  back to a default, so a typo cannot leave you believing something untrue
+  about your own instance.
+
 - **Know that the trash never empties itself.** A deleted record is kept so it
   can be restored, and nothing removes it on a schedule — the 30-day window is
   how long a restore is promised, not how long the row lives. When you want the

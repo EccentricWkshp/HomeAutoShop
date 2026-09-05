@@ -78,12 +78,26 @@ class ThePolicyTests(TestCase):
 
     def test_but_only_when_the_write_actually_landed(self):
         """Offline, the fetch rejects, the write goes to the queue in
-        `offline.js`, and those cached pages are the only pages there are."""
+        `offline.js`, and those cached pages are the only pages there are.
+
+        The *mechanism* moved when this branch stopped putting a second request
+        on the wire. It used to run its own throwaway `fetch` and `.catch()` the
+        failure, because the browser was separately performing the real request
+        — which is exactly the bug that made one added vehicle arrive as two.
+        The branch now answers the page with its own fetch, so a rejection is
+        the network failure, reaching the browser as one.
+
+        What has to stay true is unchanged and is what this asserts: nothing
+        clears the cache unless a response actually came back, so the delete
+        sits inside the `.then` and behind a status check.
+        """
         source = worker()
         block = source[source.index('if (request.method !== "GET")'):source.index("var url = new URL")]
+        code = re.sub(r"/\*.*?\*/", "", block, flags=re.DOTALL)
 
-        self.assertIn("response.ok", block)
-        self.assertIn(".catch(", block)
+        self.assertIn("response.ok", code)
+        self.assertLess(code.index(".then("), code.index("caches.delete(PAGES)"))
+        self.assertLess(code.index("response.ok"), code.index("caches.delete(PAGES)"))
 
 
 class TheServerDoesNotAskForItToBeCachedTests(TestCase):

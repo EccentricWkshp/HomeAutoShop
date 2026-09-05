@@ -37,6 +37,7 @@
     <summary aria-label="{% translate 'Account' %}">{{ user.display_name }}</summary>
     <div class="menu">
       {% if offline_mode %}<p class="pill warn">{% translate "Offline mode" %}</p>{% endif %}
+      {% if no_authentication %}<p class="pill warn">{% translate "Sign-in is off" %}</p>{% endif %}
       {% comment %}
         On a phone the bar above is hidden and the bottom tabs carry five
         destinations, so Work, Inspect, Parts, Shelf, Purchases, Reports and

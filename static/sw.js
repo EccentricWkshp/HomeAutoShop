@@ -120,15 +120,41 @@ self.addEventListener("fetch", function (event) {
      * of being wrong about it is showing somebody a record they just changed
      * as though they had not.
      *
-     * Only on a response that actually landed. Offline, the fetch rejects, the
-     * write goes to the queue in offline.js, and the cache is left alone —
-     * which is the one moment those cached pages are the only pages there are.
+     * **`respondWith`, and one fetch.** This branch used to call
+     * `fetch(request.clone())` inside `waitUntil` and then `return` — and a
+     * `fetch` handler that returns without responding hands the request back to
+     * the browser, which then performs it itself. That is two POSTs on the wire
+     * for every write in the application: the worker's, whose response was read
+     * only to decide whether to clear a cache and was otherwise thrown away,
+     * and the browser's, whose response the person actually saw. The clone was
+     * there because the body can only be read once — which is the tell, since
+     * nothing needs a second copy of a body it is not sending twice.
+     *
+     * Adding a vehicle added it twice. So did anything else that creates a row,
+     * while an edit setting the same fields twice looked fine, which is why it
+     * survived: the failure is invisible on every idempotent write and doubles
+     * every other one. Two imports of the same order racing each other also
+     * both found no provenance row and both inserted, which surfaced as a
+     * unique-constraint error on the import screen.
+     *
+     * Responding with the fetch makes the worker's request *be* the request.
+     * Offline it rejects, the page gets the browser's own network failure as it
+     * would with no worker at all, the queue in offline.js takes `data-queue`
+     * forms, and the cache is left alone — which is the one moment those cached
+     * pages are the only pages there are.
+     *
+     * A navigation POST that redirects comes back `opaqueredirect` with a
+     * status of 0, so `response.ok` is false on the most ordinary successful
+     * write there is. It is named here rather than left to make the cache-clear
+     * silently never happen.
      */
-    event.waitUntil(
-      fetch(request.clone()).then(function (response) {
-        if (response.ok) { return caches.delete(PAGES); }
-        return null;
-      }).catch(function () { return null; })
+    event.respondWith(
+      fetch(request).then(function (response) {
+        if (response.ok || response.type === "opaqueredirect") {
+          event.waitUntil(caches.delete(PAGES));
+        }
+        return response;
+      })
     );
     return;
   }
