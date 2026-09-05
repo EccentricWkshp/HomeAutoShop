@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-from .models import ApiToken, User
+from .models import ApiToken, AssetAccess, User
 
 
 @admin.register(User)
@@ -17,3 +17,10 @@ class UserAdmin(BaseUserAdmin):
 class ApiTokenAdmin(admin.ModelAdmin):
     list_display = ("name", "user", "prefix", "created_at", "last_used_at", "expires_at")
     readonly_fields = ("token_hash", "prefix")
+
+
+@admin.register(AssetAccess)
+class AssetAccessAdmin(admin.ModelAdmin):
+    list_display = ("user", "asset", "level", "granted_at")
+    list_filter = ("level",)
+    raw_id_fields = ("user", "asset")

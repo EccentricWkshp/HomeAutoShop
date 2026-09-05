@@ -86,7 +86,9 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 INSTALLED_APPS = [
-    "django.contrib.admin",
+    # Not `django.contrib.admin`: the shop's own admin site adds a trash page
+    # that spans every table, which the per-model filters cannot.
+    "homeautoshop.core.admin_apps.ShopAdminConfig",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",

@@ -63,14 +63,27 @@ class SoftDeleteQuerySet(models.QuerySet):
         return self.filter(deleted_at__isnull=False, deleted_at__gte=cutoff)
 
     def delete(self):  # type: ignore[override]
-        """Soft-delete the whole queryset.
+        """Soft-delete the whole queryset, and whatever it cascades to.
 
         Returns Django's `(count, {label: count})` shape rather than the bare
         integer `update()` gives back, so callers written against the ORM
         contract keep working.
+
+        The cascade matters most here: this is the path the admin's
+        `delete_selected` takes, and it was the one that could put a purchase in
+        the trash while leaving every line of it alive.
         """
         label = self.model._meta.label
-        count = self.update(deleted_at=timezone.now())
+        stamp = timezone.now()
+        cascade = getattr(self.model, "soft_delete_cascade", ())
+        if cascade:
+            pks = list(self.values_list("pk", flat=True))
+            for name in cascade:
+                field = getattr(self.model, name).rel.field
+                field.model.all_objects.filter(
+                    **{f"{field.name}__in": pks}, deleted_at__isnull=True
+                ).update(deleted_at=stamp)
+        count = self.update(deleted_at=stamp)
         return count, {label: count}
 
     def hard_delete(self):
@@ -119,6 +132,16 @@ class BaseModel(models.Model):
     )
     deleted_at = models.DateTimeField(null=True, blank=True, editable=False, db_index=True)
 
+    #: Related managers a soft delete follows, named as on this model.
+    #:
+    #: A soft delete runs no SQL DELETE, so **no `on_delete` rule ever fires**
+    #: — the ORM's cascade is not merely bypassed, it is never consulted. A
+    #: child of a `CASCADE` relation therefore stays alive under a parent that
+    #: every screen now hides, which is the shape of bug that let a deleted
+    #: purchase keep received lines nothing could see. Name the children here
+    #: and the two halves stay in step.
+    soft_delete_cascade: tuple[str, ...] = ()
+
     objects = AliveManager()
     all_objects = AllObjectsManager()
 
@@ -135,12 +158,27 @@ class BaseModel(models.Model):
         if hard:
             return super().delete(using=using, keep_parents=keep_parents)
         self.deleted_at = timezone.now()
+        # One timestamp shared by the parent and everything it takes with it.
+        # That shared value is what `restore()` reads to tell the children this
+        # delete took down from the ones somebody had already deleted on their
+        # own — which must stay deleted when the parent comes back.
+        for name in self.soft_delete_cascade:
+            getattr(self, name)(manager="all_objects").filter(deleted_at__isnull=True).update(
+                deleted_at=self.deleted_at
+            )
         self.save(update_fields=["deleted_at", "updated_at"])
         return (0, {})
 
     def restore(self) -> None:
+        stamp = self.deleted_at
         self.deleted_at = None
         self.save(update_fields=["deleted_at", "updated_at"])
+        if stamp is None:
+            return
+        for name in self.soft_delete_cascade:
+            getattr(self, name)(manager="all_objects").filter(deleted_at=stamp).update(
+                deleted_at=None
+            )
 
 
 class RevisionedModel(BaseModel):

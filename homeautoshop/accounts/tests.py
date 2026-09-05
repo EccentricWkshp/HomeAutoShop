@@ -124,6 +124,79 @@ class TrashTests(TestCase):
         )
         self.assertFalse(Asset.objects.filter(pk=asset.pk).exists())
 
+    def test_admin_can_delete_something_out_of_the_trash_for_good(self):
+        """The third door. The trash could take rows in and hand them back, and
+        had no way to let one go — so "deleted" meant "hidden here forever" and
+        clearing up meant a database shell."""
+        asset = Asset.objects.create(nickname="Parts car")
+        asset.delete()
+        self.client.force_login(self.admin)
+
+        self.client.post(reverse("trash_purge", args=["asset", asset.pk]))
+
+        self.assertFalse(Asset.all_objects.filter(pk=asset.pk).exists())
+
+    def test_and_it_is_written_down_before_the_row_stops_existing(self):
+        from homeautoshop.core.models import AuditLog
+
+        asset = Asset.objects.create(nickname="Parts car")
+        asset.delete()
+        self.client.force_login(self.admin)
+
+        self.client.post(reverse("trash_purge", args=["asset", asset.pk]))
+
+        entry = AuditLog.objects.filter(
+            entity_id=asset.pk, action=AuditLog.Action.DELETE
+        ).first()
+        self.assertIsNotNone(entry)
+        self.assertIn("purged from trash", entry.summary)
+
+    def test_purging_is_never_a_delete_button_in_disguise(self):
+        """Only ever a route out of the trash. A live record reached through
+        this URL is refused, not deleted."""
+        asset = Asset.objects.create(nickname="Daily driver")
+        self.client.force_login(self.admin)
+
+        self.client.post(reverse("trash_purge", args=["asset", asset.pk]))
+
+        self.assertTrue(Asset.objects.filter(pk=asset.pk).exists())
+
+    def test_purge_requires_post(self):
+        asset = Asset.objects.create(nickname="Parts car")
+        asset.delete()
+        self.client.force_login(self.admin)
+        self.assertEqual(
+            self.client.get(reverse("trash_purge", args=["asset", asset.pk])).status_code, 405
+        )
+        self.assertTrue(Asset.all_objects.filter(pk=asset.pk).exists())
+
+    def test_members_cannot_purge(self):
+        asset = Asset.objects.create(nickname="Parts car")
+        asset.delete()
+        self.client.force_login(self.member)
+
+        self.assertEqual(
+            self.client.post(reverse("trash_purge", args=["asset", asset.pk])).status_code, 403
+        )
+        self.assertTrue(Asset.all_objects.filter(pk=asset.pk).exists())
+
+    def test_something_past_the_retention_window_is_still_listed(self):
+        """Nothing ever purged the trash, so a row older than thirty days was
+        not gone — it had merely dropped off this screen, which left it
+        unreachable from anywhere in the application."""
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        asset = Asset.objects.create(nickname="Parts car")
+        asset.delete()
+        Asset.all_objects.filter(pk=asset.pk).update(
+            deleted_at=timezone.now() - timedelta(days=400)
+        )
+        self.client.force_login(self.admin)
+
+        self.assertContains(self.client.get(reverse("trash")), "Parts car")
+
 
 class BackupRestoreTests(TransactionTestCase):
     """SPEC §13.1/§13.2 — the backup captures data and the restore guards hold.

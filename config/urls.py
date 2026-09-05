@@ -110,6 +110,7 @@ urlpatterns = [
     path("files/<uuid:pk>/<str:variant>/", mediafiles.media_file, name="media_file_variant"),
     path("trash/", core.trash, name="trash"),
     path("trash/<str:kind>/<uuid:pk>/restore/", core.trash_restore, name="trash_restore"),
+    path("trash/<str:kind>/<uuid:pk>/purge/", core.trash_purge, name="trash_purge"),
     path("healthz", core.healthz, name="healthz"),
     path("readyz", core.readyz, name="readyz"),
     # Assets

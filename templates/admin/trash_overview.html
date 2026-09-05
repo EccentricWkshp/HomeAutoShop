@@ -1,0 +1,43 @@
+{% extends "admin/base_site.html" %}{% load i18n %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">{% translate "Home" %}</a> &rsaquo; {% translate "Trash" %}
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>{% translate "Trash" %}</h1>
+{% if rows %}
+  <p class="help">
+    {% blocktranslate %}{{ total }} soft-deleted record(s). Deleting is reversible for {{ retention_days }} days; nothing here has actually left the database yet. Open a table to restore rows or remove them for good.{% endblocktranslate %}
+  </p>
+  <div class="results">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">{% translate "Table" %}</th>
+          <th scope="col">{% translate "Application" %}</th>
+          <th scope="col">{% translate "In the trash" %}</th>
+          <th scope="col">{% translate "Past the retention window" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr class="{% cycle 'row1' 'row2' %}">
+            <th scope="row"><a href="{{ row.url }}">{{ row.label }}</a></th>
+            <td>{{ row.app }}</td>
+            <td>{{ row.count }}</td>
+            <td>{% if row.expired %}{{ row.expired }}{% else %}—{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="help">
+    {% blocktranslate %}To empty the trash everywhere at once, run <code>manage.py purge_trash</code>. It reports by default and only deletes with <code>--yes</code>.{% endblocktranslate %}
+  </p>
+{% else %}
+  <p>{% translate "Nothing is in the trash." %}</p>
+{% endif %}
+{% endblock %}

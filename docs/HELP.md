@@ -677,7 +677,8 @@ window runs from.
 
 Reading the same order twice does not make a second purchase. It updates the
 one already there, unless some of it has been received, in which case it leaves
-it alone and says so.
+it alone and says so. If you deleted the purchase, the order is no longer one
+this shop has, and reading the document again brings it in as a new one.
 
 ## Diagnostics and scan reports
 
@@ -1096,8 +1097,30 @@ If you have an export that legitimately takes longer than an hour, raise
 ### Trash
 
 Supported deletions are soft deletes. **Trash** groups recoverable records and
-shows when each was deleted. Administrators can restore them during the
-configured 30-day retention period.
+shows when each was deleted. Administrators can restore one during the
+configured 30-day retention period, or remove it for good with **Delete
+permanently**, which is not reversible.
+
+Deleting a record takes with it the parts that only exist inside it. Deleting a
+purchase sends its lines to the trash alongside it, and restoring the purchase
+brings them back — except a line you had already deleted on its own, which
+stays deleted, because that was a separate decision.
+
+Records past the retention period are still listed, and marked as past it. The
+window says how long a restore is promised, not how long the row survives:
+nothing removes anything on a schedule. To clear out everything that is past
+the window, an administrator runs `manage.py purge_trash`, which reports what
+it would remove and deletes nothing until it is given `--yes`.
+
+Every table is also reachable through the Django admin at `/admin/`, which is
+where to look when a record has stopped appearing on the screens that normally
+mention it. **Trash** there lists every table holding deleted rows and how many,
+and links to each one showing just those. On any of those lists, the *record
+state* filter switches between live rows, deleted rows, and both, and the
+actions menu can restore a selection or delete it permanently. This is an
+administrator's tool and it enforces none of the rules the ordinary screens do,
+so prefer the normal **Trash** screen unless what you are looking for is not
+on it.
 
 Some actions are intentionally not deletions: append-only notes and readings
 preserve what was recorded; stock counts write adjustments; received orders
@@ -1217,6 +1240,17 @@ count; edit the lot only for its cost, location, or dates.
 
 Received lines are the source of stock quantities and costs. Use **Undo
 receiving** first. Undo is refused once some of that stock has been used.
+
+### Why does an order still say it was already imported after I deleted it?
+
+It should not. If an order was deleted before this was corrected, the purchase
+went to the trash and its lines stayed behind, so the reader went on
+recognizing the order from records nothing would show you. An administrator
+can clear one order out completely with `manage.py purge_order <order number>`,
+which reports what it found and changes nothing until it is given `--yes`. It
+refuses to remove received stock that has since been used or adjusted, because
+that would change what the shop believes it has and what it believes that
+cost; `--force-stock` overrides the refusal.
 
 ### Why is a template interval not automatically correct for my vehicle?
 

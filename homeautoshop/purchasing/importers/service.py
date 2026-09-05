@@ -453,8 +453,22 @@ def run(
     existing = ExternalRef.lookup(source, "", "order", order.order_number)
     purchase = None
     if existing is not None:
-        purchase = Purchase.all_objects.filter(pk=existing.entity_id).first()
+        # `objects`, deliberately, and not `all_objects`. A purchase somebody
+        # deleted is one this shop has decided it does not have, and the reader
+        # has to agree with the rest of the application about that. Reading
+        # through the trash made a deleted order permanently un-re-readable:
+        # the ref still resolved, `already_imported` came back true, and the
+        # received-lines check below then refused the import on the strength of
+        # lines that no screen in the application would show — because a soft
+        # delete cascades to nothing, so the lines were still there and still
+        # marked received.
+        purchase = Purchase.objects.filter(pk=existing.entity_id).first()
         report.already_imported = purchase is not None
+        if purchase is None:
+            # The ref outlived what it named. Drop it rather than leave it to
+            # fail the unique constraint when the fresh one is written below.
+            existing.delete()
+            existing = None
 
     if purchase is None:
         purchase = Purchase(vendor=vendor)

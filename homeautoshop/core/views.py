@@ -463,13 +463,26 @@ def trash(request):
     """A 30-day trash with restore (FR-ADM-7)."""
     from homeautoshop.accounts.models import require
 
+    from homeautoshop.core.models import TRASH_RETENTION_DAYS
+
     require(request.user, "trash.manage")
+    cutoff = timezone.now() - timedelta(days=TRASH_RETENTION_DAYS)
     groups = []
     for kind in TRASHABLE:
-        rows = list(_trash_model(kind).all_objects.in_trash()[:100])
+        # `dead()` rather than `in_trash()`. Nothing has ever purged the trash,
+        # so rows past the retention window are not gone — they were merely
+        # dropped off this screen, which made them unreachable from anywhere in
+        # the application. They are listed and marked instead.
+        rows = list(_trash_model(kind).all_objects.dead().order_by("-deleted_at")[:100])
         if rows:
+            for row in rows:
+                row.is_expired = row.deleted_at < cutoff
             groups.append({"kind": kind, "label": kind.replace("_", " ").title(), "rows": rows})
-    return render(request, "core/trash.html", {"groups": groups, "retention_days": 30})
+    return render(
+        request,
+        "core/trash.html",
+        {"groups": groups, "retention_days": TRASH_RETENTION_DAYS},
+    )
 
 
 @require_POST
@@ -493,6 +506,57 @@ def trash_restore(request, kind: str, pk):
         user=request.user,
         summary=str(obj)[:255],
     )
+    return redirect("trash")
+
+
+@require_POST
+@login_required
+def trash_purge(request, kind: str, pk):
+    """Delete one trashed record for good (FR-ADM-7).
+
+    The trash could take rows in and hand them back, and had no third door — so
+    "deleted" meant "hidden here forever", and clearing up after a bad import
+    meant a database shell. This is that door.
+
+    The audit row is written *before* the delete: afterwards there is no row
+    left to describe, and an unexplained gap is the thing the log exists to
+    prevent. A `ProtectedError` is reported rather than raised, because "some
+    live record still points at this" is a useful answer, not a crash.
+    """
+    from django.db.models import ProtectedError
+
+    from homeautoshop.accounts.models import require
+    from homeautoshop.core.models import AuditLog
+
+    require(request.user, "trash.manage")
+    if kind not in TRASHABLE:
+        raise Http404
+    obj = _trash_model(kind).all_objects.filter(pk=pk).first()
+    if obj is None:
+        raise Http404
+    if obj.deleted_at is None:
+        # Only ever a route out of the trash, never a delete button in disguise.
+        messages.error(request, _("That record is not in the trash."))
+        return redirect("trash")
+
+    summary = str(obj)[:255]
+    AuditLog.objects.create(
+        entity_type=type(obj).__name__,
+        entity_id=obj.pk,
+        action=AuditLog.Action.DELETE,
+        user=request.user,
+        summary=f"purged from trash: {summary}",
+    )
+    try:
+        obj.delete(hard=True)
+    except ProtectedError:
+        messages.error(
+            request,
+            _("%(what)s cannot be removed yet: something still in use points at it.")
+            % {"what": summary},
+        )
+        return redirect("trash")
+    messages.success(request, _("%(what)s is gone for good.") % {"what": summary})
     return redirect("trash")
 
 

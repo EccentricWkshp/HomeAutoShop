@@ -3,7 +3,7 @@
 {% block content %}
 <h1>{% translate "Trash" %}</h1>
 <p class="muted small">
-  {% blocktranslate %}Deleted records are kept for {{ retention_days }} days and can be restored. Nothing here is gone yet.{% endblocktranslate %}
+  {% blocktranslate %}Deleted records are kept for {{ retention_days }} days and can be restored. Deleting one from here removes it for good.{% endblocktranslate %}
 </p>
 {% for group in groups %}
 <section class="card">
@@ -11,10 +11,16 @@
   <ul class="list">
     {% for row in group.rows %}
       <li class="spread">
-        <div>{{ row }}<div class="small muted">{% translate "Deleted" %} {{ row.deleted_at|date:"Y-m-d H:i" }}</div></div>
-        <form method="post" action="{% url 'trash_restore' group.kind row.pk %}">{% csrf_token %}
-          <button type="submit">{% translate "Restore" %}</button>
-        </form>
+        <div>{{ row }}<div class="small muted">{% translate "Deleted" %} {{ row.deleted_at|date:"Y-m-d H:i" }}{% if row.is_expired %} · {% translate "past the retention window" %}{% endif %}</div></div>
+        <div class="actions">
+          <form method="post" action="{% url 'trash_restore' group.kind row.pk %}">{% csrf_token %}
+            <button type="submit">{% translate "Restore" %}</button>
+          </form>
+          <form method="post" action="{% url 'trash_purge' group.kind row.pk %}"
+                onsubmit="return confirm('{% translate "Delete this permanently? This cannot be undone." %}');">{% csrf_token %}
+            <button type="submit" class="danger">{% translate "Delete permanently" %}</button>
+          </form>
+        </div>
       </li>
     {% endfor %}
   </ul>

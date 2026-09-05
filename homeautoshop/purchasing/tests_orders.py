@@ -915,3 +915,122 @@ class TheCountComesOffTheReviewScreenTests(TestCase):
 
     def test_keys_that_are_not_line_numbers_are_ignored(self):
         self.assertEqual(self.counts(count_x="3", counted="3"), ({}, False))
+
+
+class DeletingAnOrderReallyDeletesItTests(TestCase):
+    """The state a deleted order used to leave behind, and could not leave now.
+
+    A soft delete runs no SQL DELETE, so `PurchaseLine.purchase`'s `CASCADE`
+    never fired and the lines stayed alive under an order every screen hid —
+    reachable from nowhere, because a line is only ever listed through its
+    order. Re-reading the document then hit the importer's `already_imported`
+    check, which resolved the surviving `ExternalRef` through `all_objects` and
+    found the trashed purchase, and refused on the strength of received lines
+    nobody could see. Four small decisions, and together they made an order
+    permanently un-re-readable.
+    """
+
+    def setUp(self):
+        from homeautoshop.accounts.models import Role, User
+
+        self.user = User.objects.create_user(
+            username="andy", password="x" * 16, role=Role.ADMIN
+        )
+
+    def run_import(self):
+        from homeautoshop.purchasing.importers import service
+
+        return service.run(
+            amazon.parse_document(AMAZON_INVOICE), dry_run=False, user=self.user
+        )
+
+    def test_the_lines_go_into_the_trash_with_the_order(self):
+        from homeautoshop.purchasing.models import PurchaseLine
+
+        purchase = self.run_import().purchase
+        purchase.delete()
+
+        self.assertEqual(PurchaseLine.objects.filter(purchase=purchase).count(), 0)
+        self.assertEqual(PurchaseLine.all_objects.filter(purchase=purchase).count(), 2)
+
+    def test_a_bulk_delete_takes_them_too(self):
+        """`delete_selected` in the admin goes through the queryset, not the
+        instance, and that was the path with no cascade at all."""
+        from homeautoshop.purchasing.models import Purchase, PurchaseLine
+
+        purchase = self.run_import().purchase
+        Purchase.objects.filter(pk=purchase.pk).delete()
+
+        self.assertEqual(PurchaseLine.objects.filter(purchase=purchase).count(), 0)
+
+    def test_restoring_brings_its_own_lines_back(self):
+        from homeautoshop.purchasing.models import PurchaseLine
+
+        purchase = self.run_import().purchase
+        purchase.delete()
+        purchase.restore()
+
+        self.assertEqual(PurchaseLine.objects.filter(purchase=purchase).count(), 2)
+
+    def test_but_not_a_line_somebody_had_already_deleted(self):
+        """The shared timestamp is what tells the two apart. A line deleted on
+        its own is a decision somebody made, and restoring the order is not a
+        reason to undo it."""
+        from homeautoshop.purchasing.models import PurchaseLine
+
+        purchase = self.run_import().purchase
+        dropped = purchase.lines.first()
+        dropped.delete()
+        purchase.delete()
+        purchase.restore()
+
+        self.assertEqual(PurchaseLine.objects.filter(purchase=purchase).count(), 1)
+        self.assertFalse(PurchaseLine.objects.filter(pk=dropped.pk).exists())
+
+    def test_the_order_can_be_read_in_again_afterwards(self):
+        purchase = self.run_import().purchase
+        purchase.delete()
+
+        report = self.run_import()
+
+        self.assertFalse(report.already_imported)
+        self.assertEqual(report.purchase.lines.count(), 2)
+        self.assertNotEqual(report.purchase.pk, purchase.pk)
+
+    def test_even_when_a_line_had_been_received(self):
+        """The case that produced the warning nobody could act on."""
+        from homeautoshop.parts.models import Part
+
+        purchase = self.run_import().purchase
+        line = purchase.lines.exclude(part=None).first()
+        line.receive(qty=1, user=self.user)
+        purchase.refresh_from_db()
+        purchase.delete()
+
+        report = self.run_import()
+
+        self.assertFalse(report.already_imported)
+        self.assertEqual(report.warnings, [])
+        self.assertTrue(Part.objects.exists())
+
+    def test_the_stale_provenance_row_is_dropped_rather_than_left(self):
+        from homeautoshop.core.models import ExternalRef
+
+        purchase = self.run_import().purchase
+        purchase.delete()
+        report = self.run_import()
+
+        refs = ExternalRef.objects.filter(external_type="order")
+        self.assertEqual(refs.count(), 1)
+        self.assertEqual(refs.first().entity_id, report.purchase.pk)
+
+    def test_an_order_that_is_still_here_is_still_recognized(self):
+        """The guard the fix must not have removed: re-reading a live order is
+        still a re-import, not a second copy of it."""
+        first = self.run_import().purchase
+
+        report = self.run_import()
+
+        self.assertTrue(report.already_imported)
+        self.assertEqual(report.purchase.pk, first.pk)
+        self.assertEqual(report.purchase.lines.count(), 2)

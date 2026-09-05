@@ -1,0 +1,20 @@
+{% extends "admin/index.html" %}{% load i18n %}
+
+{% comment %}
+Only addition: a way in to the trash. Without a link here the page exists and
+nobody finds it, which is the same failure as a soft delete listed nowhere.
+The file is named apart from `admin/index.html` on purpose — overriding that
+name and extending it in the same file is a template that extends itself.
+{% endcomment %}
+{% block content %}
+<div class="module" id="trash-module">
+  <table>
+    <caption>{% translate "Housekeeping" %}</caption>
+    <tr>
+      <th scope="row"><a href="{{ trash_url }}">{% translate "Trash" %}</a></th>
+      <td>{% translate "Soft-deleted rows across every table" %}</td>
+    </tr>
+  </table>
+</div>
+{{ block.super }}
+{% endblock %}

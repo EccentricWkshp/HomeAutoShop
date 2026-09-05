@@ -857,6 +857,18 @@ which machine you are actually on.
   off this machine. A backup on the same disk as the database is not a backup.
   Note what a backup deliberately does *not* contain: the integration keys you
   entered. A restored instance says which ones need typing in again.
+- **Know that the trash never empties itself.** A deleted record is kept so it
+  can be restored, and nothing removes it on a schedule — the 30-day window is
+  how long a restore is promised, not how long the row lives. When you want the
+  space or the tidiness back:
+
+  ```bash
+  docker compose exec app python manage.py purge_trash          # reports only
+  docker compose exec app python manage.py purge_trash --yes    # deletes
+  ```
+
+  Account menu → *Trash* shows the same thing per record, with a **Delete
+  permanently** button. `/admin/` has a **Trash** page that spans every table.
 
 ## 9. Installing it on the phone
 
@@ -1096,3 +1108,26 @@ nightly backup fails — which is what makes it worth checking deliberately.
 You have not run step 4, or the database volume was recreated since you did.
 Open the site: with the accounts table empty, **Set up your shop** comes back
 on its own and you can make the account again there.
+
+### A deleted parts order still says it was already imported
+
+An order deleted before this was corrected left its lines behind — a soft
+delete removes no rows, so nothing cascaded — and the reader went on
+recognizing the order from records no screen would show. Clear one order out
+completely:
+
+```bash
+docker compose exec app python manage.py purge_order 205-1234567-0000001
+docker compose exec app python manage.py purge_order 205-1234567-0000001 --yes
+```
+
+The first form reports the purchase, its lines, the stock it received, any
+tooling expense and the provenance rows, and changes nothing. Parts, vendors
+and fitments are deliberately kept: a part outlives the order that first
+stocked it, and another order may have stocked it too.
+
+It refuses to delete a received lot whose stock has since moved — used on a
+job, adjusted, scrapped — because removing it would change what the shop
+believes it has and what it believes that cost. Un-receive it first, or pass
+`--force-stock` to accept that the inventory history will no longer explain
+itself.

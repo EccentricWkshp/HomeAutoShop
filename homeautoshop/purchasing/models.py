@@ -61,6 +61,14 @@ class PurchaseStatus(models.TextChoices):
 
 
 class Purchase(RevisionedModel):
+    #: The lines go into the trash with the order. `PurchaseLine.purchase` is a
+    #: `CASCADE`, but that rule only ever runs on a real DELETE — so without
+    #: this an order could be deleted and its lines stay alive underneath it,
+    #: hidden from every screen (they are reachable only through the order) and
+    #: still marked received, which is enough to make the importer refuse to
+    #: re-read the order for good.
+    soft_delete_cascade = ("lines",)
+
     vendor = models.ForeignKey(Vendor, on_delete=models.PROTECT, related_name="purchases")
     order_number = models.CharField(max_length=64, blank=True)
     status = models.CharField(max_length=12, choices=PurchaseStatus.choices, default=PurchaseStatus.ORDERED)
