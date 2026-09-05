@@ -11,8 +11,10 @@ from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 from django.views.decorators.http import require_POST
 
+from homeautoshop.core.described import DescribedFields
 from homeautoshop.core.measurements import Money
 from homeautoshop.core.moneyform import MoneyFormMixin, parse_amount
 from homeautoshop.mediafiles.models import MediaLink
@@ -23,7 +25,24 @@ from homeautoshop.parts.services import resolve_part
 from .models import Expense, Purchase, PurchaseLine, PurchaseStatus, Vendor
 
 
-class VendorForm(forms.ModelForm):
+class VendorForm(DescribedFields, forms.ModelForm):
+    descriptions = {
+        "name": gettext_lazy("Who you buy from: NAPA, RockAuto, the dealer, Amazon."),
+        "type": gettext_lazy(
+            "What kind of supplier they are — a parts store, a dealer, a "
+            "machine shop, a general retailer."
+        ),
+        "url": gettext_lazy("Their website, so an order can be looked up from here."),
+        "account_number": gettext_lazy(
+            "Your account or customer number with them, where you have one."
+        ),
+        "phone": gettext_lazy("The number you actually call to order or chase something."),
+        "notes": gettext_lazy(
+            "How they work: who to ask for, whether they price-match, how "
+            "long delivery takes."
+        ),
+    }
+
     class Meta:
         model = Vendor
         fields = ["name", "type", "url", "account_number", "phone", "return_window_days", "notes"]
@@ -37,7 +56,32 @@ class VendorForm(forms.ModelForm):
             field.widget.attrs.setdefault("class", css)
 
 
-class PurchaseForm(MoneyFormMixin, forms.ModelForm):
+class PurchaseForm(DescribedFields, MoneyFormMixin, forms.ModelForm):
+    descriptions = {
+        "vendor": gettext_lazy("Who this order is from. The only field that is required."),
+        "order_number": gettext_lazy(
+            "Their reference for it — the number on the confirmation email or "
+            "the top of the receipt."
+        ),
+        "status": gettext_lazy(
+            "Where the order has got to. It moves itself as lines are "
+            "received, so it rarely needs setting by hand."
+        ),
+        "ordered_on": gettext_lazy(
+            "When it was placed. A return window is counted from here."
+        ),
+        "shipping_minor": gettext_lazy(
+            "What the carrier charged. Outside the taxable total, because "
+            "whether shipping is taxed is a question about your jurisdiction."
+        ),
+        "payment_method": gettext_lazy("How it was paid for, in whatever words you use."),
+        "work_order": gettext_lazy(
+            "The job this was bought for, where it was bought for one. It is "
+            "what puts the money against a vehicle."
+        ),
+        "notes": gettext_lazy("Anything about the order itself — backorders, substitutions, damage."),
+    }
+
     class Meta:
         model = Purchase
         fields = [
@@ -77,7 +121,20 @@ class PurchaseForm(MoneyFormMixin, forms.ModelForm):
             field.widget.attrs.setdefault("class", css)
 
 
-class ExpenseForm(MoneyFormMixin, forms.ModelForm):
+class ExpenseForm(DescribedFields, MoneyFormMixin, forms.ModelForm):
+    descriptions = {
+        "category": gettext_lazy(
+            "What kind of money this is, so the vehicle's lifetime cost can be "
+            "split up: registration, insurance, outside labor, fuel."
+        ),
+        "amount_minor": gettext_lazy("What it cost, as written on the bill."),
+        "incurred_on": gettext_lazy("When it was spent, not when it was entered."),
+        "vendor": gettext_lazy("Who was paid, where that is somebody on the vendor list."),
+        "description": gettext_lazy(
+            "What it was for, in one line. This is what the costs report prints."
+        ),
+    }
+
     class Meta:
         model = Expense
         fields = ["category", "amount_minor", "incurred_on", "vendor", "description"]
@@ -201,7 +258,7 @@ def purchase_line_add(request, pk):
     return redirect("purchase_detail", pk=purchase.pk)
 
 
-class PurchaseLineForm(MoneyFormMixin, forms.ModelForm):
+class PurchaseLineForm(DescribedFields, MoneyFormMixin, forms.ModelForm):
     """A line after it was typed (FR-PUR-1).
 
     Everything except how many have arrived. `qty_received` is written by
@@ -209,6 +266,25 @@ class PurchaseLineForm(MoneyFormMixin, forms.ModelForm):
     would change the number without moving anything, so the shelf and the order
     would disagree and neither would be wrong on its own terms.
     """
+
+    descriptions = {
+        "part": gettext_lazy(
+            "Which part in your catalog this line is. Leave it as not "
+            "cataloged for something you do not keep as a part."
+        ),
+        "description_as_ordered": gettext_lazy(
+            "What the supplier called it, word for word. It is what lets a "
+            "line be matched to the paperwork later."
+        ),
+        "qty_ordered": gettext_lazy(
+            "How many were ordered, in the unit beside the box. How many have "
+            "arrived is not set here — receiving is what moves stock."
+        ),
+        "core_charge_minor": gettext_lazy(
+            "The deposit charged for the old one, per item. It comes back when "
+            "the core goes back."
+        ),
+    }
 
     class Meta:
         model = PurchaseLine

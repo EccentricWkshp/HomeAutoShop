@@ -247,3 +247,65 @@ class AFormSaysWhatItWillDoTests(TestCase):
                 found.append((path.as_posix(), match.group(1), markup))
         self.assertTrue(found, "the sweep found no dual-purpose forms to check")
         return found
+
+
+class ReceivingKeepsYourPlaceTests(TestCase):
+    """§9.2. Ticking a line off should not put you back at the top of it.
+
+    Receiving is the one action on this screen somebody does several times in a
+    row — down a delivery, line by line — and every one of them was a POST, a
+    redirect and a fresh page, which is the arrangement `liveform.js` exists to
+    soften. It only engages inside a `[data-live]` region, and the purchase page
+    had none.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="andy", password="x" * 16, role=Role.ADMIN
+        )
+        self.client.force_login(self.user)
+        vendor = Vendor.objects.create(name="RockAuto")
+        self.purchase = Purchase.objects.create(vendor=vendor, order_number="1")
+
+    def test_the_purchase_page_is_a_live_region(self):
+        response = self.client.get(
+            reverse("purchase_detail", args=[self.purchase.pk])
+        )
+
+        self.assertContains(response, 'data-live="purchase"')
+
+    def test_and_it_covers_the_status_the_receipt_changes(self):
+        """One region over the page rather than one per card. Receiving changes
+        the line's row and the status pill in the header above it, and
+        `liveform.js` replaces only the region the form is inside — so a card
+        around the lines would leave the pill saying something that stopped
+        being true when the button was pressed."""
+        body = self.client.get(
+            reverse("purchase_detail", args=[self.purchase.pk])
+        ).content.decode()
+        region = body[body.index('data-live="purchase"'):]
+
+        self.assertLess(region.index("pill"), region.index("Lines"))
+
+    def test_receiving_comes_back_to_the_same_page(self):
+        """The other half of it: `liveform.js` follows anything that lands on a
+        different path as a real navigation, so a redirect elsewhere would
+        reload the page however live the region is."""
+        from homeautoshop.parts.models import Part
+        from homeautoshop.purchasing.models import PurchaseLine
+
+        part = Part.objects.create(name="Sway bar link")
+        line = PurchaseLine.objects.create(
+            purchase=self.purchase, part=part, description_as_ordered="Sway bar link",
+            qty_ordered=1, extended_minor=869, extended_currency="USD",
+        )
+
+        response = self.client.post(
+            reverse("purchase_line_receive", args=[self.purchase.pk, line.pk]),
+            {"qty": "1"},
+        )
+
+        self.assertRedirects(
+            response, reverse("purchase_detail", args=[self.purchase.pk])
+        )
+

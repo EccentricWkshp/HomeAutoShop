@@ -132,8 +132,17 @@ class AnchorTests(Base):
         # third row action, and a page that already jumped to the top was not
         # the place to add one.
         "maintenance/schedule.html": 1,
-        "parts/cores.html": 1,
-        "parts/detail.html": 1,
+        # Was 1. The Kept card is the Returned card's twin — same list, same
+        # row action, and acting on a row moves it off the list either way, so
+        # neither is the shape of the bug this records. Both are here rather
+        # than made regions because that is a decision nobody has taken yet.
+        "parts/cores.html": 2,
+        # Was 1. The Photos card is the second: its remove button comes from
+        # `partials/_thumb.html`, which four other screens share and which
+        # carries no `_anchor` — so making this card a region would fail the
+        # sweep above rather than fix anything. The same trade the vehicle
+        # page's photo card already makes.
+        "parts/detail.html": 2,
         "purchasing/detail.html": 2,
         "work/tools.html": 1,
     }

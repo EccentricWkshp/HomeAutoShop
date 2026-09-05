@@ -179,3 +179,113 @@ class WhatTheShopEndsUpHoldingTests(TestCase):
 
         self.assertEqual(line.part.unit, "each")
         self.assertEqual(line.qty_ordered, Decimal(1))
+
+
+class TheSameThingTwiceInOneOrderTests(TestCase):
+    """One order, two shipments, one product — and one part.
+
+    A general retailer states no brand and no part number for anything, so the
+    matcher had nothing to look up and every such line created a part
+    unconditionally. An order that ships in two boxes lists the same item on a
+    line for each, and the shop ended up with the product twice: two catalog
+    rows, the stock split between them, and neither able to say what is on the
+    shelf. Three gallons of washer fluid and three gallons of the same washer
+    fluid, filed apart.
+    """
+
+    TITLE = "Rain-X -30F Extreme Temperature De-Icer Windshield Washer Fluid - 1 Gallon"
+
+    def order(self, *lines):
+        """An Amazon invoice with the given `(title, price)` lines on it."""
+        rows = [
+            (100.0, 42.0, "Final Details for Order #112-9135129-3761048", False),
+            (115.0, 42.0, "Order Placed: September 1, 2026", False),
+            (130.0, 42.0, "Order Total: USD 35.82", False),
+            (145.0, 42.0, "Shipped on September 1, 2026", False),
+            (160.0, 42.0, "Items Ordered Price", False),
+        ]
+        top = 175.0
+        for title, price in lines:
+            rows.append((top, 42.0, f"3 of: {title} ${price}", False))
+            rows.append((top, 541.0, f"${price}", True))
+            rows.append((top + 15.0, 42.0, "Condition: New", False))
+            top += 30.0
+        total = sum(float(price) for _title, price in lines)
+        rows += [
+            (top + 15.0, 451.0, f"Item(s) Subtotal: ${total:.2f}", True),
+            (top + 30.0, 451.0, "Shipping & Handling: USD 0.00", True),
+            (top + 45.0, 451.0, f"Total before tax: USD {total:.2f}", True),
+            (top + 60.0, 451.0, "Estimated tax to be collected: USD 0.00", True),
+            (top + 75.0, 451.0, f"Grand Total: USD {total:.2f}", True),
+        ]
+        return amazon.parse_document(rows)
+
+    def run_import(self, *lines):
+        return service.run(self.order(*lines), dry_run=False)
+
+    def test_two_shipment_lines_become_one_part(self):
+        from homeautoshop.parts.models import Part
+
+        report = self.run_import((self.TITLE, "17.91"), (self.TITLE, "17.91"))
+
+        self.assertEqual(Part.objects.filter(name=self.TITLE).count(), 1)
+        self.assertEqual(report.purchase.lines.count(), 2)
+
+    def test_and_the_shelf_adds_them_up_instead_of_splitting_them(self):
+        report = self.run_import((self.TITLE, "17.91"), (self.TITLE, "17.91"))
+
+        for line in report.purchase.lines.all():
+            line.receive(qty=line.qty_ordered)
+
+        part = report.purchase.lines.first().part
+        self.assertEqual(part.on_hand, Decimal(6))
+        self.assertEqual(part.unit, "gal")
+
+    def test_the_second_line_is_reported_as_a_match_not_a_new_part(self):
+        report = self.run_import((self.TITLE, "17.91"), (self.TITLE, "17.91"))
+
+        self.assertEqual(report.parts_created, 1)
+        self.assertEqual(report.parts_matched, 1)
+        self.assertEqual(report.outcomes[1].matched_on, "on the description")
+
+    def test_a_later_order_for_the_same_thing_reuses_it_too(self):
+        from homeautoshop.parts.models import Part
+
+        self.run_import((self.TITLE, "17.91"))
+        self.run_import((self.TITLE, "17.91"))
+
+        self.assertEqual(Part.objects.filter(name=self.TITLE).count(), 1)
+
+    def test_a_different_product_is_still_its_own_part(self):
+        from homeautoshop.parts.models import Part
+
+        self.run_import(
+            (self.TITLE, "17.91"),
+            ("Prestone Coolant Concentrate - 1 Gallon", "24.99"),
+        )
+
+        self.assertEqual(Part.objects.count(), 2)
+
+    def test_matching_is_exact_rather_than_close(self):
+        """Nothing fuzzy on purpose: a near-match would eventually fold two
+        sizes of the same product together, and stock merged into the wrong row
+        is not undoable by looking at it."""
+        from homeautoshop.parts.models import Part
+
+        self.run_import(
+            (self.TITLE, "17.91"),
+            (self.TITLE.replace("1 Gallon", "1 Quart"), "6.99"),
+        )
+
+        self.assertEqual(Part.objects.count(), 2)
+
+    def test_a_line_with_a_part_number_still_matches_on_that(self):
+        """The parts suppliers are untouched: this only ever runs where the
+        document states no number at all."""
+        report = service.run(
+            napa.parse_document("Your Order History Details | NAPA Auto Parts", NAPA_PAGE),
+            dry_run=False,
+        )
+
+        self.assertEqual(report.parts_created, 2)
+        self.assertTrue(all(o.matched_on == "" for o in report.outcomes))

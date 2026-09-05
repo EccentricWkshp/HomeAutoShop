@@ -121,6 +121,23 @@ class Part(RevisionedModel):
     typical_cost_minor, typical_cost_currency = money_columns(
         "typical_cost", null=True, verbose_name=_("usual price")
     )
+    #: Where to buy another one, as a link somebody pasted.
+    #:
+    #: Typed rather than derived on purpose. A supplier URL cannot be built from
+    #: a manufacturer and a part number — RockAuto keys on its own catalog ids,
+    #: NAPA rewrites its paths, and Amazon has no addressable notion of "this
+    #: part" at all — so a generated link is a guess that 404s at the moment
+    #: somebody needs it, which is worse than no link. Searching is no better:
+    #: the same number belongs to three different things at three vendors.
+    #:
+    #: So this is the one thing the application genuinely cannot work out, and
+    #: the person who bought it once already has it in their history.
+    supplier_url = models.URLField(
+        blank=True,
+        max_length=500,
+        verbose_name=_("where to buy it"),
+        help_text=_("A link to this part at a supplier, for ordering another."),
+    )
     hazmat_class = models.CharField(max_length=32, blank=True)
     min_quantity = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True,
@@ -418,8 +435,39 @@ class PartFitment(BaseModel):
         #: the claim and survives it. It is also the more useful fact: knowing
         #: a part does not fit is what stops it being ordered twice.
         DOES_NOT_FIT = "does_not_fit", _("Does not fit — tried it")
+        #: For a part where fitment is not a question about evidence at all.
+        #:
+        #: An A/C system flush, brake cleaner, a shop rag, a hose clamp: these
+        #: fit every vehicle by what they are, and none of the other four is a
+        #: true sentence about one. `confirmed_installed` claims somebody held
+        #: it against a particular car, `stated_by_vendor` credits a claim
+        #: nobody made, and `unverified` says there is something outstanding to
+        #: check — which leaves a permanent, unanswerable question against a
+        #: bottle of cleaner. There is nothing to verify.
+        #:
+        #: It is the confidence half of `is_universal`, and choosing it sets
+        #: that flag rather than asking for it twice. The flag survives on its
+        #: own because the other direction is real: a vendor may *state* that a
+        #: part is universal, and that is a claim, not a property.
+        GENERAL = "general_purpose", _("General purpose — fits anything")
         VENDOR = "stated_by_vendor", _("Stated by vendor")
         UNVERIFIED = "unverified", _("Unverified")
+
+    #: Fits anything, and says so as a fact rather than as a spelling.
+    #:
+    #: Some parts genuinely do — a shop rag, a hose clamp, a bottle of brake
+    #: cleaner — and before this the only way to record one was to type
+    #: `Universal` into the **make** field, because a fitment naming no vehicle
+    #: was refused. That made a real property of the part into a string, and a
+    #: string is not a rule: `matches()` compared it against `asset.make` and
+    #: found nothing, so a universal fitment matched no vehicle at all. It also
+    #: had to be retyped for every part, and `universal`, `Universal` and
+    #: `UNIVERSAL` filed as three different claims.
+    is_universal = models.BooleanField(
+        default=False,
+        verbose_name=_("fits any vehicle"),
+        help_text=_("For a part that is not specific to a make or model at all."),
+    )
 
     part = models.ForeignKey(Part, on_delete=models.CASCADE, related_name="fitments")
     asset = models.ForeignKey(
@@ -451,6 +499,8 @@ class PartFitment(BaseModel):
         page title, the word "fits", and then the four words anybody came for.
         Read quickly it looks like the part fits *itself* and a vehicle.
         """
+        if self.is_universal:
+            return _("Universal")
         if self.asset_id:
             return str(self.asset)
         span = f"{self.year_from or ''}–{self.year_to or ''}".strip("–")
@@ -468,6 +518,11 @@ class PartFitment(BaseModel):
         return f"{self.part} fits {self.vehicle}".strip()
 
     def matches(self, asset) -> bool:
+        # The whole point of the flag: it is a claim about every vehicle, so it
+        # answers before anything is compared. The `Universal` that used to be
+        # typed into `make` reached the comparison below and matched nothing.
+        if self.is_universal:
+            return True
         if self.asset_id:
             return self.asset_id == asset.pk
         if self.make and self.make.lower() != (asset.make or "").lower():
@@ -661,8 +716,32 @@ class PartUsage(BaseModel):
     stock_lot = models.ForeignKey(
         StockLot, null=True, blank=True, on_delete=models.SET_NULL, related_name="usages"
     )
-    core_returned = models.BooleanField(default=False)
-    core_returned_on = models.DateField(null=True, blank=True)
+    #: What became of the core deposit, which has three endings and not two.
+    #:
+    #: It was a boolean, so the only way to stop a core nagging from the Owed
+    #: list was to mark it returned — which is a false statement about a part
+    #: still sitting on the shelf. The third ending is the shop deciding not to
+    #: send it back: on a caliper whose return shipping came to more than the
+    #: deposit, keeping it *is* the cheaper answer, and the deposit is spent on
+    #: purpose rather than lost by forgetting.
+    #:
+    #: Both of those matter separately. Money written off deliberately is a
+    #: decision somebody made and can defend; money written off by forgetting is
+    #: the thing this screen exists to prevent (FR-PUR-4). A single boolean
+    #: could not tell them apart, so the list either nagged for ever about a
+    #: core nobody was ever going to return, or was lied to.
+    class CoreState(models.TextChoices):
+        OWED = "owed", _("Owed")
+        RETURNED = "returned", _("Returned")
+        KEPT = "kept", _("Kept")
+
+    core_state = models.CharField(
+        max_length=8, choices=CoreState.choices, default=CoreState.OWED, db_index=True
+    )
+    #: When it stopped being owed, whichever way it stopped. Named for that
+    #: rather than for returning, because a kept core has a date too and
+    #: `core_returned_on` would have been a wrong word on half the rows.
+    core_settled_on = models.DateField(null=True, blank=True)
     warranty_months = models.PositiveIntegerField(null=True, blank=True)
     warranty_distance = models.PositiveIntegerField(null=True, blank=True)
     installed_at = models.DateField(default=timezone.localdate)
@@ -704,4 +783,14 @@ class PartUsage(BaseModel):
     @property
     def owes_core(self) -> bool:
         """An uncollected core charge is the money a home shop most often loses."""
-        return self.part.has_core and not self.core_returned
+        return self.part.has_core and self.core_state == self.CoreState.OWED
+
+    @property
+    def core_returned(self) -> bool:
+        """Kept for the places that only ever asked *is it still owed*.
+
+        Read-only on purpose. Writing through it would have to guess which of
+        the two endings `False` meant, and guessing wrong turns a deliberate
+        write-off back into a debt or the other way about.
+        """
+        return self.core_state == self.CoreState.RETURNED

@@ -14,6 +14,7 @@ from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 from django.views.decorators.http import require_POST
 
 from homeautoshop.accounts.models import require
@@ -24,6 +25,7 @@ from homeautoshop.assets.services import record_reading
 from homeautoshop.mediafiles.models import MediaLink
 from homeautoshop.core.budget import budget_burndown, project_cost
 from homeautoshop.core.costs import work_order_cost
+from homeautoshop.core.described import DescribedFields
 from homeautoshop.core.moneyform import MoneyFormMixin
 from homeautoshop.mediafiles.services import ingest
 from homeautoshop.parts.services import consume, resolve_part
@@ -47,7 +49,38 @@ from .models import (
 log = logging.getLogger(__name__)
 
 
-class WorkOrderForm(MoneyFormMixin, forms.ModelForm):
+class WorkOrderForm(DescribedFields, MoneyFormMixin, forms.ModelForm):
+    descriptions = {
+        "asset": gettext_lazy("Which vehicle or machine the work is on."),
+        "title": gettext_lazy(
+            "What the job is, in a few words — “front brakes”, “no start, "
+            "cranks fine”. It is how the job is listed everywhere else."
+        ),
+        "type": gettext_lazy(
+            "Repair, maintenance, inspection, or a project. A project is the "
+            "one other work orders can be filed underneath."
+        ),
+        "odometer_in": gettext_lazy(
+            "What the meter read when it came in. It is what puts the job at a "
+            "point in the vehicle's life, and it becomes a meter reading."
+        ),
+        "requested_by": gettext_lazy("Who asked for the work, where somebody did."),
+        "is_safety_critical": gettext_lazy(
+            "Brakes, steering, suspension, tires. Flagged so it cannot be "
+            "quietly closed while still open, and it is called out on the list."
+        ),
+        # Both of these are given their help text in `__init__`, after the
+        # description pass has run — so they say it here instead.
+        "parent": gettext_lazy(
+            "The project this job is part of. Set a work order's type to "
+            "Project to make it available here."
+        ),
+        "budget_minor": gettext_lazy(
+            "What this job is meant to cost. A burn-down appears once there is "
+            "one, counting everything filed underneath it."
+        ),
+    }
+
     class Meta:
         model = WorkOrder
         fields = [
@@ -101,14 +134,25 @@ class WorkOrderForm(MoneyFormMixin, forms.ModelForm):
                 field.widget.attrs.setdefault("class", css)
 
 
-class JobItemForm(forms.ModelForm):
+class JobItemForm(DescribedFields, forms.ModelForm):
+    descriptions = {
+        "title": gettext_lazy(
+            "One line of work on this job — “bleed the brakes”, “order the "
+            "hose”. Short enough to tick off."
+        ),
+        "description": gettext_lazy(
+            "The detail that does not belong in the line: torque figures, "
+            "which side, what to watch for."
+        ),
+    }
+
     class Meta:
         model = JobItem
         fields = ["title", "description"]
         widgets = {"description": forms.Textarea(attrs={"rows": 2})}
 
 
-class JobItemEditForm(forms.ModelForm):
+class JobItemEditForm(DescribedFields, forms.ModelForm):
     """A job item after it has been written down (FR-WO-12).
 
     Everything about it except its position, which is what the up and down
@@ -123,6 +167,20 @@ class JobItemEditForm(forms.ModelForm):
     different record from one still waiting, and only one of them belongs on
     next week's list.
     """
+
+    descriptions = {
+        "title": gettext_lazy("What this line of work is."),
+        "description": gettext_lazy("The detail behind it — figures, sides, warnings."),
+        "status": gettext_lazy(
+            "Where it stands. Skipped is worth reaching for: a line considered "
+            "and deliberately not done is a different record from one still waiting."
+        ),
+        "assigned_to": gettext_lazy("Who is doing this one, where more than one person might."),
+        "service_item": gettext_lazy(
+            "The scheduled maintenance this completes, so doing the job resets "
+            "when it next comes due."
+        ),
+    }
 
     class Meta:
         model = JobItem
@@ -518,12 +576,27 @@ def job_item_move(request, pk, item_id):
     return redirect("work_order_detail", pk=wo.pk)
 
 
-class TimeEntryForm(forms.ModelForm):
+class TimeEntryForm(DescribedFields, forms.ModelForm):
     """A time entry after it was logged (FR-TIME-1).
 
     Hours rather than minutes, because hours is what anybody says out loud and
     minutes is what the column stores.
     """
+
+    descriptions = {
+        "hours": gettext_lazy(
+            "How long it took, in hours. Half an hour is 0.5. Stored as "
+            "minutes, which is why an edited entry drops the timer's own times."
+        ),
+        "category": gettext_lazy(
+            "What the time went on — diagnosing, doing the work, going for "
+            "parts. It is what makes “where did the day go” answerable."
+        ),
+        "job_item": gettext_lazy(
+            "Which line of the job this time was against, or the whole job."
+        ),
+        "note": gettext_lazy("What was actually done in that time, if it is worth saying."),
+    }
 
     hours = forms.DecimalField(max_digits=6, decimal_places=2, min_value=0)
 

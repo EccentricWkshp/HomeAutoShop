@@ -178,7 +178,7 @@ class MoneyFlowTests(TestCase):
 
         usage.refresh_from_db()
         self.assertTrue(usage.core_returned)
-        self.assertIsNotNone(usage.core_returned_on)
+        self.assertIsNotNone(usage.core_settled_on)
 
 
 class UndoingThingsTests(TestCase):

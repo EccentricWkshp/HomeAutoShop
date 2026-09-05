@@ -434,3 +434,91 @@ class TheWholeReceiptTests(Base):
         # after the tax. Both were wrong and only one of them was visible.
         self.assertNotEqual(purchase.subtotal_minor, 22806)
         self.assertNotEqual(purchase.total_minor, 23838)
+
+
+class CorrectingAReceiptTests(TestCase):
+    """Receive, take it back, receive again — one shelf row, not two.
+
+    `unreceive` does not delete and must not: the ledger is append-only and a
+    reversal is a movement, not an erasure. But the *next* receipt was minting
+    a second lot, so the ordinary way to fix a mistake left the part page
+    showing a lot holding none of anything, from a receipt that had been
+    undone, beside the real one.
+    """
+
+    def setUp(self):
+        from homeautoshop.parts.models import Location, Part
+        from homeautoshop.purchasing.models import Purchase, PurchaseLine, Vendor
+
+        self.vendor = Vendor.objects.create(name="RockAuto")
+        self.part = Part.objects.create(name="Sway bar link", part_number="X37SL3257")
+        self.shop = Location.objects.create(name="Shop")
+        self.purchase = Purchase.objects.create(vendor=self.vendor, order_number="1")
+        self.line = PurchaseLine.objects.create(
+            purchase=self.purchase, part=self.part,
+            description_as_ordered="Sway bar link",
+            qty_ordered=1, extended_minor=869, extended_currency="USD",
+        )
+
+    def test_correcting_a_receipt_leaves_one_lot(self):
+        self.line.receive(qty=1)
+        self.line.unreceive()
+        self.line.receive(qty=1, location=self.shop)
+
+        self.assertEqual(self.line.lots.count(), 1)
+
+    def test_and_it_is_the_one_holding_the_stock(self):
+        self.line.receive(qty=1)
+        self.line.unreceive()
+        self.line.receive(qty=1, location=self.shop)
+
+        lot = self.line.lots.get()
+        self.assertEqual(lot.qty_on_hand, Decimal(1))
+        self.assertEqual(lot.location, self.shop)
+        self.assertEqual(self.part.on_hand, Decimal(1))
+
+    def test_the_ledger_still_says_what_happened(self):
+        """Received, taken back, received. Nothing erased — the point of the
+        append-only ledger is that the shelf and the book can be reconciled."""
+        from homeautoshop.parts.models import StockTransaction
+
+        self.line.receive(qty=1)
+        self.line.unreceive()
+        self.line.receive(qty=1, location=self.shop)
+
+        moves = list(
+            self.line.lots.get().transactions.order_by("created_at").values_list("reason", "delta")
+        )
+        self.assertEqual(
+            moves,
+            [
+                (StockTransaction.Reason.RECEIVE, Decimal(1)),
+                (StockTransaction.Reason.UNRECEIVE, Decimal(-1)),
+                (StockTransaction.Reason.RECEIVE, Decimal(1)),
+            ],
+        )
+
+    def test_a_lot_emptied_by_using_it_is_never_refilled(self):
+        """That one is a real cost record. FIFO and every rollup read through
+        it, and refilling it would rewrite what the parts in a car cost."""
+        from homeautoshop.parts.models import StockTransaction
+
+        self.line.qty_ordered = 2
+        self.line.save()
+        lot = self.line.receive(qty=1)
+        StockTransaction.record(lot, -1, StockTransaction.Reason.CONSUME)
+
+        self.line.receive(qty=1, location=self.shop)
+
+        self.assertEqual(self.line.lots.count(), 2)
+
+    def test_two_partial_receipts_still_make_two_lots(self):
+        """Nothing was emptied, so nothing is reused: they are separate
+        receipts and may have arrived at different costs."""
+        self.line.qty_ordered = 2
+        self.line.save()
+
+        self.line.receive(qty=1)
+        self.line.receive(qty=1)
+
+        self.assertEqual(self.line.lots.count(), 2)

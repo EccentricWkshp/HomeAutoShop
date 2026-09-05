@@ -531,6 +531,50 @@
     });
   }
 
+  /* ------------------------------------------------- what the box is for
+   * "Please fill out this field." is what a browser says about a required
+   * control that says nothing about itself. It is technically true and it
+   * answers the wrong question: the reader can see that the box is empty.
+   *
+   * Every field carries a `title` describing what it is or does — Django's
+   * forms get theirs from `core/described.py`, hand-written ones say it in
+   * the markup — so the bubble can pass that on instead.
+   *
+   * **Only `valueMissing` is replaced.** Every other message the browser
+   * produces already names the actual problem: out of range, wrong format,
+   * too long. Swapping a general description into those would lose the one
+   * useful sentence rather than add one.
+   *
+   * This is not validation and does not become validation. Which fields are
+   * required is stated in the markup and enforced on the server; nothing
+   * here decides whether a form may be sent, only what the browser says
+   * when it has already decided not to.
+   */
+  function describeInvalid(event) {
+    var field = event.target;
+    if (!field || typeof field.setCustomValidity !== "function") return;
+    /* Drop the message from the last attempt *before* reading the state.
+     * A custom message is itself a reason a field is invalid, so leaving a
+     * stale one on would hold a field that has since been filled in. */
+    field.setCustomValidity("");
+    if (!field.validity || !field.validity.valueMissing) return;
+    var said = field.getAttribute("data-invalid") || field.getAttribute("title");
+    if (said) field.setCustomValidity(said);
+  }
+
+  function undescribe(event) {
+    var field = event.target;
+    if (field && typeof field.setCustomValidity === "function") {
+      field.setCustomValidity("");
+    }
+  }
+
+  /* On the document, in the capture phase: `invalid` does not bubble, and
+   * binding per element would miss every control `liveform.js` splices in. */
+  document.addEventListener("invalid", describeInvalid, true);
+  document.addEventListener("input", undescribe, true);
+  document.addEventListener("change", undescribe, true);
+
   /* Run over a subtree rather than the whole document, because `liveform.js`
    * replaces a region's contents when a form in it is posted — and everything
    * above is bound to elements, so the replacements arrive unwired. Before

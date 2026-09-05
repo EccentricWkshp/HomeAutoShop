@@ -7,11 +7,13 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 from django.utils.translation import ngettext
 from django.views.decorators.http import require_POST
 
 from homeautoshop.accounts.models import require
 from homeautoshop.assets.models import Asset
+from homeautoshop.core.described import DescribedFields
 from homeautoshop.mediafiles.models import MediaLink
 from homeautoshop.mediafiles.services import ingest
 
@@ -19,7 +21,7 @@ from .models import Compartment, FluidSample
 from .services import parse_results, samples_for, save_results, series, trends
 
 
-class SampleForm(forms.ModelForm):
+class SampleForm(DescribedFields, forms.ModelForm):
     """The sample, and the panel as one pasted block.
 
     The paste box is not a shortcut — it is the difference between a feature
@@ -27,6 +29,36 @@ class SampleForm(forms.ModelForm):
     and thirty inputs is a form somebody fills in for the first sample and
     never for the fourth, which is the only one that would have shown a trend.
     """
+
+    descriptions = {
+        "compartment": gettext_lazy(
+            "Which reservoir the oil came out of — engine, transmission, "
+            "differential. A trend is only a trend within one of them."
+        ),
+        "sampled_on": gettext_lazy(
+            "When the oil was drawn, not when the lab reported. Wear is per "
+            "mile or per hour, and this is one end of that."
+        ),
+        "lab": gettext_lazy("Who analyzed it: Blackstone, Polaris, WearCheck."),
+        "report_number": gettext_lazy(
+            "The lab's own reference, so a printed report can be matched to this one."
+        ),
+        "fluid_brand": gettext_lazy(
+            "What was in it. A change of brand or grade explains a step in "
+            "the numbers that would otherwise read as a fault."
+        ),
+        "work_order": gettext_lazy(
+            "The job the sample was taken during, where there was one."
+        ),
+        "lab_comment": gettext_lazy(
+            "What the lab wrote back, in their words. Their reading of the "
+            "numbers is worth keeping beside the numbers."
+        ),
+        "notes": gettext_lazy(
+            "Anything you know that the lab does not — a long idle, a tow, "
+            "the coolant leak you had just fixed."
+        ),
+    }
 
     results_text = forms.CharField(
         label=_("Results"),

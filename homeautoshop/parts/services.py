@@ -536,7 +536,11 @@ def _core_usages():
 
 def outstanding_cores() -> list[PartUsage]:
     """Uncollected core charges — the money a home shop most often loses (FR-PUR-4)."""
-    return list(_core_usages().filter(core_returned=False).order_by("installed_at"))
+    return list(
+        _core_usages()
+        .filter(core_state=PartUsage.CoreState.OWED)
+        .order_by("installed_at")
+    )
 
 
 def returned_cores(limit: int = 50) -> list[PartUsage]:
@@ -551,8 +555,24 @@ def returned_cores(limit: int = 50) -> list[PartUsage]:
     """
     return list(
         _core_usages()
-        .filter(core_returned=True)
-        .order_by("-core_returned_on", "-installed_at")[:limit]
+        .filter(core_state=PartUsage.CoreState.RETURNED)
+        .order_by("-core_settled_on", "-installed_at")[:limit]
+    )
+
+
+def kept_cores(limit: int = 50) -> list[PartUsage]:
+    """The ones the shop decided to keep, most recent first.
+
+    Listed apart from the returned ones rather than folded in with them,
+    because they are not the same fact and only one of them is money the shop
+    got back. A caliper kept because the return postage came to more than the
+    deposit is a deliberate write-off, and a screen that exists to stop deposits
+    being lost by accident has to be able to show the ones that were not.
+    """
+    return list(
+        _core_usages()
+        .filter(core_state=PartUsage.CoreState.KEPT)
+        .order_by("-core_settled_on", "-installed_at")[:limit]
     )
 
 

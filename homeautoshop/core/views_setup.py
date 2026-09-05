@@ -40,6 +40,7 @@ from homeautoshop.accounts.forms import PasswordPairMixin, password_fields
 from homeautoshop.accounts.models import Role, User
 
 from . import runtime
+from .described import DescribedFields
 from .settings_registry import BY_KEY
 
 log = logging.getLogger(__name__)
@@ -77,7 +78,7 @@ class FirstRunView(auth_views.LoginView):
         return super().dispatch(request, *args, **kwargs)
 
 
-class FirstRunForm(PasswordPairMixin, forms.Form):
+class FirstRunForm(DescribedFields, PasswordPairMixin, forms.Form):
     """The administrator, and the four answers everything else is read through."""
 
     username = forms.CharField(
@@ -140,6 +141,12 @@ class FirstRunForm(PasswordPairMixin, forms.Form):
         self.fields["username"].widget.attrs.setdefault("autocomplete", "username")
         for name in ("password1", "password2"):
             self.fields[name].widget.attrs.setdefault("autocomplete", "new-password")
+
+        # Again, at the end: the shop questions above were added after
+        # `DescribedFields` ran, and each carries its own help from the
+        # settings registry. The pass only fills in what is missing, so
+        # running it twice describes the late arrivals and disturbs nothing.
+        self.describe_fields()
 
     def clean_username(self):
         username = self.cleaned_data["username"].strip()

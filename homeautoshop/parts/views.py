@@ -16,15 +16,19 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.defaultfilters import floatformat
 from django.urls import reverse
-from django.utils.translation import gettext as _, ngettext
+from django.utils.translation import gettext as _, gettext_lazy, ngettext
 from django.views.decorators.http import require_POST
 
 from homeautoshop.accounts.policy import visible_assets, visible_assets_for
 
 from homeautoshop.assets.models import Asset
 from homeautoshop.core.costs import inventory_value
+from homeautoshop.core.described import DescribedFields
 from homeautoshop.core.moneyform import MoneyFormMixin, parse_amount
 from homeautoshop.purchasing.models import PurchaseLine
+
+from homeautoshop.mediafiles.models import MediaLink
+from homeautoshop.mediafiles.services import ingest
 
 from .models import (
     Category, Location, Part, PartCrossRef, PartFitment, PartKitItem,
@@ -33,12 +37,13 @@ from .models import (
 from .services import (
     KINDS, candidates, categories, categories_for, close_kit, consume,
     core_value_owed, cycle_count, expiring_lots, find, kit_weights, matching,
-    open_kit, outstanding_cores, restock_list, resolve_part, returned_cores,
+    kept_cores, open_kit, outstanding_cores, restock_list, resolve_part,
+    returned_cores,
     split_kit_cost,
 )
 
 
-class PartForm(MoneyFormMixin, forms.ModelForm):
+class PartForm(DescribedFields, MoneyFormMixin, forms.ModelForm):
     """Everything about a part, including the several categories it is in.
 
     Two controls for one concept, and both work with no script at all, which
@@ -49,6 +54,41 @@ class PartForm(MoneyFormMixin, forms.ModelForm):
     because a fixed list cannot express the forty-first category and refusing
     to let somebody invent one is how the field stops being used.
     """
+
+    descriptions = {
+        "name": gettext_lazy(
+            "What you would call it looking for it: “oil filter”, “front brake "
+            "pads”. This is what the search reads first."
+        ),
+        "manufacturer": gettext_lazy(
+            "Who makes it — Bosch, Denso, ACDelco. Not who sold it to you."
+        ),
+        "part_number": gettext_lazy(
+            "The manufacturer's own number. Other numbers for the same part go "
+            "on the part's page afterwards, and all of them will find it."
+        ),
+        "part_type": gettext_lazy(
+            "A part, a fluid, a tool, a kit. A kit is the one that changes "
+            "behavior: it can be opened into the parts inside it."
+        ),
+        "unit": gettext_lazy(
+            "What this is counted or measured in — each, quarts, feet, pounds. "
+            "Stock is always held in this unit, whatever you type it in as."
+        ),
+        "has_core": gettext_lazy(
+            "The old one is worth money back. Ticking it puts the deposit on "
+            "the owed list until the core goes back or you decide to keep it."
+        ),
+        "core_value_minor": gettext_lazy("What the deposit is worth when the old one goes back."),
+        "min_quantity": gettext_lazy(
+            "The point at which you want to be told to buy more. Leave it empty "
+            "for anything you do not keep on hand."
+        ),
+        "notes": gettext_lazy(
+            "Anything worth knowing next time: which way it faces, what it "
+            "supersedes, the tool it needs."
+        ),
+    }
 
     #: Free text beside the boxes. `Electrical/Lighting` written in here comes
     #: out as two, for the same reason `categories_for` splits on a slash.
@@ -64,7 +104,7 @@ class PartForm(MoneyFormMixin, forms.ModelForm):
             "name", "categories", "new_categories", "manufacturer",
             "part_number", "part_type", "unit", "typical_cost_minor",
             "is_consumable", "has_core", "core_value_minor", "min_quantity",
-            "notes",
+            "supplier_url", "notes",
         ]
         widgets = {
             "notes": forms.Textarea(attrs={"rows": 2}),
@@ -133,7 +173,32 @@ class PartForm(MoneyFormMixin, forms.ModelForm):
             part.categories.add(*added)
 
 
-class LotForm(MoneyFormMixin, forms.ModelForm):
+class LotForm(DescribedFields, MoneyFormMixin, forms.ModelForm):
+    """Stock arriving on the shelf, as a lot with its own cost."""
+
+    descriptions = {
+        "quantity": gettext_lazy(
+            "How many you are putting on the shelf, in the unit beside the box. "
+            "It is recorded as a movement, so the ledger says where it came from."
+        ),
+        "location": gettext_lazy(
+            "Where it is going, so it can be found. Optional — an unplaced lot "
+            "still counts as stock."
+        ),
+        "unit_cost_minor": gettext_lazy(
+            "What one of these cost. Consumption draws the oldest lot first at "
+            "the price that lot actually was, so leaving this blank makes "
+            "everything drawn from it cost nothing."
+        ),
+        "acquired_on": gettext_lazy(
+            "When it arrived. This is the date the oldest-first draw goes by."
+        ),
+        "expires_on": gettext_lazy(
+            "When it goes off, for anything that does — brake fluid, sealant, "
+            "adhesive. You are warned before the date."
+        ),
+    }
+
     quantity = forms.DecimalField(max_digits=12, decimal_places=3, min_value=0)
 
     class Meta:
@@ -157,7 +222,7 @@ class LotForm(MoneyFormMixin, forms.ModelForm):
         )
 
 
-class LotEditForm(MoneyFormMixin, forms.ModelForm):
+class LotEditForm(DescribedFields, MoneyFormMixin, forms.ModelForm):
     """Correcting a lot that was recorded with something missing.
 
     Everything a lot knows *except* how many there are. Quantity is a projection
@@ -165,6 +230,10 @@ class LotEditForm(MoneyFormMixin, forms.ModelForm):
     be the exact silent correction the ledger exists to prevent, so counting is
     the cycle-count form and this is everything else.
     """
+
+    descriptions = {
+        "location": gettext_lazy("Where this lot is, so somebody can go and find it."),
+    }
 
     class Meta:
         model = StockLot
@@ -190,7 +259,7 @@ class LotEditForm(MoneyFormMixin, forms.ModelForm):
             field.widget.attrs.setdefault("class", css)
 
 
-class FitmentForm(forms.ModelForm):
+class FitmentForm(DescribedFields, forms.ModelForm):
     """What a part fits, and how much the claim is worth.
 
     A fitment names a vehicle — either one of yours or a description of a class
@@ -202,6 +271,7 @@ class FitmentForm(forms.ModelForm):
     class Meta:
         model = PartFitment
         fields = [
+            "is_universal",
             "asset", "make", "model", "year_from", "year_to",
             "engine_code", "position", "confidence", "notes",
         ]
@@ -215,8 +285,34 @@ class FitmentForm(forms.ModelForm):
         }
         help_texts = {
             "asset": _("Pick a vehicle, or leave blank and describe one below."),
+            "is_universal": _(
+                "A shop rag, a hose clamp, brake cleaner. Leave the vehicle "
+                "fields empty when this is ticked."
+            ),
             "position": _("Front, rear, left — when the part is side-specific."),
         }
+
+    descriptions = {
+        "make": gettext_lazy(
+            "The make it fits, where you are describing a class of vehicle "
+            "rather than picking one of yours."
+        ),
+        "model": gettext_lazy("The model it fits. Leave it empty to mean every model of that make."),
+        "year_from": gettext_lazy("The first model year it fits."),
+        "year_to": gettext_lazy("The last model year it fits. The same year twice is one year."),
+        "engine_code": gettext_lazy(
+            "The engine, where the part only fits one of them — 2AZ-FE, 6.7L Cummins."
+        ),
+        "confidence": gettext_lazy(
+            "How much this claim is worth. Installed on the vehicle is the "
+            "strongest; tried it and it did not fit takes the part off that "
+            "vehicle's list for good."
+        ),
+        "notes": gettext_lazy(
+            "What you had to know to make it fit — the clip it needs, the "
+            "bracket that has to be swapped over."
+        ),
+    }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -224,6 +320,10 @@ class FitmentForm(forms.ModelForm):
         self.fields["asset"].empty_label = _("— not one of my vehicles —")
         for name, field in self.fields.items():
             field.required = name == "confidence"
+            # A checkbox styled as a text input renders as a full-width box with
+            # a tick lost in the middle of it. Same skip as `PartForm` above.
+            if isinstance(field.widget, forms.CheckboxInput):
+                continue
             css = "select" if isinstance(field.widget, forms.Select) else "input"
             if isinstance(field.widget, forms.Textarea):
                 css = "input textarea"
@@ -231,11 +331,46 @@ class FitmentForm(forms.ModelForm):
 
     def clean(self):
         data = super().clean()
+        named = bool(data.get("asset") or data.get("make") or data.get("model"))
+        if data.get("confidence") == PartFitment.Confidence.GENERAL:
+            # Choosing it *is* the statement that the part fits anything, so
+            # the tick box follows from it rather than being a second control
+            # for one fact — two of those are two chances to disagree, and a
+            # row saying "general purpose" against one vehicle is unreadable.
+            #
+            # Only this direction. `is_universal` with any other confidence is
+            # a claim about every vehicle that somebody may yet disprove.
+            if named:
+                raise ValidationError(
+                    _(
+                        "A general-purpose part is not fitted to one vehicle. "
+                        "Leave the vehicle fields empty, or say how sure you "
+                        "are about this one instead."
+                    )
+                )
+            data["is_universal"] = True
+            return data
+        if data.get("is_universal"):
+            # Both at once is a contradiction rather than a narrowing: the flag
+            # says every vehicle and the fields say one of them, and there is no
+            # reading of the pair that is more specific than either.
+            if named:
+                raise ValidationError(
+                    _(
+                        "This fits any vehicle, so leave the vehicle fields empty — "
+                        "or untick it and say which one."
+                    )
+                )
+            return data
         # A fitment that names no vehicle fits everything, which is the one
-        # thing it must never be taken to mean.
-        if not data.get("asset") and not (data.get("make") or data.get("model")):
+        # thing it must never be taken to mean by accident. Saying so on purpose
+        # is what the tick box above is for.
+        if not named:
             raise ValidationError(
-                _("Say which vehicle: pick one of yours, or give at least a make or model.")
+                _(
+                    "Say which vehicle: pick one of yours, give at least a make or "
+                    "model, or tick that it fits any vehicle."
+                )
             )
         first, last = data.get("year_from"), data.get("year_to")
         if first and last and first > last:
@@ -490,8 +625,11 @@ def part_list(request):
             "filtered": asked_for,
             "low": restock_list(),
             "page": page,
+            # Owed, not merely un-returned: a core the shop decided to keep is
+            # settled, and counting it here would nag about money somebody
+            # already chose to spend.
             "cores_owed": PartUsage.objects.filter(
-                part__has_core=True, core_returned=False
+                part__has_core=True, core_state=PartUsage.CoreState.OWED
             ).count(),
         },
     )
@@ -575,6 +713,11 @@ def part_detail(request, pk):
             )[:25],
             "purchase_lines": part.purchase_lines.select_related("purchase", "purchase__vendor")[:25],
             "lot_form": LotForm(part=part),
+            # What the thing actually looks like. A part number identifies it to
+            # a supplier and describes it to nobody: two sway bar links with
+            # adjacent numbers differ by which way the stud faces, and the box
+            # on the shelf is the only place that is written down.
+            "photos": MediaLink.for_entity(part).select_related("media"),
             # For "I fitted this, there was no job" — the vehicle is usually the
             # one thing that is remembered.
             "vehicles": visible_assets(request.user),
@@ -801,6 +944,133 @@ def lot_delete(request, pk, lot_id):
     return redirect("part_detail", pk=part.pk)
 
 
+class PartUsageForm(DescribedFields, forms.ModelForm):
+    """Correcting what was recorded about a part that was already used.
+
+    **What is missing here is deliberate.** The quantity is not editable, and
+    neither is the lot it came out of. A usage is the visible half of a stock
+    movement: `consume` drew it from lots oldest-first, at what each of those
+    lots actually cost, and wrote the ledger rows that `qty_on_hand` is
+    projected from. Changing the number here would change none of that — it
+    would leave a usage claiming two and a shelf that gave up one, with the
+    costing reading through the ledger and the screen reading through this.
+
+    What *is* here is what the "Use one" form asks for that lives on this row
+    and carries no stock with it: which vehicle it went on, and when. Those are
+    the ones somebody gets wrong — a date guessed and then remembered, the
+    wrong car picked from a list — and correcting them moves nothing.
+
+    To fix a wrong quantity, count the lot: a cycle count writes an adjustment
+    with a reason, which is the honest record of "the shelf disagreed with the
+    book" and is what that screen is for.
+    """
+
+    descriptions = {
+        "asset": gettext_lazy(
+            "Which vehicle it went on. Naming one also records that the part "
+            "fits it."
+        ),
+        "installed_at": gettext_lazy(
+            "When it was fitted. Not when it was bought, and not when this was typed."
+        ),
+    }
+
+    class Meta:
+        model = PartUsage
+        # `note` is deliberately absent: the note taken at the time was written
+        # onto the `StockTransaction`, which is the append-only ledger, and is
+        # not this row's to rewrite.
+        fields = ["asset", "installed_at"]
+        widgets = {"installed_at": forms.DateInput(attrs={"type": "date"})}
+        labels = {
+            "asset": _("On which vehicle"),
+            "installed_at": _("When"),
+        }
+        help_texts = {"asset": _("Leave blank if it was not for a vehicle.")}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["asset"].required = False
+        self.fields["asset"].empty_label = _("— not recorded —")
+        for field in self.fields.values():
+            field.required = False
+            css = "select" if isinstance(field.widget, forms.Select) else "input"
+            field.widget.attrs.setdefault("class", css)
+
+
+@login_required
+def part_usage_edit(request, pk, usage_id):
+    """Correct a use that was recorded without a job (FR-INV-10).
+
+    Only one without a job. A usage that belongs to a work order is that job's
+    record of what went on the car, and it is edited there, where the rest of
+    the job is — two screens editing one row would eventually disagree about
+    which of them was the one that mattered.
+    """
+    part = get_object_or_404(Part, pk=pk)
+    usage = get_object_or_404(PartUsage, pk=usage_id, part=part)
+    if usage.work_order_id is not None:
+        messages.info(
+            request,
+            _("This was used on %(job)s. Correct it there, with the rest of the job.")
+            % {"job": usage.work_order.number},
+        )
+        return redirect("work_order_detail", pk=usage.work_order_id)
+
+    # Bound on the method rather than on `request.POST or None`, which is the
+    # idiom elsewhere in this file and is wrong here: every field is optional,
+    # so "clear the vehicle" posts an empty form, an empty `QueryDict` is
+    # falsy, and the submission would be read as a fresh GET and silently do
+    # nothing.
+    form = PartUsageForm(
+        request.POST if request.method == "POST" else None, instance=usage
+    )
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, _("Saved."))
+        return redirect("part_detail", pk=part.pk)
+    return render(
+        request, "parts/usage_form.html", {"part": part, "usage": usage, "form": form}
+    )
+
+
+@require_POST
+@login_required
+def part_photo_upload(request, pk):
+    """Photographs of a part (FR-DOC-2).
+
+    A part number identifies a thing to a supplier and describes it to nobody.
+    Two sway bar links whose numbers differ by one differ by which way the stud
+    faces; a bracket is the one that fits or the one that does not by a bend
+    you can see and cannot read. The picture is the identification, and until
+    now the only records that could carry one were vehicles, jobs and receipts.
+
+    The same `ingest` every other attachment goes through, so a photograph
+    taken twice is stored once and the second upload links the copy already on
+    file (FR-DOC-6).
+    """
+    part = get_object_or_404(Part, pk=pk)
+    files = request.FILES.getlist("files")
+    created = 0
+    for upload in files:
+        _media, was_new = ingest(
+            upload, user=request.user, entity=part, role=MediaLink.Role.OTHER
+        )
+        created += was_new
+    if files:
+        messages.success(
+            request,
+            _("Added %(n)d photo(s).") % {"n": created}
+            if created
+            else _("Those photos were already on file."),
+        )
+    else:
+        # Same silence the vehicle page used to have: two controls in sequence,
+        # and this is what says so when only the second one was pressed.
+        messages.warning(request, _("Choose a photo first, then Upload."))
+    return redirect("part_detail", pk=part.pk)
+
+
 @require_POST
 @login_required
 def part_use(request, pk):
@@ -962,6 +1232,7 @@ def core_list(request):
         {
             "owed": owed,
             "returned": returned_cores(),
+            "kept": kept_cores(),
             "owed_value": core_value_owed(owed),
         },
     )
@@ -986,24 +1257,33 @@ def core_update(request):
         messages.error(request, _("Choose a core first."))
         return redirect(request.POST.get("next") or "core_list")
 
-    returning = request.POST.get("state", "returned") == "returned"
+    wanted = request.POST.get("state", "returned")
+    if wanted not in PartUsage.CoreState.values:
+        wanted = PartUsage.CoreState.RETURNED
+    settled = wanted != PartUsage.CoreState.OWED
     for usage in usages:
-        usage.core_returned = returning
-        usage.core_returned_on = timezone.localdate() if returning else None
+        usage.core_state = wanted
+        usage.core_settled_on = timezone.localdate() if settled else None
         usage.save()
 
-    messages.success(
-        request,
-        ngettext(
+    # One sentence per ending, because "marked returned" about a core the shop
+    # deliberately kept is the same wrong statement this state was added to
+    # stop the list making.
+    if wanted == PartUsage.CoreState.RETURNED:
+        said = ngettext(
             "%(n)d core marked returned.", "%(n)d cores marked returned.", len(usages)
         )
-        % {"n": len(usages)}
-        if returning
-        else ngettext(
+    elif wanted == PartUsage.CoreState.KEPT:
+        said = ngettext(
+            "%(n)d core kept — the deposit stays spent.",
+            "%(n)d cores kept — the deposits stay spent.",
+            len(usages),
+        )
+    else:
+        said = ngettext(
             "%(n)d core is owed again.", "%(n)d cores are owed again.", len(usages)
         )
-        % {"n": len(usages)},
-    )
+    messages.success(request, said % {"n": len(usages)})
     return redirect(request.POST.get("next") or "core_list")
 
 
@@ -1017,7 +1297,19 @@ def location_create(request):
     return redirect("inventory")
 
 
-class LocationForm(forms.ModelForm):
+class LocationForm(DescribedFields, forms.ModelForm):
+    descriptions = {
+        "name": gettext_lazy(
+            "What is written on it, or what you would say out loud: “Shelf B”, "
+            "“the red cabinet”, “drawer 3”."
+        ),
+        "parent": gettext_lazy(
+            "The place this one is inside. Locations nest, so a drawer lives "
+            "in a cabinet and scanning the cabinet's label finds both."
+        ),
+        "notes": gettext_lazy("Anything about the place itself — where it is, what it holds."),
+    }
+
     class Meta:
         model = Location
         fields = ["name", "parent", "notes"]

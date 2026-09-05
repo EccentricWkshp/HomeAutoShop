@@ -55,15 +55,27 @@ class CreateWithLookupTests(TestCase):
         """Next to the field it acts on, not at the bottom beside Save.
 
         Down there it reads as a second way to submit the form.
+
+        Read as "inside the same control group", not as "within 400
+        characters". The character count was a proxy for beside-ness and it
+        measured the wrong thing: giving the VIN field a description of its own
+        pushed the two markers 484 apart without moving either control by a
+        pixel. A proxy that fails on a change it should not notice is a proxy
+        that gets its number raised until it means nothing.
         """
         page = self.client.get(self.url).content.decode()
         self.assertIn('value="lookup"', page)
 
-        vin_input = page.index('name="vin"')
-        button = page.index('value="lookup"')
-        save = page.index('{}'.format("Save"))
-        self.assertLess(abs(button - vin_input), 400, "lookup is not beside the VIN field")
-        self.assertLess(button, save, "lookup should come before the Save button")
+        row = page.rindex('<div class="row">', 0, page.index('name="vin"'))
+        group = page[row:page.index('<div id="vin-feedback">', row)]
+
+        self.assertIn('name="vin"', group)
+        self.assertIn('value="lookup"', group)
+        self.assertLess(
+            page.index('value="lookup"'),
+            page.index("Save"),
+            "lookup should come before the Save button",
+        )
 
     @patch("homeautoshop.assets.services.fetch_json")
     def test_a_lookup_fills_the_form_without_creating_anything(self, fetch):

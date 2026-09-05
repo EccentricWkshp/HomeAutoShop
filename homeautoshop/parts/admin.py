@@ -66,8 +66,8 @@ class StockTransactionAdmin(SoftDeleteAdmin):
 
 @admin.register(PartUsage)
 class PartUsageAdmin(SoftDeleteAdmin):
-    list_display = ("part", "work_order", "qty", "source", "installed_at", "core_returned")
-    list_filter = ("source", "core_returned")
+    list_display = ("part", "work_order", "qty", "source", "installed_at", "core_state")
+    list_filter = ("source", "core_state")
     raw_id_fields = ("part", "work_order")
 
 

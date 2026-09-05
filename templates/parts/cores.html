@@ -58,8 +58,22 @@
           </li>
         {% endfor %}
       </ul>
+      {% comment %}
+      Two endings, one set of tick boxes. `formaction` is not needed — both post
+      to the same view — but the `state` each button submits has to differ, so
+      each carries its own value and the one you press is the one that is sent.
+      Keeping a core is a decision, not a failure to return it: on a caliper
+      whose return postage came to more than the deposit, keeping it is the
+      cheaper answer, and saying so stops the list nagging for ever about money
+      somebody already decided to spend.
+      {% endcomment %}
       <div class="row" style="margin-top:.5rem">
-        <button class="primary" type="submit">{% translate "Mark returned" %}</button>
+        <button class="primary" type="submit" name="state" value="returned">
+          {% translate "Mark returned" %}
+        </button>
+        <button type="submit" name="state" value="kept">
+          {% translate "Keep — not worth returning" %}
+        </button>
       </div>
     </form>
   {% else %}
@@ -79,7 +93,7 @@
           <div><a href="{% url 'part_detail' usage.part.pk %}">{{ usage.part }}</a>
             <div class="muted">
               {% if usage.vehicle %}{{ usage.vehicle.nickname }} · {% endif %}
-              {% if usage.core_returned_on %}{% translate "returned" %} {{ usage.core_returned_on }}{% endif %}
+              {% if usage.core_settled_on %}{% translate "returned" %} {{ usage.core_settled_on }}{% endif %}
             </div>
           </div>
           <form method="post" action="{% url 'core_update' %}">{% csrf_token %}
@@ -92,6 +106,34 @@
     </ul>
   {% else %}
     <p class="muted small">{% translate "None returned yet." %}</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>{% translate "Kept" %}</h2>
+  {% if kept %}
+    <p class="small muted">
+      {% translate "Cores the shop decided not to send back — the deposit was spent on purpose. Listed apart from the returned ones because only one of the two is money that came back." %}
+    </p>
+    <ul class="list small">
+      {% for usage in kept %}
+        <li class="spread">
+          <div><a href="{% url 'part_detail' usage.part.pk %}">{{ usage.part }}</a>
+            <div class="muted">
+              {% if usage.vehicle %}{{ usage.vehicle.nickname }} · {% endif %}
+              {% if usage.core_settled_on %}{% translate "kept" %} {{ usage.core_settled_on }}{% endif %}
+            </div>
+          </div>
+          <form method="post" action="{% url 'core_update' %}">{% csrf_token %}
+            <input type="hidden" name="state" value="owed">
+            <input type="hidden" name="usage" value="{{ usage.pk }}">
+            <button class="linkish small" type="submit">{% translate "Still owed" %}</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted small">{% translate "None kept." %}</p>
   {% endif %}
 </section>
 {% endblock %}

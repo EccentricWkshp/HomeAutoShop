@@ -14,6 +14,15 @@ advice for this, and `tests_hashing.py` asserts that the settings file still
 ships Argon2, reading it off disk because by the time a test runs this runner
 has already replaced the value in memory.
 
+**The password policy.** Pinned to the default, whatever the machine's `.env`
+says. `PASSWORD_POLICY` is an operator's choice about their own instance, and
+without this the suite inherits it: set `any` on a development machine to try
+the feature out and three tests that assert a weak password is refused start
+failing, on a checkout where nothing is wrong. Under `noauth` it is worse —
+`NoAuthMiddleware` is in `MIDDLEWARE`, every anonymous request in the suite
+arrives signed in, and whole files of permission tests quietly stop testing
+anything. A test that wants a different policy says so with `override_settings`.
+
 **Parallelism.** `--parallel` is honored on PostgreSQL and declined on SQLite,
 because Django hands each SQLite worker an *in-memory* database and §13.2 asks
 for a file-backed one so the backup path is exercised rather than assumed. CI
@@ -60,6 +69,8 @@ from pathlib import Path
 from django.conf import settings
 from django.test.runner import DiscoverRunner, ParallelTestSuite, _init_worker
 
+from homeautoshop.accounts.validators import DEFAULT_POLICY, validators_for
+
 #: Fast, and not something anybody could mistake for a password hasher.
 TEST_PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
@@ -93,6 +104,23 @@ def _guarded(original):
     return connect
 
 
+def _pin_password_policy() -> None:
+    """Make the suite's idea of the sign-in rules the default one.
+
+    Both halves matter: the validators, so a test about a weak password means
+    the same thing everywhere, and the middleware, because `noauth` inserts one
+    that signs every request in and there is no runtime flag that takes it back
+    out again.
+    """
+    settings.PASSWORD_POLICY = DEFAULT_POLICY
+    settings.AUTH_PASSWORD_VALIDATORS = validators_for(DEFAULT_POLICY)
+    settings.NO_AUTHENTICATION = False
+    settings.PASSWORD_POLICY_IS_WEAK = False
+    settings.MIDDLEWARE = [
+        entry for entry in settings.MIDDLEWARE if "NoAuthMiddleware" not in entry
+    ]
+
+
 def _init_parallel_worker(*args, **kwargs):
     """Rebuild this runner's environment inside a `--parallel` worker.
 
@@ -119,6 +147,7 @@ def _init_parallel_worker(*args, **kwargs):
     socket.socket.connect = _guarded(socket.socket.connect)
     socket.socket.connect_ex = _guarded(socket.socket.connect_ex)
     settings.PASSWORD_HASHERS = TEST_PASSWORD_HASHERS
+    _pin_password_policy()
 
     root = Path(tempfile.gettempdir()) / f"homeautoshop-test-worker-{_worker_id}"
     for name in ("MEDIA_ROOT", "BACKUP_DIR"):
@@ -187,7 +216,23 @@ class Runner(DiscoverRunner):
         self._production_password_hashers = settings.PASSWORD_HASHERS
         settings.PASSWORD_HASHERS = TEST_PASSWORD_HASHERS
 
+        self._configured_auth = (
+            settings.PASSWORD_POLICY,
+            settings.AUTH_PASSWORD_VALIDATORS,
+            settings.NO_AUTHENTICATION,
+            settings.PASSWORD_POLICY_IS_WEAK,
+            settings.MIDDLEWARE,
+        )
+        _pin_password_policy()
+
     def teardown_test_environment(self, **kwargs):
+        (
+            settings.PASSWORD_POLICY,
+            settings.AUTH_PASSWORD_VALIDATORS,
+            settings.NO_AUTHENTICATION,
+            settings.PASSWORD_POLICY_IS_WEAK,
+            settings.MIDDLEWARE,
+        ) = self._configured_auth
         settings.PASSWORD_HASHERS = self._production_password_hashers
         socket.socket.connect = self._real_connect
         socket.socket.connect_ex = self._real_connect_ex

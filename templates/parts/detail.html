@@ -21,6 +21,19 @@
       {% for name in part.categories.all %}
         · <a href="{% url 'part_list' %}?category={{ name|urlencode }}">{{ name }}</a>
       {% endfor %}</p>
+    {% comment %}
+    Where to buy another one. `rel="noopener noreferrer"` because it leaves the
+    site to somewhere the shop chose rather than somewhere this application
+    knows anything about, and `target` because losing your place on the part
+    you are reading in order to look at a shop is the wrong trade.
+    {% endcomment %}
+    {% if part.supplier_url %}
+      <p class="small">
+        <a href="{{ part.supplier_url }}" target="_blank" rel="noopener noreferrer">
+          {% translate "Buy another" %}
+        </a>
+      </p>
+    {% endif %}
     {% if part.known_cost %}
       {% comment %}
       What "leave the price blank and it uses the part's own" resolves to, said
@@ -57,6 +70,50 @@
 
 <div class="cols two">
   <div class="stack">
+    {% comment %}
+    First, above the shelf, because it is what makes the rest of the page
+    identifiable. A part number names the thing to a supplier and describes it
+    to nobody: two sway bar links with adjacent numbers differ by which way the
+    stud faces, and a bracket is the one that fits or the one that does not by a
+    bend you can see and cannot read.
+
+    Not a live region, and no `_anchor` on the remove form: `_thumb.html` is
+    shared with four other screens and carries neither. Uploading leaves the
+    page anyway, which is the trade the vehicle page already makes.
+    {% endcomment %}
+    <section class="card" id="photos">
+      <h2>{% translate "Photos" %}</h2>
+      <div class="thumbs">
+        {% for link in photos %}
+          {% include "partials/_thumb.html" with link=link media=link.media alt=link.caption|default:part.name %}
+        {% empty %}<p class="muted small">{% translate "No photos yet." %}</p>{% endfor %}
+      </div>
+      <form method="post" action="{% url 'part_photo_upload' part.pk %}" enctype="multipart/form-data"
+            class="row" data-upload style="margin-top:.75rem"
+            data-upload-one="{% translate 'Upload %(n)s photo' %}"
+            data-upload-many="{% translate 'Upload %(n)s photos' %}">
+        {% csrf_token %}
+        {% comment %}
+        Two inputs rather than one with `capture`, for the reason the vehicle
+        page states: `capture="environment"` means *only* the camera, with no
+        way to reach a picture already taken. Both are worth having on a part —
+        one photographed at the bench, one saved off a listing.
+        {% endcomment %}
+        <label class="filepick">
+          <input type="file" name="files" accept="image/*" capture="environment"
+                 aria-label="{% translate 'Take a photo of this part' %}">
+          <span>{% translate "Take a photo" %}</span>
+        </label>
+        <label class="filepick">
+          <input type="file" name="files" accept="image/*" multiple
+                 aria-label="{% translate 'Choose photos of this part' %}">
+          <span>{% translate "Choose photos…" %}</span>
+        </label>
+        <button type="submit" data-upload-submit>{% translate "Upload" %}</button>
+        <span class="small muted" data-upload-chosen></span>
+      </form>
+    </section>
+
     <section class="card" id="stock-lots" data-live="stock-lots">
       <h2>{% translate "Stock lots" %}</h2>
       <p class="small muted">
@@ -70,29 +127,40 @@
         </tr>
         {% for lot in lots %}
         <tr>
-          <td><a href="{% url 'lot_edit' part.pk lot.pk %}">{{ lot.acquired_on }}</a>
+          <td class="nowrap"><a href="{% url 'lot_edit' part.pk lot.pk %}">{{ lot.acquired_on }}</a>
             {% if lot.expires_on %}<div class="small muted">{% translate "expires" %} {{ lot.expires_on }}</div>{% endif %}</td>
           <td>{{ lot.location.path|default:"—" }}</td>
-          <td class="mono">{{ lot.qty_on_hand }}</td>
+          <td class="mono num">{{ lot.qty_on_hand }}</td>
           {% comment %}
           A lot with no cost is not a cosmetic gap: everything drawn from it
           costs nothing, so the job is cheaper than it was and the shelf is
           worth less than it is. Say so where the number should have been.
           {% endcomment %}
-          <td class="mono">
+          <td class="mono num">
             {% if lot.unit_cost_minor is None %}
               <a href="{% url 'lot_edit' part.pk lot.pk %}">{% translate "no cost —" %}</a>
             {% else %}{{ lot.unit_cost }}{% endif %}
           </td>
           <td>
-            {# A count writes an adjustment with a reason; it never overwrites. #}
-            <form method="post" action="{% url 'lot_count' part.pk lot.pk %}" class="row">{% csrf_token %}<input type="hidden" name="_anchor" value="stock-lots">
-              <input type="number" step="{{ part.qty_step }}" name="counted" value="{{ lot.qty_on_hand }}" style="width:6rem"
-                     aria-label="{% translate 'Counted quantity' %}">
-              {% include "partials/_unit.html" with name="counted_unit" id="count-unit-"|add:lot.pk|stringformat:"s" %}
-              <input name="note" style="width:8rem" aria-label="{% translate 'Why the count differs' %}"
-                     placeholder="{% translate 'reason' %}">
-              <button type="submit" class="small">{% translate "Adjust" %}</button>
+            {% comment %}
+            A count writes an adjustment with a reason; it never overwrites.
+
+            Two deliberate lines rather than four boxes told to fit one: the
+            number with the unit it is measured in, then the reason with the
+            button that files it. Left to wrap, the button landed under the
+            reason box and read as belonging to it.
+            {% endcomment %}
+            <form method="post" action="{% url 'lot_count' part.pk lot.pk %}" class="lotcount">{% csrf_token %}<input type="hidden" name="_anchor" value="stock-lots">
+              <div class="row">
+                <input type="number" step="{{ part.qty_step }}" name="counted" value="{{ lot.qty_on_hand }}" class="count"
+                       aria-label="{% translate 'Counted quantity' %}">
+                {% include "partials/_unit.html" with name="counted_unit" id="count-unit-"|add:lot.pk|stringformat:"s" %}
+              </div>
+              <div class="row">
+                <input name="note" class="reason" aria-label="{% translate 'Why the count differs' %}"
+                       placeholder="{% translate 'reason' %}">
+                <button type="submit" class="small nowrap">{% translate "Adjust" %}</button>
+              </div>
             </form>
             <a class="small" href="{% url 'lot_edit' part.pk lot.pk %}">{% translate "Cost, location, dates" %}</a>
             {% if kit_items and lot.qty_on_hand > 0 %}
@@ -158,7 +226,16 @@
                 {% endcomment %}
                 <span class="muted">{% translate "Used — nothing else recorded" %}</span>
               {% endif %}
-              <div class="muted">{{ usage.installed_at }} · {{ usage.get_source_display }}</div>
+              <div class="muted">{{ usage.installed_at }} · {{ usage.get_source_display }}
+                {% comment %}
+                Only where there is no job. A use that belongs to a work order
+                is that job's record of what went on the car and is corrected
+                there, with the rest of it.
+                {% endcomment %}
+                {% if not usage.work_order_id %}
+                  · <a class="linkish" href="{% url 'part_usage_edit' part.pk usage.pk %}">{% translate "Edit" %}</a>
+                {% endif %}
+              </div>
             </div>
             <div>{{ usage.qty }}
               {% if usage.owes_core %}<a class="pill warn" href="{% url 'core_list' %}">{% translate "core owed" %}</a>{% endif %}
@@ -237,6 +314,7 @@
           <option value="upc">UPC</option>
         </select>
         <input name="value" required style="flex:1" aria-label="{% translate 'Cross-reference number' %}"
+               title="{% translate 'Another number that means this same part. A search or a scan for it will find this part.' %}"
                placeholder="{% translate 'number' %}">
         <button type="submit">{% translate "Add" %}</button>
       </form>
@@ -391,7 +469,7 @@
         {% for line in purchase_lines %}
           <li class="spread">
             <a href="{% url 'purchase_detail' line.purchase.pk %}">{{ line.purchase.vendor }}</a>
-            <span class="mono">{{ line.unit_price }}</span>
+            <span class="mono num">{{ line.unit_price }}</span>
           </li>
         {% empty %}<li class="muted">{% translate "No purchase history." %}</li>{% endfor %}
       </ul>

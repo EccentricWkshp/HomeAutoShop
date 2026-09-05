@@ -21,9 +21,10 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext as _, gettext_lazy
 from django.views.decorators.http import require_POST
 
+from homeautoshop.core.described import DescribedFields
 from homeautoshop.people.models import Person
 
 from .forms import PasswordPairMixin, password_fields
@@ -39,7 +40,7 @@ def _style(form) -> None:
         field.widget.attrs.setdefault("class", css)
 
 
-class NewUserForm(PasswordPairMixin, forms.ModelForm):
+class NewUserForm(DescribedFields, PasswordPairMixin, forms.ModelForm):
     """An account somebody else will use.
 
     There is no emailed invitation, deliberately: it would need SMTP working,
@@ -64,6 +65,16 @@ class NewUserForm(PasswordPairMixin, forms.ModelForm):
             "person": _("Links this login to a person, so their work is attributed to them."),
         }
 
+    #: `gettext_lazy`, not the module's `_`: a dict built at import time
+    #: freezes whatever language was active when the module loaded.
+    descriptions = {
+        "first_name": gettext_lazy("What to call them on screen. A first name is plenty."),
+        "role": gettext_lazy(
+            "How much of the shop they can change. An admin can do everything "
+            "including managing accounts; a mechanic records work; a viewer reads."
+        ),
+    }
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields.update(password_fields())
@@ -82,8 +93,22 @@ class NewUserForm(PasswordPairMixin, forms.ModelForm):
         return username
 
 
-class UserProfileForm(forms.ModelForm):
+class UserProfileForm(DescribedFields, forms.ModelForm):
     """Everything about an existing account except its password and its key."""
+
+    descriptions = {
+        "first_name": gettext_lazy("What to call them on screen. A first name is plenty."),
+        "email": gettext_lazy(
+            "Optional, and only used for a password reset if mail is set up."
+        ),
+        "role": gettext_lazy(
+            "How much of the shop they can change. The last active admin cannot "
+            "be demoted, because that locks everybody out."
+        ),
+        "person": gettext_lazy(
+            "Links this login to a person, so their work is attributed to them."
+        ),
+    }
 
     class Meta:
         model = User

@@ -91,6 +91,11 @@ The search box in the header searches across vehicle identity, work orders,
 parts and alternate part numbers, people, work-order notes, filenames, and text
 read from uploaded documents.
 
+**Every box says what it is for.** Hover one on a desktop and a sentence
+explains what it wants; leave a required one empty and the browser repeats that
+sentence back instead of *"Please fill out this field"*, which is true about
+every empty box and useful about none.
+
 ## Vehicles and equipment
 
 ### Arrange the board
@@ -473,10 +478,32 @@ Use **Other numbers** on the part to add OEM, interchange, vendor SKU, and UPC
 values. Removing one means future searches and scans for that value stop
 finding the part.
 
+**Buy another** is a link you type in yourself. A supplier URL cannot be built
+from a manufacturer and a part number — RockAuto keys on its own catalog ids
+and Amazon has no addressable notion of *this part* — so a generated link would
+be a guess that fails at the moment somebody needs it.
+
+**Photos** go on a part the same way they go on a vehicle: take one at the
+bench or attach one saved off a listing. A part number identifies an item to a
+supplier and describes it to nobody, and two sway bar links with adjacent
+numbers differ by which way the stud faces. The same photo uploaded twice is
+stored once.
+
 Fitment can name one of the shop's vehicles or a year/make/model range, engine,
 and position. Confidence distinguishes confirmed fitment, a vendor claim, an
 inference, and a known non-fit. Fitment remains editable because a confident
 wrong answer is worse than a missing answer.
+
+Two of the answers are about the part rather than about a vehicle:
+
+- **Fits any vehicle** is a tick box, not a spelling. Typing `Universal` into
+  the make field made a property of the part into a string, and a string is not
+  a rule — the fitment matched no vehicle at all.
+- **General purpose — fits anything** is the confidence to choose for an A/C
+  system flush, brake cleaner, a shop rag or a hose clamp. None of the other
+  four is a true sentence about one: they are all statements about evidence,
+  and there is no evidence to have. Choosing it marks the fitment as universal
+  on its own, so there is no second box to remember.
 
 ### Narrow the catalog
 
@@ -525,6 +552,12 @@ Parts may be used directly without a work order. The direct-use form can record
 the vehicle, date, and note, and still removes stock FIFO. This is useful when
 backfilling older maintenance or recording a quick installation.
 
+Such a record can be corrected afterwards — **Edit** beside it on the part's
+page changes the vehicle and the date, which are the two the form asks for and
+the two people get wrong. The quantity deliberately cannot be changed there: it
+is the visible half of a stock movement, and editing it would move nothing.
+Count the lot instead, which writes an adjustment with a reason.
+
 A part cannot be deleted while stock remains. When eligible, deletion is soft
 and recoverable from Trash.
 
@@ -554,8 +587,18 @@ reverses the opening only while none of the released contents have been used.
 ### Core returns and warranties
 
 When a core-bearing part is installed, it appears under **Parts → Cores** as
-owed. Multiple cores can be marked returned in one action. A mistaken return
-can be changed back to **Still owed**. The page totals the outstanding value.
+owed. A deposit has three endings and the screen offers all three:
+
+- **Mark returned** — the old one went back and the money came with it.
+- **Keep** — it is not worth returning. The reported case is a caliper whose
+  return postage came to as much as the deposit, so keeping it is the cheaper
+  answer and the money is spent on purpose. Kept cores get their own panel.
+- **Still owed** — puts a mistaken return or a kept core back on the list.
+
+Several can be settled in one action, and the page totals what is still
+outstanding. The distinction between the first two matters: money written off
+deliberately is a decision somebody made and can defend, while money written
+off by forgetting is what this screen exists to prevent.
 
 If an installed-part record carries warranty metadata—for example from an
 import—the unexpired warranty appears under **Reports → Under warranty**. The
@@ -616,10 +659,19 @@ creates stock lots, distributes tax and shipping across lines in proportion to
 value, assigns landed unit cost, updates the purchase status, and starts the
 vendor return window when the order is fully received.
 
+The page stays where you left it while you work down a delivery, rather than
+jumping back to the top after each line.
+
 **Undo receiving** writes a reversing stock-ledger entry. It is refused when
 the received stock has since been consumed. A line can be corrected only
 before any of it is received, and a purchase cannot be deleted until receiving
 has been undone.
+
+Receiving, undoing it, and receiving again is the ordinary way to fix a
+mistyped receipt, and it leaves nothing behind: the emptied lot is refilled
+rather than a second one being created. Only a lot whose entire history is
+receipts and their reversals qualifies — one emptied by use is a real cost
+record that FIFO still reads through.
 
 Attach receipt photos or PDFs to the purchase. Receipt text is read in the
 background when OCR is enabled, making the receipt searchable.

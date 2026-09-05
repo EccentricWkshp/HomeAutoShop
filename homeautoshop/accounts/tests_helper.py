@@ -66,6 +66,7 @@ CLOSED_TO_HELPERS = frozenset({
     "template_delete", "checklist_delete",
     "restore_builtins",
     "catalog_browse", "catalog_install", "codelist_delete", "codelist_import",
+    "part_photo_upload", "part_usage_edit",
     "tool_list", "tool_search", "trash", "trash_restore", "trash_purge", "user_access",
     "user_create", "user_delete", "user_detail", "user_list", "user_set_active",
     "user_set_password", "vendor_create", "vendor_delete", "vendor_edit",

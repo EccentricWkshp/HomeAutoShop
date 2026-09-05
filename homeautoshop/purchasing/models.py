@@ -353,20 +353,44 @@ class PurchaseLine(BaseModel):
         if allocate_overheads:
             unit_cost += self._overhead_per_unit()
 
-        lot = StockLot.objects.create(
-            part=self.part,
-            location=location,
-            qty_on_hand=0,
-            # Rounded, not truncated. `int()` on a Decimal throws the fraction
-            # away, and the fraction here is always positive — a share of tax
-            # and shipping — so every lot ever received landed a little cheaper
-            # than it was, in the same direction every time.
-            unit_cost_minor=int(unit_cost.quantize(Decimal("1"), rounding=ROUND_HALF_UP)),
-            unit_cost_currency=self.extended_currency or "USD",
-            purchase_line=self,
-            acquired_on=timezone.localdate(),
-            created_by=user if getattr(user, "pk", None) else None,
-        )
+        # A receipt taken back and made again — the ordinary way to correct one
+        # — used to leave the first lot behind at zero for ever. `unreceive`
+        # does not delete, and must not: the ledger is append-only and the
+        # reversal is a movement, not an erasure. But nothing said the *next*
+        # receipt had to mint a second shelf row, and minting one left the part
+        # page showing a lot holding none of anything, from a receipt that was
+        # undone, next to the real one.
+        #
+        # So an empty lot from this line is filled again rather than replaced,
+        # and its ledger reads received, taken back, received — which is what
+        # happened. Only a lot whose entire history is those two reasons
+        # qualifies: one emptied by *consumption* is a real cost record that
+        # FIFO and every rollup reads through, and refilling it would rewrite
+        # what the parts in somebody's car cost.
+        lot = self._emptied_lot()
+        if lot is not None:
+            lot.location = location
+            lot.unit_cost_minor = int(unit_cost.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+            lot.unit_cost_currency = self.extended_currency or "USD"
+            lot.acquired_on = timezone.localdate()
+            lot.save()
+        else:
+            lot = StockLot.objects.create(
+                part=self.part,
+                location=location,
+                qty_on_hand=0,
+                # Rounded, not truncated. `int()` on a Decimal throws the
+                # fraction away, and the fraction here is always positive — a
+                # share of tax and shipping — so every lot ever received landed
+                # a little cheaper than it was, in the same direction every time.
+                unit_cost_minor=int(
+                    unit_cost.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+                ),
+                unit_cost_currency=self.extended_currency or "USD",
+                purchase_line=self,
+                acquired_on=timezone.localdate(),
+                created_by=user if getattr(user, "pk", None) else None,
+            )
         StockTransaction.record(
             lot, qty, StockTransaction.Reason.RECEIVE, note=str(self.purchase), user=user
         )
@@ -375,6 +399,21 @@ class PurchaseLine(BaseModel):
         self.save()
         self.purchase.recompute_status()
         return lot
+
+    def _emptied_lot(self):
+        """A lot of this line's that holds nothing and never held anything used.
+
+        Its whole ledger is receipts and the reversals of them, so refilling it
+        rewrites no history that anything reads: nothing was ever taken out of
+        it, costed against it, or counted in it.
+        """
+        from homeautoshop.parts.models import StockTransaction
+
+        undone = (StockTransaction.Reason.RECEIVE, StockTransaction.Reason.UNRECEIVE)
+        for lot in self.lots.filter(qty_on_hand=0).order_by("created_at"):
+            if not lot.transactions.exclude(reason__in=undone).exists():
+                return lot
+        return None
 
     @transaction.atomic
     def unreceive(self, qty=None, *, user=None):

@@ -189,7 +189,9 @@
       </ul>
       <form method="post" action="{% url 'job_item_create' wo.pk %}" class="row" style="margin-top:.5rem">
         {% csrf_token %}<input type="hidden" name="_anchor" value="job-items">
-        <input name="title" placeholder="{% translate 'Add a job item' %}" required style="flex:1">
+        <input name="title" placeholder="{% translate 'Add a job item' %}" required style="flex:1"
+               aria-label="{% translate 'Job item' %}"
+               title="{% translate 'One line of work on this job, short enough to tick off — bleed the brakes, order the hose.' %}">
         <button type="submit">{% translate "Add" %}</button>
       </form>
     </section>
@@ -198,6 +200,7 @@
       <h2>{% translate "Log" %}</h2>
       <form method="post" action="{% url 'note_create' wo.pk %}" class="stack">{% csrf_token %}<input type="hidden" name="_anchor" value="log">
         <textarea name="body" rows="2" required aria-label="{% translate 'What just happened' %}"
+                  title="{% translate 'What you just did or found. Notes are append-only: this is the record of the job as it went.' %}"
                   placeholder="{% translate 'What just happened?' %}"></textarea>
         <div class="row">
           <button class="primary" type="submit">{% translate "Add note" %}</button>
@@ -356,7 +359,8 @@
               <form method="post" action="{% url 'work_order_order_shortfall' wo.pk %}" class="row">
                 {% csrf_token %}<input type="hidden" name="_anchor" value="parts-needed">
                 <select name="vendor" class="select" required
-                        aria-label="{% translate 'Order the missing parts from' %}">
+                        aria-label="{% translate 'Order the missing parts from' %}"
+                        title="{% translate 'Who to raise the order with. Everything short on this job goes onto one order for them.' %}">
                   <option value="">{% translate "Order from…" %}</option>
                   {% for vendor in vendors %}<option value="{{ vendor.pk }}">{{ vendor.name }}</option>{% endfor %}
                 </select>
@@ -688,7 +692,9 @@
       <form method="post" action="{% url 'work_order_time_add' wo.pk %}" class="row" style="margin-top:.5rem">
         {% csrf_token %}<input type="hidden" name="_anchor" value="time">
         <input type="number" step="0.25" name="hours" inputmode="decimal" required style="width:6rem"
-               aria-label="{% translate 'Hours' %}" placeholder="{% translate 'hours' %}">
+               aria-label="{% translate 'Hours' %}"
+               title="{% translate 'How long it took, in hours. Quarter of an hour is 0.25.' %}"
+               placeholder="{% translate 'hours' %}">
         <select name="category" class="select" aria-label="{% translate 'Kind of time' %}">
           <option value="wrenching">{% translate "Wrenching" %}</option>
           <option value="diagnosis">{% translate "Diagnosis" %}</option>

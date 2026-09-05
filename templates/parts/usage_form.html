@@ -1,0 +1,36 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{{ part.name }} — {{ shop_name }}{% endblock %}
+{% block content %}
+{% url 'part_detail' part.pk as back_url %}
+{% include "partials/_back.html" with url=back_url label=part.name %}
+
+<h1>{% translate "Correct a use" %}</h1>
+<p class="muted">
+  {% blocktranslate with qty=usage.qty what=part.name %}{{ qty }} of {{ what }}, taken off the shelf.{% endblocktranslate %}
+</p>
+
+<form method="post" class="card">{% csrf_token %}
+  {% if form.non_field_errors %}{{ form.non_field_errors }}{% endif %}
+  <div class="formgrid">
+    {% for field in form %}
+      <div class="field">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}
+        {% if field.help_text %}<p class="helptext">{{ field.help_text }}</p>{% endif %}{{ field.errors }}
+      </div>
+    {% endfor %}
+  </div>
+  <p class="small muted">
+    {% comment %}
+    Said here rather than left to be discovered by looking for a field that is
+    not on the screen. The quantity is the visible half of a stock movement —
+    the lots it came out of, at what each of them cost, and the ledger rows the
+    shelf is projected from — and changing it here would change none of that.
+    {% endcomment %}
+    {% blocktranslate %}How many were used is not editable here: it came off the shelf oldest first, at what those lots cost, and the ledger is what the shelf is counted from. To correct the number, count the lot on the part's page — that writes an adjustment with a reason, which is the honest record of it.{% endblocktranslate %}
+  </p>
+  <p class="row">
+    <button type="submit">{% translate "Save" %}</button>
+    <a class="btn" href="{% url 'part_detail' part.pk %}">{% translate "Cancel" %}</a>
+  </p>
+</form>
+{% endblock %}

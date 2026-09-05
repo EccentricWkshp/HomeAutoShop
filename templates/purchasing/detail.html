@@ -3,6 +3,18 @@
 {% block content %}
 {% url 'purchase_list' as back_url %}
 {% include "partials/_back.html" with url=back_url label=_("Purchases") %}
+{% comment %}
+One region over the whole page rather than one per card, which is the shape
+everywhere else. Receiving a line changes two things that are not near each
+other: the line's own row, and the status pill in the header above — a purchase
+goes ordered → part received → received as its lines arrive. `liveform.js`
+replaces the one region the submitted form is inside, so a card-sized region
+around the lines would keep the page in place and leave the pill saying
+something that stopped being true when the button was pressed. That is the
+exact failure the network-first caching change was made to prevent, arriving by
+a different route.
+{% endcomment %}
+<div data-live="purchase">
 <div class="spread">
   <div>
     <h1>{{ purchase.vendor }} <span class="mono muted">{{ purchase.order_number }}</span></h1>
@@ -28,6 +40,13 @@
     <form method="post" action="{% url 'purchase_delete' purchase.pk %}"
           data-confirm="{% blocktranslate with v=purchase.vendor %}Delete this {{ v }} purchase? It goes to the trash for 30 days.{% endblocktranslate %}">
       {% csrf_token %}
+      {% comment %}
+      Ignored on the way to the list, which is where this goes when it works.
+      It earns its keep on the refusal: a purchase with received lines comes
+      back to this page saying to un-receive first, and the lines are what that
+      sentence is about.
+      {% endcomment %}
+      <input type="hidden" name="_anchor" value="lines">
       <button class="btn danger" type="submit">{% translate "Delete" %}</button>
     </form>
   </div>
@@ -41,7 +60,7 @@
 
 <div class="cols two">
   <div class="stack">
-    <section class="card">
+    <section class="card" id="lines">
       <h2>{% translate "Lines" %}</h2>
       <p class="small muted">
         {% translate "Receiving creates stock at landed cost — tax and shipping are spread across lines in proportion to value." %}
@@ -74,7 +93,7 @@
           <td>
             {% if line.outstanding > 0 and line.part %}
               <form method="post" action="{% url 'purchase_line_receive' purchase.pk line.pk %}" class="row">
-                {% csrf_token %}
+                {% csrf_token %}<input type="hidden" name="_anchor" value="lines">
                 <input type="number" step="{{ line.part.qty_step }}" name="qty" value="{{ line.outstanding }}"
                        style="width:5.5rem" aria-label="{% translate 'How many received' %}">
                 <select name="location" class="select" style="width:9rem" aria-label="{% translate 'Put it where' %}">
@@ -93,7 +112,7 @@
               the stock really did leave and only the paperwork is in question.
               {% endcomment %}
               <form method="post" action="{% url 'purchase_line_unreceive' purchase.pk line.pk %}">
-                {% csrf_token %}
+                {% csrf_token %}<input type="hidden" name="_anchor" value="lines">
                 <button type="submit" class="linkish small danger">{% translate "Undo receiving" %}</button>
               </form>
             {% endif %}
@@ -103,9 +122,9 @@
       </table></div>
     </section>
 
-    <section class="card">
+    <section class="card" id="add-line">
       <h2>{% translate "Add a line" %}</h2>
-      <form method="post" action="{% url 'purchase_line_add' purchase.pk %}" class="formgrid">{% csrf_token %}
+      <form method="post" action="{% url 'purchase_line_add' purchase.pk %}" class="formgrid">{% csrf_token %}<input type="hidden" name="_anchor" value="add-line">
         <div class="field">
           {% comment %}
           Leaving it empty is "not cataloged", which is a real answer on an
@@ -166,7 +185,7 @@
       </table>
     </section>
 
-    <section class="card">
+    <section class="card" id="receipt">
       <h2>{% translate "Receipt" %}</h2>
       <div class="thumbs">
         {% for link in receipts %}
@@ -175,7 +194,7 @@
       </div>
       <form method="post" action="{% url 'purchase_receipt_upload' purchase.pk %}"
             enctype="multipart/form-data" class="row" style="margin-top:.5rem">
-        {% csrf_token %}
+        {% csrf_token %}<input type="hidden" name="_anchor" value="receipt">
         {% comment %}
           Two inputs, not one with `capture`. `capture="environment"` does not
           mean "offer the camera" — it means *only* the camera, with no way to
@@ -196,5 +215,6 @@
       <p class="small muted">{% translate "Receipts are OCR'd in the background so they become searchable." %}</p>
     </section>
   </aside>
+</div>
 </div>
 {% endblock %}

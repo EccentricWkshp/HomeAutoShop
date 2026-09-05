@@ -7,12 +7,31 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 from django.views.decorators.http import require_POST
+
+from homeautoshop.core.described import DescribedFields
 
 from .models import Person
 
 
-class PersonForm(forms.ModelForm):
+class PersonForm(DescribedFields, forms.ModelForm):
+    descriptions = {
+        "display_name": gettext_lazy(
+            "What to call them everywhere in the shop — “Dad”, “Sarah”, "
+            "“Tim at the machine shop”. The only field that is required."
+        ),
+        "given_name": gettext_lazy("Their first name, if the display name is not it."),
+        "family_name": gettext_lazy("Their last name."),
+        "email": gettext_lazy("Where to reach them. Nothing is sent to it by this application."),
+        "phone": gettext_lazy("A number to call — the machine shop, the neighbor with the trailer."),
+        "address": gettext_lazy("Where they are, where that is worth having."),
+        "notes": gettext_lazy(
+            "Anything worth remembering: what they are good at, what they charge, "
+            "which vehicle is theirs."
+        ),
+    }
+
     class Meta:
         model = Person
         fields = ["display_name", "given_name", "family_name", "email", "phone", "address", "notes", "is_household"]

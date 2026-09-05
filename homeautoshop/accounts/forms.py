@@ -41,16 +41,27 @@ class PasswordPairMixin:
 
 
 def password_fields(*, required: bool = True) -> dict:
-    """The two fields, labeled and told not to autofill the browser."""
+    """The two fields, labeled, described, and told not to autofill.
+
+    Described here rather than in each form's `descriptions` dict, because
+    they are added after `DescribedFields` has run — and because the same two
+    boxes on three screens should not be explained three ways.
+    """
     return {
         "password1": forms.CharField(
             label=_("Password"),
             required=required,
-            widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
+            widget=forms.PasswordInput(attrs={
+                "autocomplete": "new-password",
+                "title": _("What this account signs in with. Length beats punctuation."),
+            }),
         ),
         "password2": forms.CharField(
             label=_("Password again"),
             required=required,
-            widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
+            widget=forms.PasswordInput(attrs={
+                "autocomplete": "new-password",
+                "title": _("The same password a second time, so a typo cannot become it."),
+            }),
         ),
     }

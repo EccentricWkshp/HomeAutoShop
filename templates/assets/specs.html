@@ -98,7 +98,8 @@
       <h2>{% translate "Copy from another vehicle" %}</h2>
       <p class="small muted">{% translate "Useful when you own two of the same model." %}</p>
       <form method="post" action="{% url 'spec_copy' asset.pk %}" class="stack">{% csrf_token %}
-        <select name="source" class="select" required aria-label="{% translate 'Vehicle to copy from' %}">
+        <select name="source" class="select" required aria-label="{% translate 'Vehicle to copy from' %}"
+                title="{% translate 'The vehicle whose specifications to copy across. Useful when you own two of the same model.' %}">
           <option value="">{% translate "Copy from…" %}</option>
           {% for other in others %}<option value="{{ other.pk }}">{{ other.nickname }}</option>{% endfor %}
         </select>
@@ -114,7 +115,8 @@
       <form method="post" action="{% url 'spec_from_scan' asset.pk %}"
             enctype="multipart/form-data" class="stack">{% csrf_token %}
         <input type="file" name="report" accept="application/pdf,.pdf" required
-               aria-label="{% translate 'Scan-tool report' %}">
+               aria-label="{% translate 'Scan-tool report' %}"
+               title="{% translate 'A PDF off a scan tool. Its module part and calibration numbers were read off this vehicle rather than inferred.' %}">
         <button type="submit">{% translate "Read the report" %}</button>
       </form>
     </section>

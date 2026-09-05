@@ -331,7 +331,12 @@ urlpatterns = [
     path("parts/<uuid:pk>/stock/<uuid:lot_id>/delete/", parts.lot_delete, name="lot_delete"),
     # Off the shelf with no job behind it: most of what a home garage has fitted
     # was never a work order here.
+    path("parts/<uuid:pk>/photos/", parts.part_photo_upload, name="part_photo_upload"),
     path("parts/<uuid:pk>/use/", parts.part_use, name="part_use"),
+    # Only for a use with no job on it. One that belongs to a work order is
+    # that job's record and is corrected there; this view redirects to it.
+    path("parts/<uuid:pk>/used/<uuid:usage_id>/edit/", parts.part_usage_edit,
+         name="part_usage_edit"),
     # A kit is a part with other parts recorded inside it. It holds the stock
     # while the box is closed; opening it is what puts the contents on a shelf.
     path("parts/<uuid:pk>/contents/", parts.kit_item_add, name="kit_item_add"),

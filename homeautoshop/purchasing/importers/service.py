@@ -284,7 +284,7 @@ def _record_kit_item(kit: Part, part: Part, line, kit_quantity: Decimal) -> bool
 def _find_part(line: rockauto.OrderLine) -> tuple[Part | None, str]:
     number = (line.part_number or "").strip()
     if not number:
-        return None, ""
+        return _by_description(line)
 
     exact = Part.objects.filter(
         part_number__iexact=number, manufacturer__iexact=line.brand
@@ -305,6 +305,37 @@ def _find_part(line: rockauto.OrderLine) -> tuple[Part | None, str]:
     if cross is not None:
         return cross.part, _("on a cross-reference")
     return None, ""
+
+
+def _by_description(line) -> tuple[Part | None, str]:
+    """Match on the title, for a document that states no part number at all.
+
+    A parts supplier prints a brand and a number on every line and this is
+    never reached. A general retailer prints neither — an Amazon line has a
+    product title and a marketplace seller and nothing else — so before this,
+    every such line created a part, unconditionally.
+
+    That is wrong within a *single order*, never mind across two. One order
+    ships in two boxes, the same item appears on a line for each, and the shop
+    ends up with the product twice: two catalog rows, the stock split between
+    them, and neither one able to say how much is on the shelf. That is what
+    happened to three gallons and three gallons of the same washer fluid.
+
+    An exact, case-insensitive match on the whole title, which is as
+    conservative as this can be while still working. A retailer's title is long
+    and specific — *Rain-X -30°F Extreme Temperature De-Icer Windshield Washer
+    Fluid - 1 Gallon* — and two genuinely different products do not carry
+    byte-identical ones. Nothing is fuzzy here on purpose: a near-match would
+    eventually fold two sizes of the same product together, and stock merged
+    into the wrong row is not undoable by looking at it.
+    """
+    name = (line.description or line.label or "").strip()
+    if not name:
+        return None, ""
+    match = Part.objects.filter(name__iexact=name).first()
+    if match is None:
+        return None, ""
+    return match, _("on the description")
 
 
 def _size_of(line) -> tuple[Decimal, str] | None:

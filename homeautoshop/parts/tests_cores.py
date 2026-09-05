@@ -25,6 +25,7 @@ from django.utils import timezone
 from homeautoshop.accounts.models import Role, User
 from homeautoshop.assets.models import Asset
 from homeautoshop.parts.models import Part, PartUsage
+from homeautoshop.parts.services import outstanding_cores, returned_cores
 from homeautoshop.work.models import WorkOrder
 
 
@@ -91,7 +92,7 @@ class WhatItShowsTests(Base):
 
     def test_and_the_returned_ones(self):
         """A core marked returned by a slip has to be findable to be undone."""
-        self.owed(core_returned=True, core_returned_on=timezone.localdate())
+        self.owed(core_state="returned", core_settled_on=timezone.localdate())
 
         page = self.client.get(self.url)
 
@@ -154,18 +155,18 @@ class MarkingThemTests(Base):
         self.client.post(reverse("core_update"), {"usage": str(usage.pk)})
 
         usage.refresh_from_db()
-        self.assertEqual(usage.core_returned_on, timezone.localdate())
+        self.assertEqual(usage.core_settled_on, timezone.localdate())
 
     def test_one_marked_by_mistake_goes_back_to_owed(self):
-        usage = self.owed(core_returned=True, core_returned_on=timezone.localdate())
+        usage = self.owed(core_state="returned", core_settled_on=timezone.localdate())
 
         self.client.post(
             reverse("core_update"), {"usage": str(usage.pk), "state": "owed"}
         )
 
         usage.refresh_from_db()
-        self.assertFalse(usage.core_returned)
-        self.assertIsNone(usage.core_returned_on)
+        self.assertEqual(usage.core_state, "owed")
+        self.assertIsNone(usage.core_settled_on)
 
     def test_ticking_nothing_says_so_rather_than_claiming_success(self):
         response = self.client.post(reverse("core_update"), follow=True)
@@ -193,3 +194,108 @@ class MarkingThemTests(Base):
 
         usage.refresh_from_db()
         self.assertFalse(usage.core_returned)
+
+
+class KeepingACoreTests(Base):
+    """A deposit has three endings, and only two of them were sayable.
+
+    The reported case: a caliper whose return shipping came to as much as the
+    core charge, so sending it back was worth nothing. The only way to stop the
+    Owed list nagging was to mark it returned — a false statement about a part
+    still on the shelf — or to leave it nagging for ever about money somebody
+    had already decided to spend.
+
+    The distinction is the point. Money written off deliberately is a decision
+    somebody made; money written off by forgetting is what this screen exists to
+    prevent, and a boolean could not tell them apart.
+    """
+
+    def keep(self, usage):
+        return self.client.post(
+            reverse("core_update"), {"usage": str(usage.pk), "state": "kept"}
+        )
+
+    def test_a_core_can_be_kept(self):
+        usage = self.owed()
+
+        self.keep(usage)
+
+        usage.refresh_from_db()
+        self.assertEqual(usage.core_state, "kept")
+
+    def test_and_stops_being_owed(self):
+        usage = self.owed()
+
+        self.keep(usage)
+
+        usage.refresh_from_db()
+        self.assertFalse(usage.owes_core)
+        self.assertNotIn(usage, outstanding_cores())
+
+    def test_but_is_not_claimed_to_have_been_returned(self):
+        """The whole reason this is not just a second way to press Returned."""
+        usage = self.owed()
+
+        self.keep(usage)
+
+        usage.refresh_from_db()
+        self.assertFalse(usage.core_returned)
+        self.assertNotIn(usage, returned_cores())
+
+    def test_the_date_it_was_settled_is_recorded(self):
+        usage = self.owed()
+
+        self.keep(usage)
+
+        usage.refresh_from_db()
+        self.assertEqual(usage.core_settled_on, timezone.localdate())
+
+    def test_it_is_listed_apart_from_the_returned_ones(self):
+        usage = self.owed()
+
+        self.keep(usage)
+
+        page = self.client.get(self.url).content.decode()
+        self.assertIn("Kept", page)
+        self.assertNotIn("None kept.", page)
+        self.assertIn(str(usage.part), page)
+
+    def test_and_can_be_put_back_to_owed_if_that_was_wrong(self):
+        usage = self.owed()
+        self.keep(usage)
+
+        self.client.post(
+            reverse("core_update"), {"usage": str(usage.pk), "state": "owed"}
+        )
+
+        usage.refresh_from_db()
+        self.assertEqual(usage.core_state, "owed")
+        self.assertIsNone(usage.core_settled_on)
+
+    def test_the_owed_list_offers_the_choice(self):
+        self.owed()
+
+        page = self.client.get(self.url).content.decode()
+
+        self.assertIn("Mark returned", page)
+        self.assertIn("not worth returning", page)
+
+    def test_a_state_nobody_recognizes_falls_back_to_returned(self):
+        """Rather than writing an unknown string into the column, which would
+        make the core invisible to all three lists at once."""
+        usage = self.owed()
+
+        self.client.post(
+            reverse("core_update"), {"usage": str(usage.pk), "state": "shredded"}
+        )
+
+        usage.refresh_from_db()
+        self.assertEqual(usage.core_state, "returned")
+
+    def test_the_shelf_count_does_not_nag_about_a_kept_one(self):
+        usage = self.owed()
+        self.keep(usage)
+
+        page = self.client.get(reverse("part_list")).content.decode()
+
+        self.assertNotIn("1 core owed", page)

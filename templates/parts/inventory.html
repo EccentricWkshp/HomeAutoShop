@@ -82,6 +82,7 @@
       <h2>{% translate "Add a location" %}</h2>
       <form method="post" action="{% url 'location_create' %}" class="row">{% csrf_token %}
         <input name="name" required style="flex:1" aria-label="{% translate 'Location name' %}"
+               title="{% translate 'What is written on it, or what you would say out loud — Shelf B, the red cabinet.' %}"
                placeholder="{% translate 'Shelf B3' %}">
         <select name="parent" class="select" aria-label="{% translate 'Inside which location' %}">
           <option value="">{% translate "Top level" %}</option>

@@ -41,6 +41,7 @@ the inline rows where the button beside it already says what the box is for.
   <input type="search" id="{{ field_id }}" name="part_query" class="input"
          autocomplete="off"
          placeholder="{% translate 'Search parts by name or number' %}"
+         title="{% translate 'Type any part of a name or any number it is known by. With no script this is the name itself, resolved on the server.' %}"
          {% if required %}required{% endif %}>
   {# The chosen part, and what it says about itself. #}
   <input type="hidden" name="part" id="{{ field_id }}_chosen">

@@ -235,6 +235,7 @@
         <div class="row">
           <input type="url" name="url" required style="flex:2"
                  aria-label="{% translate 'Web address' %}"
+                 title="{% translate 'The address of a page worth keeping against this vehicle — a forum thread, a diagram, a repair video.' %}"
                  placeholder="{% translate 'https://…' %}">
           <input name="label" style="flex:1"
                  aria-label="{% translate 'What to call it' %}"
@@ -264,7 +265,8 @@
           {% csrf_token %}
           <div class="field">
             <label for="id_value">{% translate "New reading" %}</label>
-            <input type="number" step="0.01" min="0" name="value" id="id_value" inputmode="decimal" required>
+            <input type="number" step="0.01" min="0" name="value" id="id_value" inputmode="decimal" required
+                   title="{% translate 'What the meter reads now. A reading lower than the last one needs a note saying why.' %}">
           </div>
           <div class="field">
             <label for="id_note">{% translate "Note (required if lower than last)" %}</label>
@@ -452,6 +454,7 @@
             <form method="post" action="{% url 'service_info_pin' asset.pk provider.pk %}" class="stack">{% csrf_token %}
               <input type="url" name="url" required
                      aria-label="{% translate 'Page address to pin' %}"
+                     title="{% translate 'The exact page this vehicle needs, not the site it is on — pinned so nobody has to search for it twice.' %}"
                      placeholder="{% translate 'Paste the exact page address' %}">
               <div class="row">
                 <button type="submit" class="small">{% translate "Pin it" %}</button>

@@ -155,6 +155,16 @@ body { overflow-wrap: break-word; }
 .mono { font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
   /* A VIN or a part number is one unbreakable token wider than a phone. */
   overflow-wrap: anywhere; }
+/* A figure is one value, and breaking it makes a different one. The order
+   review screen showed `$182` above `.39`; the stock lots card showed a
+   quantity of `1.00` above a stray `0`. Both read as a number nobody typed,
+   and nothing in the rendering says otherwise.
+
+   It has to be asked for rather than being how `.mono` behaves: a VIN and a
+   part number are the reason `.mono` breaks anywhere, and they still need to.
+   `anywhere` also drives min-content sizing, so a column of figures without
+   this lets the table crush itself instead of scrolling in `.tablewrap`. */
+.num, .mono.num { white-space: nowrap; overflow-wrap: normal; }
 .stack > * + * { margin-top: .75rem; }
 .row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
 .spread { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
@@ -837,12 +847,9 @@ input.doubtful { border-color: var(--warn, #b58900); }
 }
 .pin input { inline-size: 1.1rem; block-size: 1.1rem; flex: 0 0 auto; }
 
-/* The parsed lines of a supplier order. A money column broken across two lines
-   reads as two numbers — the review screen showed `$182` above `.39` — and on
-   the one screen whose whole job is checking figures before they are written,
-   that is the last place a number should be hard to read. The description is
-   the only column that should ever wrap, so it takes what is left. */
-.orderlines td.num, .orderlines th.num { white-space: nowrap; }
+/* The parsed lines of a supplier order. The figures are held together by
+   `.num` above; the description is the only column that should ever wrap, so
+   it takes what is left. */
 .orderlines td:nth-child(3) { min-inline-size: 18rem; }
 .orderlines select { inline-size: auto; }
 /* A label on the far left and its figure on the far right of a 1100px card is
@@ -852,4 +859,26 @@ input.doubtful { border-color: var(--warn, #b58900); }
 /* The count box on the order review screen. Narrow, because it holds a small
    whole number and a full-width input in a table column that wide reads as the
    most important thing on the row. */
-.orderlines input.count { inline-size: 5.5rem; }
+.orderlines input.count { inline-size: 4.5rem; }
+/* The count and its unit on one line, and the unit boxed to a width rather
+   than sized to its longest option. `fluid ounces` set on `inline-size: auto`
+   widened the Qty column by most of an inch, and the column that lost the room
+   was the last one — which is where the screen says "new part". */
+.orderlines .counted { display: flex; align-items: center; gap: .25rem; }
+.orderlines select.unit { inline-size: 7rem; min-inline-size: 0; }
+.orderlines .nowrap { white-space: nowrap; }
+
+/* ---------- counting a stock lot (SPEC FR-INV-7) ---------- */
+
+/* Counting a lot asks two things — how many, and why it differs — and the
+   column they sit in is the last of five inside half a page. On one line they
+   wrapped, which put `Adjust` under the reason box looking like its button and
+   left the number it acts on two lines away.
+
+   Two lines on purpose instead: the quantity with the unit that measures it,
+   then the reason with the button that files it. Both halves fit the narrow
+   column at any width the card is given, so the layout is the same every time
+   rather than depending on how long the location above it happened to be. */
+.lotcount { display: grid; gap: .35rem; }
+.lotcount input.count { inline-size: 5rem; }
+.lotcount input.reason { flex: 1 1 6rem; min-inline-size: 0; }

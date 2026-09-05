@@ -139,7 +139,8 @@
   <form method="post" action="{% url 'backup_upload' %}" enctype="multipart/form-data">{% csrf_token %}
     <p>
       <label for="database-file">{% translate "Database file" %}</label>
-      <input type="file" id="database-file" name="database" required>
+      <input type="file" id="database-file" name="database" required
+             title="{% translate 'The database file out of a backup folder — database.dump, or database.sqlite3.' %}">
       <span class="small muted">{% translate "database.dump, or database.sqlite3 — downloaded from What is held, above." %}</span>
     </p>
     <p>

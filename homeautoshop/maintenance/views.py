@@ -10,12 +10,14 @@ from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 from django.views.decorators.http import require_POST
 
 from homeautoshop.accounts.models import require
 from homeautoshop.accounts.policy import visible_assets, visible_assets_for
 
 from homeautoshop.assets.models import Asset
+from homeautoshop.core.described import DescribedFields
 
 from .models import (
     AssetComponent,
@@ -49,7 +51,31 @@ def _vehicle(request, pk, action="maintenance.edit"):
     return asset
 
 
-class ServiceItemForm(forms.ModelForm):
+class ServiceItemForm(DescribedFields, forms.ModelForm):
+    descriptions = {
+        "definition": gettext_lazy(
+            "Which job this is — oil change, brake fluid, timing belt. The "
+            "list is shared, so the same job means the same thing on every vehicle."
+        ),
+        "interval_distance": gettext_lazy(
+            "How far between services. Leave it empty for a job that is only "
+            "ever due by time."
+        ),
+        "interval_unit": gettext_lazy("The unit that distance is in: mi or km."),
+        "interval_months": gettext_lazy(
+            "How many months between services. Brake fluid ages whether or not "
+            "the vehicle moves, and whichever comes first wins."
+        ),
+        "interval_hours": gettext_lazy(
+            "How many running hours between services, for anything counted by "
+            "the hour rather than the mile."
+        ),
+        "notes": gettext_lazy(
+            "Anything this vehicle does differently — the filter it takes, "
+            "why the interval is shorter than the book says."
+        ),
+    }
+
     class Meta:
         model = AssetServiceItem
         fields = [
@@ -66,7 +92,37 @@ class ServiceItemForm(forms.ModelForm):
             field.widget.attrs.setdefault("class", css)
 
 
-class ComponentForm(forms.ModelForm):
+class ComponentForm(DescribedFields, forms.ModelForm):
+    descriptions = {
+        "component_type": gettext_lazy(
+            "What was fitted: a battery, a tire, a timing belt. It is what "
+            "lets the shop ask how old the battery is."
+        ),
+        "label": gettext_lazy(
+            "How you refer to this one — “front left”, “house battery”, "
+            "“the spare”."
+        ),
+        "installed_on": gettext_lazy(
+            "When it went on. Age is counted from here, so a warranty and an "
+            "expected life both hang off it."
+        ),
+        "installed_usage": gettext_lazy(
+            "What the meter read when it was fitted, so wear can be counted in "
+            "miles or hours rather than only in months."
+        ),
+        "warranty_months": gettext_lazy(
+            "How long it is covered for. You are told while it still is."
+        ),
+        "expected_life_distance": gettext_lazy(
+            "How far it should last — a tire's treadwear, a belt's interval. "
+            "It is what turns a fitted part into something that comes due."
+        ),
+        "notes": gettext_lazy(
+            "Brand, size, part number, where it was bought. Whatever you would "
+            "want in front of you when it needs replacing."
+        ),
+    }
+
     class Meta:
         model = AssetComponent
         fields = [

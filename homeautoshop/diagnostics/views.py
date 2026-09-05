@@ -25,6 +25,7 @@ from homeautoshop.accounts.models import require
 from homeautoshop.assets import service_info
 from homeautoshop.assets import vin as vinlib
 from homeautoshop.assets.models import Asset
+from homeautoshop.core.described import DescribedFields
 from homeautoshop.mediafiles.models import Media
 from homeautoshop.work.models import WorkOrder
 
@@ -528,7 +529,25 @@ def _band(confidence: float) -> str:
     return "low"
 
 
-class SessionForm(forms.ModelForm):
+class SessionForm(DescribedFields, forms.ModelForm):
+    descriptions = {
+        "performed_on": gettext_lazy("When the scan was run, not when it was typed in."),
+        "tool": gettext_lazy(
+            "Which scan tool it came off. A code read by a $20 dongle and one "
+            "read by a factory tool are not worth the same."
+        ),
+        "tool_model": gettext_lazy("The tool's model, where the make alone is not enough."),
+        "odometer": gettext_lazy(
+            "What the meter read at the scan. It is what puts the codes at a "
+            "point in the vehicle's history."
+        ),
+        "odometer_unit": gettext_lazy("The unit that reading is in: mi, km, or hours."),
+        "notes": gettext_lazy(
+            "What the vehicle was doing — cold start, on the highway, after "
+            "the rain. It is the half a code cannot record."
+        ),
+    }
+
     class Meta:
         model = DiagnosticSession
         fields = ["performed_on", "tool", "tool_model", "odometer", "odometer_unit", "notes"]

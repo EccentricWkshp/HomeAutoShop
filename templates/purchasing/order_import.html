@@ -46,7 +46,8 @@ needed it.
       <form method="post" enctype="multipart/form-data" class="stack">{% csrf_token %}
         <div class="field">
           <label for="order">{% translate "Order confirmation" %}</label>
-          <input id="order" type="file" name="order" accept=".pdf,application/pdf" required>
+          <input id="order" type="file" name="order" accept=".pdf,application/pdf" required
+                 title="{% translate 'The order confirmation from the supplier, as a PDF. You are shown what it says before anything is written.' %}">
         </div>
         <div class="row">
           <button type="submit" name="action" value="preview">{% translate "See what it would do" %}</button>
@@ -260,21 +261,29 @@ needed it.
                       <label class="visually-hidden" for="count-{{ forloop.counter0 }}">
                         {% blocktranslate with what=outcome.line.description %}How many {{ what }} came{% endblocktranslate %}
                       </label>
-                      <input id="count-{{ forloop.counter0 }}" form="confirm-import"
-                             class="input count" type="number" step="any" min="0"
-                             name="count_{{ forloop.counter0 }}"
-                             value="{{ outcome.units|floatformat:'-3' }}">
-                      <label class="visually-hidden" for="unit-{{ forloop.counter0 }}">
-                        {% blocktranslate with what=outcome.line.description %}What {{ what }} is measured in{% endblocktranslate %}
-                      </label>
-                      <select id="unit-{{ forloop.counter0 }}" form="confirm-import"
-                              class="input unit" name="unit_{{ forloop.counter0 }}">
-                        {% for code, label in unit_choices %}
-                          <option value="{{ code }}"{% if code == outcome.unit %} selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                      </select>
+                      {% comment %}
+                      The count and its unit sit on one line inside the cell.
+                      Stacked as two full-width controls they widened the Qty
+                      column enough to push the status column off the side of
+                      the card — the one place the screen says "new part".
+                      {% endcomment %}
+                      <div class="counted">
+                        <input id="count-{{ forloop.counter0 }}" form="confirm-import"
+                               class="input count" type="number" step="any" min="0"
+                               name="count_{{ forloop.counter0 }}"
+                               value="{{ outcome.units|floatformat:'-3' }}">
+                        <label class="visually-hidden" for="unit-{{ forloop.counter0 }}">
+                          {% blocktranslate with what=outcome.line.description %}What {{ what }} is measured in{% endblocktranslate %}
+                        </label>
+                        <select id="unit-{{ forloop.counter0 }}" form="confirm-import"
+                                class="input unit" name="unit_{{ forloop.counter0 }}">
+                          {% for code, label in unit_choices %}
+                            <option value="{{ code }}"{% if code == outcome.unit %} selected{% endif %}>{{ label }}</option>
+                          {% endfor %}
+                        </select>
+                      </div>
                       {% if outcome.size_read %}
-                        <div class="small muted">{% blocktranslate with size=outcome.size_read %}the page says {{ size }}{% endblocktranslate %}</div>
+                        <div class="small muted nowrap">{% blocktranslate with size=outcome.size_read %}the page says {{ size }}{% endblocktranslate %}</div>
                       {% endif %}
                     {% else %}
                       {{ outcome.units|floatformat:"-3" }}

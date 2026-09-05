@@ -888,8 +888,8 @@ class CoreTrackingTests(TestCase):
         self.assertTrue(usage.owes_core)
         self.assertIn(usage, outstanding_cores())
 
-        usage.core_returned = True
-        usage.core_returned_on = timezone.localdate()
+        usage.core_state = PartUsage.CoreState.RETURNED
+        usage.core_settled_on = timezone.localdate()
         usage.save()
         self.assertFalse(usage.owes_core)
         self.assertNotIn(usage, outstanding_cores())
@@ -1510,3 +1510,509 @@ class PartListFactsTests(TestCase):
             lot(other, 1, 100)
 
         self.assertEqual(self.queries_for_the_page(), one_part)
+
+
+class AUniversalFitmentTests(TestCase):
+    """Some parts genuinely fit everything, and saying so was a spelling.
+
+    A fitment naming no vehicle was refused, so the only way to record a shop
+    rag or a hose clamp was to type `Universal` into the **make** field. That
+    turned a property of the part into a string, and a string is not a rule:
+    `matches()` compared it against `asset.make`, found nothing, and the
+    universal fitment matched no vehicle at all. It also had to be retyped per
+    part, filing `universal` and `Universal` as different claims.
+    """
+
+    def setUp(self):
+        from homeautoshop.accounts.models import Role, User
+
+        self.user = User.objects.create_user(
+            username="andy", password="x" * 16, role=Role.ADMIN
+        )
+        self.client.force_login(self.user)
+        self.part = Part.objects.create(name="Hose clamp")
+        self.asset = Asset.objects.create(
+            nickname="Aerio", make="Suzuki", model="Aerio", year=2004
+        )
+
+    def add(self, **data):
+        return self.client.post(reverse("fitment_add", args=[self.part.pk]), data)
+
+    def test_it_can_be_recorded_without_naming_a_vehicle(self):
+        self.add(is_universal="on", confidence=PartFitment.Confidence.VENDOR)
+
+        fitment = PartFitment.objects.get(part=self.part)
+        self.assertTrue(fitment.is_universal)
+
+    def test_and_it_reads_as_universal_rather_than_as_a_blank(self):
+        self.add(is_universal="on", confidence=PartFitment.Confidence.VENDOR)
+
+        self.assertEqual(PartFitment.objects.get(part=self.part).vehicle, "Universal")
+
+    def test_and_it_actually_matches_a_vehicle(self):
+        """The half that typing `Universal` into `make` never did."""
+        fitment = PartFitment.objects.create(
+            part=self.part, is_universal=True,
+            confidence=PartFitment.Confidence.VENDOR,
+        )
+
+        self.assertTrue(fitment.matches(self.asset))
+
+    def test_whereas_the_typed_one_never_did(self):
+        """Kept as a test because it is the reason the field exists."""
+        typed = PartFitment.objects.create(
+            part=self.part, make="Universal",
+            confidence=PartFitment.Confidence.VENDOR,
+        )
+
+        self.assertFalse(typed.matches(self.asset))
+
+    def test_a_fitment_naming_nothing_at_all_is_still_refused(self):
+        """The tick box is how you say it on purpose. Saying it by leaving the
+        form empty is still the one thing it must never mean by accident."""
+        self.add(confidence=PartFitment.Confidence.VENDOR)
+
+        self.assertEqual(PartFitment.objects.count(), 0)
+
+    def test_universal_and_a_named_vehicle_together_is_refused(self):
+        """A contradiction rather than a narrowing: the flag says every vehicle
+        and the field says one of them."""
+        self.add(
+            is_universal="on", make="Suzuki",
+            confidence=PartFitment.Confidence.VENDOR,
+        )
+
+        self.assertEqual(PartFitment.objects.count(), 0)
+
+    def test_the_part_page_shows_it(self):
+        PartFitment.objects.create(
+            part=self.part, is_universal=True,
+            confidence=PartFitment.Confidence.VENDOR,
+        )
+
+        page = self.client.get(reverse("part_detail", args=[self.part.pk])).content.decode()
+
+        self.assertIn("Universal", page)
+
+
+class AGeneralPurposePartTests(TestCase):
+    """The fifth confidence, for parts fitment is not a question about.
+
+    Reported as: an A/C system flush, brake cleaner, a rag or a hose clamp
+    does not really fit confirmed, does not fit, stated by vendor, or
+    unverified. It does not — all four are sentences about evidence, and there
+    is none to have about a bottle of cleaner. `unverified` is the one that
+    was reached for by default, and it leaves a permanent question mark
+    against something nobody will ever check.
+    """
+
+    def setUp(self):
+        from homeautoshop.accounts.models import Role, User
+
+        self.user = User.objects.create_user(
+            username="andy", password="x" * 16, role=Role.ADMIN
+        )
+        self.client.force_login(self.user)
+        self.part = Part.objects.create(name="Brake cleaner")
+        self.asset = Asset.objects.create(
+            nickname="Aerio", make="Suzuki", model="Aerio", year=2004
+        )
+
+    def add(self, **data):
+        return self.client.post(reverse("fitment_add", args=[self.part.pk]), data)
+
+    def test_it_is_offered(self):
+        page = self.client.get(
+            reverse("fitment_add", args=[self.part.pk])
+        ).content.decode()
+
+        self.assertIn("general_purpose", page)
+        self.assertIn("General purpose", page)
+
+    def test_choosing_it_is_enough_on_its_own(self):
+        """No tick box as well: two controls for one fact are two chances to
+        disagree, and the fitment has to end up universal either way."""
+        self.add(confidence=PartFitment.Confidence.GENERAL)
+
+        fitment = PartFitment.objects.get(part=self.part)
+        self.assertTrue(fitment.is_universal)
+
+    def test_and_it_matches_every_vehicle(self):
+        self.add(confidence=PartFitment.Confidence.GENERAL)
+
+        self.assertTrue(PartFitment.objects.get(part=self.part).matches(self.asset))
+
+    def test_ticking_the_box_as_well_is_no_different(self):
+        self.add(is_universal="on", confidence=PartFitment.Confidence.GENERAL)
+
+        self.assertTrue(PartFitment.objects.get(part=self.part).is_universal)
+
+    def test_naming_a_vehicle_as_well_is_refused_and_says_why(self):
+        response = self.add(
+            make="Suzuki", confidence=PartFitment.Confidence.GENERAL
+        )
+
+        self.assertEqual(PartFitment.objects.count(), 0)
+        self.assertContains(response, "not fitted to one vehicle")
+
+    def test_a_universal_part_can_still_be_only_a_vendor_claim(self):
+        """The pairing runs one way. A vendor may *state* that a part fits
+        anything, and that is a claim somebody may yet disprove — which is not
+        the same as a rag."""
+        self.add(is_universal="on", confidence=PartFitment.Confidence.VENDOR)
+
+        fitment = PartFitment.objects.get(part=self.part)
+        self.assertTrue(fitment.is_universal)
+        self.assertEqual(fitment.confidence, PartFitment.Confidence.VENDOR)
+
+    def test_it_is_not_excluded_from_what_fits_a_vehicle(self):
+        """Only `does_not_fit` is excluded (FR-PART-4). Brake cleaner belongs
+        on the list for every car, which is the point of recording it."""
+        from .services import fits
+
+        self.add(confidence=PartFitment.Confidence.GENERAL)
+
+        self.assertIn(self.part, fits(self.asset))
+
+    def test_but_it_does_not_outrank_a_part_confirmed_on_that_vehicle(self):
+        from .services import fits
+
+        pump = Part.objects.create(name="Fuel pump")
+        PartFitment.objects.create(
+            part=pump, asset=self.asset,
+            confidence=PartFitment.Confidence.CONFIRMED,
+        )
+        self.add(confidence=PartFitment.Confidence.GENERAL)
+
+        self.assertEqual(fits(self.asset)[0], pump)
+
+
+class CorrectingAUseWithNoJobTests(TestCase):
+    """FR-INV-10. A part used off the shelf could be recorded and never fixed.
+
+    The screen that records one asks for a vehicle and a date, both optional
+    and both easy to get wrong — a date guessed and then remembered, the wrong
+    car picked from a list — and there was no way back to either of them.
+    """
+
+    def setUp(self):
+        from homeautoshop.accounts.models import Role, User
+
+        self.user = User.objects.create_user(
+            username="andy", password="x" * 16, role=Role.ADMIN
+        )
+        self.client.force_login(self.user)
+        self.part = Part.objects.create(name="Sway bar link")
+        self.right = Asset.objects.create(nickname="Aerio")
+        self.wrong = Asset.objects.create(nickname="Barn find")
+        StockLot.objects.create(
+            part=self.part, qty_on_hand=5, unit_cost_minor=869, unit_cost_currency="USD"
+        )
+        self.client.post(
+            reverse("part_use", args=[self.part.pk]),
+            {"qty": "1", "asset": str(self.wrong.pk), "installed_at": "2026-08-23"},
+        )
+        self.usage = PartUsage.objects.get(part=self.part)
+
+    def url(self):
+        return reverse("part_usage_edit", args=[self.part.pk, self.usage.pk])
+
+    def test_the_vehicle_can_be_corrected(self):
+        self.client.post(self.url(), {"asset": str(self.right.pk)})
+
+        self.usage.refresh_from_db()
+        self.assertEqual(self.usage.asset, self.right)
+
+    def test_and_the_date(self):
+        self.client.post(
+            self.url(), {"asset": str(self.wrong.pk), "installed_at": "2026-08-30"}
+        )
+
+        self.usage.refresh_from_db()
+        self.assertEqual(str(self.usage.installed_at), "2026-08-30")
+
+    def test_the_vehicle_can_be_taken_off_again(self):
+        """Everything about a use off the shelf is optional, including having
+        said which car it went on."""
+        self.client.post(self.url(), {})
+
+        self.usage.refresh_from_db()
+        self.assertIsNone(self.usage.asset)
+
+    def test_the_quantity_is_not_editable_and_the_page_says_why(self):
+        """It is the visible half of a stock movement, and changing it here
+        would move nothing — leaving a usage claiming two and a shelf that gave
+        up one."""
+        page = self.client.get(self.url()).content.decode()
+
+        self.assertNotIn('name="qty"', page)
+        self.assertIn("count the lot", page)
+
+    def test_editing_moves_no_stock(self):
+        before = self.part.on_hand
+
+        self.client.post(self.url(), {"asset": str(self.right.pk)})
+
+        self.assertEqual(self.part.on_hand, before)
+
+    def test_the_part_page_offers_it(self):
+        page = self.client.get(reverse("part_detail", args=[self.part.pk])).content.decode()
+
+        self.assertIn(self.url(), page)
+
+    def test_a_use_that_belongs_to_a_job_is_corrected_there_instead(self):
+        """Two screens editing one row would eventually disagree about which of
+        them was the one that mattered."""
+        from homeautoshop.work.models import WorkOrder
+
+        order = WorkOrder.objects.create(asset=self.right, title="Suspension")
+        self.usage.work_order = order
+        self.usage.save()
+
+        response = self.client.get(self.url())
+
+        self.assertRedirects(response, reverse("work_order_detail", args=[order.pk]))
+
+    def test_and_the_part_page_does_not_offer_it(self):
+        from homeautoshop.work.models import WorkOrder
+
+        order = WorkOrder.objects.create(asset=self.right, title="Suspension")
+        self.usage.work_order = order
+        self.usage.save()
+
+        page = self.client.get(reverse("part_detail", args=[self.part.pk])).content.decode()
+
+        self.assertNotIn(self.url(), page)
+
+
+class WhereToBuyAnotherTests(TestCase):
+    """A supplier link, typed rather than derived.
+
+    It cannot be worked out: RockAuto keys on its own catalog ids, NAPA
+    rewrites its paths, and Amazon has no addressable notion of "this part" at
+    all — so a generated link is a guess that 404s at the moment somebody needs
+    it, which is worse than no link.
+    """
+
+    def setUp(self):
+        from homeautoshop.accounts.models import Role, User
+
+        self.user = User.objects.create_user(
+            username="andy", password="x" * 16, role=Role.ADMIN
+        )
+        self.client.force_login(self.user)
+        self.part = Part.objects.create(name="Sway bar link")
+
+    def test_a_link_can_be_saved_and_is_shown(self):
+        self.client.post(
+            reverse("part_edit", args=[self.part.pk]),
+            {
+                "name": "Sway bar link", "part_type": "aftermarket", "unit": "each",
+                "supplier_url": "https://example.test/sway-bar-link",
+            },
+        )
+
+        self.part.refresh_from_db()
+        self.assertEqual(self.part.supplier_url, "https://example.test/sway-bar-link")
+
+        page = self.client.get(reverse("part_detail", args=[self.part.pk])).content.decode()
+        self.assertIn("https://example.test/sway-bar-link", page)
+
+    def test_a_part_without_one_shows_no_empty_link(self):
+        page = self.client.get(reverse("part_detail", args=[self.part.pk])).content.decode()
+
+        self.assertNotIn("Buy another", page)
+
+
+class PhotographsOfAPartTests(TestCase):
+    """FR-DOC-2. A part number identifies a thing and describes it to nobody.
+
+    Two sway bar links with adjacent numbers differ by which way the stud
+    faces; a bracket is the one that fits or the one that does not by a bend
+    you can see and cannot read. Vehicles, jobs and receipts could all carry a
+    photograph. The part on the shelf could not.
+    """
+
+    def setUp(self):
+        from homeautoshop.accounts.models import Role, User
+
+        self.user = User.objects.create_user(
+            username="andy", password="x" * 16, role=Role.ADMIN
+        )
+        self.client.force_login(self.user)
+        self.part = Part.objects.create(name="Sway bar link")
+
+    def photo(self, name="link.jpg", content=b"\xff\xd8\xff\xe0 not really a jpeg"):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        return SimpleUploadedFile(name, content, content_type="image/jpeg")
+
+    def upload(self, *files):
+        return self.client.post(
+            reverse("part_photo_upload", args=[self.part.pk]),
+            {"files": list(files) or [self.photo()]},
+        )
+
+    def test_a_photo_can_be_attached(self):
+        from homeautoshop.mediafiles.models import MediaLink
+
+        self.upload()
+
+        self.assertEqual(MediaLink.for_entity(self.part).count(), 1)
+
+    def test_and_it_is_filed_as_a_photo_rather_than_a_document(self):
+        from homeautoshop.mediafiles.models import Media, MediaLink
+
+        self.upload()
+
+        link = MediaLink.for_entity(self.part).get()
+        self.assertEqual(link.media.kind, Media.Kind.PHOTO)
+
+    def test_several_at_once(self):
+        from homeautoshop.mediafiles.models import MediaLink
+
+        self.upload(self.photo("one.jpg", b"first"), self.photo("two.jpg", b"second"))
+
+        self.assertEqual(MediaLink.for_entity(self.part).count(), 2)
+
+    def test_the_same_photo_twice_is_stored_once(self):
+        """FR-DOC-6, through the same `ingest` every other attachment uses."""
+        from homeautoshop.mediafiles.models import Media
+
+        self.upload(self.photo("bench.jpg", b"identical bytes"))
+        self.upload(self.photo("bench-again.jpg", b"identical bytes"))
+
+        self.assertEqual(Media.objects.count(), 1)
+
+    def test_the_part_page_shows_it(self):
+        self.upload()
+
+        page = self.client.get(reverse("part_detail", args=[self.part.pk])).content.decode()
+
+        self.assertIn("link.jpg", page)
+        self.assertNotIn("No photos yet.", page)
+
+    def test_a_part_with_none_says_so(self):
+        page = self.client.get(reverse("part_detail", args=[self.part.pk])).content.decode()
+
+        self.assertIn("No photos yet.", page)
+
+    def test_pressing_upload_with_nothing_chosen_says_so(self):
+        """Two controls in sequence: silence here reads as a page that did
+        nothing for no reason."""
+        response = self.client.post(
+            reverse("part_photo_upload", args=[self.part.pk]), {}, follow=True
+        )
+
+        self.assertContains(response, "Choose a photo first")
+
+    def test_a_photo_can_be_taken_off_again(self):
+        from homeautoshop.mediafiles.models import MediaLink
+
+        self.upload()
+        link = MediaLink.for_entity(self.part).get()
+
+        self.client.post(reverse("media_unlink", args=[link.pk]))
+
+        self.assertEqual(MediaLink.for_entity(self.part).count(), 0)
+
+
+class TheStockLotsCardReadsAsFiguresTests(TestCase):
+    """Reported as: fix the line breaks in the stock lots card.
+
+    A quantity of `1.000` was set as `1.00` above a stray `0`, the acquired
+    date broke after its comma, and the count controls wrapped so that
+    `Adjust` sat under the reason box rather than beside the number it acts
+    on. All three are the same fault — five columns of a table asked to fit
+    inside half a page — and the shape of the fix is to say which cells are
+    single values, so the ones that are not take the squeeze instead.
+
+    Worth pinning because none of it fails loudly: a broken number renders
+    perfectly and reads as a different number.
+    """
+
+    def setUp(self):
+        from homeautoshop.accounts.models import Role, User
+
+        self.user = User.objects.create_user(
+            username="andy", password="x" * 16, role=Role.ADMIN
+        )
+        self.client.force_login(self.user)
+        self.part = Part.objects.create(name="Brake cleaner")
+        self.lot = StockLot.objects.create(
+            part=self.part, qty_on_hand=0, unit_cost_minor=7901
+        )
+        StockTransaction.record(self.lot, 1, StockTransaction.Reason.FOUND)
+
+    def page(self) -> str:
+        return self.client.get(
+            reverse("part_detail", args=[self.part.pk])
+        ).content.decode()
+
+    @staticmethod
+    def stylesheet() -> str:
+        """Comments stripped: the prose explaining a rule is not the rule."""
+        import re
+        from pathlib import Path
+
+        from django.conf import settings
+
+        css = (Path(settings.BASE_DIR) / "static" / "app.css").read_text(
+            encoding="utf-8"
+        )
+        return re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+
+    def test_the_quantity_and_the_cost_ask_not_to_be_broken(self):
+        """Both figures on the row, and only those: the location beside them
+        is prose and is the cell that should give up its width."""
+        page = self.page()
+
+        self.assertIn('<td class="mono num">1.000</td>', page)
+        self.assertEqual(page.count('<td class="mono num">'), 2)
+
+    def test_the_acquired_date_stays_on_one_line(self):
+        """`Aug. 31, 2026` has a space in it and is still one value."""
+        self.assertIn('<td class="nowrap">', self.page())
+
+    def test_the_class_holding_them_together_is_still_declared(self):
+        """Deleting the rule would leave the markup asking for nothing.
+
+        Read as "declares nowrap" rather than matched exactly, because how the
+        figure is held together is allowed to change and whether it is held
+        together at all is not.
+        """
+        rule = self.stylesheet().split(".num, .mono.num {")[1].split("}")[0]
+
+        self.assertIn("white-space: nowrap", rule)
+
+    def test_the_order_review_screen_leans_on_the_same_rule(self):
+        """It had its own copy of this, scoped to `.orderlines`, for the same
+        defect — the review screen showed `$182` above `.39`. There is one
+        rule now, and the screen that found the fault first still asks for
+        it, so deleting the scoped copy has to stay safe."""
+        from pathlib import Path
+
+        from django.conf import settings
+
+        review = (
+            Path(settings.BASE_DIR) / "templates" / "purchasing" / "order_import.html"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('class="mono small num"', review)
+        self.assertNotIn(".orderlines td.num", self.stylesheet())
+
+    def test_the_count_and_its_reason_are_laid_out_rather_than_left_to_wrap(self):
+        page = self.page()
+
+        self.assertIn('class="lotcount"', page)
+        self.assertIn(".lotcount {", self.stylesheet())
+
+    def test_counting_still_works_through_the_new_shape(self):
+        """The layout moved; the fields did not."""
+        self.client.post(
+            reverse("lot_count", args=[self.part.pk, self.lot.pk]),
+            {"counted": "3", "note": "recount"},
+        )
+
+        self.lot.refresh_from_db()
+        self.assertEqual(self.lot.qty_on_hand, Decimal("3.000"))

@@ -24,7 +24,8 @@
     <input type="hidden" name="kind" value="{{ kind }}">
     <div class="field">
       <label for="file">{% translate "CSV file" %}</label>
-      <input id="file" type="file" name="file" accept=".csv,.txt,text/csv" required>
+      <input id="file" type="file" name="file" accept=".csv,.txt,text/csv" required
+             title="{% translate 'The spreadsheet to read, saved as CSV. You map its columns on the next screen before anything is written.' %}">
     </div>
     <button class="primary" type="submit">{% translate "Read the columns" %}</button>
   </form>

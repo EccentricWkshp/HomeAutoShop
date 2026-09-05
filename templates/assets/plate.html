@@ -37,11 +37,13 @@
     <div class="formgrid">
       <div class="field">
         <label for="plate">{% translate "Plate" %}</label>
-        <input id="plate" type="text" name="plate" value="{{ plate }}" maxlength="16" required>
+        <input id="plate" type="text" name="plate" value="{{ plate }}" maxlength="16" required
+               title="{% translate 'The registration plate to look up, as printed on it.' %}">
       </div>
       <div class="field">
         <label for="region">{% translate "State or province" %}</label>
-        <input id="region" type="text" name="region" value="{{ region }}" maxlength="8" required>
+        <input id="region" type="text" name="region" value="{{ region }}" maxlength="8" required
+               title="{% translate 'Which state or province issued the plate. A plate only means anything alongside one.' %}">
         <p class="small muted">{% translate "Coverage differs by state and province." %}</p>
       </div>
     </div>

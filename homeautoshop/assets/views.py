@@ -27,6 +27,7 @@ from homeautoshop.accounts.policy import (
 )
 
 from homeautoshop.accounts.models import require
+from homeautoshop.core.described import DescribedFields
 from homeautoshop.core.measurements import distance_unit_for
 from homeautoshop.mediafiles.models import Media, MediaLink
 from homeautoshop.mediafiles.services import ingest
@@ -112,7 +113,7 @@ SECTIONS = (
 FULL_WIDTH = ("nickname", "notes")
 
 
-class AssetForm(forms.ModelForm):
+class AssetForm(DescribedFields, forms.ModelForm):
     """The vehicle, plus how this person wants its card to look.
 
     The card fields are not columns on `Asset` — order, color and pins are per
@@ -127,6 +128,76 @@ class AssetForm(forms.ModelForm):
     indistinguishable from a post that never carried the section — and one of
     those means "pin nothing", while the other must leave the card alone.
     """
+
+    #: What every box on this form is for, read by the browser as a tooltip
+    #: and by `forms.js` in place of "Please fill out this field".
+    #: `gettext_lazy` because a dict built at import time would otherwise
+    #: freeze whatever language was active when the module loaded.
+    descriptions = {
+        "asset_kind": gettext_lazy(
+            "Whether this is a vehicle or a piece of equipment. It decides "
+            "which half of this form you are shown."
+        ),
+        "vehicle_class": gettext_lazy(
+            "Roughly what it is — car, truck, motorcycle. Vehicles only."
+        ),
+        "status": gettext_lazy(
+            "Where it stands today. Sold, parted out and totaled drop off the "
+            "list without losing their history."
+        ),
+        "vin": gettext_lazy(
+            "The 17 characters stamped on the dash and the door jamb. "
+            "Decoding it fills in the year, make and model for you."
+        ),
+        "plate": gettext_lazy("The registration plate, as printed on it."),
+        "plate_expires_on": gettext_lazy(
+            "When the registration runs out, so you are told before it does."
+        ),
+        "year": gettext_lazy(
+            "The model year the manufacturer calls it, not the year it was built."
+        ),
+        "make": gettext_lazy("Who built it: Toyota, Ford, Kubota."),
+        "model": gettext_lazy("What they call it: Camry, Ranger, B7100."),
+        "trim": gettext_lazy("The version of that model — LE, Sport, Limited."),
+        "body_style": gettext_lazy("Sedan, coupe, crew cab, and so on."),
+        "engine": gettext_lazy(
+            "Whatever the parts counter asks for: 2.4L I4, 6.7L Power Stroke."
+        ),
+        "fuel_type": gettext_lazy("Gasoline, diesel, electric, propane."),
+        "transmission": gettext_lazy(
+            "Automatic or manual, and how many speeds where that matters."
+        ),
+        "drivetrain": gettext_lazy("Which wheels it drives: FWD, RWD, AWD, 4WD."),
+        "color_exterior": gettext_lazy("The color you would use to point at it."),
+        "manufacturer": gettext_lazy(
+            "Who built this machine. Equipment's answer to a vehicle's make."
+        ),
+        "model_number": gettext_lazy("The model number off the plate on the machine."),
+        "serial_number": gettext_lazy(
+            "The serial number off that same plate. Equipment's version of a VIN."
+        ),
+        "meter": gettext_lazy(
+            "What its use is counted in. Equipment is usually engine hours; a "
+            "vehicle is the odometer. Choose no meter and nothing is tracked by use."
+        ),
+        "meter_unit": gettext_lazy(
+            "The unit that meter reads in: mi, km, or hours."
+        ),
+        "acquired_on": gettext_lazy(
+            "When it became yours. Lifetime cost is counted from this date."
+        ),
+        "notes": gettext_lazy(
+            "Anything the fields above have no box for. Quirks, history, what "
+            "the rattle at 40 turned out to be."
+        ),
+        "card_color": gettext_lazy(
+            "The stripe on this vehicle's card, so you can pick it out of six "
+            "at a glance. Yours alone — it changes nobody else's list."
+        ),
+        "card_pins": gettext_lazy(
+            "The facts pinned to this vehicle's card on the list. Yours alone."
+        ),
+    }
 
     card_prefs = forms.CharField(required=False, initial="1", widget=forms.HiddenInput)
     # Labeled rather than left to Django, which would derive "Card color" and
@@ -340,7 +411,21 @@ class AssetForm(forms.ModelForm):
         return asset
 
 
-class ReadingForm(forms.Form):
+class ReadingForm(DescribedFields, forms.Form):
+    """What the meter says today (FR-VEH-4)."""
+
+    descriptions = {
+        "value": gettext_lazy(
+            "What the meter reads now, in the unit shown beside it. Readings "
+            "are kept as history, so an older one can be recorded too."
+        ),
+        "read_on": gettext_lazy("When you read it. Today, unless you say otherwise."),
+        "note": gettext_lazy(
+            "Why you took the reading, if it is worth saying — at a fill-up, "
+            "before a trip, at the inspection."
+        ),
+    }
+
     value = forms.DecimalField(max_digits=12, decimal_places=2, min_value=0)
     read_on = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}))
     note = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 2}))
@@ -1092,7 +1177,21 @@ def service_info_unpin(request, pk, provider_id):
     return redirect("asset_detail", pk=asset.pk)
 
 
-class OwnershipForm(forms.ModelForm):
+class OwnershipForm(DescribedFields, forms.ModelForm):
+    descriptions = {
+        "person": gettext_lazy(
+            "Who this is. Somebody already on the people list — add them there "
+            "first if they are not."
+        ),
+        "role": gettext_lazy(
+            "Owner, co-owner, or the person who actually drives it. Recording "
+            "an owner ends the previous owner's run rather than leaving two."
+        ),
+        "from_date": gettext_lazy(
+            "When it started. Today, unless you are filling in history."
+        ),
+    }
+
     class Meta:
         model = AssetOwnership
         fields = ["person", "role", "from_date"]
@@ -1145,7 +1244,27 @@ def ownership_end(request, pk, ownership_id):
     return redirect("asset_detail", pk=asset.pk)
 
 
-class SpecForm(forms.ModelForm):
+class SpecForm(DescribedFields, forms.ModelForm):
+    descriptions = {
+        "group": gettext_lazy(
+            "Which part of the vehicle this figure belongs to, so the page can "
+            "group it: capacities, torque, tires, fluids."
+        ),
+        "name": gettext_lazy(
+            "What the figure is, as you would look it up: “Engine oil capacity”, "
+            "“Lug nut torque”."
+        ),
+        "value": gettext_lazy(
+            "The figure itself. Where a spec is a range, this is the low end "
+            "and the box beside it is the high one."
+        ),
+        "unit": gettext_lazy("The unit the figure is in: qt, ft-lb, psi, mm."),
+        "source": gettext_lazy(
+            "Where it came from, which is what tells you how much to trust it: "
+            "the manual, a scan tool, a forum, or a measurement you took."
+        ),
+    }
+
     class Meta:
         model = AssetSpec
         fields = [

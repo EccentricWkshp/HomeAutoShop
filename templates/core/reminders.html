@@ -73,6 +73,7 @@
         <div class="field full">
           <label for="id_target">{% translate "Where to send it" %}</label>
           <input name="target" id="id_target" class="input" required
+                 title="{% translate 'Where this reminder goes: an email address, or the address of a webhook for something like Home Assistant.' %}"
                  placeholder="{% translate 'you@example.com — or https://…/webhook' %}">
         </div>
         <div class="field">
