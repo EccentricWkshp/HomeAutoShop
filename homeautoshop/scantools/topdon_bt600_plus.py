@@ -391,7 +391,7 @@ def _confidence(words: list[dict]) -> float:
 def rows_from_words(pages: list[list[dict]]) -> list[Row]:
     """Word geometry read back as the lines the tester printed.
 
-    Grouped by the vertical **centre** of each word rather than its top, and
+    Grouped by the vertical **center** of each word rather than its top, and
     with a tolerance taken from the words' own height rather than a constant.
     Both matter here and neither did for a PDF. A constant of two points is
     right for typeset text seven hundred points tall and meaningless for a
@@ -729,7 +729,7 @@ def parse_rows(rows: list[Row], size: tuple[int, int] | list = ()) -> TesterRepo
         # Numbered by the results kept, not by the chunks cut. A photograph
         # taken from the bottom of the strip starts with the torn tail of the
         # receipt before it, and counting that would leave the first report
-        # anybody can see labelled as the second.
+        # anybody can see labeled as the second.
         result, serial = _result(chunk, len(report.results))
         if result is None:
             if _looked_like_a_report(chunk):
@@ -868,7 +868,7 @@ def _value_for(
 
 
 def _read(key: str, raw: str, row: Row, span: tuple[int, int], nearby: bool) -> Value:
-    """One labelled value, validated but never repaired into existence."""
+    """One labeled value, validated but never repaired into existence."""
     value = Value(
         key=key,
         label=PRINTED.get(key, key.upper()),

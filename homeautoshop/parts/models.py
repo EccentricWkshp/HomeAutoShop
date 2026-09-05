@@ -17,11 +17,14 @@ from decimal import ROUND_HALF_UP, Decimal
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import F, Sum
+from django.db.models.functions import Lower
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from homeautoshop.core.measurements import PART_UNITS, UNIT_LABELS
-from homeautoshop.core.models import AppendOnlyModel, BaseModel, RevisionedModel
+from homeautoshop.core.models import (
+    AppendOnlyModel, BaseModel, RevisionedModel, uuid7,
+)
 from homeautoshop.core.money import money, money_columns
 
 
@@ -50,15 +53,59 @@ class PartType(models.TextChoices):
     USED = "used", _("Used")
 
 
+class Category(models.Model):
+    """One label parts are filed under, and the only spelling of it.
+
+    **Several per part, because parts are genuinely in more than one place at
+    once.** A headlight bulb is electrical and it is lighting; a brake line is
+    brakes and it is hydraulics, and neither of those contains the other, so a
+    tree does not answer it either. A single field made somebody choose, and
+    the part then could not be found from the other direction — which is the
+    exact failure the category was added to fix. It also invited the choice
+    being dodged: with one box, `Electrical/Lighting` gets typed, and that is a
+    third category matching neither filter.
+
+    A row rather than a string, and a **case-insensitively unique** one,
+    because the convergence this exists for cannot be a helper function that
+    every writer has to remember to call. That was the previous shape and the
+    CSV importer walked straight past it — writing whatever the spreadsheet
+    said, splitting `Brakes` in two, in the one place a catalog arrives
+    hundreds of rows at a time. A constraint cannot be walked past.
+
+    Not a `BaseModel`: a label is not a record with a history, and soft-delete
+    would leave parts pointing at a category the managers hide.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
+    name = models.CharField(max_length=64)
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+
+    class Meta:
+        ordering = [Lower("name")]
+        verbose_name_plural = _("categories")
+        constraints = [
+            models.UniqueConstraint(Lower("name"), name="parts_category_one_spelling"),
+        ]
+
+    def __str__(self) -> str:
+        return self.name
+
+
 class Part(RevisionedModel):
     name = models.CharField(max_length=200)
-    category = models.CharField(max_length=64, blank=True, db_index=True)
+    #: Blank is a real answer — a part nobody has filed yet is still a part,
+    #: and refusing to save one without a category would put a toll booth in
+    #: front of the barcode-scan flow, which exists to be fast.
+    categories = models.ManyToManyField(
+        Category, blank=True, related_name="parts",
+        help_text=_("A headlight is electrical and lighting. Both is allowed."),
+    )
     manufacturer = models.CharField(max_length=80, blank=True)
     part_number = models.CharField(max_length=80, blank=True, db_index=True)
     part_type = models.CharField(max_length=20, choices=PartType.choices, default=PartType.AFTERMARKET)
     #: What one of these is measured in. Four choices were hard-coded here —
-    #: each, litres, kilograms, feet — which is not a preference so much as a
-    #: guess about somebody else's catalogue: R-134a is sold in cylinders by the
+    #: each, liters, kilograms, feet — which is not a preference so much as a
+    #: guess about somebody else's catalog: R-134a is sold in cylinders by the
     #: pound and dispensed by the ounce or the half-kilogram, and none of those
     #: were sayable. The set now covers mass, volume, length and count, and a
     #: quantity may be *entered* in any unit of the same kind and converted.
@@ -87,7 +134,6 @@ class Part(RevisionedModel):
 
     class Meta:
         ordering = ["name"]
-        indexes = [models.Index(fields=["category", "name"])]
 
     def __str__(self) -> str:
         bits = [self.manufacturer, self.name, self.part_number]
@@ -143,7 +189,7 @@ class Part(RevisionedModel):
             # A unit the table does not know. Taking the number at face value is
             # better than refusing the whole entry over the box beside it.
             return amount
-        # Quantised, because a conversion factor is irrational-looking and the
+        # Quantized, because a conversion factor is irrational-looking and the
         # ledger holds three decimal places: half a kilogram is
         # 1.102311310924387903614869007 lb, which the column refuses outright.
         # Rounding here rather than at the column means the number that lands is
@@ -159,7 +205,7 @@ class Part(RevisionedModel):
         and hose genuinely come in fractions. What it fixes is the spinner: a
         gasket set stepping by a thousandth is arrows nobody can use and an
         offer to record 0.003 of a gasket. A string rather than a `Decimal`, so
-        localisation cannot turn the attribute into `0,001`.
+        localization cannot turn the attribute into `0,001`.
         """
         return "1" if self.is_countable else "0.001"
 

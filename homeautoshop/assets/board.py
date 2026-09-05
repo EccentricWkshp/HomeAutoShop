@@ -8,7 +8,7 @@ behave under the things that actually happen to a board:
 * *A vehicle nobody has placed sorts last, alphabetically.* Adding a car must
   not shuffle a board somebody arranged, and inserting it at a position derived
   from its nickname would do exactly that.
-* *Arranging anything places everything.* The first move materialises a
+* *Arranging anything places everything.* The first move materializes a
   position for every vehicle the person can see — not just the ones on screen.
   Without that, a swap on the Equipment tab would be comparing a number against
   a `NULL`, and the two orders would have to be merged on every read.
@@ -109,7 +109,7 @@ def ensure_placed(user, assets) -> dict:
     Called before any rearrangement, with **every** vehicle the person can see
     rather than the filtered page they are looking at, because a position is
     only meaningful against the whole board. The order handed out is the order
-    they were already being shown in, so materialising it changes nothing on
+    they were already being shown in, so materializing it changes nothing on
     screen — it only turns an implied order into a stored one that a swap can
     work against.
     """
@@ -150,10 +150,10 @@ def _apply_slots(prefs: dict, ordered_ids: list) -> None:
 
 
 def move(user, everything, visible, asset, direction: str) -> None:
-    """Swap one card with its neighbour *as the person can see it*.
+    """Swap one card with its neighbor *as the person can see it*.
 
     "Up" means above the card that is drawn above it, which on a filtered
-    screen is not the next slot on the board. Resolving the neighbour from the
+    screen is not the next slot on the board. Resolving the neighbor from the
     visible list and then swapping their two slots is what makes the button do
     what the screen shows.
     """
@@ -265,7 +265,7 @@ def _capped(badges: list, total: int) -> list:
 
 
 def panel_for(user, assets, limit: int = FLEET_PREVIEW) -> list:
-    """The dashboard's Fleet panel — this person's order and colours, no pins.
+    """The dashboard's Fleet panel — this person's order and colors, no pins.
 
     Deliberately not `cards_for`. The panel is a list of names, and running the
     pin queries to draw six links would be paying for a card nobody asked for
@@ -296,7 +296,7 @@ def cards_for(user, assets) -> list:
         pref = prefs.get(asset.pk)
         stored = pref.pins if pref is not None else None
         # `None` is "never chose", which takes the defaults. An empty list is a
-        # choice — a card showing nothing but its nickname — and is honoured.
+        # choice — a card showing nothing but its nickname — and is honored.
         keys = cardlib.DEFAULT_PINS if stored is None else stored
         resolved[asset.pk] = tuple(cardlib.valid_pins(keys, kind=asset.asset_kind))
 

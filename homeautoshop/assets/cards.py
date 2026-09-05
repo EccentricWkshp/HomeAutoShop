@@ -1,10 +1,10 @@
-"""What a vehicle's card on the board is allowed to say, and what colour it is.
+"""What a vehicle's card on the board is allowed to say, and what color it is.
 
 The board — the Vehicles screen, and the Fleet panel on the dashboard — is the
 one screen somebody looks at to find a vehicle rather than to read one. So the
 question it has to answer is not "what is true about this truck" but "which of
 these six cards is the truck I mean", and the answer differs per household: one
-shop recognises a vehicle by its plate, another by its photo, another by the
+shop recognizes a vehicle by its plate, another by its photo, another by the
 fact that it is the one with three codes standing against it.
 
 Hence pins. The card carries the nickname and whatever else has been pinned to
@@ -13,7 +13,7 @@ hours and a serial number identify one, a plate identifies the other, and
 "plate" on a generator is a row that can only ever be empty.
 
 **The nickname is not a pin.** It is the card's heading and the link's
-accessible name, so a card with it switched off would be an unlabelled link to
+accessible name, so a card with it switched off would be an unlabeled link to
 somewhere — which is the one arrangement that has to stay impossible (§9.5).
 Everything else on the card is the operator's to choose.
 """
@@ -82,7 +82,7 @@ def valid_pins(keys, *, kind: str = "") -> list[str]:
     ]
 
 
-#: Card colours, as keys — the values live in `app.css`, one custom property
+#: Card colors, as keys — the values live in `app.css`, one custom property
 #: per key, so light and dark each get a tint that is legible in that theme.
 #:
 #: Decoration, never encoding (§9.5). Nothing on the card means anything by

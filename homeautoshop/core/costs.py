@@ -5,7 +5,7 @@ Three rules keep these numbers honest:
 
 * **Parts are valued at the lot cost actually consumed**, not at today's price.
 * **Tooling is excluded from per-asset cost** unless the operator opts in (OQ-4).
-* **Labour is an estimate and is labeled as one.** It is included only when a
+* **Labor is an estimate and is labeled as one.** It is included only when a
   rate is configured, and never rendered as a bill (NG-1).
 """
 
@@ -157,7 +157,7 @@ def _labour_minor(minutes: int) -> int:
 
 
 def work_order_cost(work_order) -> Rollup:
-    """Itemised cost of one job (FR-COST-1)."""
+    """Itemized cost of one job (FR-COST-1)."""
     rollup = Rollup(currency=conf.CURRENCY_REPORTING)
 
     parts_minor = sum(u.line_total_minor for u in work_order.part_usages.select_related("part"))

@@ -152,7 +152,7 @@ The schema above was written against one format. Seven profiles now ship in the 
 
 ### `media_type: text` is the common case, not the exception
 
-Three of the four read text rather than word geometry, and one of those is a PDF. §8.3a's finding was that *the D8* needs geometry — its section boundaries are colours — and that finding does not generalize: Autel labels every section in words and states the code status in a vocabulary, so its PDF is read as text and the same profile keeps working if the operator has a CSV export instead. **Word geometry is what a format costs you, not what a parser deserves.**
+Three of the four read text rather than word geometry, and one of those is a PDF. §8.3a's finding was that *the D8* needs geometry — its section boundaries are colors — and that finding does not generalize: Autel labels every section in words and states the code status in a vocabulary, so its PDF is read as text and the same profile keeps working if the operator has a CSV export instead. **Word geometry is what a format costs you, not what a parser deserves.**
 
 ### `multiline: true` — a row may be printed across lines
 

@@ -23,7 +23,7 @@ What the real captures found, that nothing hand-made would have:
   serial got written into this repository. See `RedactingABenchTesterTests`.
 
 Three kinds of test, as everywhere in this package: values read off the
-photographs, behaviour the corpus does not happen to exercise, and the rules
+photographs, behavior the corpus does not happen to exercise, and the rules
 the parser must never break.
 """
 

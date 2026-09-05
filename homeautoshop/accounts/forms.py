@@ -41,7 +41,7 @@ class PasswordPairMixin:
 
 
 def password_fields(*, required: bool = True) -> dict:
-    """The two fields, labelled and told not to autofill the browser."""
+    """The two fields, labeled and told not to autofill the browser."""
     return {
         "password1": forms.CharField(
             label=_("Password"),

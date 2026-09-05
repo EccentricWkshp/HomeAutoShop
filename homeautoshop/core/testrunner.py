@@ -1,7 +1,7 @@
 """The test runner: it closes the network, and it makes password hashing cheap.
 
 Both jobs live here for the same reason. A `DiscoverRunner` subclass is built
-by `manage.py test` and by nothing else, so neither behaviour has any route
+by `manage.py test` and by nothing else, so neither behavior has any route
 into a deployment — which matters more for the second, since it deliberately
 weakens a security setting.
 
@@ -14,7 +14,7 @@ advice for this, and `tests_hashing.py` asserts that the settings file still
 ships Argon2, reading it off disk because by the time a test runs this runner
 has already replaced the value in memory.
 
-**Parallelism.** `--parallel` is honoured on PostgreSQL and declined on SQLite,
+**Parallelism.** `--parallel` is honored on PostgreSQL and declined on SQLite,
 because Django hands each SQLite worker an *in-memory* database and §13.2 asks
 for a file-backed one so the backup path is exercised rather than assumed. CI
 runs PostgreSQL and passes `--parallel auto`; a developer's machine runs SQLite
@@ -153,7 +153,7 @@ class Runner(DiscoverRunner):
 
         Declining out loud beats two worse options — failing with errors that
         look like broken tests, or skipping the backup tests and quietly
-        cancelling the guarantee they exist to keep.
+        canceling the guarantee they exist to keep.
         """
         super().__init__(*args, **kwargs)
         if self.parallel > 1 and self._database_is_sqlite():

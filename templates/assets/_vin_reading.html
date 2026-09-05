@@ -29,12 +29,12 @@ against, for the same reason a decoded field carries its provenance.
             · {% for year in reading.years %}{{ year }}{% if not forloop.last %} {% translate "or" %} {% endif %}{% endfor %}
           {% endif %}
           {% comment %}
-          A reading with positions its tables do not recognise is a weaker one,
+          A reading with positions its tables do not recognize is a weaker one,
           and where several are offered the reader deserves to see which is
           which without opening all of them.
           {% endcomment %}
           {% if reading.unknown %}
-            <span class="muted small">· {% blocktranslate count n=reading.unknown|length %}{{ n }} position unrecognised{% plural %}{{ n }} positions unrecognised{% endblocktranslate %}</span>
+            <span class="muted small">· {% blocktranslate count n=reading.unknown|length %}{{ n }} position unrecognized{% plural %}{{ n }} positions unrecognized{% endblocktranslate %}</span>
           {% endif %}
         </summary>
         <table class="small">

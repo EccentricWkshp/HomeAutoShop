@@ -1,5 +1,5 @@
 """
-Arranging the board: order, colour, and what each card says (SPEC §9.3).
+Arranging the board: order, color, and what each card says (SPEC §9.3).
 
 The Vehicles screen was an alphabetical grid of identical cards, which answers
 "list my vehicles" and not the question it is actually opened for — "which of
@@ -104,7 +104,7 @@ class BoardOrderTests(TestCase):
         """The case the whole slot arrangement exists for.
 
         On the Equipment tab only the mower is visible, so a move there can see
-        no neighbour and must change nothing — and, crucially, must not
+        no neighbor and must change nothing — and, crucially, must not
         renumber the board from a view that was never showing all of it.
         """
         self.move(self.truck, "up")
@@ -289,7 +289,7 @@ class CardContentTests(TestCase):
     def test_equipment_never_carries_a_vin_pin(self):
         """`Asset.clean` refuses a VIN on equipment, so the pin cannot apply.
 
-        Stored is not the same as honoured — a vehicle turned into equipment
+        Stored is not the same as honored — a vehicle turned into equipment
         keeps whatever was pinned to it, and the card is what has to be right.
         """
         mower = Asset.objects.create(nickname="Mower", asset_kind=AssetKind.EQUIPMENT)
@@ -378,7 +378,7 @@ class CardContentTests(TestCase):
 
 
 class CardFormTests(TestCase):
-    """Colour and pins are set where the vehicle is edited, and are per person."""
+    """Color and pins are set where the vehicle is edited, and are per person."""
 
     def setUp(self):
         self.user = User.objects.create_user(username="andy", password="x" * 16)
@@ -458,7 +458,7 @@ class CardFormTests(TestCase):
         )
 
     def test_clearing_the_colour_never_costs_a_position(self):
-        """Order and colour share a row, and only one of them was being changed."""
+        """Order and color share a row, and only one of them was being changed."""
         AssetCardPreference.objects.create(
             user=self.user, asset=self.truck, color="red", board_order=3
         )

@@ -8,7 +8,7 @@ have been there and not find it.
 
 The choosers were fixed earlier by replacing the list with a search. This is
 the same defect one screen over — and the reason to fix it here differently is
-that a catalogue is a thing people browse, so the answer is page numbers and a
+that a catalog is a thing people browse, so the answer is page numbers and a
 count rather than a search box.
 """
 
@@ -63,7 +63,7 @@ class BrowsingTests(Base):
 
     def test_the_count_is_of_everything_not_of_the_page(self):
         """The number that makes a truncation visible. Reporting the page's own
-        length would have said "100 parts" about a catalogue of 320."""
+        length would have said "100 parts" about a catalog of 320."""
         self.stock(320)
 
         page = self.client.get(self.url)
@@ -102,7 +102,7 @@ class SearchingTests(Base):
 
     def test_paging_through_a_search_keeps_the_search(self):
         """Otherwise the second page of a search is the second page of the
-        whole catalogue, which is a different list wearing the same heading."""
+        whole catalog, which is a different list wearing the same heading."""
         self.stock(PAGE_SIZE + 20, prefix="Filter")
         self.stock(10, prefix="Gasket")
 

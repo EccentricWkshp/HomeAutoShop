@@ -33,7 +33,7 @@ class MisDecodedBytesTests(SimpleTestCase):
 
     def test_damage_that_cannot_be_read_back_is_dropped_not_guessed(self):
         """A lone `0xA3` has no lead byte to decode with. Turning it into the
-        comma its neighbours decode to would read better and would be
+        comma its neighbors decode to would read better and would be
         invention, which §8.3c refuses whether a person or a table does it."""
         self.assertEqual(
             transcription.tidy("Throttle valve stuck£-dirty block"),

@@ -42,7 +42,7 @@ DRIVERS = ("filesystem", "s3")
 #: is a queue and a wait for the worker, and copying them is a few megabytes.
 FILE_FIELDS = ("file", "thumb", "preview")
 
-#: How many problem files to name before summarising. Long enough to see the
+#: How many problem files to name before summarizing. Long enough to see the
 #: shape of a failure, short enough that the useful line at the end is still on
 #: the screen.
 LISTED = 20

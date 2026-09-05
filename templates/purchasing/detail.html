@@ -62,7 +62,15 @@
               {% endif %}</td>
           <td class="mono">{{ line.qty_ordered }}</td>
           <td class="mono">{{ line.qty_received }}</td>
-          <td class="mono">{{ line.unit_price }}</td>
+          {% comment %}
+          Both figures, because either one alone misleads. A per-unit price of
+          $36.48 beside five gallons does not come to the $182.39 on the
+          receipt, and the reader is left working out which number lied.
+          Neither does: the price really is $36.478 a gallon.
+          {% endcomment %}
+          <td class="mono">{{ line.extended }}
+            <div class="small muted">{% blocktranslate with each=line.unit_price_shown %}{{ each }} each{% endblocktranslate %}</div>
+          </td>
           <td>
             {% if line.outstanding > 0 and line.part %}
               <form method="post" action="{% url 'purchase_line_receive' purchase.pk line.pk %}" class="row">
@@ -111,9 +119,20 @@
           {# Whole ones unless the part chosen above is measured out. #}
           <input type="number" step="1" name="qty_ordered" id="id_qty" value="1" class="input"
                  data-step-from="id_part_chosen"></div>
-        <div class="field"><label for="id_price">{% translate "Unit price" %}</label>
+        {% comment %}
+        Two boxes for one fact, and that is deliberate: a receipt states
+        whichever of them the vendor felt like printing. Five gallons of brake
+        cleaner is sold as $182.39 for the five, and demanding a per-gallon
+        figure asks for a number nobody was ever given — then rounds the
+        division to the cent and quietly changes the order total.
+        {% endcomment %}
+        <div class="field"><label for="id_price">{% translate "Price each" %}</label>
           <input type="text" inputmode="decimal" autocomplete="off" name="unit_price_minor"
                  id="id_price" placeholder="{{ zero_amount }}" class="input"></div>
+        <div class="field"><label for="id_extended">{% translate "or total for the line" %}</label>
+          <input type="text" inputmode="decimal" autocomplete="off" name="extended_minor"
+                 id="id_extended" placeholder="{{ zero_amount }}" class="input">
+          <p class="helptext">{% translate "Whichever the receipt gives. The total wins if both are filled in." %}</p></div>
         <div class="field"><label for="id_core">{% translate "Core charge" %}</label>
           <input type="text" inputmode="decimal" autocomplete="off" name="core_charge_minor"
                  id="id_core" placeholder="{{ zero_amount }}" class="input"></div>
@@ -126,10 +145,23 @@
     <section class="card">
       <h2>{% translate "Totals" %}</h2>
       <table class="small">
-        <tr><th>{% translate "Subtotal" %}</th><td class="mono">{{ purchase.subtotal }}</td></tr>
-        <tr><th>{% translate "Tax" %}</th><td class="mono">{{ purchase.tax }}</td></tr>
+        {% comment %}
+        In the order the arithmetic actually runs, which the old panel was not:
+        it listed the discount *after* the tax, under a subtotal that had not
+        had it taken off, so the one figure a reader wants to check against
+        their receipt — what the tax was charged on — appeared nowhere. Now the
+        taxable line is printed, and the tax says what rate produced it.
+        {% endcomment %}
+        <tr><th>{% translate "Lines" %}</th><td class="mono">{{ purchase.subtotal }}</td></tr>
+        {% if purchase.discount_minor %}
+          <tr><th>{% translate "Discount" %}</th><td class="mono">−{{ purchase.discount }}</td></tr>
+          <tr><th>{% translate "Taxable" %}</th><td class="mono">{{ purchase.taxable }}</td></tr>
+        {% endif %}
+        <tr>
+          <th>{% if purchase.tax_rate %}{% blocktranslate with rate=purchase.tax_rate_shown %}Tax at {{ rate }}%{% endblocktranslate %}{% else %}{% translate "Tax" %}{% endif %}</th>
+          <td class="mono">{{ purchase.tax_charged }}</td>
+        </tr>
         <tr><th>{% translate "Shipping" %}</th><td class="mono">{{ purchase.shipping }}</td></tr>
-        <tr><th>{% translate "Discount" %}</th><td class="mono">−{{ purchase.discount }}</td></tr>
         <tr><th>{% translate "Total" %}</th><td class="mono"><strong>{{ purchase.total }}</strong></td></tr>
       </table>
     </section>

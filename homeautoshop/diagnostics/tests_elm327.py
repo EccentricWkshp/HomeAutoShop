@@ -144,7 +144,7 @@ class AdapterPageTests(TestCase):
         self.assertNotIn("ELM327 over USB", page)
 
     def test_an_empty_chooser_is_explained_rather_than_blamed_on_the_user(self):
-        """The browser reports the same NotFoundError for a cancelled chooser
+        """The browser reports the same NotFoundError for a canceled chooser
         and one that had nothing in it, and its wording — "No port selected by
         the user" — accuses somebody of a decision they never made."""
         page = self.client.get(reverse("elm327", args=[self.asset.pk])).content.decode()

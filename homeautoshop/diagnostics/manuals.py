@@ -148,7 +148,7 @@ def read(document: str) -> Harvest:
     if listed.undefined or listed.codes:
         listed.dropped += found.dropped
         return listed
-    # Nothing was read. Reporting "table" would claim a shape was recognised,
+    # Nothing was read. Reporting "table" would claim a shape was recognized,
     # and the difference between a page with no codes on it and a page whose
     # shape this cannot read is the difference between a gap and a bug.
     return Harvest(

@@ -334,7 +334,7 @@ class ReceivingTests(TestCase):
             vendor=self.vendor, shipping_minor=1000, tax_minor=0
         )
         self.line = PurchaseLine.objects.create(
-            purchase=self.purchase, part=self.part, qty_ordered=2, unit_price_minor=10000
+            purchase=self.purchase, part=self.part, qty_ordered=2, extended_minor=20000
         )
 
     def test_receiving_creates_stock(self):
@@ -777,7 +777,7 @@ class UnreceivingTests(TestCase):
         self.vendor = Vendor.objects.create(name="RockAuto")
         self.purchase = Purchase.objects.create(vendor=self.vendor)
         self.line = PurchaseLine.objects.create(
-            purchase=self.purchase, part=self.part, qty_ordered=4, unit_price_minor=1000
+            purchase=self.purchase, part=self.part, qty_ordered=4, extended_minor=4000
         )
 
     def test_the_stock_goes_back_out(self):
@@ -1255,7 +1255,7 @@ class QuantityStepTests(TestCase):
         self.assertEqual(self.gasket.qty_step, "1")
 
     def test_a_measured_one_keeps_its_thousandths(self):
-        """Four and a half litres of oil is an ordinary thing to record."""
+        """Four and a half liters of oil is an ordinary thing to record."""
         self.assertEqual(self.oil.qty_step, "0.001")
 
     def test_the_use_box_follows_the_part(self):
@@ -1286,7 +1286,7 @@ class QuantityStepTests(TestCase):
         self.assertIn('id="id_kit_part_chosen"', page)
 
     def test_storage_still_takes_fractions_whatever_the_box_says(self):
-        """The step is a spinner, not a rule. Half a litre must still record."""
+        """The step is a spinner, not a rule. Half a liter must still record."""
         self.client.post(
             reverse("part_use", args=[self.oil.pk]), {"qty": "0.5"}
         )
@@ -1436,7 +1436,7 @@ class PartListFactsTests(TestCase):
         vendor = Vendor.objects.create(name="RockAuto")
         purchase = Purchase.objects.create(vendor=vendor, ordered_on=date(2015, 6, 14))
         PurchaseLine.objects.create(
-            purchase=purchase, part=self.part, qty_ordered=1, unit_price_minor=8995
+            purchase=purchase, part=self.part, qty_ordered=1, extended_minor=8995
         )
 
     def page(self) -> str:

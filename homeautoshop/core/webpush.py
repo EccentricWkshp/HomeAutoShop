@@ -42,7 +42,7 @@ log = logging.getLogger(__name__)
 VAPID_KEY = "webpush.vapid"
 
 #: The push services the shipped browsers use. An endpoint on anything else is
-#: refused rather than dialled — a subscription is written by script, and the
+#: refused rather than dialed — a subscription is written by script, and the
 #: allowlist is what keeps a compromised page from turning this into a
 #: general-purpose outbound POST.
 PUSH_HOSTS = (

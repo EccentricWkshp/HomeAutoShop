@@ -678,7 +678,7 @@ class AssetLink(BaseModel):
 class AssetCardPreference(models.Model):
     """How one person wants one vehicle to look on the board (SPEC §9.3).
 
-    Per user, not per shop. Order, colour and pins are answers to "which of
+    Per user, not per shop. Order, color and pins are answers to "which of
     these is the one I mean", and that is a question each person answers
     differently: the person who drives the truck every day wants it first, and
     the person who only ever services the mower does not.
@@ -709,7 +709,7 @@ class AssetCardPreference(models.Model):
     #:
     #: `NULL`, not `[]`, when nobody has chosen — and the difference is the
     #: whole field. An empty list is a real choice ("show me nothing but the
-    #: nickname") and is honoured; `NULL` takes `cards.DEFAULT_PINS`. With
+    #: nickname") and is honored; `NULL` takes `cards.DEFAULT_PINS`. With
     #: `default=list` the two were the same value, so the first time anybody
     #: dragged a card, `ensure_placed` wrote a row to hold its position and
     #: every card on the board went blank.

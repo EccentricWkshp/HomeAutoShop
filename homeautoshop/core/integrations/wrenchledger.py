@@ -2,7 +2,7 @@
 WrenchLedger — tool availability on a work order (SPEC §8.7, INTEGRATION-WRENCHLEDGER.md).
 
 One feature justifies this integration: the **readiness gate**. You plan a brake
-job for Saturday; the breaker bar is at a neighbour's and the torque wrench is
+job for Saturday; the breaker bar is at a neighbor's and the torque wrench is
 due for calibration. Today you find that out on Saturday morning. With this, the
 work order says so on Wednesday.
 
@@ -220,7 +220,7 @@ class WrenchLedgerClient:
         advance it either, or those changes are lost for good.
 
         That last sentence used to be true only of the explicit page bound. The
-        far more likely way to leave a drain unfinished was to *not recognise*
+        far more likely way to leave a drain unfinished was to *not recognize*
         the cursor: this read `next_cursor` at the top level and nothing else,
         while `_rows` already accepted four different places for the rows. An
         envelope that nests its cursor under `meta` therefore looked exactly
@@ -259,7 +259,7 @@ class WrenchLedgerClient:
                 if len(page) >= PAGE_SIZE:
                     log.warning(
                         "wrenchledger returned a full page of %s tools with no cursor "
-                        "this client recognises; leaving the watermark alone",
+                        "this client recognizes; leaving the watermark alone",
                         len(page),
                     )
                     return rows, watermark
@@ -304,7 +304,7 @@ class WrenchLedgerClient:
 
 
 #: Our page size rather than the server's default, so "a full page" is a fact
-#: this client can recognise — see `tools_changed_since`.
+#: this client can recognize — see `tools_changed_since`.
 PAGE_SIZE = 100
 
 #: Where a continuation token is found, in the order it is looked for. As

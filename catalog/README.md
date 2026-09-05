@@ -186,7 +186,7 @@ actually reads; `.text.json` for anything else — and a `.expected.json` beside
 it, **redacting as it goes**. Two rules find a VIN: one that validates its
 check digit anywhere in the document, and one that follows a VIN label whatever
 its check digit says, because position 9 is a check digit only where a
-regulator requires one and a European VIN carries a filler there. Licence
+regulator requires one and a European VIN carries a filler there. License
 plates, customers, technicians, shop names and addresses are removed; workshop
 codes and tool serials are zeroed, keeping the shape a parser matches on.
 

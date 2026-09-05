@@ -96,7 +96,7 @@ read from uploaded documents.
 ### Arrange the board
 
 The Vehicles screen is a board you arrange, and how you arrange it is yours —
-everyone with an account keeps their own order, colours and pins, so nobody
+everyone with an account keeps their own order, colors and pins, so nobody
 else's board moves when you tidy yours.
 
 **Order.** Drag a card by the handle at its top left, or use the ↑ and ↓
@@ -108,8 +108,8 @@ say — moves the card past what you can see and leaves everything hidden where
 it was. The **Fleet** panel on the Today screen is the same board, showing its
 first few, so arranging it in either place arranges both.
 
-**Colour and what each card shows.** Both live on the vehicle's own **Edit**
-screen, under *On the board*. Pick a colour to make one easy to spot, and tick
+**Color and what each card shows.** Both live on the vehicle's own **Edit**
+screen, under *On the board*. Pick a color to make one easy to spot, and tick
 what the card should carry: year/make/model, status, a photo, the meter, VIN,
 plate, engine, owner, driver, what is coming due, open work orders, open
 trouble codes. Choose per vehicle — a plate means nothing on a generator, and
@@ -437,7 +437,7 @@ lists them with the whole total above.
 
 An overrun is shown as a figure and drawn past the budget marker rather than
 stopping at the end of the bar. Your own time is never charged against a
-budget, even when a labour rate is configured: a household budget is money, and
+budget, even when a labor rate is configured: a household budget is money, and
 the hours are reported beside the figures instead.
 
 ### Move a work order through its lifecycle
@@ -477,6 +477,38 @@ Fitment can name one of the shop's vehicles or a year/make/model range, engine,
 and position. Confidence distinguishes confirmed fitment, a vendor claim, an
 inference, and a known non-fit. Fitment remains editable because a confident
 wrong answer is worse than a missing answer.
+
+### Narrow the catalog
+
+The parts list splits three ways — **All**, **Parts**, **Consumables** — and
+each tab carries the number of rows behind it, so an empty side says so before
+it is opened. A part is something that gets installed and stays on the vehicle;
+a consumable is something that gets used up, like oil, brake cleaner or rags.
+The split comes from the **Consumable** box on the part itself.
+
+Marking a part as a consumable does one other thing, on every screen that asks
+you to pick a part: consumables are always offered, and are never ranked as
+something planned for one particular vehicle. Brake cleaner fits everything and
+nobody orders it for the Aerio specifically.
+
+**A part can be in several categories**, because parts genuinely are. A
+headlight bulb is electrical and it is lighting, and filing it under one means
+not finding it from the other. Tick every category that applies.
+
+The form shows a box for each category the shop already uses, plus **Add a
+category** for anything new — separate several with commas. Reuse an existing
+one rather than inventing a new spelling: typing `brakes` when `Brakes` exists
+files the part under `Brakes` rather than starting a second group beside it,
+whatever capitalization or spacing you use. Writing `Electrical/Lighting` in
+the box gives you both categories, not one oddly named one.
+
+A category stays available while any part is in it. Take the last part out and
+it stops being offered, but the name is remembered — type it again later and
+you land back on the same one.
+
+Each row names every category the part is in, and clicking one filters the list
+to the rest of that group. The search box, the category and the tab all apply
+together, and they survive paging.
 
 ### Stock lots and the ledger
 
@@ -546,6 +578,37 @@ Statuses are **Cart**, **Ordered**, **Partially received**, **Received**,
 a Cart linked to that job so quantities can be reviewed and priced before the
 order is placed.
 
+### Prices on a line
+
+A line records **what it cost**, and the price each is worked out from that.
+Enter whichever your receipt gives: **Price each** when it prints one, or
+**total for the line** when it prints the total. If you fill in both, the total
+wins.
+
+That matters more than it looks. Five gallons of brake cleaner sold for $182.39
+works out to $36.478 a gallon, which is not a number of cents — so entering it
+as a price each used to round to $36.48 and make the line $182.40. Entering the
+$182.39 keeps it exact, and the row shows `$36.4780 each` beneath the total so
+both figures are true.
+
+### What an order comes to
+
+The arithmetic runs in this order: the lines are added up, the **discount comes
+off**, tax is worked out on what is left, and shipping is added last. The
+Totals panel prints each step, including the taxable figure, so it can be
+checked line by line against the receipt.
+
+Tax can be given either way. Enter a **tax rate** — `8.4` for 8.4% — and it is
+worked out on the discounted lines and stays right when a line is added or
+corrected. Enter a **tax amount** instead when you are copying a figure off a
+receipt and there is no clean rate behind it; an imported order confirmation
+always arrives this way. If both are filled in, the rate wins, because an
+amount is only correct about the lines as they stood when it was typed.
+
+Shipping is not taxed. Whether a carrier's charge is taxable depends on where
+you are, and the application does not guess at that — if your receipt taxes
+shipping, state the tax as an amount.
+
 ### Receive parts
 
 Receive each line into a location. Partial receiving is supported. Receiving
@@ -563,15 +626,58 @@ background when OCR is enabled, making the receipt searchable.
 
 ### Read a supplier order PDF
 
-**Read an order file** currently supports a RockAuto order-confirmation PDF.
-The preview shows the order, totals, lines, new and matched parts, fitment, kit
-contents, and warnings before writing anything. The held preview can then be
-committed without choosing the file again.
+**Purchases → Read a parts order** turns a supplier's PDF into a purchase, its
+lines, and the parts in your catalog. Three documents are understood:
 
-The import creates or matches the purchase, catalog parts, lines, vendor-stated
-fitment, and supported kit relationships. Importing the same order again does
-not create a duplicate. Once any of the order has been received, re-import
-leaves it alone rather than rewriting the source of existing stock.
+- **RockAuto** — the order confirmation, from the page or the email.
+- **NAPA Auto Parts** — *Your Order History Details*, printed from the browser.
+- **Amazon** — *Final Details for Order #…*, the invoice view.
+
+There is nothing to choose first. The file is recognized by what is in it, and
+if none of the readers knows it, the message says which ones were tried.
+
+Preview before committing. The preview lists every line with its price, what it
+came to, and whether the part is new or already in your catalog, and it checks
+the arithmetic against the document's own total — if the lines it read do not
+add up to what the page says, it says so rather than writing a plausible wrong
+number.
+
+**Not every line is a part.** An Amazon order can hold a relay, two tubing
+cutters and a bag of dog food, and nothing in the document says which is which.
+The preview gives every line a choice:
+
+- **A part** — into the catalog and onto the purchase, as usual.
+- **Tooling** — recorded as money the shop spent, and nothing more. No part is
+  created and nothing is added to any tool list, because what tools you own is
+  not this application's job; that is what WrenchLedger is for. The expense is
+  kept out of any one vehicle's costs, since a torque wrench is not a cost of
+  the Civic.
+- **Leave it out** — it was never for the shop.
+
+Whatever a line becomes, its share of the tax and shipping goes with it, so the
+order still adds up to what it cost. Reading the same order again replaces what
+it recorded rather than banking it twice, so changing your mind about a line is
+safe.
+
+**Say how many you actually got.** One line item is not always one thing: a
+two-pack of relays is one line, one charge and two relays. The count beside
+each line starts at whatever the order counted, and you change it to what came
+out of the box. It moves no money — the line still cost exactly what the order
+says it cost, and the price each is worked out from that, so two relays charged
+at $14.24 go on the shelf at $7.12 apiece.
+
+Where a seller's description mentions a pack — *2Pcs*, *Case of 4* — the phrase
+is shown under the description in the seller's own words. It is quoted rather
+than counted, deliberately: product titles are marketing copy, and a count
+taken out of one would sometimes be wrong in a way that quietly doubles what
+your shelf claims to hold and halves what it claims to have cost.
+
+A NAPA pickup order records the date you collected it, which is what the return
+window runs from.
+
+Reading the same order twice does not make a second purchase. It updates the
+one already there, unless some of it has been received, in which case it leaves
+it alone and says so.
 
 ## Diagnostics and scan reports
 
@@ -1008,6 +1114,38 @@ and map its columns to HomeAutoShop fields. The page shows sample rows and
 requires a dry-run preview before **Do it for real** is offered. The outcome
 counts new, already-present, and skipped rows and lists the first problems.
 
+A mapped column is now actually read. `unit`, `quantity`, `location` and
+`cost` on a parts file, and `cost` and `vendor` on a service file, were all
+offered on the mapping screen and then thrown away — so a spreadsheet that knew
+the shop owned nine oil filters in Cabinet B produced nine filters' worth of
+nothing, and a file of old receipts produced work orders that had all cost
+zero.
+
+A parts row with a **quantity** creates a stock lot and a `receive` line in the
+ledger, at the **cost** given and in the **location** named — the same way
+receiving does, never a number written straight into the on-hand figure. A
+location named in two rows is one location. A service row with a **cost**
+records an expense against that work order and vehicle, filed as outsourced
+labor, and a **vendor** named in two rows is one vendor.
+
+A cost that cannot be read, a unit nobody measures in, and a yes/no cell that
+is neither are each reported and the row skipped, rather than quietly given a
+default. Unlike a missing date, a wrong unit leaves nothing to notice
+afterwards. The dry run refuses exactly the rows the real import would.
+
+For parts, the **consumable** column takes a yes or a no in whatever your
+spreadsheet writes — `yes`, `Y`, `TRUE`, `1`, or a lone `x` all mean yes; blank
+means no. A cell that is neither is reported as a problem and its row is
+skipped rather than quietly imported as a non-consumable, because that would be
+indistinguishable from a correct import afterwards. Fix the file and run it
+again; imports are idempotent, so nothing lands twice.
+
+The **category** column is filed the same way the form files it, and one cell
+can name several: `Electrical, Lighting` or `Electrical/Lighting` both give you
+two. A row saying `brakes` joins an existing `Brakes` rather than starting a
+second group, and that holds within a single file too — if the first row
+invents a category and a later one spells it differently, they finish as one.
+
 ### REST API
 
 Interactive API documentation is at `/api/v1/docs`. Browser sessions work in
@@ -1018,13 +1156,39 @@ tooling.
 
 The shipped API covers listing and reading assets and readings, appending a
 reading, listing and reading work orders, appending a work-order note, changing
-work-order status, global search, and batch sync for compatible clients.
+work-order status, reading the parts catalog, global search, and batch sync for
+compatible clients.
+
+`GET /api/v1/parts` takes the same three filters the parts screen offers —
+`?q=`, `?category=` and `?kind=part` or `?kind=consumable` — and returns each
+part with its categories, consumable flag, unit, shelf quantity and whether
+it is below its minimum. `GET /api/v1/parts/categories` returns the categories in
+use, so a script can offer the same picker the form does. Unlike the screen, an
+unrecognized `kind` is rejected rather than treated as "everything": a client
+sending one has a bug, and answering it with the whole catalog would hide that
+bug in data that looks correct.
+
+Parts are read-only over the API for now. Creating one means cross-references,
+fitment, and stock lots rather than a single POST, so it lands with that work.
 
 Append-only creates may carry a client-generated UUID so a replay is
 idempotent. Mutable sync writes use revision numbers and return a conflict
 instead of silently overwriting another change.
 
 ## Common questions
+
+### I added something and the page came back without it
+
+Fixed. The installed app used to answer a page from its cache first and refresh
+behind you, so the screen that came back after saving was a copy taken before
+you saved — and reloading showed the item because the refresh had landed by
+then. Pages now come from the server whenever the server is reachable, and the
+cache answers only when it is not. Offline use is unchanged.
+
+If it still happens, the app is running an old service worker. Close every tab
+of HomeAutoShop and reopen it; that is enough to pick up the new one.
+
+
 
 ### Why did my vehicle disappear from the normal list?
 

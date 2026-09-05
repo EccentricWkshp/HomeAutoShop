@@ -44,7 +44,7 @@ which mounts the `Caddyfile` and the TLS mode files and passes `SITE_ADDRESS`,
 `TLS_MODE` and the ACME settings. See
 [docs/INSTALL.md](https://github.com/EccentricWkshp/HomeAutoShop/blob/main/docs/INSTALL.md).
 
-## Licence
+## License
 
 AGPL-3.0-or-later. Source, and every issue worth opening:
 <https://github.com/EccentricWkshp/HomeAutoShop>

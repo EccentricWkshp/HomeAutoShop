@@ -17,8 +17,8 @@ class FitmentInline(admin.TabularInline):
 
 @admin.register(Part)
 class PartAdmin(admin.ModelAdmin):
-    list_display = ("name", "manufacturer", "part_number", "category", "on_hand", "is_low")
-    list_filter = ("category", "part_type", "is_consumable", "has_core")
+    list_display = ("name", "manufacturer", "part_number", "on_hand", "is_low")
+    list_filter = ("categories", "part_type", "is_consumable", "has_core")
     search_fields = ("name", "manufacturer", "part_number", "cross_refs__value")
     inlines = [CrossRefInline, FitmentInline]
 

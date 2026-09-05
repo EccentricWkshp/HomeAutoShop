@@ -1,5 +1,5 @@
 /*
- * Form behaviour that makes a page readable, and nothing that makes it work.
+ * Form behavior that makes a page readable, and nothing that makes it work.
  *
  * Every one of these is an enhancement over markup that is already correct
  * without it: with this file blocked, dependent settings stay visible, the
@@ -290,7 +290,7 @@
         results.forEach(function (part) {
           // A plain list item: `role="option"` outside a listbox is an
           // invalid claim, and the list is not one — see the note in the
-          // template about not promising combobox behaviour it lacks.
+          // template about not promising combobox behavior it lacks.
           var item = document.createElement("li");
           var button = document.createElement("button");
           button.type = "button";
@@ -368,7 +368,7 @@
 
   /* --------------------------------------------------- quantity that suits the part
    * A quantity box beside a part picker cannot know, in the markup, whether it
-   * is about gaskets or about litres of coolant. It defaults to whole ones —
+   * is about gaskets or about liters of coolant. It defaults to whole ones —
    * right for nearly everything a shop counts, and the reason it does not offer
    * to record 0.003 of a gasket — and the chosen part relaxes it where the part
    * is genuinely measured out. Storage is three decimal places either way; this
@@ -401,7 +401,7 @@
    * It starts empty and hidden, which is what makes this safe to skip: with no
    * script the field never reaches the server and the quantity is read in the
    * part's own unit, which the chooser's own results name. A counted part gets
-   * no picker at all, because there is no factor between a gasket and a litre.
+   * no picker at all, because there is no factor between a gasket and a liter.
    */
   function wireUnitPickers(root) {
     root.querySelectorAll("select[data-units-from]").forEach(function (picker) {
@@ -434,7 +434,7 @@
    * of competing with it.
    *
    * An enhancement, like everything else here: with this file blocked both
-   * controls are present, labelled, and the form posts exactly as before.
+   * controls are present, labeled, and the form posts exactly as before.
    */
   function wireUploads(root) {
     root.querySelectorAll("form[data-upload]").forEach(function (form) {

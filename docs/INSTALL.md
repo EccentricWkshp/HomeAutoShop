@@ -297,7 +297,7 @@ Three more are worth knowing about, for different reasons:
 
 | | |
 | --- | --- |
-| `CREDENTIAL_KEY` | Encrypts the integration keys you enter in the UI. A key kept in the database it protects is not a key, so this one genuinely cannot move into *Settings*. Leave it blank and it is derived from `SECRET_KEY` — that works, and it is weaker, because then one secret protects two things. Changing it invalidates every stored credential at once, which is the intended emergency behaviour. |
+| `CREDENTIAL_KEY` | Encrypts the integration keys you enter in the UI. A key kept in the database it protects is not a key, so this one genuinely cannot move into *Settings*. Leave it blank and it is derived from `SECRET_KEY` — that works, and it is weaker, because then one secret protects two things. Changing it invalidates every stored credential at once, which is the intended emergency behavior. |
 | `TESSERACT_LANGS` | Which OCR languages the application asks Tesseract for. `eng` by default, and **the published image carries English only**. Asking for one it does not have costs a line in the log rather than broken OCR: the application narrows to what is installed, because Tesseract fails the whole call for a single missing language rather than skipping it. To actually *have* another language, build the image yourself (step 3) — there this same variable also decides which packs are installed, so the two halves cannot drift. Once running, the language list is editable under *Settings → Media* like anything else. |
 | `HOMEAUTOSHOP_TAG` | Which release to run. Unset means `latest`, which is right while the interfaces are still moving. Set it to a version — `0.7.1` — to pin, and nothing changes under you until you edit it. |
 
@@ -943,7 +943,7 @@ reaches every adapter:
 #### When the list comes up empty
 
 The browser says *No compatible devices found*, and then reports that no
-adapter was chosen — it cannot tell an empty list from a cancelled one, so it
+adapter was chosen — it cannot tell an empty list from a canceled one, so it
 blames the person either way. Work through:
 
 - The adapter is paired, plugged in, and close enough to be awake.

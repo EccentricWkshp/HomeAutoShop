@@ -144,6 +144,11 @@ body { overflow-wrap: break-word; }
 .grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
 .cols { display: grid; gap: 1rem; }
 @media (min-width: 900px) { .cols.two { grid-template-columns: 2fr 1fr; } }
+/* Like .cols.two, except a row with one card in it does not leave a third of
+   itself empty. `auto-fit` collapses the track that has nothing in it, where
+   `auto-fill` keeps it — which is the difference between a summary sitting on
+   its own at full width and one sitting next to a gap. */
+.cols.fit { grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr)); }
 
 .muted { color: var(--muted); }
 .small { font-size: .85rem; }
@@ -248,7 +253,7 @@ summary { cursor: pointer; }
    within a line, after the breaking is done. At `0` both items always share a
    line and the text column then grows into whatever the button leaves.
 
-   `min-width: min-content` is what keeps the documented behaviour: a screen
+   `min-width: min-content` is what keeps the documented behavior: a screen
    genuinely too narrow for the longest word and the button still wraps.
 
    Whatever sits on the right holds its size, and it is matched by position
@@ -271,7 +276,7 @@ summary { cursor: pointer; }
 }
 .list > li.contents > .list > li { padding: .4rem 0; border-bottom: 0; }
 
-/* Labelled facts on one line, wrapping to as many as the width allows. Each
+/* Labeled facts on one line, wrapping to as many as the width allows. Each
    pair stays together, so "Price" never ends a line with its amount on the
    next one. */
 .factline { display: flex; flex-wrap: wrap; gap: .15rem .9rem; margin: .3rem 0 0; }
@@ -343,7 +348,7 @@ summary { cursor: pointer; }
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: .75rem;
   /* Clear of the bar below, which is pinned rather than in flow so that the
-     photo is centred in the viewport and not in what is left of it. */
+     photo is centered in the viewport and not in what is left of it. */
   padding-bottom: calc(var(--tap) + 2.5rem);
 }
 .lightbox img {
@@ -354,7 +359,7 @@ summary { cursor: pointer; }
   border-radius: var(--radius); background: var(--surface);
 }
 /* A chip rather than text laid straight on the picture: a caption over a dark
-   photo and the same caption over a white one are the same colour, and only
+   photo and the same caption over a white one are the same color, and only
    one of them can be read. */
 .lightbox figcaption {
   max-width: 60ch; text-align: center; font-size: .9rem;
@@ -397,7 +402,7 @@ summary { cursor: pointer; }
   position: absolute; inset-block: 0; inline-size: 2px; background: var(--text);
 }
 /* Legend swatches, tying each band to its row. The word beside one is what
-   names it; the colour only says which stripe it is. */
+   names it; the color only says which stripe it is. */
 .key::before {
   content: ""; display: inline-block; inline-size: .6rem; block-size: .6rem;
   border-radius: 2px; margin-inline-end: .4rem; border: 1px solid var(--line);
@@ -668,8 +673,8 @@ input.doubtful { border-color: var(--warn, #b58900); }
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: .85rem;
-  /* The tinted stripe a colour paints. Transparent by default, so a card with
-     no colour keeps exactly the geometry of one that has it and the grid does
+  /* The tinted stripe a color paints. Transparent by default, so a card with
+     no color keeps exactly the geometry of one that has it and the grid does
      not shift when somebody picks one. */
   border-inline-start: 4px solid transparent;
 }
@@ -692,7 +697,7 @@ input.doubtful { border-color: var(--warn, #b58900); }
 /* Both reorder controls live in the first column, above one another: the grip
    for a pointer, the arrows for everything else. The arrows are the mechanism
    and are never hidden. The grip is, until `board.js` puts `can-drag` on the
-   document element — an affordance a browser cannot honour is worse than none,
+   document element — an affordance a browser cannot honor is worse than none,
    and doing it from a class rather than per element means a board swapped in
    later by `liveform.js` is already right. */
 .boardmove { grid-column: 1; grid-row: 2; }
@@ -731,7 +736,7 @@ input.doubtful { border-color: var(--warn, #b58900); }
 .board.is-sorting > .is-dragging { transition: none; }
 
 .is-dragging {
-  /* Above its neighbours as they slide underneath it. `.boardcard` and
+  /* Above its neighbors as they slide underneath it. `.boardcard` and
      `.fleetrow` are both already positioned, so this takes effect. */
   z-index: 3;
   cursor: grabbing;
@@ -743,7 +748,7 @@ input.doubtful { border-color: var(--warn, #b58900); }
 /* The Fleet panel: the same board, one column, names only. */
 .fleetrow {
   /* Positioned so a lifted row's `z-index` means something and it passes over
-     its neighbours rather than under them. */
+     its neighbors rather than under them. */
   position: relative;
   display: flex;
   align-items: center;
@@ -754,8 +759,8 @@ input.doubtful { border-color: var(--warn, #b58900); }
 .fleetrow .reorder { flex: 0 0 auto; }
 .fleetboard .boardgrip { padding: .2rem .15rem; }
 
-/* Card colours. Decoration only — the status pill, the due badges and the code
-   count each carry their own words, so losing the colour loses a recognition
+/* Card colors. Decoration only — the status pill, the due badges and the code
+   count each carry their own words, so losing the color loses a recognition
    aid and no information (§9.5). One hue per key, mixed against the surface so
    the same key is legible in both themes rather than being a fixed swatch that
    glares in one of them. */
@@ -787,13 +792,13 @@ input.doubtful { border-color: var(--warn, #b58900); }
 .boardcard[data-card-color] {
   border-inline-start-color: var(--card-hue);
   /* A wash, not a fill. Card text is checked for contrast against `--surface`,
-     and a tint heavy enough to change that answer would be a colour choice
+     and a tint heavy enough to change that answer would be a color choice
      that quietly breaks the page it decorates. */
   background: color-mix(in srgb, var(--card-hue) 7%, var(--surface));
 }
 .fleetrow[data-card-color] { border-inline-start-color: var(--card-hue); }
 
-/* ---------- choosing a card's colour and pins ---------- */
+/* ---------- choosing a card's color and pins ---------- */
 
 .swatches, .pinlist { border: 0; padding: 0; margin: .75rem 0 0; }
 .swatches legend, .pinlist legend { color: var(--muted); font-size: .85rem; padding: 0; }
@@ -809,7 +814,7 @@ input.doubtful { border-color: var(--warn, #b58900); }
 /* The radio is left visible rather than hidden behind a styled chip. A
    hand-drawn selected state would rest on `:has()`, and a browser without it
    would show ten swatches with no way to tell which one is chosen — for a
-   control whose entire subject is colour, that is the one failure that cannot
+   control whose entire subject is color, that is the one failure that cannot
    be shrugged off. The native control says it, and the ring below is the
    decoration on top. */
 .swatch input { flex: 0 0 auto; inline-size: 1.1rem; block-size: 1.1rem; margin: 0; }
@@ -831,3 +836,20 @@ input.doubtful { border-color: var(--warn, #b58900); }
   font-size: .9rem; color: var(--text);
 }
 .pin input { inline-size: 1.1rem; block-size: 1.1rem; flex: 0 0 auto; }
+
+/* The parsed lines of a supplier order. A money column broken across two lines
+   reads as two numbers — the review screen showed `$182` above `.39` — and on
+   the one screen whose whole job is checking figures before they are written,
+   that is the last place a number should be hard to read. The description is
+   the only column that should ever wrap, so it takes what is left. */
+.orderlines td.num, .orderlines th.num { white-space: nowrap; }
+.orderlines td:nth-child(3) { min-inline-size: 18rem; }
+.orderlines select { inline-size: auto; }
+/* A label on the far left and its figure on the far right of a 1100px card is
+   two columns nobody can associate by eye. */
+.orderreport table { max-inline-size: 34rem; }
+
+/* The count box on the order review screen. Narrow, because it holds a small
+   whole number and a full-width input in a table column that wide reads as the
+   most important thing on the row. */
+.orderlines input.count { inline-size: 5.5rem; }

@@ -40,7 +40,7 @@ def recurring() -> list[tuple[str, timedelta]]:
     """What runs on a timer, and how often.
 
     Read fresh each pass rather than captured at import, so a schedule changed
-    on the settings screen is honoured by the next pass — within a minute, with
+    on the settings screen is honored by the next pass — within a minute, with
     nothing restarted and no code path holding an interval it captured at boot.
     """
     plan: list[tuple[str, timedelta]] = [

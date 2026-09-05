@@ -210,10 +210,10 @@
         {% empty %}<li class="muted">{% translate "None recorded." %}</li>{% endfor %}
       </ul>
       {% comment %}
-        Labelled, one by one. These were three bare widgets: a select showing
+        Labeled, one by one. These were three bare widgets: a select showing
         "Other" and two empty boxes with nothing at all to say what went in
         them — and the DOT code box is the one that decides whether a tire with
-        full tread is a failed tire, so an unlabelled box there is a feature
+        full tread is a failed tire, so an unlabeled box there is a feature
         nobody can use. `check_accessibility` cannot see this class of mistake:
         it looks for a literal `<input>` tag, and `{{ form.field }}` is not one.
       {% endcomment %}

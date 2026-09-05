@@ -97,7 +97,7 @@ check, exactly like a direct read.
 | Topdon (full system report) | ✅ Profile in the catalog | from sample reports |
 | Anything else | ⚪ Teach it once | — |
 
-**A tool not on this list is not unsupported.** If no profile recognises the
+**A tool not on this list is not unsupported.** If no profile recognizes the
 file, you are offered a mapping screen, and saving the mapping means the next
 report from that tool reads itself. That is usually a five-minute job rather
 than a code change, so an unlisted scan tool is a weak reason not to buy one.

@@ -6,8 +6,8 @@ page carries the vendor, the order number, the date, what was paid, and — for
 every line — a **brand, a manufacturer part number, a part type, a price, a core
 charge and a quantity**, all of it grouped under *the vehicle it was bought
 for*. Typed in by hand that is twenty minutes and a dozen chances to fat-finger
-a part number. Read from the file it is the parts catalogue filling itself in,
-with confirmed fitment attached, which is the thing that makes a parts catalogue
+a part number. Read from the file it is the parts catalog filling itself in,
+with confirmed fitment attached, which is the thing that makes a parts catalog
 worth having.
 
 **Why word geometry rather than lines of text.** The same reason the XTOOL D8
@@ -29,7 +29,7 @@ distance, every fragment lands on the row it was printed against.
 **Kit components.** A kit prints its own priced line and then its contents, each
 with a price and a `-` in the Total column, because they are already paid for
 inside the kit. They are carried through as parts — the whole point is having
-`GATES 38156` in the catalogue when it needs replacing on its own — but they
+`GATES 38156` in the catalog when it needs replacing on its own — but they
 produce **no purchase line and no money**, or the order would be charged twice.
 
 Nothing here writes anything. It returns what it read, and a person confirms it
@@ -48,9 +48,16 @@ from decimal import Decimal, InvalidOperation
 
 from homeautoshop.core.measurements import Money
 
+# The shape every reader returns. It used to be defined here, when this was
+# the only reader; a second vendor makes that the wrong home for it, because
+# what differs between suppliers is the document and nothing else.
+from .orders import OrderLine, ParsedOrder  # noqa: F401  (re-exported)
+
 log = logging.getLogger(__name__)
 
 VENDOR_NAME = "RockAuto"
+VENDOR_URL = "https://www.rockauto.com"
+SOURCE = "rockauto"
 
 #: The document announces itself. Anything else is not this format, and saying
 #: so beats extracting nonsense with confidence.
@@ -78,100 +85,6 @@ END_OF_ITEMS = ("Shipping", "Tax", "Order Total", "Balance", "Subtotal")
 
 class NotARockAutoOrder(ValueError):
     """The file is a PDF, and it is not one of these."""
-
-
-@dataclass(slots=True)
-class OrderLine:
-    brand: str = ""
-    part_number: str = ""
-    description: str = ""
-    unit_price_minor: int = 0
-    #: `None` where the column printed `-`, which means "no core on this line".
-    core_minor: int | None = 0
-    quantity: Decimal = Decimal(1)
-    #: `None` for a kit component: already paid for inside its kit.
-    total_minor: int | None = 0
-    is_kit_component: bool = False
-    vehicle: str = ""
-
-    @property
-    def label(self) -> str:
-        return " ".join(x for x in (self.brand, self.part_number) if x)
-
-    # Minor units are how money is *stored* (§5.5) and never how it is shown.
-    # The review screen printed `5379` in a column headed "Each", which is not
-    # a price anybody recognises — and on a screen whose entire job is letting
-    # somebody check the numbers before they are written, an unreadable number
-    # is worse than a missing one.
-
-    @property
-    def unit_price(self) -> Money:
-        return Money(self.unit_price_minor, "USD")
-
-    @property
-    def core(self) -> Money | None:
-        """`None` where the column printed `-`, which is not the same as zero."""
-        return None if self.core_minor is None else Money(self.core_minor, "USD")
-
-    @property
-    def total(self) -> Money | None:
-        """`None` for a kit component: paid for inside its kit."""
-        return None if self.total_minor is None else Money(self.total_minor, "USD")
-
-
-@dataclass(slots=True)
-class ParsedOrder:
-    order_number: str = ""
-    ordered_on: date | None = None
-    shipping_minor: int = 0
-    tax_minor: int = 0
-    total_minor: int = 0
-    discount_minor: int = 0
-    payment_method: str = ""
-    lines: list[OrderLine] = field(default_factory=list)
-    #: `(label, minor)` for each rebate or credit printed against the order,
-    #: kept separately from the sum so the review screen can name them.
-    adjustments: list[tuple[str, int]] = field(default_factory=list)
-    warnings: list[str] = field(default_factory=list)
-
-    @property
-    def shipping(self) -> Money:
-        return Money(self.shipping_minor, "USD")
-
-    @property
-    def tax(self) -> Money:
-        return Money(self.tax_minor, "USD")
-
-    @property
-    def discount(self) -> Money:
-        return Money(self.discount_minor, "USD")
-
-    @property
-    def total(self) -> Money:
-        return Money(self.total_minor, "USD")
-
-    @property
-    def subtotal(self) -> Money:
-        return Money(self.subtotal_minor, "USD")
-
-    @property
-    def charged_lines(self) -> list[OrderLine]:
-        return [line for line in self.lines if not line.is_kit_component]
-
-    @property
-    def subtotal_minor(self) -> int:
-        return sum(
-            int(Decimal(line.unit_price_minor) * line.quantity) + (line.core_minor or 0)
-            for line in self.charged_lines
-        )
-
-    @property
-    def vehicles(self) -> list[str]:
-        seen: list[str] = []
-        for line in self.lines:
-            if line.vehicle and line.vehicle not in seen:
-                seen.append(line.vehicle)
-        return seen
 
 
 # ---------------------------------------------------------------------------
@@ -218,7 +131,7 @@ def _columns(rows: list[list[dict]]) -> _Columns | None:
 
     The numeric boundaries come from the header labels, which sit close enough
     above their own columns to be usable. The **description** boundary cannot:
-    the label `Part Type` is centred at roughly x=290 while its values begin
+    the label `Part Type` is centered at roughly x=290 while its values begin
     around x=200, so anything derived from the label alone puts every
     description into the part-number column.
 
@@ -247,7 +160,7 @@ def _columns(rows: list[list[dict]]) -> _Columns | None:
         return None
 
     # A little to the left of each label, because the values under it start
-    # slightly before the (centred) heading does.
+    # slightly before the (centered) heading does.
     price_left = price - 12
     boundaries = _Columns(
         description=0.0,
@@ -323,7 +236,9 @@ def parse_document(text_pages: list[str], word_pages: list[list[dict]]) -> Parse
     if not FINGERPRINT.search(text):
         raise NotARockAutoOrder("This is not a RockAuto order confirmation.")
 
-    order = ParsedOrder()
+    order = ParsedOrder(
+        vendor_name=VENDOR_NAME, vendor_url=VENDOR_URL, source=SOURCE
+    )
     if found := ORDER_NUMBER.search(text):
         order.order_number = found.group(1)
     if found := ORDER_DATE.search(text):

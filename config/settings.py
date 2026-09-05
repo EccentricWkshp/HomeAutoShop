@@ -305,7 +305,7 @@ OCR_ENABLED = env_bool("OCR_ENABLED", True)
 # for a language that was never installed is an error, not a fallback.
 OCR_LANGUAGES = "+".join(env("OCR_LANGUAGES", "eng").replace(",", " ").split())
 # How far into an image-only PDF to read. A receipt is one page and a scan-tool
-# report a handful; a service manual is hundreds, and rasterising all of them at
+# report a handful; a service manual is hundreds, and rasterizing all of them at
 # 300 DPI is hours of worker time for text nobody searches.
 OCR_PDF_MAX_PAGES = env_int("OCR_PDF_MAX_PAGES", 20)
 

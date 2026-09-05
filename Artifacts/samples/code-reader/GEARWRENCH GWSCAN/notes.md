@@ -156,7 +156,7 @@ ContinueToSend, block size 0, no separation time — and it is being handed to
 the adapter during setup, next to a frame naming the ECU's response ID
 `0x7E8`. The straightforward reading is that the adapter is told what flow
 control to emit so it can run ISO-TP itself. **That is inference from the
-configuration, not observed behaviour**, and it is the thing a capture from a
+configuration, not observed behavior**, and it is the thing a capture from a
 car with stored codes would confirm in a minute.
 
 Worth getting, because it is the case that matters: a reader that works only on

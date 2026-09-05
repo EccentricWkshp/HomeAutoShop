@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 from datetime import date, timedelta
+from decimal import Decimal
 from pathlib import Path
 from unittest.mock import patch
 
@@ -28,6 +29,11 @@ from homeautoshop.core.integrations import sync as lubelogger_sync
 from homeautoshop.core.integrations import wrenchledger as wl
 from homeautoshop.core.models import ExternalRef, Job, Setting
 from homeautoshop.core.outbound import OutboundFailed
+from homeautoshop.parts.models import (
+    Category, Location, Part, StockLot, StockTransaction,
+)
+from homeautoshop.parts.services import categories_for
+from homeautoshop.purchasing.models import Expense, Vendor
 from homeautoshop.work.models import JobItem, JobItemTool, ShopTool, WorkOrder
 
 VIN = "1M8GDM9AXKP042788"
@@ -700,6 +706,293 @@ class CsvImportTests(TestCase):
             "vehicles", rows, {"nickname": "Name", "vin": "VIN"}, dry_run=False
         )
         self.assertEqual(outcome.created, 2)
+
+    # -- Parts: the two fields the importer could not carry -----------------
+    #
+    # `category` was written straight through, so an import was the one route
+    # into the catalog that could still invent `brakes` beside `Brakes` — and
+    # since the parts screen files by category, that is a group quietly split
+    # in two. `is_consumable` was not importable at all, so a shop that had
+    # enough parts to be worth importing got every one of them as a
+    # non-consumable, and the parts/consumables split started out wrong for
+    # exactly the person it was built for.
+
+    PARTS = (
+        "Part,Number,Group,Used up\n"
+        "Brake pads,BP-1,Brakes,no\n"
+        "Brake cleaner,BC-1,brakes,yes\n"
+    )
+    PART_MAP = {
+        "name": "Part", "part_number": "Number",
+        "category": "Group", "consumable": "Used up",
+    }
+
+    def test_a_consumable_column_is_importable_at_all(self):
+        _header, rows = csvimport.read(self.PARTS)
+
+        csvimport.run("parts", rows, self.PART_MAP, dry_run=False)
+
+        self.assertTrue(Part.objects.get(name="Brake cleaner").is_consumable)
+        self.assertFalse(Part.objects.get(name="Brake pads").is_consumable)
+
+    def test_a_yes_is_a_yes_in_whatever_a_spreadsheet_calls_it(self):
+        """The file was not written for this application. `Y`, `TRUE` and a
+        lone `x` in the column are all the same statement."""
+        for written in ("yes", "Y", "TRUE", "1", "x", "✓"):
+            with self.subTest(cell=written):
+                rows = [{"Part": "Thing %s" % written, "Used up": written}]
+                csvimport.run(
+                    "parts", rows, {"name": "Part", "consumable": "Used up"},
+                    dry_run=False,
+                )
+                self.assertTrue(Part.objects.get(name="Thing %s" % written).is_consumable)
+
+    def test_a_blank_cell_is_a_no_and_not_a_refusal(self):
+        rows = [{"Part": "Water pump", "Used up": ""}]
+
+        outcome = csvimport.run(
+            "parts", rows, {"name": "Part", "consumable": "Used up"}, dry_run=False
+        )
+
+        self.assertEqual(outcome.created, 1)
+        self.assertFalse(Part.objects.get(name="Water pump").is_consumable)
+
+    def test_a_cell_that_is_neither_is_reported_rather_than_read_as_no(self):
+        """The asymmetry with every other optional column here, and the reason
+        for it. A missing `year` leaves a visible gap on the record; a boolean
+        misread lands as `False`, which is indistinguishable from a part that
+        was correctly imported as not a consumable. There is nothing to notice
+        afterwards, so it has to be noticed now."""
+        rows = [{"Part": "Water pump", "Used up": "maybe"}]
+
+        outcome = csvimport.run(
+            "parts", rows, {"name": "Part", "consumable": "Used up"}, dry_run=False
+        )
+
+        self.assertEqual(outcome.created, 0)
+        self.assertEqual(Part.objects.count(), 0)
+        self.assertIn("maybe", outcome.problems[0])
+
+    def test_and_the_preview_refuses_it_too(self):
+        """A boolean the operator only finds out is unreadable *after*
+        confirming the import is a preview that did not preview."""
+        rows = [{"Part": "Water pump", "Used up": "maybe"}]
+
+        outcome = csvimport.run(
+            "parts", rows, {"name": "Part", "consumable": "Used up"}, dry_run=True
+        )
+
+        self.assertEqual(outcome.created, 0)
+        self.assertIn("maybe", outcome.problems[0])
+
+    def test_an_imported_category_is_filed_under_the_one_that_exists(self):
+        rotor = Part.objects.create(name="Rotor")
+        rotor.categories.set(categories_for("Brakes"))
+        _header, rows = csvimport.read(self.PARTS)
+
+        csvimport.run("parts", rows, self.PART_MAP, dry_run=False)
+
+        self.assertEqual(Category.objects.count(), 1)
+        self.assertEqual(Category.objects.get().name, "Brakes")
+
+    def test_one_file_that_disagrees_with_itself_still_lands_as_one_category(self):
+        """The first row invents `Brakes`; the second writes `brakes`. One
+        category, and now the database is what says so rather than a helper the
+        importer has to remember to call."""
+        _header, rows = csvimport.read(self.PARTS)
+
+        csvimport.run("parts", rows, self.PART_MAP, dry_run=False)
+
+        self.assertEqual([c.name for c in Category.objects.all()], ["Brakes"])
+        for part in Part.objects.all():
+            self.assertEqual([c.name for c in part.categories.all()], ["Brakes"])
+
+    def test_stray_whitespace_does_not_start_a_second_category(self):
+        rows = [{"Part": "Pads", "Group": "  Brake   parts "}]
+
+        csvimport.run("parts", rows, {"name": "Part", "category": "Group"}, dry_run=False)
+
+        self.assertEqual(Category.objects.get().name, "Brake parts")
+
+    def test_filing_a_long_file_does_not_cost_a_query_per_row(self):
+        """`category_for` is a SELECT and sometimes an INSERT. Called per name
+        per row it would turn a five-hundred-row file into a thousand queries
+        inside one transaction, so the run caches what it has resolved."""
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        few = [{"Part": "Pad %02d" % n, "Group": "brakes"} for n in range(3)]
+        many = [{"Part": "Shoe %02d" % n, "Group": "brakes"} for n in range(40)]
+        mapping = {"name": "Part", "category": "Group"}
+
+        with CaptureQueriesContext(connection) as small:
+            csvimport.run("parts", few, mapping, dry_run=True)
+        with CaptureQueriesContext(connection) as large:
+            csvimport.run("parts", many, mapping, dry_run=True)
+
+        def lookups(captured):
+            return sum(1 for q in captured if "parts_category" in q["sql"])
+
+        self.assertEqual(lookups(large), lookups(small))
+
+    def test_a_category_cell_can_name_several(self):
+        """A headlight is electrical and lighting, and a spreadsheet with one
+        column for it writes `Electrical/Lighting`."""
+        rows = [{"Part": "H11 bulb", "Group": "Electrical/Lighting"}]
+
+        csvimport.run("parts", rows, {"name": "Part", "category": "Group"}, dry_run=False)
+
+        self.assertEqual(
+            sorted(c.name for c in Part.objects.get().categories.all()),
+            ["Electrical", "Lighting"],
+        )
+
+    # -- The four columns the parts import collected and threw away ---------
+
+    def test_stock_arrives_as_a_lot_and_a_ledger_line(self):
+        """`quantity`, `location` and `cost` were mapped on the screen and
+        discarded, so a spreadsheet that knew the shop owned nine oil filters
+        in Cabinet B produced nine filters' worth of nothing."""
+        rows = [{"Part": "Oil filter", "Qty": "9", "Where": "Cabinet B", "Each": "4.25"}]
+
+        csvimport.run(
+            "parts", rows,
+            {"name": "Part", "quantity": "Qty", "location": "Where", "cost": "Each"},
+            dry_run=False,
+        )
+
+        part = Part.objects.get()
+        lot = part.stock_lots.get()
+        self.assertEqual(part.on_hand, Decimal("9"))
+        self.assertEqual(lot.location.name, "Cabinet B")
+        self.assertEqual(lot.unit_cost_minor, 425)
+
+    def test_the_quantity_goes_through_the_ledger_and_not_around_it(self):
+        """FR-INV-1. A quantity written straight into `qty_on_hand` is exactly
+        the unauditable figure the ledger exists to prevent, and an import is
+        the last place to start making them."""
+        rows = [{"Part": "Oil filter", "Qty": "9"}]
+
+        csvimport.run("parts", rows, {"name": "Part", "quantity": "Qty"}, dry_run=False)
+
+        entry = StockTransaction.objects.get()
+        self.assertEqual(entry.delta, Decimal("9"))
+        self.assertEqual(entry.reason, StockTransaction.Reason.RECEIVE)
+
+    def test_the_same_shelf_named_twice_is_one_shelf(self):
+        rows = [
+            {"Part": "Oil filter", "Qty": "2", "Where": "Cabinet B"},
+            {"Part": "Air filter", "Qty": "3", "Where": "cabinet b"},
+        ]
+
+        csvimport.run(
+            "parts", rows, {"name": "Part", "quantity": "Qty", "location": "Where"},
+            dry_run=False,
+        )
+
+        self.assertEqual(Location.objects.count(), 1)
+
+    def test_a_unit_is_carried_rather_than_defaulted(self):
+        rows = [{"Part": "Coolant", "How": "gallons"}]
+
+        csvimport.run("parts", rows, {"name": "Part", "unit": "How"}, dry_run=False)
+
+        self.assertEqual(Part.objects.get().unit, "gal")
+
+    def test_a_unit_nobody_measures_in_is_reported_not_defaulted(self):
+        """Same reasoning as the consumable flag: a part landing as `each` when
+        the column said something else is not a visible gap, it is a wrong
+        number that every later quantity is measured against."""
+        rows = [{"Part": "Coolant", "How": "firkins"}]
+
+        outcome = csvimport.run("parts", rows, {"name": "Part", "unit": "How"}, dry_run=False)
+
+        self.assertEqual(outcome.created, 0)
+        self.assertIn("firkins", outcome.problems[0])
+
+    def test_no_quantity_means_no_lot_rather_than_a_lot_of_nothing(self):
+        rows = [{"Part": "Oil filter", "Qty": ""}]
+
+        csvimport.run("parts", rows, {"name": "Part", "quantity": "Qty"}, dry_run=False)
+
+        self.assertEqual(StockLot.objects.count(), 0)
+
+    def test_a_preview_still_leaves_no_stock_behind(self):
+        rows = [{"Part": "Oil filter", "Qty": "9", "Where": "Cabinet B"}]
+
+        outcome = csvimport.run(
+            "parts", rows, {"name": "Part", "quantity": "Qty", "location": "Where"},
+            dry_run=True,
+        )
+
+        self.assertEqual(outcome.created, 1)
+        self.assertEqual(StockLot.objects.count(), 0)
+        self.assertEqual(Location.objects.count(), 0)
+        self.assertEqual(Category.objects.count(), 0)
+
+    # -- And the two the service import threw away --------------------------
+
+    SHOP = "Bob and Sons Garage"
+
+    def _service_rows(self, **over):
+        row = {
+            "Date": "2026-03-01", "Vehicle": "Red truck", "Title": "Timing belt",
+            "Paid": "940.00", "Shop": self.SHOP,
+        }
+        row.update(over)
+        return [row]
+
+    SERVICE_MAP = {
+        "date": "Date", "vehicle": "Vehicle", "title": "Title",
+        "cost": "Paid", "vendor": "Shop",
+    }
+
+    def test_a_service_cost_becomes_an_expense(self):
+        """`cost` and `vendor` were mapped and thrown away, so a spreadsheet of
+        eleven years of receipts produced eleven years of work orders that had
+        all cost nothing — and the vehicle rollup, which is G-4 and half the
+        reason to keep the history, read zero."""
+        Asset.objects.create(nickname="Red truck")
+
+        csvimport.run("service", self._service_rows(), self.SERVICE_MAP, dry_run=False)
+
+        expense = Expense.objects.get()
+        self.assertEqual(expense.amount_minor, 94000)
+        self.assertEqual(expense.vendor.name, self.SHOP)
+        self.assertEqual(expense.incurred_on, date(2026, 3, 1))
+        self.assertEqual(expense.work_order, WorkOrder.objects.get())
+
+    def test_the_same_shop_named_twice_is_one_vendor(self):
+        Asset.objects.create(nickname="Red truck")
+        rows = self._service_rows() + self._service_rows(
+            Date="2026-04-01", Title="Oil", Shop=self.SHOP.lower()
+        )
+
+        csvimport.run("service", rows, self.SERVICE_MAP, dry_run=False)
+
+        self.assertEqual(Vendor.objects.count(), 1)
+
+    def test_a_service_row_with_no_cost_writes_no_expense(self):
+        """Not a zero. A zero is a claim that it was free."""
+        Asset.objects.create(nickname="Red truck")
+
+        csvimport.run(
+            "service", self._service_rows(Paid=""), self.SERVICE_MAP, dry_run=False
+        )
+
+        self.assertEqual(Expense.objects.count(), 0)
+        self.assertEqual(WorkOrder.objects.count(), 1)
+
+    def test_an_unreadable_cost_is_reported_rather_than_dropped(self):
+        Asset.objects.create(nickname="Red truck")
+
+        outcome = csvimport.run(
+            "service", self._service_rows(Paid="about nine hundred"),
+            self.SERVICE_MAP, dry_run=False,
+        )
+
+        self.assertEqual(outcome.created, 0)
+        self.assertEqual(WorkOrder.objects.count(), 0)
 
     def test_the_screen_previews_before_it_writes(self):
         from django.core.files.uploadedfile import SimpleUploadedFile

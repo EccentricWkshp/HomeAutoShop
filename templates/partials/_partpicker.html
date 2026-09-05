@@ -3,13 +3,13 @@
 A part chooser that does not grow.
 
 This replaces a `<select>` that was filled with `Part.objects.all()[:500]` on
-four different screens. The catalogue only ever grows — a part is not removed
+four different screens. The catalog only ever grows — a part is not removed
 when it is used up, and should not be, since knowing what a fuel pump cost in
 2015 is the point — so that list got worse every month, for exactly the people
 using the application most, and past five hundred it silently stopped listing
 parts at all.
 
-Search instead of scroll, and a **shortlist** rather than a catalogue before
+Search instead of scroll, and a **shortlist** rather than a catalog before
 anything is typed: the parts that fit this vehicle, the parts on the shelf, and
 the consumables. Nothing is hidden — typing searches every part by every
 identifier — but the resting state is eight rows chosen for relevance instead

@@ -27,6 +27,7 @@ somebody import a document they were never shown.
 from __future__ import annotations
 
 import logging
+from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -38,7 +39,7 @@ from homeautoshop.accounts.models import require
 from homeautoshop.mediafiles.models import Media, MediaLink
 from homeautoshop.mediafiles.services import ingest, link
 
-from .importers import rockauto, service
+from .importers import orders, service
 
 log = logging.getLogger(__name__)
 
@@ -59,12 +60,86 @@ def _held(token: str) -> Media | None:
     return Media.objects.filter(pk=pk).first()
 
 
+#: What a line can be told to become. `part` is the default because a parts
+#: supplier's document is entirely parts, and because guessing the other way
+#: would silently drop things somebody meant to keep.
+TREATMENTS = ("part", "tooling", "out")
+
+
+def _chosen(request) -> tuple[set[int] | None, set[int] | None]:
+    """`(as parts, as tooling)`, or `(None, None)` when nothing was asked yet.
+
+    Absent on the first pass, because nothing has been shown — a preview of a
+    document nobody has seen cannot sensibly default to leaving things out. On
+    the confirming pass the controls are there, and an empty set of parts is a
+    real answer meaning *none of it was a part*, which is why this returns
+    `None` only when the field was never rendered.
+    """
+    if "lines_offered" not in request.POST:
+        return None, None
+    parts: set[int] = set()
+    tooling: set[int] = set()
+    for key, value in request.POST.items():
+        if not key.startswith("treat_") or value not in TREATMENTS:
+            continue
+        index = key.removeprefix("treat_")
+        if not index.isdigit():
+            continue
+        if value == "part":
+            parts.add(int(index))
+        elif value == "tooling":
+            tooling.add(int(index))
+    return parts, tooling
+
+
+#: Room for a pallet of gaskets and not for a typo. A count is a small whole
+#: number in every real case; the ceiling exists so a slipped keypress cannot
+#: build a hundred thousand stock rows out of one line of somebody's receipt.
+MOST_OF_ANYTHING = Decimal(10000)
+
+
+def _counts(request) -> tuple[dict[int, Decimal], bool]:
+    """`(count per line index, whether any could not be read)`.
+
+    How many of the part a line turned out to be for, which is not always the
+    number the vendor put on it: an Amazon two-pack of relays is `1 of:` and
+    two relays. Only the count is asked for — never the money, which is the one
+    thing the invoice is unambiguous about.
+
+    Anything unreadable is dropped rather than guessed at, and the caller says
+    so. Falling back to the document's own count is the conservative direction:
+    it is a number somebody actually printed, and it is what this screen did
+    before it asked at all.
+    """
+    counts: dict[int, Decimal] = {}
+    misread = False
+    for key, value in request.POST.items():
+        if not key.startswith("count_"):
+            continue
+        index = key.removeprefix("count_")
+        if not index.isdigit():
+            continue
+        try:
+            count = Decimal((value or "").strip())
+        except (InvalidOperation, ValueError):
+            misread = True
+            continue
+        if not count.is_finite() or count <= 0 or count > MOST_OF_ANYTHING:
+            misread = True
+            continue
+        counts[int(index)] = count
+    return counts, misread
+
+
 @login_required
 def order_import(request):
-    """Read a RockAuto order confirmation into a purchase."""
+    """Read a supplier order document into a purchase."""
     require(request.user, "purchase.edit")
 
-    context: dict = {"vendor": rockauto.VENDOR_NAME}
+    # Named rather than chosen. The operator knows which vendor the file
+    # came from; being asked to say so before it can be read is a step that
+    # exists only because the software could not be bothered to look.
+    context: dict = {"formats": orders.formats()}
 
     if request.method != "POST":
         return render(request, "purchasing/order_import.html", context)
@@ -100,14 +175,19 @@ def order_import(request):
 
     try:
         source = media.file.open("rb") if media is not None else upload
-        report = service.read_and_run(source, dry_run=not commit, user=request.user)
-    except rockauto.NotARockAutoOrder:
+        keep, as_tooling = _chosen(request)
+        counts, misread = _counts(request)
+        report = service.read_and_run(
+            source, dry_run=not commit, user=request.user,
+            keep=keep, as_tooling=as_tooling, counts=counts,
+        )
+    except orders.UnreadableOrder as exc:
         messages.error(
             request,
             _(
-                "That does not look like a RockAuto order confirmation. Save the "
-                "confirmation page or email as a PDF and try that."
-            ),
+                "%(detail)s Save the order page or its emailed confirmation as a "
+                "PDF and try that."
+            ) % {"detail": exc},
         )
         return redirect("order_import")
     except Exception as exc:  # noqa: BLE001 - surfaced, not swallowed
@@ -116,6 +196,15 @@ def order_import(request):
             request, _("That file could not be read: %(detail)s") % {"detail": exc}
         )
         return redirect("order_import")
+
+    if misread:
+        messages.warning(
+            request,
+            _(
+                "Some of the quantities could not be read as numbers, so those "
+                "lines kept the count the order itself gives."
+            ),
+        )
 
     context["report"] = report
     if media is not None:

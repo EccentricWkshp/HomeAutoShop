@@ -6,14 +6,29 @@
  * half — the shell and recently-visited pages. The write queue lives in
  * offline.js, because a queued write has to survive this worker being replaced.
  *
- * What is cached, per §5.4:
- *   - the shell and the stylesheet, precached on install;
- *   - pages and API reads, cached as they are visited (stale-while-revalidate);
+ * What is cached:
+ *   - the shell and the stylesheet, precached on install, cache-first;
+ *   - pages and API reads, **network-first**, cached as a fallback for when
+ *     the network is not there;
  *   - thumbnails. **Originals are never cached** — a phone with a hundred
  *     full-size photos of a bellhousing in its cache is a phone with no space.
  *
  * A GET that misses while offline renders the offline page rather than the
  * browser's error, so the app looks like it is waiting rather than broken.
+ *
+ * **Pages were stale-while-revalidate, and that was wrong for this app.** SWR
+ * answers from the cache and refreshes behind the reader, which is right for
+ * something whose content nobody in the room is editing. Every write here is
+ * post-redirect-get, so the page that lands *immediately after adding a part*
+ * is exactly the page SWR answers from a copy taken before it existed: the
+ * form submits, the list comes back without the new row, and the only way to
+ * see it is to reload. Reported as "it looks like nothing was saved", which is
+ * a worse thing for a record-keeping application to look like than slow.
+ *
+ * So: the network decides, and the cache is what answers when there is no
+ * network. Offline still works — that is P-7 and it is not negotiable — it is
+ * only the priority between the two that changes, and it changes in the
+ * direction of never showing somebody a page that predates their own edit.
  */
 "use strict";
 
@@ -97,7 +112,26 @@ function isThumbnail(url) {
 
 self.addEventListener("fetch", function (event) {
   var request = event.request;
-  if (request.method !== "GET") { return; }
+  if (request.method !== "GET") {
+    /*
+     * A write makes cached pages wrong, not merely old — the list this POST
+     * just added a row to is sitting in PAGES without it. Dropping the whole
+     * page cache is blunt and correct: it is a convenience cache, and the cost
+     * of being wrong about it is showing somebody a record they just changed
+     * as though they had not.
+     *
+     * Only on a response that actually landed. Offline, the fetch rejects, the
+     * write goes to the queue in offline.js, and the cache is left alone —
+     * which is the one moment those cached pages are the only pages there are.
+     */
+    event.waitUntil(
+      fetch(request.clone()).then(function (response) {
+        if (response.ok) { return caches.delete(PAGES); }
+        return null;
+      }).catch(function () { return null; })
+    );
+    return;
+  }
 
   var url = new URL(request.url);
   if (url.origin !== self.location.origin) { return; }
@@ -110,7 +144,7 @@ self.addEventListener("fetch", function (event) {
     return;
   }
 
-  event.respondWith(staleWhileRevalidate(request));
+  event.respondWith(networkFirst(request));
 });
 
 function cacheFirst(request, cacheName) {
@@ -126,20 +160,19 @@ function cacheFirst(request, cacheName) {
   });
 }
 
-function staleWhileRevalidate(request) {
-  return caches.match(request).then(function (hit) {
-    var network = fetch(request).then(function (response) {
-      if (response.ok) {
-        var copy = response.clone();
-        caches.open(PAGES).then(function (cache) { cache.put(request, copy); });
-      }
-      return response;
-    }).catch(function () {
-      // Offline. A cached copy beats an error page; the offline page beats the
-      // browser's dinosaur.
+function networkFirst(request) {
+  return fetch(request).then(function (response) {
+    if (response.ok) {
+      var copy = response.clone();
+      caches.open(PAGES).then(function (cache) { cache.put(request, copy); });
+    }
+    return response;
+  }).catch(function () {
+    // Offline. A cached copy beats an error page; the offline page beats the
+    // browser's dinosaur.
+    return caches.match(request).then(function (hit) {
       return hit || caches.match("/static/offline.html");
     });
-    return hit || network;
   });
 }
 

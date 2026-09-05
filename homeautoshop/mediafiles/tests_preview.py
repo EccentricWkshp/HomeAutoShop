@@ -197,7 +197,7 @@ class ReceiptOnThePageTests(LocalMediaMixin, TestCase):
 class OpeningAnAttachmentTests(LocalMediaMixin, TestCase):
     """What a click on a tile does.
 
-    Two behaviours, and which one you get is a property of the file rather than
+    Two behaviors, and which one you get is a property of the file rather than
     of the screen it is on — so it is decided once, on the model, and every
     screen that includes `_thumb.html` inherits the answer.
     """

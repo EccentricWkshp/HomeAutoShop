@@ -262,7 +262,7 @@ def recurrence_days(item: AssetServiceItem, *, today: date | None = None) -> int
 
 @transaction.atomic
 def apply_template(asset, template: ScheduleTemplate, *, overwrite: bool = False) -> list[AssetServiceItem]:
-    """Materialise a template onto an asset as editable per-asset items."""
+    """Materialize a template onto an asset as editable per-asset items."""
     created: list[AssetServiceItem] = []
     for entry in template.items.select_related("definition"):
         existing = AssetServiceItem.all_objects.filter(

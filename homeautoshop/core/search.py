@@ -214,7 +214,7 @@ def search(query: str, *, limit_per_group: int = 10, user=None) -> Results:
             # points at: the number printed on the old box is rarely the number
             # in the catalog, and that is the whole reason cross-refs exist.
             identifiers=["part_number", "cross_refs__value"],
-            prose=["name", "manufacturer", "category", "notes"],
+            prose=["name", "manufacturer", "categories__name", "notes"],
             limit=limit_per_group,
         ),
     )

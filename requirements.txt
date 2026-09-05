@@ -16,12 +16,12 @@ psycopg[binary]>=3.2; sys_platform == "linux"
 # OCR (FR-DOC-5). Needs the tesseract binary, which the image installs; without
 # it media is marked failed and nothing else breaks.
 pytesseract>=0.3.13
-pypdf>=5.1                   # pull an existing PDF text layer before rasterising
+pypdf>=5.1                   # pull an existing PDF text layer before rasterizing
 
-# Rasterises image-only PDFs so the OCR fallback has something to read. Arrives
+# Rasterizes image-only PDFs so the OCR fallback has something to read. Arrives
 # with pdfplumber anyway; named here because this module depends on it directly.
 # Chosen over pdf2image/poppler and Wand/ImageMagick for carrying its own PDFium
-# build: no apt line in the image, and the same behaviour on a developer laptop.
+# build: no apt line in the image, and the same behavior on a developer laptop.
 pypdfium2>=4.30
 
 # Scan-tool report parsing (SPEC 8.3a). Word coordinates, not just text:

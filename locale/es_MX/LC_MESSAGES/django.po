@@ -1172,7 +1172,7 @@ msgid "miles"
 msgstr "millas"
 
 #: homeautoshop/core/measurements.py:181
-msgid "kilometres"
+msgid "kilometers"
 msgstr "kilómetros"
 
 #: homeautoshop/core/measurements.py:182
@@ -1648,7 +1648,7 @@ msgid "Imperial — miles, gallons, °F"
 msgstr "Imperial — millas, galones, °F"
 
 #: homeautoshop/core/settings_registry.py:165
-msgid "Metric — kilometres, litres, °C"
+msgid "Metric — kilometers, liters, °C"
 msgstr "Métrico — kilómetros, litros, °C"
 
 #: homeautoshop/core/settings_registry.py:168
@@ -1750,7 +1750,7 @@ msgid "…or this far ahead on the odometer"
 msgstr "…o con esta distancia de anticipación en el odómetro"
 
 #: homeautoshop/core/settings_registry.py:252
-msgid "miles or kilometres, matching your units"
+msgid "miles or kilometers, matching your units"
 msgstr "millas o kilómetros, según tus unidades"
 
 #: homeautoshop/core/settings_registry.py:256
@@ -1762,7 +1762,7 @@ msgid "Only used for a vehicle with too little history to work out its own rate.
 msgstr "Solo se usa para un vehículo con muy poco historial para calcular su propio ritmo."
 
 #: homeautoshop/core/settings_registry.py:258
-msgid "miles or kilometres per day"
+msgid "miles or kilometers per day"
 msgstr "millas o kilómetros por día"
 
 #: homeautoshop/core/settings_registry.py:262
@@ -3810,7 +3810,7 @@ msgid "each"
 msgstr "cada uno"
 
 #: homeautoshop/parts/models.py:44
-msgid "litres"
+msgid "liters"
 msgstr "litros"
 
 #: homeautoshop/parts/models.py:44
@@ -4075,7 +4075,7 @@ msgid "Shop supplies"
 msgstr "Insumos del taller"
 
 #: homeautoshop/purchasing/models.py:234
-msgid "Outsourced labour"
+msgid "Outsourced labor"
 msgstr "Mano de obra externa"
 
 #: homeautoshop/purchasing/models.py:235
@@ -8506,7 +8506,7 @@ msgstr "Lo que vio el lector"
 msgid "Kept exactly as it was read and never edited, so it stays possible to ask what the tool actually said. Where a value has been corrected, the correction is shown beside it."
 msgstr "Se conserva exactamente como se leyó y nunca se edita, para que siga siendo posible saber qué dijo realmente la herramienta. Cuando un valor se ha corregido, la corrección se muestra al lado."
 
-msgid "Confidence is the parser's own estimate of how clearly it read the value, not a judgement of the value."
+msgid "Confidence is the parser's own estimate of how clearly it read the value, not a judgment of the value."
 msgstr "La confianza es la estimación del analizador sobre la claridad con que leyó el valor, no un juicio sobre el valor."
 
 msgid "corrected to %(corrected)s"

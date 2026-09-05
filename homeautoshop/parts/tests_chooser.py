@@ -9,12 +9,12 @@ Every chooser was `Part.objects.all()[:500]` rendered into a `<select>`. That
 is a control which gets steadily worse the more the application is used, and at
 five hundred it stopped listing parts at all without saying so.
 
-The fix is not a smaller catalogue, and that matters more than it sounds.
+The fix is not a smaller catalog, and that matters more than it sounds.
 **Planning is the act of finding the gap between what is on the shelf and what
 has to be bought**, so a chooser offering only what is in stock would remove
 the rows the planner opened it to find. Nothing here is hidden: typing searches
 every part by every identifier. What changes is the resting state — a shortlist
-assembled from relevance, with the whole catalogue one search behind it.
+assembled from relevance, with the whole catalog one search behind it.
 """
 
 from __future__ import annotations
@@ -94,7 +94,7 @@ class ShortlistTests(Base):
         self.assertNotIn("F150 tailgate cable", self.names(asset=self.asset))
 
     def test_but_they_are_never_hidden(self):
-        """Nothing leaves the catalogue — only the default view."""
+        """Nothing leaves the catalog — only the default view."""
         self.assertIn("F150 tailgate cable", self.names("tailgate", asset=self.asset))
 
     def test_consumables_are_offered_because_they_fit_everything(self):
@@ -233,7 +233,7 @@ class ResolveTests(Base):
 
 
 class ChooserOnThePagesTests(Base):
-    """Every screen that chose a part, and none of them a catalogue any more."""
+    """Every screen that chose a part, and none of them a catalog any more."""
 
     def setUp(self):
         super().setUp()

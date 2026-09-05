@@ -236,7 +236,7 @@ class DeleteTests(Base):
 class ToolScreenTests(Base):
     """A tool named on a job used to be unreachable afterwards (FR-WL-8).
 
-    Reported as two things that are one thing: the WrenchLedger catalogue was
+    Reported as two things that are one thing: the WrenchLedger catalog was
     searchable only from inside a job item, and a tool added there by hand could
     never be listed, corrected or removed again.
     """
@@ -333,7 +333,7 @@ class ToolLookupTests(Base):
         the remote half of this search never worked once, while its failure was
         reported to the operator as "WrenchLedger did not answer".
 
-        The cache is the catalogue now, and the sync is what keeps it honest.
+        The cache is the catalog now, and the sync is what keeps it honest.
         """
         with mock.patch(
             "homeautoshop.core.integrations.wrenchledger.WrenchLedgerClient"

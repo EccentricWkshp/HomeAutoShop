@@ -13,7 +13,8 @@ lands with the features it belongs to.
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Any
+from decimal import Decimal
+from typing import Any, Literal
 from uuid import UUID
 
 from django.http import JsonResponse
@@ -25,6 +26,10 @@ from homeautoshop.accounts.models import ApiToken
 from homeautoshop.assets.models import Asset, UsageReading
 from homeautoshop.assets.services import record_reading
 from homeautoshop.core.models import StaleRevisionError
+from homeautoshop.parts.models import Part
+from homeautoshop.parts.services import (
+    KINDS, categories as part_categories, matching, shelf_quantities,
+)
 from homeautoshop.work.models import WorkOrder, WorkOrderNote
 
 
@@ -271,6 +276,101 @@ def set_status(request, wo_id: UUID, payload: StatusIn):
             status=422,
         )
     return wo
+
+
+# ---------------------------------------------------------------------------
+# Parts (SPEC §7.4, FR-PART-8/9)
+# ---------------------------------------------------------------------------
+#
+# Reads only, which is the same line every other resource here is drawn at: the
+# module docstring says the write surface lands with the feature it belongs to,
+# and creating a part means cross-references, fitment and stock lots rather
+# than one POST.
+#
+# The filters are deliberately the *same three* the parts screen offers, going
+# through the *same* `matching()`. A second implementation of "what counts as a
+# consumable" is how the API and the screen come to disagree while both look
+# right in isolation.
+
+
+class PartOut(Schema):
+    id: UUID
+    revision: int
+    name: str
+    categories: list[str]
+    is_consumable: bool
+    manufacturer: str
+    part_number: str
+    part_type: str
+    unit: str
+    has_core: bool
+    on_hand: float
+    min_quantity: float | None = None
+    is_low: bool
+    notes: str
+
+
+def _part_out(part: Part, on_hand: Decimal) -> dict[str, Any]:
+    """One part, with its shelf quantity handed in rather than looked up.
+
+    `Part.on_hand` and `Part.is_low` are properties that each issue a query, so
+    reading them here would make a fifty-row response a hundred and one
+    queries. The caller sums every row's lots in one.
+    """
+    return {
+        "id": str(part.pk),
+        "revision": part.revision,
+        "name": part.name,
+        "categories": [c.name for c in part.categories.all()],
+        "is_consumable": part.is_consumable,
+        "manufacturer": part.manufacturer,
+        "part_number": part.part_number,
+        "part_type": part.part_type,
+        "unit": part.unit,
+        "has_core": part.has_core,
+        "on_hand": float(on_hand),
+        "min_quantity": float(part.min_quantity) if part.min_quantity is not None else None,
+        "is_low": part.min_quantity is not None and on_hand < part.min_quantity,
+        "notes": part.notes,
+    }
+
+
+@api.get("/parts/categories", response=list[str], tags=["Parts"])
+def list_part_categories(request):
+    """Every category in use, so a client can offer the same picker the form
+    does — which is the half that stops `category` sprouting spellings."""
+    return part_categories()
+
+
+@api.get("/parts", response=list[PartOut], tags=["Parts"])
+def list_parts(
+    request,
+    q: str = "",
+    category: str = "",
+    kind: Literal["part", "consumable"] | None = None,
+    limit: int = 50,
+):
+    """The catalog, narrowed the way the parts screen narrows it.
+
+    `kind` is a literal rather than a free string, and that is the one place
+    this deliberately differs from the screen. There, an unrecognized `kind`
+    shows the catalog: a URL is typed by hand, and an empty parts page is
+    indistinguishable from a shop that owns nothing. Here it is a 422, because
+    a client sending `kind=banana` has a bug, and answering it with the whole
+    catalog hides the bug in data that looks fine.
+    """
+    rows = list(
+        matching(q, category=category, consumable=KINDS.get(kind or ""))
+        .prefetch_related("categories")[: min(limit, 200)]
+    )
+    on_hand = shelf_quantities([part.pk for part in rows])
+    return [_part_out(part, on_hand.get(part.pk, Decimal(0))) for part in rows]
+
+
+@api.get("/parts/{part_id}", response=PartOut, tags=["Parts"])
+def get_part(request, part_id: UUID):
+    part = get_object_or_404(Part.objects.prefetch_related("categories"), pk=part_id)
+    return _part_out(part, shelf_quantities([part.pk]).get(part.pk, Decimal(0)))
 
 
 @api.get("/search", tags=["Search"])

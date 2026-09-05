@@ -578,11 +578,19 @@ class ScreenTests(TestCase):
         from django.urls import reverse
 
         upload = SimpleUploadedFile("x.pdf", b"%PDF-1.4", content_type="application/pdf")
-        with mock.patch.object(rockauto, "read_pdf", return_value=(["Amazon"], [[]])):
-            response = self.client.post(
-                reverse("order_import"), {"order": upload, "action": "preview"}, follow=True
-            )
-        self.assertContains(response, "does not look like a RockAuto order")
+
+        response = self.client.post(
+            reverse("order_import"), {"order": upload, "action": "preview"}, follow=True
+        )
+
+        # Named, all of them. "This is not a RockAuto order" was a complete
+        # answer while RockAuto was the only reader and is a misleading one
+        # now: the useful thing to tell somebody holding a file nothing would
+        # read is what this screen *does* read.
+        self.assertContains(response, "does not look like an order from")
+        self.assertContains(response, "RockAuto")
+        self.assertContains(response, "NAPA Auto Parts")
+        self.assertContains(response, "Amazon")
 
     def test_nothing_chosen_is_a_message_not_a_crash(self):
         from django.urls import reverse

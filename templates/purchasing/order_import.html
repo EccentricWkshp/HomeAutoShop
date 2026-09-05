@@ -10,12 +10,38 @@
   <a class="btn" href="{% url 'purchase_list' %}">{% translate "All purchases" %}</a>
 </div>
 
-<div class="cols two">
-  <div class="stack">
+{% comment %}
+The page used to be `cols two`, which is `2fr 1fr` — and the *form* had the two
+thirds. So a file input and two buttons sat in a wide column with nothing under
+them while the report, which is a table of eight columns, was squeezed into the
+narrow one and scrolled sideways with product names wrapping a word at a time.
+The proportions were exactly inverted: before a file is chosen this page has
+almost nothing to show, and afterwards it has a table somebody has to read
+carefully enough to commit money on.
+
+So it is one column now. The upload card is short and says so by being short;
+the summary and the vehicles sit side by side because they are both narrow; and
+the lines get the full width, which is the only part of this screen that ever
+needed it.
+{% endcomment %}
+<div class="stack">
     <section class="card">
       <h2>{% translate "The file" %}</h2>
       <p class="small muted">
-        {% blocktranslate %}A RockAuto order confirmation, saved as a PDF — from the confirmation page or from the email. It carries the brand, the manufacturer part number, the part type, the price, the core charge and the quantity for every line, grouped under the vehicle each was looked up against.{% endblocktranslate %}
+        {% blocktranslate %}A supplier order, saved as a PDF. The file is recognized by what is in it, so there is nothing to choose first.{% endblocktranslate %}
+      </p>
+      {% comment %}
+      Joined rather than looped, and the reason is a test rather than taste.
+      A card whose POST form sits below a {% templatetag openblock %} for
+      {% templatetag closeblock %} is the shape of a form acting on a list
+      row, which is the bug `tests_place` sweeps for — and the sweep reads
+      templates as text, so it cannot tell that this loop is three vendor
+      names and that form is a file upload. It is right to be conservative;
+      the markup is what should stop looking like the thing.
+      {% endcomment %}
+      <p class="small"><strong>{{ formats|join:" · " }}</strong></p>
+      <p class="small muted">
+        {% blocktranslate %}A parts supplier's document carries the brand, the manufacturer part number, the price, the core charge and the quantity for every line — and, where it says so, the vehicle each was looked up against. A general retailer's carries none of that, so its lines arrive identified by description, and you say which of them are parts.{% endblocktranslate %}
       </p>
       <form method="post" enctype="multipart/form-data" class="stack">{% csrf_token %}
         <div class="field">
@@ -31,11 +57,10 @@
         {% blocktranslate %}Reading the same order twice does not make a second purchase — it updates the one already here, unless some of it has been received, in which case it leaves it alone.{% endblocktranslate %}
       </p>
     </section>
-  </div>
 
-  <div class="stack">
     {% if report %}
-      <section class="card">
+      <div class="cols fit">
+      <section class="card orderreport">
         <h2>
           {% if report.dry_run %}{% translate "What it would do" %}{% else %}{% translate "What it did" %}{% endif %}
         </h2>
@@ -45,15 +70,24 @@
           asked for the same file twice — which is how a preview stops being
           used. The document was stored on the way past; this confirms it.
         {% endcomment %}
+        {% comment %}
+        The confirm button and the line checkboxes are one form, so what gets
+        committed is what the reader is looking at. Two forms would let
+        somebody untick six tools and then press a button that did not know
+        about it — and the failure would be silent and expensive.
+        {% endcomment %}
         {% if report.dry_run and held %}
-          <form method="post" class="row">{% csrf_token %}
+          <form method="post" id="confirm-import">{% csrf_token %}
             <input type="hidden" name="held" value="{{ held }}">
-            <button type="submit" name="action" value="commit" class="primary">
-              {% translate "Read this in" %}
-            </button>
-            <span class="small muted">
-              {% blocktranslate with name=held_name %}from {{ name }}, already read{% endblocktranslate %}
-            </span>
+            <input type="hidden" name="lines_offered" value="1">
+            <div class="row">
+              <button type="submit" name="action" value="commit" class="primary">
+                {% translate "Read this in" %}
+              </button>
+              <span class="small muted">
+                {% blocktranslate with name=held_name %}from {{ name }}, already read{% endblocktranslate %}
+              </span>
+            </div>
           </form>
         {% endif %}
         <table class="small">
@@ -65,6 +99,10 @@
           <tr><th>{% translate "Fitment recorded" %}</th><td>{{ report.fitments_recorded }}</td></tr>
           {% if report.kit_items_recorded %}
             <tr><th>{% translate "Kit contents recorded" %}</th><td>{{ report.kit_items_recorded }}</td></tr>
+          {% endif %}
+          {% if report.tooling_recorded %}
+            <tr><th>{% translate "Recorded as tooling" %}</th>
+                <td class="mono">{{ report.tooling }}</td></tr>
           {% endif %}
           <tr><th>{% translate "Parts subtotal" %}</th><td class="mono">{{ report.order.subtotal }}</td></tr>
           <tr><th>{% translate "Shipping" %}</th><td class="mono">{{ report.order.shipping }}</td></tr>
@@ -103,29 +141,92 @@
           </p>
         </section>
       {% endif %}
+      </div>
 
       <section class="card">
         <h2>{% translate "Lines" %}</h2>
         <div class="tablewrap">
-          <table>
+          <table class="orderlines">
             <thead><tr>
-              <th>{% translate "Part" %}</th><th>{% translate "What it is" %}</th>
-              <th>{% translate "Each" %}</th><th>{% translate "Core" %}</th>
+              {% if report.dry_run and held %}<th>{% translate "Bring in as" %}</th>{% endif %}
+              {% if report.shows_identifiers %}<th>{% translate "Part" %}</th>{% endif %}
+              <th>{% translate "What it is" %}</th>
+              <th>{% translate "Each" %}</th><th>{% translate "Total" %}</th>
+              <th>{% translate "Core" %}</th>
               <th>{% translate "Qty" %}</th><th></th>
             </tr></thead>
             <tbody>
               {% for outcome in report.outcomes %}
                 <tr{% if not outcome.charged %} class="muted"{% endif %}>
-                  <th class="mono small">{{ outcome.line.brand }} {{ outcome.line.part_number }}</th>
+                  {% comment %}
+                  Not every line on a general retailer's order is a part. One
+                  of the sample Amazon orders carries eight items of which one
+                  is — the rest are tools — and nothing in the document says
+                  which. Guessing would be wrong in the expensive direction, so
+                  it is asked, once, on the screen that already exists for
+                  checking the numbers before they are written.
+                  {% endcomment %}
+                  {% if report.dry_run and held %}
+                    <td>
+                      <label class="visually-hidden" for="treat-{{ forloop.counter0 }}">
+                        {% blocktranslate with what=outcome.line.description %}What {{ what }} is{% endblocktranslate %}
+                      </label>
+                      <select id="treat-{{ forloop.counter0 }}" form="confirm-import"
+                              name="treat_{{ forloop.counter0 }}" class="select">
+                        <option value="part" selected>{% translate "A part" %}</option>
+                        <option value="tooling">{% translate "Tooling" %}</option>
+                        <option value="out">{% translate "Leave it out" %}</option>
+                      </select>
+                    </td>
+                  {% endif %}
+                  {% comment %}
+                  The seller used to sit here, under a heading that says Part.
+                  On an Amazon invoice there is no brand and no part number, so
+                  the column held nothing *but* the seller — and a marketplace
+                  account name in a column headed Part reads as a part number
+                  somebody could look up. It belongs with the description,
+                  which is the only identity such a line has, and the column
+                  itself goes away on a document that states no identifiers
+                  rather than printing a row of blanks.
+                  {% endcomment %}
+                  {% if report.shows_identifiers %}
+                    <th class="mono small num">
+                      {% if outcome.line.brand or outcome.line.part_number %}
+                        {{ outcome.line.brand }} {{ outcome.line.part_number }}
+                      {% else %}<span class="muted">—</span>{% endif %}
+                    </th>
+                  {% endif %}
                   <td class="small">{{ outcome.line.description }}
+                    {% if outcome.line.sold_by %}
+                      <div class="muted">{% blocktranslate with who=outcome.line.sold_by %}sold by {{ who }}{% endblocktranslate %}</div>
+                    {% endif %}
+                    {% comment %}
+                    Quoted, not counted. The seller's own words about the line
+                    being several of something, put beside the box that asks
+                    how many — because a number taken out of a product title
+                    would be wrong in both directions on the samples here, and
+                    a count nobody stated silently doubles the shelf and halves
+                    what it cost.
+                    {% endcomment %}
+                    {% if outcome.line.pack_note %}
+                      <div class="muted">{% blocktranslate with phrase=outcome.line.pack_note %}the description says "{{ phrase }}"{% endblocktranslate %}</div>
+                    {% endif %}
                     {% if outcome.inside_kit %}
                       <span class="pill">{% blocktranslate with kit=outcome.inside_kit %}inside {{ kit }}{% endblocktranslate %}</span>
                     {% elif not outcome.charged %}
                       <span class="pill">{% translate "inside a kit" %}</span>
                     {% endif %}
                   </td>
-                  <td class="mono small">{{ outcome.line.unit_price }}</td>
-                  <td class="mono small">
+                  {% comment %}
+                  Worked out from the line's total and the count beside it,
+                  rather than the price the document printed. They are the same
+                  number until a line turns out to be more than one thing —
+                  and a two-pack of relays charged at $14.24 costs $7.12 each,
+                  which is the figure the shelf will carry.
+                  {% endcomment %}
+                  <td class="mono small num">{{ outcome.unit_cost_shown }}</td>
+                  <td class="mono small num">{{ outcome.line.extended }}</td>
+                  <td class="mono small num">
                     {% comment %}
                       A dash, not a zero. The column printed one, and on an
                       invoice "no core on this line" and "a core of nothing"
@@ -133,7 +234,40 @@
                     {% endcomment %}
                     {% if outcome.line.core is None %}—{% else %}{{ outcome.line.core }}{% endif %}
                   </td>
-                  <td class="mono small">{{ outcome.line.quantity }}</td>
+                  {% comment %}
+                  **How many of the part**, which is not always how the vendor
+                  counted. Amazon sold a two-pack of relays as one line item at
+                  one price: `1 of: 2Pcs ... Automotive Relay`. Read straight
+                  in, the shelf gained one relay costing $14.24 and the second
+                  one did not exist.
+
+                  Only the count is asked for. The money stays exactly what the
+                  document says — this box moves no total anywhere — because
+                  the charge is the one thing an invoice is never ambiguous
+                  about, and the count is the one thing it can be wrong about.
+                  {% endcomment %}
+                  <td class="mono small num">
+                    {% comment %}
+                    On every line the vendor charged for, whatever it is being
+                    brought in as. The count belongs to the line and not to the
+                    choice: gating it on "is a part" meant marking something as
+                    tooling took its number away, and changing your mind back
+                    lost it — while the two controls are submitted together, so
+                    a person is expected to move between them freely. A kit
+                    component is the exception, having no count of its own.
+                    {% endcomment %}
+                    {% if report.dry_run and held and not outcome.line.is_kit_component %}
+                      <label class="visually-hidden" for="count-{{ forloop.counter0 }}">
+                        {% blocktranslate with what=outcome.line.description %}How many {{ what }} came{% endblocktranslate %}
+                      </label>
+                      <input id="count-{{ forloop.counter0 }}" form="confirm-import"
+                             class="input count" type="number" step="any" min="0"
+                             name="count_{{ forloop.counter0 }}"
+                             value="{{ outcome.units|floatformat:'-3' }}">
+                    {% else %}
+                      {{ outcome.units|floatformat:"-3" }}
+                    {% endif %}
+                  </td>
                   <td class="small">
                     {% if outcome.created_part %}
                       <span class="pill ok">{% translate "new part" %}</span>
@@ -146,11 +280,21 @@
             </tbody>
           </table>
         </div>
+        {% if report.dry_run and held %}
+          <p class="small muted">
+            {% blocktranslate %}Say what each line is. Tooling is recorded as money the shop spent and nothing more — no part is created and nothing is added to any tool list, because what tools you own is not this application's job. Leave out anything that was never for the shop at all.{% endblocktranslate %}
+          </p>
+          <p class="small muted">
+            {% blocktranslate %}Whatever a line becomes, its share of the tax and shipping goes with it, so the order still adds up to what it cost. Tooling is kept out of any one vehicle's costs.{% endblocktranslate %}
+          </p>
+          <p class="small muted">
+            {% blocktranslate %}Say how many of each you actually got, which is not always how the vendor counted them — a two-pack of relays is one line, one charge and two relays. Changing a count moves no money: the line still cost what the order says it cost, and the price each is worked out from it.{% endblocktranslate %}
+          </p>
+        {% endif %}
         <p class="small muted">
           {% blocktranslate %}A kit's contents are listed here and added to the catalog, so you can find them again on their own — but they carry no money, because the kit they came in was already charged for. They are recorded as being inside their kit, and the price the vendor prints against each one becomes its share of the kit's cost when the box is opened.{% endblocktranslate %}
         </p>
       </section>
     {% endif %}
-  </div>
 </div>
 {% endblock %}

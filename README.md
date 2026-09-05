@@ -81,7 +81,7 @@ CSV import for vehicles, parts and service history, and a
 scheduled pull. A REST API with OpenAPI docs at `/api/v1/docs`.
 
 A few integrations need something of your own and say so in the interface:
-licence-plate lookup needs a provider account you supply, and
+license-plate lookup needs a provider account you supply, and
 [WrenchLedger](Artifacts/INTEGRATION-WRENCHLEDGER.md) tool availability needs a
 WrenchLedger account.
 

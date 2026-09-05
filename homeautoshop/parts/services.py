@@ -8,18 +8,21 @@ bought twice at different prices.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
 from django.core.exceptions import ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Q, Sum
 from django.utils.translation import gettext_lazy as _
 
 from homeautoshop.core.measurements import Money
 
-from .models import Part, PartFitment, PartUsage, StockLot, StockTransaction
+from .models import (
+    Category, Part, PartFitment, PartUsage, StockLot, StockTransaction,
+)
 
 
 class InsufficientStock(ValidationError):
@@ -183,25 +186,144 @@ def fits(asset) -> list[Part]:
     return [f.part for f in ordered]
 
 
+def _identifiers(query: str) -> Q:
+    """Every column a part can be recognized by, as one clause (FR-PART-1)."""
+    return (
+        Q(name__icontains=query)
+        | Q(manufacturer__icontains=query)
+        | Q(part_number__icontains=query)
+        | Q(categories__name__icontains=query)
+        | Q(cross_refs__value__icontains=query)
+    )
+
+
 def find(query: str, limit: int | None = 25) -> list[Part]:
     """One search box, every identifier (FR-PART-1).
 
     `limit=None` returns everything that matched. The default suits a chooser,
     where twenty-five rows is already more than anybody scrolls; the parts
-    screen passes `None` and paginates, because a search there that quietly
-    stopped at twenty-five would be a search that lies about what it found.
+    screen paginates instead, because a search there that quietly stopped at
+    twenty-five would be a search that lies about what it found.
     """
-    query = (query or "").strip()
-    if len(query) < 2:
-        return []
-    matched = Part.objects.filter(
-        Q(name__icontains=query)
-        | Q(manufacturer__icontains=query)
-        | Q(part_number__icontains=query)
-        | Q(category__icontains=query)
-        | Q(cross_refs__value__icontains=query)
-    ).distinct()
+    matched = matching(query) if (query or "").strip() else Part.objects.none()
     return list(matched if limit is None else matched[:limit])
+
+
+#: What `kind=` means wherever it is asked for, and the `is_consumable` it
+#: selects. A part is something that gets installed and stays on the vehicle; a
+#: consumable is something that gets used up.
+#:
+#: It lives here rather than in the view because the parts screen and
+#: `/api/v1/parts` both answer to it, and two copies of this dict is precisely
+#: how the two of them would come to disagree about what a consumable is.
+KINDS = {"part": False, "consumable": True}
+
+
+def matching(query: str = "", *, category: str = "", consumable: bool | None = None):
+    """The catalog narrowed by everything the parts screen can narrow it by.
+
+    A **queryset**, where `find` returns a list, and that is the whole reason it
+    exists: the screen has to count what each filter *would* show before
+    applying it, and a list cannot be counted without being fetched. Chaining
+    also means the three narrowings compose — a search inside a category inside
+    consumables is one query, not three passes with an intersection at the end.
+
+    `category` matches case-insensitively. The picker offers what has actually
+    been stored so an exact match would normally do, but the CSV importer takes
+    whatever the file says (`core/csvimport.py`), so a shop can end up holding
+    both `Brakes` and `brakes`. Matching loosely means a filter can be
+    redundant; matching exactly would mean a filter that hides rows, and only
+    one of those is a bug worth having.
+    """
+    parts = Part.objects.all()
+
+    query = (query or "").strip()
+    if query:
+        # One character matches most of the catalog, which is not a search.
+        # Returning nothing says so; returning everything looks like a filter
+        # that failed open.
+        if len(query) < 2:
+            return Part.objects.none()
+        parts = parts.filter(_identifiers(query)).distinct()
+
+    if category:
+        parts = parts.filter(categories__name__iexact=category)
+    if consumable is not None:
+        parts = parts.filter(is_consumable=consumable)
+    return parts
+
+
+def categories() -> list[str]:
+    """Every category with a part in it, in reading order.
+
+    The collapsing this used to do by hand — group by casefolded spelling, keep
+    the one the most parts carry — is gone, and its absence is the improvement.
+    There is only ever one spelling now, because `Category` says so with a
+    constraint. The heuristic existed to paper over a field that could hold
+    four spellings of one word, and papering over it was never going to be as
+    good as not having them.
+
+    Filtered to categories actually in use. Unfiling the last part from one
+    leaves the row behind, and offering an empty category in a picker is
+    offering a filter that finds nothing. It is not deleted, so typing the name
+    again lands back on the same row rather than making a second one.
+    """
+    return list(
+        Category.objects.filter(parts__isnull=False)
+        .distinct()
+        .values_list("name", flat=True)
+    )
+
+
+def category_for(name: str) -> Category | None:
+    """The category called `name`, made if this shop has not used it before.
+
+    Case- and whitespace-insensitive, so `  brake   parts ` finds `Brake
+    parts`. Nothing is rejected: an unrecognized category is a new one, which
+    is why the form is a box you can type into and not a fixed list.
+    """
+    name = " ".join((name or "").split())[:64]
+    if not name:
+        return None
+    existing = Category.objects.filter(name__iexact=name).first()
+    if existing is not None:
+        return existing
+    try:
+        with transaction.atomic():
+            return Category.objects.create(name=name)
+    except IntegrityError:
+        # Two requests inventing the same category at once. The constraint is
+        # what makes that a race worth losing rather than a duplicate row, and
+        # the loser wants the winner's spelling — which is the whole point of
+        # the constraint being there.
+        return Category.objects.filter(name__iexact=name).first()
+
+
+#: What separates one category from the next where they are typed as text — a
+#: spreadsheet cell, or the "add a category" box on the form.
+SEPARATORS = re.compile(r"[,;/|]")
+
+
+def categories_for(value) -> list[Category]:
+    """Several categories from one written-down list, in the order given.
+
+    The separators are generous on purpose. `Electrical/Lighting` is what
+    somebody writes when a form only has room for one answer, and reading it as
+    two is almost always what they meant — it was the single most likely way
+    the old single field got a compound value crammed into it.
+    """
+    if value is None:
+        return []
+    names = value if isinstance(value, (list, tuple)) else SEPARATORS.split(str(value))
+
+    found: list[Category] = []
+    seen: set = set()
+    for name in names:
+        category = category_for(name)
+        if category is not None and category.pk not in seen:
+            seen.add(category.pk)
+            found.append(category)
+    return found
 
 
 # --------------------------------------------------------------------------
@@ -209,7 +331,7 @@ def find(query: str, limit: int | None = 25) -> list[Part]:
 # --------------------------------------------------------------------------
 
 #: How many parts a chooser rests on before anybody has typed anything.
-#: Deliberately small. The resting state is a shortlist, not a catalogue.
+#: Deliberately small. The resting state is a shortlist, not a catalog.
 SHORTLIST = 8
 
 #: And how many a search answers with. Past this the answer is a narrower
@@ -260,11 +382,11 @@ def candidates(
     """The parts worth offering, best first.
 
     Replaces handing a `<select>` five hundred rows of every part ever bought.
-    The catalogue only grows — nothing is removed from it when a part is used
+    The catalog only grows — nothing is removed from it when a part is used
     up — so a chooser built by listing the table gets steadily less usable for
     exactly the people using the application most, and it does so silently.
 
-    The fix is not a narrower catalogue. Nothing here is hidden: with something
+    The fix is not a narrower catalog. Nothing here is hidden: with something
     typed, this searches everything by every identifier `find` knows. What
     changes is what is offered *before* anybody types, which is a shortlist
     assembled from relevance — the parts that fit this vehicle, the parts on
@@ -290,7 +412,7 @@ def candidates(
         cap = limit or SHORTLIST
         pool = _shortlist(fits, excluded, cap)
 
-    on_hand = _shelf_quantities([part.pk for part in pool])
+    on_hand = shelf_quantities([part.pk for part in pool])
     choices = [
         PartChoice(
             part=part, on_hand=on_hand.get(part.pk, Decimal(0)), fits=part.pk in fits
@@ -307,7 +429,7 @@ def _shortlist(fits: set, excluded: set, cap: int) -> list[Part]:
     Queried as three capped groups rather than one `OR` because a single query
     would have to be sliced *before* anything is ranked, and the slice would
     then decide the shortlist on row order — dropping a part that fits this
-    vehicle in favour of the tenth thing on the shelf.
+    vehicle in favor of the tenth thing on the shelf.
     """
     groups = (
         Part.objects.filter(pk__in=fits),
@@ -321,8 +443,16 @@ def _shortlist(fits: set, excluded: set, cap: int) -> list[Part]:
     return list(picked.values())
 
 
-def _shelf_quantities(pks) -> dict:
-    """On-hand for every row in one query, because the chooser is a loop."""
+def shelf_quantities(pks) -> dict:
+    """On-hand for every row in one query, because the caller is a loop.
+
+    Public because it has two callers now. The parts API needs the same figure
+    for a page of rows, and it cannot reach it with an `annotate`: `matching`
+    joins cross-references when there is a search, so summing lots across that
+    join multiplies every quantity by the number of cross-references the part
+    carries — and `.distinct()` does not fix an aggregate, it just makes the
+    wrong number look considered.
+    """
     if not pks:
         return {}
     rows = (

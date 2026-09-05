@@ -281,7 +281,7 @@ def on_order_minor(ids) -> int:
         if ordered_value <= 0:
             continue
         outstanding_value = sum(
-            int(Decimal(line.unit_price_minor or 0) * line.outstanding)
+            int(line.unit_price_exact * line.outstanding)
             for line in lines
             if line.outstanding > 0
         )

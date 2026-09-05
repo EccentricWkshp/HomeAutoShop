@@ -12,7 +12,7 @@ by list*, because a list of real values is itself the leak.
 
 The rule here is positional and total. Everything printed between the `Ship To:`
 line and the `Part Number` table header is the address block, and all of it is
-dropped — rather than trying to recognise which words are a surname. What
+dropped — rather than trying to recognize which words are a surname. What
 survives is the order number, the date, the parts table and the totals, which is
 the whole of what the parser reads.
 

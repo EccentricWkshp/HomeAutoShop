@@ -9,7 +9,7 @@ to depend on it.
 
 The single most dangerous thing here is the locale hazard. LubeLogger returns
 **locale-formatted strings** by default, so a `1.234,56` fuel cost silently
-imports as `1.23`. Two defences, because one is not enough:
+imports as `1.23`. Two defenses, because one is not enough:
 
 1. The `culture-invariant` header is always sent, and the connection check
    refuses to proceed if the response does not look invariant.

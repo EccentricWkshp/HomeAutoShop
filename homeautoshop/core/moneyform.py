@@ -95,7 +95,7 @@ class MoneyFormField(forms.Field):
 def help_without_minor(help_text):
     """Drop the storage note; keep anything written for the reader.
 
-    Reported as: a core charge field labelled "Core charge" — correctly — above
+    Reported as: a core charge field labeled "Core charge" — correctly — above
     the words *"Minor units (e.g. cents). Never a float."* The label had been
     cleaned up and the help text underneath it had not, so the box that takes
     `$35.00` was telling people to type `3500`. Nobody has ever expected to

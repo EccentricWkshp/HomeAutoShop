@@ -5,7 +5,7 @@ Derivation happens once, when a file is uploaded, and that is the right place
 for it — but it means anything uploaded before a capability existed keeps the
 result it got at the time, for ever. PDFs are the case that prompted this:
 they used to get no preview at all, so every receipt already in the instance
-would have stayed a labelled tile while only new ones showed their first page.
+would have stayed a labeled tile while only new ones showed their first page.
 
 Deliberately a command rather than a scheduled sweep. A sweep would re-queue
 the same permanently-unrenderable files — an encrypted PDF, a HEIC on a box

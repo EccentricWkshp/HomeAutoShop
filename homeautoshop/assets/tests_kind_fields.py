@@ -2,8 +2,8 @@
 The add/edit screen shows only the fields the chosen kind has (FR-EQP-1).
 
 One table holds both a truck and a mower, which is right — they share ninety
-percent of their behaviour. What was wrong is that the form showed both kinds'
-fields to both kinds, so adding a lawnmower offered a VIN, a licence plate, a
+percent of their behavior. What was wrong is that the form showed both kinds'
+fields to both kinds, so adding a lawnmower offered a VIN, a license plate, a
 registration expiry and a vehicle class. None of those exist on a mower, and
 `Asset.clean()` refuses a VIN on equipment outright: the form was inviting an
 entry the record would then reject.
@@ -47,7 +47,7 @@ class LayoutTests(TestCase):
 
         Not fail — vanish. It would still post, still save and still never be
         seen, which is the kind of gap that is only found by somebody
-        wondering why they cannot enter a colour any more.
+        wondering why they cannot enter a color any more.
         """
         placed = [name for _kind, _title, names in SECTIONS for name in names]
         self.assertEqual(sorted(placed), sorted(AssetForm.Meta.fields))

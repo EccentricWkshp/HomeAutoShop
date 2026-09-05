@@ -378,7 +378,7 @@ class DefiningACodeTests(Installed, CodeCase):
 
     def test_it_does_not_overwrite_what_the_tool_printed(self):
         """A reading is what the tool said. Somebody's later note is a better
-        answer for the blanks and is not licence to rewrite the record."""
+        answer for the blanks and is not license to rewrite the record."""
         printed = self.read(description="Fault Of Ignition Key In Circuit")
         self.client.post(self.url(), {"make": "Ford", "description": "Key-in switch"})
 
@@ -425,7 +425,7 @@ class DefiningACodeTests(Installed, CodeCase):
         self.assertEqual(self.client.get(self.url()).status_code, 405)
 
     def test_a_helper_may_read_a_code_but_not_define_one(self):
-        """A definition is instance-wide: no per-vehicle grant can authorise
+        """A definition is instance-wide: no per-vehicle grant can authorize
         writing something every vehicle in the shop then reads."""
         helper = User.objects.create_user(
             "sam", password="correct-horse-battery", role=Role.HELPER
@@ -585,7 +585,7 @@ class TheDefinitionYouSetIsTheOneYouSeeTests(CodeCase):
 
     def test_the_reading_itself_is_left_as_the_tool_wrote_it(self):
         """A reading is evidence. A definition recorded afterwards is a better
-        answer for the screen and is not licence to rewrite what was read."""
+        answer for the screen and is not license to rewrite what was read."""
         self.define()
         self.code.refresh_from_db()
         self.assertEqual(self.code.description, self.SHRUG)

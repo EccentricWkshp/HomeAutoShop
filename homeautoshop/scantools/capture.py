@@ -27,7 +27,7 @@ What is rewritten:
   that is what makes a sample representative and it is shared with millions of
   vehicles; the serial, which is the part that identifies one car, is replaced
   by a digest of the original so re-capturing is stable.
-* **Values a label identifies.** A licence plate, a customer, a technician, a
+* **Values a label identifies.** A license plate, a customer, a technician, a
   shop name and address, a telephone number, an e-mail address — removed. A
   workshop code, a tester serial, a module coding id — zeroed, keeping the
   shape a parser matches on. Nothing about `raffi` says it is a person; the
@@ -81,7 +81,7 @@ TOOL_SERIAL = re.compile(r"\bD8[-‑]\d{6}\b")
 #:
 #: So there are two rules, not one: a token that satisfies its check digit is a
 #: VIN wherever it appears, and a token that follows a VIN label is a VIN
-#: whatever its check digit says. The first catches an unlabelled VIN in a
+#: whatever its check digit says. The first catches an unlabeled VIN in a
 #: filename or a footer; the second catches every VIN issued outside North
 #: America. A part number of the same shape is unaffected by either, because it
 #: neither validates nor follows the word "VIN".
@@ -96,7 +96,7 @@ VIN_LABEL = r"(?:VIN(?:\s*(?:Code|No\.?|Number))?|Chassis\s*(?:No\.?|Number)|Fra
 COLON = r"[:：#=]"
 VIN_LABEL_BEFORE = re.compile(rf"(?i:{VIN_LABEL})\s*{COLON}?\s*$")
 
-#: How far back a label can sit and still be labelling this value. Three words
+#: How far back a label can sit and still be labeling this value. Three words
 #: covers `Vehicle Identification Number: <VIN>` in word geometry, where the
 #: label and the value are separate words and nothing joins them.
 LABEL_REACH = 3
@@ -138,7 +138,7 @@ def redact(text: str, *, vin_expected: bool = False) -> tuple[str, set[str]]:
         )
         # A North American VIN satisfies its check digit; an arbitrary 17
         # characters of part number or calibration ID does not, and must not be
-        # mangled. A labelled one is a VIN either way.
+        # mangled. A labeled one is a VIN either way.
         if not labelled and not vinlib.validate(candidate).check_digit_valid:
             return candidate
         replacement = synthesise_vin(candidate)
@@ -152,14 +152,14 @@ def redact(text: str, *, vin_expected: bool = False) -> tuple[str, set[str]]:
 
 
 # --------------------------------------------------------------------------
-# Labelled values
+# Labeled values
 # --------------------------------------------------------------------------
 
 MASK = "[redacted]"
 
 EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 
-#: Labelled values that identify a person — the owner, the customer, the
+#: Labeled values that identify a person — the owner, the customer, the
 #: technician, the shop. Removed outright, because unlike a VIN there is no
 #: shape worth preserving and no parser here reads one.
 PERSONAL_LABELS = (
@@ -191,7 +191,7 @@ PERSONAL_LABELS = (
     r"E-?mail",
 )
 
-#: Labelled values that identify a piece of *equipment* — the tester, the
+#: Labeled values that identify a piece of *equipment* — the tester, the
 #: workshop code it is registered under, a module's coding id. Zeroed rather
 #: than removed: the shape is what a parser matches on, and the existing rule
 #: for the D8's own serial already works this way (`D8-123456` → `D8-000000`).
@@ -299,7 +299,7 @@ def redact_words(words: list[dict], *, tolerance: float | None = None) -> tuple[
 
     A word on its own cannot tell you it is a shop's name. What it follows can,
     so this carries a short window of the preceding words and lets a label in
-    that window decide — the only way a rule about labelled values reaches a
+    that window decide — the only way a rule about labeled values reaches a
     format where the label and the value are separate words.
 
     **A personal value is as long as it is.** Blanking one word after the label
@@ -307,7 +307,7 @@ def redact_words(words: list[dict], *, tolerance: float | None = None) -> tuple[
     testing center Al-ain` came out with four fifths of the name intact, which
     is worse than not redacting at all because the file then looks redacted. So
     blanking continues to the end of the printed line, and the *geometry* is
-    what ends it — these headers put two labelled fields per line, and without
+    what ends it — these headers put two labeled fields per line, and without
     the line there is nothing to stop the blanking running down the page.
 
     It stops early at the next label, and one word early when the word after

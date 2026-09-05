@@ -236,7 +236,7 @@ def _send_email(channel: NotificationChannel, subject: str, digest: Digest) -> N
     if not host:
         raise RuntimeError("no SMTP server is configured")
 
-    # Django's configured backend is honoured — that is what keeps the console
+    # Django's configured backend is honored — that is what keeps the console
     # backend working in development and the in-memory one working in tests.
     # The one case that has to be overridden is `dummy`, which is what
     # `settings.py` chooses when `EMAIL_HOST` was empty *in the environment*:
@@ -289,7 +289,7 @@ def _send_push(channel: NotificationChannel, subject: str, digest: Digest) -> No
             # harmless here because both were passed, and fatal to any
             # translation of it — gettext refuses a plural whose forms do not
             # take the same arguments, so this string was untranslatable and
-            # nobody knew until somebody translated the catalogue.
+            # nobody knew until somebody translated the catalog.
             ngettext(
                 "%(n)d item needs attention.", "%(n)d items need attention.", len(digest.alerts)
             )

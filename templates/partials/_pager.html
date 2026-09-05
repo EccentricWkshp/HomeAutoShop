@@ -10,7 +10,13 @@ there. Saying how many there are costs one line and makes the truncation
 visible rather than invisible.
 
 Any other query the page carries — a search, a filter — is preserved, so paging
-through search results does not quietly drop the search.
+through search results does not quietly drop the search. That was written when
+the only query was `q`, and it was built by naming `q`: the sentence described
+an intention and the markup implemented one case of it, so the parts screen's
+category and kind filters would have been dropped on page 2 by a partial that
+says right here that it does not do that.
+`{% templatetag openblock %} querystring {% templatetag closeblock %}` carries
+whatever is actually there, which is what the paragraph always meant.
 {% endcomment %}
 {% if page %}
   <p class="small muted">
@@ -28,11 +34,11 @@ through search results does not quietly drop the search.
   {% if page.paginator.num_pages > 1 %}
     <nav class="row" aria-label="{% translate 'Pages' %}">
       {% if page.has_previous %}
-        <a class="btn small" href="?{% if q %}q={{ q|urlencode }}&amp;{% endif %}page={{ page.previous_page_number }}">
+        <a class="btn small" href="{% querystring page=page.previous_page_number %}">
           <span aria-hidden="true">←</span> {% translate "Previous" %}</a>
       {% endif %}
       {% if page.has_next %}
-        <a class="btn small" href="?{% if q %}q={{ q|urlencode }}&amp;{% endif %}page={{ page.next_page_number }}">
+        <a class="btn small" href="{% querystring page=page.next_page_number %}">
           {% translate "Next" %} <span aria-hidden="true">→</span></a>
       {% endif %}
     </nav>

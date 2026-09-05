@@ -28,7 +28,7 @@ class UnitConversionTests(TestCase):
 
     def test_round_trip_preserves_the_entered_value(self):
         # The motivating case from the spec: 87,432 mi must never come back
-        # as 87,431 because it was normalized through kilometres.
+        # as 87,431 because it was normalized through kilometers.
         for value in (Decimal("87432"), Decimal("1"), Decimal("250000.75")):
             canonical = to_canonical(value, "mi")
             self.assertEqual(from_canonical(canonical, "mi"), value)

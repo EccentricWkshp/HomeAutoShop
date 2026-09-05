@@ -1010,9 +1010,9 @@ def code_define(request, code):
     if parsed is None:
         raise Http404("not a trouble code")
 
-    # No vehicle in hand, so no per-vehicle grant can authorise it: this writes
+    # No vehicle in hand, so no per-vehicle grant can authorize it: this writes
     # a dictionary the whole shop reads. `helper_can` refuses a write with no
-    # resource, which is the behaviour wanted here rather than an exception.
+    # resource, which is the behavior wanted here rather than an exception.
     require(request.user, "asset.edit")
 
     make = (request.POST.get("make") or "").strip()
@@ -1117,7 +1117,7 @@ def elm327(request, pk):
                 ),
                 "notConnected": _("No adapter was chosen."),
                 "nothingChosen": _("No adapter was chosen — or none was offered."),
-                # The browser reports the same error for a cancelled chooser and
+                # The browser reports the same error for a canceled chooser and
                 # an empty one, and an empty one is the commoner cause by far.
                 "nothingChosenHelp": _(
                     "The browser cannot tell these apart, so check both. On Android the "

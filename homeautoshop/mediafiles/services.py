@@ -116,11 +116,11 @@ def _mark_derived(media: Media) -> None:
 def _preview_source(media: Media):
     """The picture to make derivatives from, or None when there is not one.
 
-    A PDF is a document with a picture inside it, and rasterising its first
+    A PDF is a document with a picture inside it, and rasterizing its first
     page turns a wall of identical file icons into receipts you can tell apart
     at a glance. Anything else that Pillow cannot open has no preview and says
     so by returning None — the original is still stored and still downloadable,
-    it simply gets a labelled tile on the page instead of an `<img>`.
+    it simply gets a labeled tile on the page instead of an `<img>`.
     """
     from PIL import Image
 
@@ -159,7 +159,7 @@ def derive(media: Media) -> None:
         return
 
     if media.is_image:
-        # Honour the EXIF orientation tag, then discard EXIF entirely on the
+        # Honor the EXIF orientation tag, then discard EXIF entirely on the
         # derivatives. exif_transpose bakes the rotation into pixels, so
         # dropping the metadata afterwards cannot flip the image.
         image = ImageOps.exif_transpose(image)
@@ -306,7 +306,7 @@ def ocr(media: Media) -> None:
     try:
         if media.mime == "application/pdf":
             # A PDF with a text layer needs no OCR at all, and extracting it is
-            # both faster and more accurate than rasterising first.
+            # both faster and more accurate than rasterizing first.
             text = _pdf_text(media)
             if not text.strip():
                 # An image-only PDF — a scanner's output, and most of the
@@ -361,7 +361,7 @@ def upright(image):
     So the one format that most needed reading was the one that could not be
     read at all, and nothing said why.
 
-    `exif_transpose` also drops the orientation tag it has just honoured, so
+    `exif_transpose` also drops the orientation tag it has just honored, so
     this cannot be applied twice.
     """
     from PIL import ImageOps
@@ -633,7 +633,7 @@ def read_pdf_text_by_ocr(raw: bytes) -> str:
 
 
 def _pdf_first_page(media: Media, *, dpi: int = PREVIEW_DPI):
-    """Rasterise page one of a PDF, to use as its thumbnail.
+    """Rasterize page one of a PDF, to use as its thumbnail.
 
     Written out rather than calling `next()` on `_pdf_pages`: that generator
     closes each bitmap as soon as its consumer is finished, and the PIL image
@@ -670,7 +670,7 @@ def _pdf_first_page(media: Media, *, dpi: int = PREVIEW_DPI):
 
 
 def _pdf_pages(media: Media, *, dpi: int = 300):
-    """Rasterise a PDF for OCR, a page at a time.
+    """Rasterize a PDF for OCR, a page at a time.
 
     `pypdfium2` arrives with `pdfplumber` and carries its own PDFium build, so
     this adds no system package — which matters, because the alternatives

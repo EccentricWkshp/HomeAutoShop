@@ -167,6 +167,28 @@ def format_money(money: Money, locale: str | None = None) -> str:
         return f"{money.to_decimal():.2f} {money.currency}"
 
 
+def format_unit_price(total_minor, quantity, currency: str = "USD") -> str:
+    """What one costs, at the precision that makes it true.
+
+    `$36.48` beside a line total of `$182.39` is a row that does not add up, and
+    the reader is left to work out which of the two figures is the lie. Neither
+    is: the price really is $36.478 a gallon. Shown to four places when it needs
+    them and to the ordinary two when it does not.
+
+    Here rather than on `PurchaseLine` because the order review screen has to
+    print the same figure before any line exists — and a second implementation
+    of "how a per-unit price is written" would disagree with this one on exactly
+    the orders that made the rule necessary.
+    """
+    qty = Decimal(str(quantity or 0))
+    total = Decimal(str(total_minor or 0))
+    exact = (total / qty if qty else total) / Decimal(100)
+    rounded = exact.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    if exact == rounded:
+        return format_money(Money(int((rounded * 100).to_integral_value()), currency))
+    return f"{exact.quantize(Decimal('0.0001'), rounding=ROUND_HALF_UP):f}"
+
+
 def format_measurement(value, unit: str, locale: str | None = None) -> str:
     from django.utils.translation import get_language
 
@@ -182,12 +204,12 @@ def format_measurement(value, unit: str, locale: str | None = None) -> str:
 
 UNIT_LABELS = {
     "mi": _("miles"),
-    "km": _("kilometres"),
+    "km": _("kilometers"),
     "hours": _("hours"),
     "cycles": _("cycles"),
     "each": _("each"),
-    "L": _("litres"),
-    "ml": _("millilitres"),
+    "L": _("liters"),
+    "ml": _("milliliters"),
     "qt": _("quarts"),
     "gal": _("gallons"),
     "floz": _("fluid ounces"),
@@ -195,14 +217,14 @@ UNIT_LABELS = {
     "g": _("grams"),
     "lb": _("pounds"),
     "oz": _("ounces"),
-    "m": _("metres"),
+    "m": _("meters"),
     "ft": _("feet"),
     "in": _("inches"),
 }
 
 #: What a part can be measured in, grouped by what it can be converted within.
 #: A vendor's units are the vendor's business — R-134a is sold by the pound in
-#: cylinders and dispensed by the ounce or the half-kilogram — so the catalogue
+#: cylinders and dispensed by the ounce or the half-kilogram — so the catalog
 #: has to hold both and the arithmetic has to join them up.
 PART_UNITS: dict[str, tuple[str, ...]] = {
     "count": ("each",),
@@ -220,7 +242,7 @@ def part_dimension(unit: str) -> str:
     """Which group of units this one can be converted within.
 
     `count` for `each`, which converts to nothing — a thing is a thing, and
-    there is no factor between a gasket and a litre.
+    there is no factor between a gasket and a liter.
     """
     if unit == "each" or not unit:
         return "count"

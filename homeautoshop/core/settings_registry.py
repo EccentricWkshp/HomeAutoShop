@@ -162,7 +162,7 @@ def _ocr_languages(value: str) -> None:
             )
 
 
-UNITS_CHOICES = (("imperial", _("Imperial — miles, gallons, °F")), ("metric", _("Metric — kilometres, litres, °C")))
+UNITS_CHOICES = (("imperial", _("Imperial — miles, gallons, °F")), ("metric", _("Metric — kilometers, liters, °C")))
 
 LUBELOGGER_MODES = (
     ("off", _("Off")),
@@ -249,13 +249,13 @@ REGISTRY: tuple[Entry, ...] = (
     Entry(
         "DUE_SOON_DISTANCE", "maintenance", "int",
         _("…or this far ahead on the odometer"),
-        minimum=1, maximum=100_000, unit=_("miles or kilometres, matching your units"),
+        minimum=1, maximum=100_000, unit=_("miles or kilometers, matching your units"),
     ),
     Entry(
         "DEFAULT_DISTANCE_PER_DAY", "maintenance", "int",
         _("Assume this much driving per day"),
         _("Only used for a vehicle with too little history to work out its own rate."),
-        minimum=1, maximum=2000, unit=_("miles or kilometres per day"),
+        minimum=1, maximum=2000, unit=_("miles or kilometers per day"),
     ),
     Entry(
         "REMINDERS_ENABLED", "maintenance", "bool",

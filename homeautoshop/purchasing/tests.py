@@ -83,7 +83,7 @@ class MoneyFlowTests(TestCase):
     def _purchase_two_at_100_plus_10_shipping(self) -> PurchaseLine:
         purchase = Purchase.objects.create(vendor=self.vendor, shipping_minor=1000)
         return PurchaseLine.objects.create(
-            purchase=purchase, part=self.part, qty_ordered=2, unit_price_minor=10000
+            purchase=purchase, part=self.part, qty_ordered=2, extended_minor=20000
         )
 
     def test_receiving_through_the_ui_creates_stock_at_landed_cost(self):
@@ -201,7 +201,7 @@ class UndoingThingsTests(TestCase):
         self.part = Part.objects.create(name="Brake pads")
         self.purchase = Purchase.objects.create(vendor=self.vendor)
         self.line = PurchaseLine.objects.create(
-            purchase=self.purchase, part=self.part, qty_ordered=2, unit_price_minor=10000
+            purchase=self.purchase, part=self.part, qty_ordered=2, extended_minor=20000
         )
 
     # -- un-receiving ----------------------------------------------------

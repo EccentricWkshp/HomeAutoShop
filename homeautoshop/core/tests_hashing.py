@@ -76,7 +76,7 @@ class ProductionHashingTests(TestCase):
 
     def test_the_network_guard_still_belongs_to_that_runner(self):
         """The hashing override was folded into the existing runner rather than
-        shipped as a second one, so the two behaviours cannot be separated by
+        shipped as a second one, so the two behaviors cannot be separated by
         accident."""
         from homeautoshop.core.testrunner import Runner
 

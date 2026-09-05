@@ -641,7 +641,7 @@ class TheComponentFormSaysWhatItsBoxesAreForTests(TestCase):
     this same screen.
 
     The DOT box is the one that matters most. It is what dates a tire whose
-    tread still looks fine (FR-CMP-6), and an unlabelled box is a feature
+    tread still looks fine (FR-CMP-6), and an unlabeled box is a feature
     nobody can use.
     """
 

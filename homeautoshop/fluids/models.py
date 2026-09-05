@@ -106,7 +106,7 @@ class FluidSample(RevisionedModel):
         related_name="fluid_samples",
     )
     #: The lab's own words, kept as written. This application does not
-    #: summarise it, shorten it, or draw a conclusion from it.
+    #: summarize it, shorten it, or draw a conclusion from it.
     lab_comment = models.TextField(blank=True)
     notes = models.TextField(blank=True)
 
@@ -147,7 +147,7 @@ class FluidResult(BaseModel):
     """One line off the report."""
 
     sample = models.ForeignKey(FluidSample, on_delete=models.CASCADE, related_name="results")
-    #: A registry slug where the name was recognised, otherwise whatever the
+    #: A registry slug where the name was recognized, otherwise whatever the
     #: report called it. Deliberately not a foreign key: a lab that adds an
     #: element must not need a migration here.
     analyte = models.CharField(max_length=48, db_index=True)

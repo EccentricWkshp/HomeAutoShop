@@ -79,7 +79,7 @@ SCHEMAS: dict[str, dict] = {
     "parts": {
         "label": _("Parts"),
         "fields": (
-            "name", "part_number", "brand", "category", "unit",
+            "name", "part_number", "brand", "category", "consumable", "unit",
             "quantity", "location", "cost", "notes",
         ),
         "required": ("name",),
@@ -145,6 +145,9 @@ def run(kind: str, rows: list[dict], mapping: dict[str, str], *, dry_run: bool =
         return outcome
 
     handler = {"vehicles": _vehicle, "parts": _part, "service": _service}[kind]
+    # Per-run rather than per-row, and passed to every handler so that adding a
+    # second thing a run has to remember does not change three signatures.
+    categories = _Categories()
     with transaction.atomic():
         for number, row in enumerate(rows, start=2):  # row 1 is the header
             values = {name: row.get(column, "").strip() for name, column in mapping.items()}
@@ -157,7 +160,10 @@ def run(kind: str, rows: list[dict], mapping: dict[str, str], *, dry_run: bool =
                 outcome.already += 1
                 continue
             try:
-                handler(values, outcome, digest, dry_run=dry_run, user=user)
+                handler(
+                    values, outcome, digest,
+                    dry_run=dry_run, user=user, categories=categories,
+                )
             except Exception as exc:  # noqa: BLE001 - per row, never fatal
                 outcome.problem(number, exc)
         if dry_run:
@@ -180,7 +186,9 @@ def _link(kind: str, digest: str, entity) -> None:
     )
 
 
-def _vehicle(values: dict, outcome: Outcome, digest: str, *, dry_run: bool, user) -> None:
+def _vehicle(
+    values: dict, outcome: Outcome, digest: str, *, dry_run: bool, user, categories
+) -> None:
     from homeautoshop.assets.models import Asset
     from homeautoshop.assets.services import record_reading
 
@@ -221,12 +229,42 @@ def _vehicle(values: dict, outcome: Outcome, digest: str, *, dry_run: bool, user
     _link("vehicles", digest, asset)
 
 
-def _part(values: dict, outcome: Outcome, digest: str, *, dry_run: bool, user) -> None:
-    from homeautoshop.parts.models import Part
+def _part(
+    values: dict, outcome: Outcome, digest: str, *, dry_run: bool, user, categories
+) -> None:
+    """A part, and — where the file says so — the stock sitting on the shelf.
+
+    `unit`, `quantity`, `location` and `cost` were in this schema from the
+    start. The operator mapped all four on the import screen and **all four
+    were discarded**: the row created a part and nothing else, so a spreadsheet
+    that knew the shop owned nine oil filters in Cabinet B produced nine
+    filters' worth of nothing. That is the same defect as a category asked for
+    and never read, one layer down, and it is worse here because the screen
+    invites the mapping.
+
+    Stock arrives the only way stock ever arrives (FR-INV-1): a lot, and a
+    `receive` line in the ledger. Never a number written straight into
+    `qty_on_hand` — a quantity that did not come through the ledger is exactly
+    the unauditable figure the ledger exists to prevent, and an import is the
+    last place to start making them.
+    """
+    from homeautoshop.parts.models import Location, Part, StockLot, StockTransaction
 
     name = values.get("name")
     if not name:
         raise ValueError(_("no part name"))
+
+    # Everything that can be refused is refused before the dry-run return, so a
+    # preview turns down the same rows the real run would. A value the operator
+    # only discovers is unreadable *after* confirming is a preview that did not
+    # preview.
+    consumable = _flag(values.get("consumable"))
+    unit = _unit(values.get("unit"))
+    quantity = _decimal(values.get("quantity"))
+    cost = _money(values.get("cost"))
+    # Safe to resolve during a preview: `run` holds the whole import in one
+    # transaction and rolls it back, so the rows this creates never land.
+    filed = categories.resolve(values.get("category"))
 
     outcome.created += 1
     outcome.sample(f"{name} {values.get('part_number', '')}".strip())
@@ -240,17 +278,44 @@ def _part(values: dict, outcome: Outcome, digest: str, *, dry_run: bool, user) -
         # what the model calls it. The mapping is the operator's word, the
         # column is ours.
         manufacturer=(values.get("brand") or "")[:80],
-        category=(values.get("category") or "")[:64],
+        unit=unit,
+        is_consumable=consumable,
         notes=values.get("notes") or "",
         created_by=user if getattr(user, "pk", None) else None,
     )
+    if filed:
+        part.categories.set(filed)
+
+    if quantity is not None and quantity > 0:
+        where = None
+        if place := (values.get("location") or "").strip():
+            # Matched before it is made, so importing the same shelf twice does
+            # not give the shop two Cabinet Bs.
+            where = Location.objects.filter(name__iexact=place[:80]).first() or (
+                Location.objects.create(name=place[:80])
+            )
+        lot = StockLot.objects.create(
+            part=part,
+            location=where,
+            qty_on_hand=0,
+            unit_cost_minor=cost,
+            created_by=user if getattr(user, "pk", None) else None,
+        )
+        StockTransaction.record(
+            lot, quantity, StockTransaction.Reason.RECEIVE,
+            note=str(_("imported from a spreadsheet")), user=user,
+        )
+
     _link("parts", digest, part)
 
 
-def _service(values: dict, outcome: Outcome, digest: str, *, dry_run: bool, user) -> None:
+def _service(
+    values: dict, outcome: Outcome, digest: str, *, dry_run: bool, user, categories
+) -> None:
     from django.utils.dateparse import parse_date
 
     from homeautoshop.assets.models import Asset
+    from homeautoshop.purchasing.models import Expense, ExpenseCategory
     from homeautoshop.work.models import WorkOrder, WorkOrderStatus
 
     when = parse_date(values.get("date", "")[:10])
@@ -262,6 +327,9 @@ def _service(values: dict, outcome: Outcome, digest: str, *, dry_run: bool, user
         # Never guessed at. Attaching a service record to the wrong vehicle is
         # invisible afterwards and corrupts every cost figure derived from it.
         raise ValueError(_("no vehicle matched — add a VIN, plate or name column"))
+
+    cost = _money(values.get("cost"))
+    seller = _vendor(values.get("vendor"))
 
     outcome.created += 1
     outcome.sample(f"{when} · {asset.nickname} · {values.get('title', '')}")
@@ -282,6 +350,25 @@ def _service(values: dict, outcome: Outcome, digest: str, *, dry_run: bool, user
         odometer_out=_decimal(values.get("odometer")),
         created_by=user if getattr(user, "pk", None) else None,
     )
+    # `cost` and `vendor` were mapped on the import screen and thrown away, so
+    # a spreadsheet of eleven years of receipts produced eleven years of work
+    # orders that had all cost nothing — and the vehicle cost rollup, which is
+    # G-4 and half the reason to keep this history at all, read zero.
+    if cost is not None:
+        Expense.objects.create(
+            asset=asset,
+            work_order=order,
+            vendor=seller,
+            # The honest category for a line that says only what it cost. It is
+            # somebody's own past service record, not a parts receipt this
+            # shop can break down, and guessing `parts` would put a number in
+            # a breakdown that cannot be justified from the row.
+            category=ExpenseCategory.OUTSOURCED_LABOR,
+            amount_minor=cost,
+            incurred_on=when,
+            description=(values.get("title") or "")[:200],
+            created_by=user if getattr(user, "pk", None) else None,
+        )
     _link("service", digest, order)
 
 
@@ -310,3 +397,124 @@ def _decimal(value):
         return Decimal(str(value).replace(",", "").strip())
     except (InvalidOperation, ValueError):
         return None
+
+
+#: What a spreadsheet writes in a yes/no column. Generous on purpose — the
+#: operator's file was not written for this application, and `Y`, `TRUE` and a
+#: lone `x` in the column are all the same statement.
+YES = {"1", "y", "yes", "true", "t", "x", "✓", "✔", "on", "consumable"}
+NO = {"0", "n", "no", "false", "f", "-", "off", "part"}
+
+
+def _flag(value) -> bool:
+    """A yes/no cell, or a row problem saying it could not be read.
+
+    Every other optional column here treats an unreadable value as absent —
+    `year` falls back to `None`, `_decimal` returns `None`. This one refuses,
+    and the asymmetry is the point: a missing year leaves a **visible gap** on
+    the record, whereas a boolean read wrongly lands as `False`, which is
+    indistinguishable from a part that was correctly imported as not a
+    consumable. There is nothing to notice afterwards, so it has to be noticed
+    now. The row is skipped, the message names the value, and imports are
+    idempotent — fix the file and run it again.
+    """
+    text = str(value or "").strip().casefold()
+    if not text:
+        return False
+    if text in YES:
+        return True
+    if text in NO:
+        return False
+    raise ValueError(
+        str(_("%(value)s is not a yes or a no")) % {"value": str(value).strip()[:20]}
+    )
+
+
+#: Every unit a part can be measured in, by its stored code and by the words a
+#: spreadsheet is likely to write instead — `quarts`, `liters`, `EACH`.
+def _unit(value) -> str:
+    """The stored unit code for what the file wrote, or a row problem.
+
+    Refused rather than defaulted for the reason `_flag` is: a part silently
+    landing as `each` when the column said `qt` is not a visible gap, it is a
+    wrong number that every later quantity is measured against.
+    """
+    from homeautoshop.core.measurements import UNIT_LABELS
+
+    text = str(value or "").strip()
+    if not text:
+        return "each"
+    known = {code.casefold(): code for code in UNIT_LABELS}
+    known.update({str(label).casefold(): code for code, label in UNIT_LABELS.items()})
+    # `liter`, `quart`, `gallon` — written singular, as one of a thing is.
+    known.update({
+        str(label).casefold().rstrip("s"): code for code, label in UNIT_LABELS.items()
+    })
+    if (code := known.get(text.casefold())) is not None:
+        return code
+    raise ValueError(
+        str(_("%(value)s is not a unit this shop measures in")) % {"value": text[:20]}
+    )
+
+
+def _vendor(value):
+    """The vendor named in the file, matched before it is made.
+
+    Importing two files that both mention the same garage must not leave the
+    shop with two of it, and the match is case-insensitive because a
+    spreadsheet is not careful about that.
+    """
+    from homeautoshop.purchasing.models import Vendor
+
+    name = " ".join(str(value or "").split())[:120]
+    if not name:
+        return None
+    return Vendor.objects.filter(name__iexact=name).first() or Vendor.objects.create(
+        name=name
+    )
+
+
+def _money(value) -> int | None:
+    """A price as minor units, through the same parser the forms use."""
+    from homeautoshop.core.moneyform import parse_amount
+
+    text = str(value or "").strip()
+    return parse_amount(text) if text else None
+
+
+class _Categories:
+    """The categories in play during one import, carried across its rows.
+
+    A cache, and it earns its place twice over. `category_for` is a SELECT and
+    sometimes an INSERT, so calling it per name per row turns a five-hundred-row
+    file into a thousand queries inside one transaction. And a file has to
+    agree with itself: the first row inventing `Brakes` and the fiftieth
+    writing `brakes` must finish as one category, which the constraint now
+    guarantees but the cache still has to respect.
+    """
+
+    __slots__ = ("_seen",)
+
+    def __init__(self):
+        self._seen: dict = {}
+
+    def resolve(self, value) -> list:
+        """The `Category` rows for one cell, creating what does not exist.
+
+        A cell holds several: `Electrical, Lighting`, or the `Electrical/Lighting`
+        somebody wrote when their spreadsheet had one column for it.
+        """
+        from homeautoshop.parts.services import SEPARATORS, category_for
+
+        found, taken = [], set()
+        for name in SEPARATORS.split(str(value or "")):
+            key = " ".join(name.split()).casefold()
+            if not key:
+                continue
+            if key not in self._seen:
+                self._seen[key] = category_for(name)
+            category = self._seen[key]
+            if category is not None and category.pk not in taken:
+                taken.add(category.pk)
+                found.append(category)
+        return found

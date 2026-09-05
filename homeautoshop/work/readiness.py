@@ -5,7 +5,7 @@ The readiness gate (SPEC §8.7, FR-WL-3/4, INTEGRATION-WRENCHLEDGER.md §6.2).
 Saturday morning with the wheel already off.
 
 **It is a warning, never a block.** The operator may know the torque wrench is
-fine, or may be borrowing one from a neighbour. Blocking work on data from an
+fine, or may be borrowing one from a neighbor. Blocking work on data from an
 optional external system would be indefensible, and NG-8 means this application
 has no standing to be sure it is right.
 

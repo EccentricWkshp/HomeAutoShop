@@ -123,7 +123,7 @@ class ThreeKindsOfMoneyTests(Fixture):
             part=part,
             qty_ordered=Decimal(str(qty)),
             qty_received=Decimal(str(received)),
-            unit_price_minor=unit,
+            extended_minor=int(unit * Decimal(str(qty))),
         )
         return purchase, line
 

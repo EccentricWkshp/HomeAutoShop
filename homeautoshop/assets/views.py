@@ -115,11 +115,11 @@ FULL_WIDTH = ("nickname", "notes")
 class AssetForm(forms.ModelForm):
     """The vehicle, plus how this person wants its card to look.
 
-    The card fields are not columns on `Asset` — order, colour and pins are per
+    The card fields are not columns on `Asset` — order, color and pins are per
     *user* (`AssetCardPreference`), because "which of these six is the one I
     mean" is a question two people in the same shop answer differently. They
     are on this form anyway, and not on a screen of their own, because the one
-    moment somebody knows what a vehicle should be recognisable by is while
+    moment somebody knows what a vehicle should be recognizable by is while
     they are typing in what it is.
 
     `card_prefs` is the marker that says the card section was on the screen. A
@@ -129,9 +129,10 @@ class AssetForm(forms.ModelForm):
     """
 
     card_prefs = forms.CharField(required=False, initial="1", widget=forms.HiddenInput)
-    # Labelled rather than left to Django, which would derive "Card color" and
+    # Labeled rather than left to Django, which would derive "Card color" and
     # "Card pins" from the column names. US English in the `msgid`, because
-    # that is the source language — `locale/en_CA` carries `Colour` (README).
+    # that is the source language, and `locale/en_CA` is what renders the
+    # Canadian spelling for a reader who has chosen it (locale/README.md).
     card_color = forms.ChoiceField(
         required=False, choices=cardlib.COLORS, label=gettext_lazy("Color")
     )
@@ -382,7 +383,7 @@ def asset_move(request, pk):
     on a phone held in one oily hand, and it does not exist at all until a
     script has loaded. These two buttons work everywhere and are what the drag
     is an enhancement *of* — the same POST, from the same list, with the
-    neighbour worked out on the server either way.
+    neighbor worked out on the server either way.
     """
     asset = get_object_or_404(Asset, pk=pk)
     require(request.user, "asset.read", asset)

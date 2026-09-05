@@ -241,7 +241,7 @@ class CredentialTests(RuntimeBase):
         self.assertFalse(Setting.objects.filter(key="WRENCHLEDGER_API_KEY").exists())
 
     def test_rotating_the_key_invalidates_every_stored_credential(self):
-        """The intended emergency behaviour, and it must read as
+        """The intended emergency behavior, and it must read as
         *not configured* rather than as a crash."""
         runtime.save({"WRENCHLEDGER_API_KEY": SECRET})
         with override_settings(CREDENTIAL_KEY="a-completely-different-key"):

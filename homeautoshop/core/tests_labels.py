@@ -33,7 +33,7 @@ class QrTests(TestCase):
         self.assertNotIn("<?xml", svg)
 
     def test_every_label_prints_the_same_size(self):
-        """A short URL and a long one differ in module count, not in millimetres —
+        """A short URL and a long one differ in module count, not in millimeters —
         otherwise a sheet of labels comes out in assorted sizes."""
         small = labels.qr_svg("https://a.test/s/1/", size_mm=24)
         large = labels.qr_svg("https://a-much-longer-hostname.test/s/" + "0" * 40 + "/", size_mm=24)

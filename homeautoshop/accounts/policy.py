@@ -176,7 +176,7 @@ def helper_can(user, action: str, resource=None) -> bool:
     # `visible_assets` rather than refused — showing an empty page is the
     # correct answer for a helper with no grants. A write with no vehicle
     # named is refused: creating a car, or editing the shop's parts list, is
-    # not something a per-vehicle grant can authorise.
+    # not something a per-vehicle grant can authorize.
     return not write
 
 

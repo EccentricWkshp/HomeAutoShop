@@ -9,14 +9,14 @@ one transition right is what makes the cost reports true.
 from __future__ import annotations
 
 from datetime import timedelta
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-from homeautoshop.core.measurements import Money
+from homeautoshop.core.measurements import Money, format_unit_price
 from homeautoshop.core.models import BaseModel, RevisionedModel
 from homeautoshop.core.money import money, money_columns
 from homeautoshop.core.runtime import conf
@@ -71,7 +71,20 @@ class Purchase(RevisionedModel):
         help_text=_("Set when this was bought for a specific job; drives the blocked list."),
     )
 
+    #: The tax **as an amount somebody stated** — off a receipt, or read out of
+    #: an imported order confirmation, which is the only figure those documents
+    #: carry. Used when no rate is given.
     tax_minor, tax_currency = money_columns("tax")
+    #: ...or as the rate it was charged at, which is the more durable statement
+    #: of the two. An amount is right about one arrangement of lines and stops
+    #: being right the moment a line is added, corrected or removed — silently,
+    #: because a stale tax figure looks exactly like a current one. A rate is
+    #: still right afterwards.
+    tax_rate = models.DecimalField(
+        max_digits=6, decimal_places=3, null=True, blank=True,
+        verbose_name=_("tax rate"),
+        help_text=_("A percentage, like 8.4. Leave blank to state the tax as an amount instead."),
+    )
     shipping_minor, shipping_currency = money_columns("shipping")
     discount_minor, discount_currency = money_columns("discount")
     payment_method = models.CharField(max_length=40, blank=True)
@@ -93,11 +106,76 @@ class Purchase(RevisionedModel):
 
     @property
     def subtotal_minor(self) -> int:
+        """What the lines come to, before anything is taken off or added on."""
         return sum(line.line_total_minor for line in self.lines.all())
 
     @property
     def subtotal(self):
         return Money(self.subtotal_minor, self.currency)
+
+    @property
+    def taxable_minor(self) -> int:
+        """What the tax is worked out on: the lines, **less the discount**.
+
+        This is the order the arithmetic has to happen in, and it was the wrong
+        way round. A discount is a reduction in what is being charged for, so
+        it reduces what is taxed — that is what the receipt in the reporter's
+        hand said, and the order here disagreed with it by the tax on five
+        dollars.
+
+        It only showed up as a wrong *total* once a rate was involved, which is
+        why it survived: with tax stated as an amount, `subtotal + tax -
+        discount` and `subtotal - discount + tax` are the same number, and
+        addition being commutative hid a model that was wrong about what tax is
+        charged on.
+
+        Shipping is not in here. Whether a carrier's charge is taxable is a
+        question about a jurisdiction rather than about this order, and quietly
+        taxing it would be this application inventing an answer.
+        """
+        return max(self.subtotal_minor - (self.discount_minor or 0), 0)
+
+    @property
+    def taxable(self):
+        return Money(self.taxable_minor, self.currency)
+
+    @property
+    def tax_charged_minor(self) -> int:
+        """The tax on this order, from a rate if one was given.
+
+        Derived rather than written back to `tax_minor` on save, because the
+        thing that makes it stale is a **line** changing, and lines are edited
+        from a different screen. Anything that has to be recomputed by whoever
+        remembers to call it is a number that will eventually be wrong; this
+        one cannot be, because there is nowhere for it to be stored wrongly.
+        """
+        if self.tax_rate is None:
+            return self.tax_minor or 0
+        rate = Decimal(self.tax_rate) / Decimal(100)
+        return int(
+            (Decimal(self.taxable_minor) * rate).quantize(
+                Decimal("1"), rounding=ROUND_HALF_UP
+            )
+        )
+
+    @property
+    def tax_charged(self):
+        return Money(self.tax_charged_minor, self.currency)
+
+    @property
+    def tax_rate_shown(self) -> str:
+        """`8.4` rather than `8.400`, which is how a rate is written.
+
+        The column holds three decimal places so a rate like 7.375 survives, and
+        `floatformat` cannot drop the trailing zeros of one that does not need
+        them — it decides by the argument, not by the number.
+        """
+        if self.tax_rate is None:
+            return ""
+        rate = Decimal(self.tax_rate)
+        # `normalize()` alone turns 10.000 into 1E+1.
+        trimmed = rate.quantize(Decimal(1)) if rate == rate.to_integral_value() else rate.normalize()
+        return f"{trimmed:f}"
 
     @property
     def total(self):
@@ -110,11 +188,11 @@ class Purchase(RevisionedModel):
 
     @property
     def total_minor(self) -> int:
+        """Lines, less the discount, then tax on that, then shipping."""
         return (
-            self.subtotal_minor
-            + (self.tax_minor or 0)
+            self.taxable_minor
+            + self.tax_charged_minor
             + (self.shipping_minor or 0)
-            - (self.discount_minor or 0)
         )
 
     @property
@@ -157,12 +235,40 @@ class PurchaseLine(BaseModel):
         "parts.Part", null=True, blank=True, on_delete=models.SET_NULL, related_name="purchase_lines"
     )
     description_as_ordered = models.CharField(max_length=200, blank=True)
+    #: **How many of the part**, which is not always how the vendor counted.
+    #:
+    #: Amazon sold a two-pack of relays as `1 of:` for $14.24. One line, one
+    #: charge, and two relays — so this is 2, the line still cost $14.24, and
+    #: each one cost $7.12. The vendor's own counting is not lost: it is in
+    #: `description_as_ordered`, which on that line reads `2Pcs ... Relay`.
+    #:
+    #: Everything downstream already reads it this way — receiving puts this
+    #: many on the shelf, readiness counts this many as on order, and the
+    #: add-line form has asked for it in these terms since the day a line
+    #: started holding its extended price. Only the order importer disagreed,
+    #: by copying the vendor's line count straight in.
     qty_ordered = models.DecimalField(max_digits=12, decimal_places=3, default=1)
     qty_received = models.DecimalField(max_digits=12, decimal_places=3, default=0)
-    unit_price_minor, unit_price_currency = money_columns("unit_price")
+    #: **What all of them cost**, before the core charge — and the money fact
+    #: this line is built on.
+    #:
+    #: It used to be the price of *one*, and that cannot represent a real
+    #: purchase. Five gallons of brake cleaner for $182.39 has a per-gallon
+    #: price of $36.478, which is not a number of cents; stored as money it
+    #: became $36.48, and the line then claimed $182.40. A penny appeared out
+    #: of the arithmetic and the order stopped matching the receipt.
+    #:
+    #: The error is a category one rather than a rounding one. Money is an
+    #: integer number of minor units because that is what survives arithmetic
+    #: (§5.5) — but **a unit price is not an amount anybody paid, it is a
+    #: rate**, and rates do not divide evenly. The same distinction the tax on
+    #: this order now makes: `tax_rate` is a rate and is a `Decimal`,
+    #: `tax_charged_minor` is money and is cents. So the extended price is
+    #: stored, exactly, and the per-unit figure is derived from it.
+    extended_minor, extended_currency = money_columns("extended")
     core_charge_minor, core_charge_currency = money_columns("core_charge", default=0)
 
-    unit_price = money("unit_price")
+    extended = money("extended")
     core_charge = money("core_charge")
 
     class Meta:
@@ -173,9 +279,44 @@ class PurchaseLine(BaseModel):
 
     @property
     def line_total_minor(self) -> int:
-        return int(
-            (Decimal(self.unit_price_minor or 0) * Decimal(str(self.qty_ordered)))
-            + Decimal(self.core_charge_minor or 0)
+        return int(Decimal(self.extended_minor or 0) + Decimal(self.core_charge_minor or 0))
+
+    @property
+    def unit_price_exact(self) -> Decimal:
+        """What one costs, in minor units, unrounded.
+
+        A `Decimal` rather than an `int`, and every calculation that spends
+        this line's money goes through it. Rounding to the cent here and
+        multiplying back up is exactly the trip that produced the extra penny.
+        """
+        qty = Decimal(str(self.qty_ordered or 0))
+        if qty == 0:
+            return Decimal(self.extended_minor or 0)
+        return Decimal(self.extended_minor or 0) / qty
+
+    @property
+    def unit_price_minor(self) -> int:
+        """The per-unit figure as whole cents, for the places that need one.
+
+        A part's remembered price and a captured fixture both want a plain
+        amount. Rounded rather than truncated, and never multiplied back out to
+        make a total — `extended_minor` is the total.
+        """
+        return int(self.unit_price_exact.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+
+    @property
+    def unit_price(self):
+        return Money(self.unit_price_minor, self.extended_currency or "USD")
+
+    @property
+    def unit_price_shown(self) -> str:
+        """The per-unit price at the precision that makes it true.
+
+        The rule itself lives in `format_unit_price`, because the order review
+        screen prints this same figure for lines that are not rows yet.
+        """
+        return format_unit_price(
+            self.extended_minor, self.qty_ordered, self.extended_currency or "USD"
         )
 
     @property
@@ -200,7 +341,7 @@ class PurchaseLine(BaseModel):
         if qty > self.outstanding:
             raise ValidationError(_("That is more than was ordered."))
 
-        unit_cost = Decimal(self.unit_price_minor or 0)
+        unit_cost = self.unit_price_exact
         if allocate_overheads:
             unit_cost += self._overhead_per_unit()
 
@@ -208,8 +349,12 @@ class PurchaseLine(BaseModel):
             part=self.part,
             location=location,
             qty_on_hand=0,
-            unit_cost_minor=int(unit_cost),
-            unit_cost_currency=self.unit_price_currency or "USD",
+            # Rounded, not truncated. `int()` on a Decimal throws the fraction
+            # away, and the fraction here is always positive — a share of tax
+            # and shipping — so every lot ever received landed a little cheaper
+            # than it was, in the same direction every time.
+            unit_cost_minor=int(unit_cost.quantize(Decimal("1"), rounding=ROUND_HALF_UP)),
+            unit_cost_currency=self.extended_currency or "USD",
             purchase_line=self,
             acquired_on=timezone.localdate(),
             created_by=user if getattr(user, "pk", None) else None,
@@ -284,7 +429,12 @@ class PurchaseLine(BaseModel):
     def _overhead_per_unit(self) -> Decimal:
         """This line's share of tax and shipping, per unit."""
         purchase = self.purchase
-        overhead = Decimal((purchase.tax_minor or 0) + (purchase.shipping_minor or 0))
+        # `tax_charged_minor`, not `tax_minor`: with a rate stated, the amount
+        # column is not the tax, and a lot received here would land at a cost
+        # built from a figure nothing on the screen shows.
+        overhead = Decimal(
+            purchase.tax_charged_minor + (purchase.shipping_minor or 0)
+        )
         if overhead <= 0:
             return Decimal(0)
         subtotal = Decimal(purchase.subtotal_minor or 0)
@@ -297,7 +447,7 @@ class PurchaseLine(BaseModel):
 
 class ExpenseCategory(models.TextChoices):
     SHOP_SUPPLIES = "shop_supplies", _("Shop supplies")
-    OUTSOURCED_LABOR = "outsourced_labor", _("Outsourced labour")
+    OUTSOURCED_LABOR = "outsourced_labor", _("Outsourced labor")
     MACHINE_WORK = "machine_work", _("Machine work")
     TOWING = "towing", _("Towing")
     DISPOSAL = "disposal", _("Disposal")

@@ -33,7 +33,7 @@
       A field whose parent switch is off does nothing, and a form full of
       controls that currently do nothing is a form nobody can read. `data-child-of`
       lets the browser hide it; with no script every field stays visible, which
-      is exactly the behaviour before this and is still correct.
+      is exactly the behavior before this and is still correct.
     {% endcomment %}
     <div class="field{% if field.entry.depends_on %} dependent{% endif %}"
          {% if field.entry.depends_on %}data-child-of="id_{{ field.entry.depends_on }}"{% endif %}>

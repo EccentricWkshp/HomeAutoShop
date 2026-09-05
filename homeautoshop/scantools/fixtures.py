@@ -38,7 +38,7 @@ CORPUS = pathlib.Path(__file__).resolve().parents[2] / "Artifacts" / "samples" /
 
 #: A capture is word geometry or it is text, and the name says which. Both are
 #: `.json`, so a reader can open either; the difference is what the parser for
-#: that tool needs. A PDF whose layout carries meaning in colour and position
+#: that tool needs. A PDF whose layout carries meaning in color and position
 #: keeps its words; an auto-scan log keeps its text, because text is the whole
 #: of what a declarative profile reads.
 CAPTURE_SUFFIX = ".words.json"
@@ -167,7 +167,7 @@ def document(capture: pathlib.Path):
 
 #: Tool folders whose reports a **built-in** parser reads, and the fixture
 #: shape that parser produces. Only one format has ever needed this and the
-#: reason is in `engine.py`: the D8 draws its section boundaries in colour and
+#: reason is in `engine.py`: the D8 draws its section boundaries in color and
 #: prints a cell's first line above its own row, neither of which survives text
 #: extraction. Every other tool in the corpus is read by a declarative profile.
 #:

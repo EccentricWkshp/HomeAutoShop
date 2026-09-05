@@ -225,17 +225,25 @@ class PurchaseLineTests(Base):
         self.purchase = Purchase.objects.create(vendor=self.vendor)
         self.part = Part.objects.create(name="Brake pads")
         self.line = PurchaseLine.objects.create(
-            purchase=self.purchase, part=self.part, qty_ordered=2, unit_price_minor=1000
+            purchase=self.purchase, part=self.part, qty_ordered=2, extended_minor=2000
         )
 
     def test_a_price_typed_wrong_can_be_corrected(self):
+        """Corrected as a line total, which is what the line stores.
+
+        Once a line exists its total is known, so that is the box the
+        correction screen offers; the price each is printed beside it and falls
+        out of the arithmetic. The add-line form takes either, because at the
+        moment of typing a receipt may only state one of them.
+        """
         self.client.post(
             reverse("purchase_line_edit", args=[self.purchase.pk, self.line.pk]),
             {"part": str(self.part.pk), "qty_ordered": "2",
-             "unit_price_minor": "$100.00", "core_charge_minor": "$0.00",
+             "extended_minor": "$200.00", "core_charge_minor": "$0.00",
              "description_as_ordered": "Brake pads"},
         )
         self.line.refresh_from_db()
+        self.assertEqual(self.line.extended_minor, 20000)
         self.assertEqual(self.line.unit_price_minor, 10000)
 
     def test_a_line_can_be_removed(self):

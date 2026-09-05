@@ -13,7 +13,7 @@ has rather than a thing it points at.
 **What lands where.** The file goes in `<tool folder>/originals/`, which is
 git-ignored whole — these are other people's reports, published to be read
 rather than redistributed by us, and several carry a VIN. What gets committed
-is `sources.json` beside it: vendor, digest, size, licence and the URL, so the
+is `sources.json` beside it: vendor, digest, size, license and the URL, so the
 attribution survives and a later copy can be checked against this one. Then
 `capture_scan_samples` writes the redacted capture that the parser corpus is
 actually made of.

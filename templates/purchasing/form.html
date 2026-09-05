@@ -1,6 +1,15 @@
 {% extends "base.html" %}{% load i18n %}
 {% block content %}
-<h1>{% translate "New order" %}</h1>
+{% comment %}
+Both of these used to be written as though the form only ever made a new order,
+because the create view was built first and the edit view was pointed at the
+same template. Editing an order therefore opened a page headed **New order**
+with a **Create** button on it — and there is no way to read that except as
+"this is about to make a second copy of the purchase I am looking at". The
+reader's actual question, on every form, is *what will this button do to my
+data*, and the answer has to be on the button.
+{% endcomment %}
+<h1>{% if purchase %}{% blocktranslate with name=purchase %}Edit {{ name }}{% endblocktranslate %}{% else %}{% translate "New order" %}{% endif %}</h1>
 <form method="post" class="card">{% csrf_token %}
   <div class="formgrid">
     {% for field in form %}
@@ -10,6 +19,10 @@
     {% endfor %}
   </div>
   {% if purchase %}{% url 'purchase_detail' purchase.pk as cancel_to %}{% else %}{% url 'purchase_list' as cancel_to %}{% endif %}
-  {% include "partials/_formactions.html" with cancel_url=cancel_to label=_("Create") %}
+  {% if purchase %}
+    {% include "partials/_formactions.html" with cancel_url=cancel_to label=_("Save changes") %}
+  {% else %}
+    {% include "partials/_formactions.html" with cancel_url=cancel_to label=_("Create") %}
+  {% endif %}
 </form>
 {% endblock %}

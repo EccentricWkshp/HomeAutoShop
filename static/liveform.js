@@ -130,7 +130,7 @@
 
   document.addEventListener("submit", function (event) {
     // `wireConfirms` in forms.js listens on the form itself, which bubbles to
-    // here — so a cancelled confirmation has already stopped this.
+    // here — so a canceled confirmation has already stopped this.
     if (event.defaultPrevented) return;
 
     var form = event.target;

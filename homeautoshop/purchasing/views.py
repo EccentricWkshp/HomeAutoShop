@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from decimal import ROUND_HALF_UP, Decimal
+
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -40,14 +42,29 @@ class PurchaseForm(MoneyFormMixin, forms.ModelForm):
         model = Purchase
         fields = [
             "vendor", "order_number", "status", "ordered_on",
-            "tax_minor", "shipping_minor", "discount_minor",
+            "discount_minor", "tax_rate", "tax_minor", "shipping_minor",
             "payment_method", "work_order", "notes",
         ]
-        widgets = {"ordered_on": forms.DateInput(attrs={"type": "date"}), "notes": forms.Textarea(attrs={"rows": 2})}
+        widgets = {
+            "ordered_on": forms.DateInput(attrs={"type": "date"}),
+            "notes": forms.Textarea(attrs={"rows": 2}),
+            "tax_rate": forms.NumberInput(attrs={"step": "0.001", "min": "0"}),
+        }
         labels = {
-            "tax_minor": _("Tax"),
+            "tax_minor": _("or tax as an amount"),
+            "tax_rate": _("Tax rate %"),
             "shipping_minor": _("Shipping"),
             "discount_minor": _("Discount"),
+        }
+        help_texts = {
+            # Ordered on the form the way the arithmetic runs, so the screen
+            # reads as the receipt does: discount off, then tax on the rest.
+            "discount_minor": _("Taken off before tax is worked out."),
+            "tax_rate": _(
+                "Worked out on the lines less the discount, and stays right "
+                "when a line changes."
+            ),
+            "tax_minor": _("Used only when no rate is given."),
         }
 
     def __init__(self, *args, **kwargs):
@@ -149,9 +166,21 @@ def purchase_line_add(request, pk):
     # conversion has to be asked for here. It is the same `parse_amount` the
     # form field uses, so `$12.40` off a receipt means the same thing on this
     # screen as on every other one.
+    qty = Decimal(str(request.POST.get("qty_ordered") or 1))
     try:
-        unit_price = parse_amount(request.POST.get("unit_price_minor") or 0, purchase.currency)
         core_charge = parse_amount(request.POST.get("core_charge_minor") or 0, purchase.currency)
+        # Either box. A receipt for five gallons often prints only what the
+        # five cost, and making somebody divide it to satisfy this form is
+        # asking for a number the vendor never stated — and then rounding the
+        # answer, which is where the missing penny came from.
+        typed_total = (request.POST.get("extended_minor") or "").strip()
+        if typed_total:
+            extended = parse_amount(typed_total, purchase.currency)
+        else:
+            each = parse_amount(request.POST.get("unit_price_minor") or 0, purchase.currency)
+            extended = int(
+                (Decimal(each) * qty).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+            )
     except ValidationError as exc:
         messages.error(request, exc.messages[0])
         return redirect("purchase_detail", pk=purchase.pk)
@@ -165,8 +194,8 @@ def purchase_line_add(request, pk):
         purchase=purchase,
         part=part,
         description_as_ordered=(request.POST.get("description") or "").strip(),
-        qty_ordered=request.POST.get("qty_ordered") or 1,
-        unit_price_minor=unit_price,
+        qty_ordered=qty,
+        extended_minor=extended,
         core_charge_minor=core_charge,
     )
     return redirect("purchase_detail", pk=purchase.pk)
@@ -185,13 +214,19 @@ class PurchaseLineForm(MoneyFormMixin, forms.ModelForm):
         model = PurchaseLine
         fields = [
             "part", "description_as_ordered", "qty_ordered",
-            "unit_price_minor", "core_charge_minor",
+            "extended_minor", "core_charge_minor",
         ]
         labels = {
             "description_as_ordered": _("Description"),
             "qty_ordered": _("Quantity ordered"),
-            "unit_price_minor": _("Unit price"),
+            "extended_minor": _("Total for the line"),
             "core_charge_minor": _("Core charge"),
+        }
+        help_texts = {
+            "extended_minor": _(
+                "What all of them cost, as the receipt states it. The price "
+                "each is worked out from this."
+            ),
         }
 
     def __init__(self, *args, **kwargs):

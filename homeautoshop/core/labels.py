@@ -40,7 +40,7 @@ def scan_url(entity) -> str:
 
 
 def qr_svg(data: str, *, size_mm: int = 24) -> str:
-    """An inline-safe `<svg>` for `data`, sized in millimetres.
+    """An inline-safe `<svg>` for `data`, sized in millimeters.
 
     The XML declaration is stripped: it is legal at the top of a standalone
     file and illegal in the middle of an HTML document, and a browser that

@@ -172,7 +172,7 @@ class TheReviewScreenTests(Base):
         self.assertIn('class="crop"', page)
         self.assertIn("aspect-ratio:", page)
 
-    def test_the_crop_measurements_are_not_localised(self):
+    def test_the_crop_measurements_are_not_localized(self):
         """A stylesheet does not read French. `33,33%` is not a length."""
         self.addCleanup(translation.deactivate)
         page = self.client.get(

@@ -447,7 +447,7 @@
       <section class="card{% if budget.is_over %} warn-card{% endif %}" id="budget">
         <div class="spread"><h2>{% translate "Budget" %}</h2><span class="mono">{{ budget.budget }}</span></div>
         {% comment %}
-          Labelled with the money rather than the percentage: a budget of zero
+          Labeled with the money rather than the percentage: a budget of zero
           has no percentage, and "0% committed" over a job that has spent $45
           is the one reading the card must never give.
         {% endcomment %}
@@ -527,7 +527,7 @@
       <h2>{% translate "Status" %}</h2>
       {% if next_statuses %}
         {% comment %}
-          Both extra fields used to sit here unlabelled as to which status
+          Both extra fields used to sit here unlabeled as to which status
           needed them, so the only way to find out that completing needs a
           meter reading was to press the button and be refused. The requirement
           is attached to the status instead: the browser marks the field

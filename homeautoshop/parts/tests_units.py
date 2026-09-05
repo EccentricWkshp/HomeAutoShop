@@ -2,8 +2,8 @@
 
 Four reports, and the last is a defect in something built two rounds ago:
 
-* Part units were four hard-coded choices — each, litres, kilograms, feet —
-  which is a guess about somebody else's catalogue. R-134a is sold in cylinders
+* Part units were four hard-coded choices — each, liters, kilograms, feet —
+  which is a guess about somebody else's catalog. R-134a is sold in cylinders
   by the pound and dispensed by the ounce or the half-kilogram, and none of
   those were sayable.
 * A time entry was append-only, so the commonest mistake anybody makes — the
@@ -60,7 +60,7 @@ class UnitTests(Base):
         self.assertEqual(self.refrigerant.compatible_units, ("lb", "oz", "kg", "g"))
 
     def test_a_counted_part_converts_to_nothing(self):
-        """A thing is a thing. There is no factor between a gasket and a litre,
+        """A thing is a thing. There is no factor between a gasket and a liter,
         and offering one would be a control asking a question with no answers."""
         self.assertEqual(self.gasket.compatible_units, ("each",))
         self.assertEqual(part_dimension("each"), "count")

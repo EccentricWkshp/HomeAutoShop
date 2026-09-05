@@ -11,7 +11,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.db.models import Prefetch, Q, Sum
+from django.db.models import Count, Prefetch, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.defaultfilters import floatformat
@@ -27,45 +27,110 @@ from homeautoshop.core.moneyform import MoneyFormMixin, parse_amount
 from homeautoshop.purchasing.models import PurchaseLine
 
 from .models import (
-    Location, Part, PartCrossRef, PartFitment, PartKitItem, PartUsage, StockLot,
-    StockTransaction,
+    Category, Location, Part, PartCrossRef, PartFitment, PartKitItem,
+    PartUsage, StockLot, StockTransaction,
 )
 from .services import (
-    candidates, close_kit, consume, core_value_owed, cycle_count, expiring_lots,
-    find, kit_weights, open_kit, outstanding_cores, restock_list, resolve_part,
-    returned_cores, split_kit_cost,
+    KINDS, candidates, categories, categories_for, close_kit, consume,
+    core_value_owed, cycle_count, expiring_lots, find, kit_weights, matching,
+    open_kit, outstanding_cores, restock_list, resolve_part, returned_cores,
+    split_kit_cost,
 )
 
 
 class PartForm(MoneyFormMixin, forms.ModelForm):
+    """Everything about a part, including the several categories it is in.
+
+    Two controls for one concept, and both work with no script at all, which
+    is why it is not a token box. **Checkboxes** for what the shop already
+    files under — that is the reuse half, and on a phone a wrapped row of
+    boxes is easier than a multi-select, which is the control this would
+    otherwise have been. **A text box** for anything new, comma-separated,
+    because a fixed list cannot express the forty-first category and refusing
+    to let somebody invent one is how the field stops being used.
+    """
+
+    #: Free text beside the boxes. `Electrical/Lighting` written in here comes
+    #: out as two, for the same reason `categories_for` splits on a slash.
+    new_categories = forms.CharField(
+        required=False,
+        label=_("Add a category"),
+        help_text=_("Anything not listed above. Separate several with commas."),
+    )
+
     class Meta:
         model = Part
         fields = [
-            "name", "category", "manufacturer", "part_number", "part_type",
-            "unit", "typical_cost_minor", "is_consumable", "has_core",
-            "core_value_minor", "min_quantity", "notes",
+            "name", "categories", "new_categories", "manufacturer",
+            "part_number", "part_type", "unit", "typical_cost_minor",
+            "is_consumable", "has_core", "core_value_minor", "min_quantity",
+            "notes",
         ]
-        widgets = {"notes": forms.Textarea(attrs={"rows": 2})}
+        widgets = {
+            "notes": forms.Textarea(attrs={"rows": 2}),
+            "categories": forms.CheckboxSelectMultiple,
+        }
         labels = {
             "core_value_minor": _("Core charge"),
             "typical_cost_minor": _("Usual price"),
+            "is_consumable": _("Consumable"),
         }
         help_texts = {
             "typical_cost_minor": _(
                 "What one costs. Optional, and used to divide a kit's price "
                 "across what is inside it."
             ),
+            "categories": _(
+                "How the parts list groups this. A headlight is electrical "
+                "and lighting — tick both."
+            ),
+            "is_consumable": _(
+                "Gets used up rather than installed — oil, cleaner, rags. "
+                "Consumables are offered in every part picker and are never "
+                "ranked as something planned for one vehicle."
+            ),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Only categories with something in them. An empty one is a filter
+        # that finds nothing, and the box beside this is how a new one starts.
+        self.fields["categories"].queryset = Category.objects.filter(
+            parts__isnull=False
+        ).distinct()
         for name, field in self.fields.items():
             field.required = name == "name"
-            if not isinstance(field.widget, forms.CheckboxInput):
-                css = "select" if isinstance(field.widget, forms.Select) else "input"
-                if isinstance(field.widget, forms.Textarea):
-                    css = "input textarea"
-                field.widget.attrs.setdefault("class", css)
+            if isinstance(field.widget, (forms.CheckboxInput, forms.CheckboxSelectMultiple)):
+                continue
+            css = "select" if isinstance(field.widget, forms.Select) else "input"
+            if isinstance(field.widget, forms.Textarea):
+                css = "input textarea"
+            field.widget.attrs.setdefault("class", css)
+
+    def save(self, commit=True):
+        """The typed-in categories join the ticked ones.
+
+        `ModelForm` writes an m2m in `save_m2m`, which sets the relation to
+        exactly what the field cleaned — so anything added here has to be
+        applied after that, or saving would drop it.
+        """
+        part = super().save(commit=commit)
+        if commit:
+            self._file_it(part)
+        else:
+            original = self.save_m2m
+
+            def save_m2m():
+                original()
+                self._file_it(part)
+
+            self.save_m2m = save_m2m
+        return part
+
+    def _file_it(self, part) -> None:
+        added = categories_for(self.cleaned_data.get("new_categories", ""))
+        if added:
+            part.categories.add(*added)
 
 
 class LotForm(MoneyFormMixin, forms.ModelForm):
@@ -321,18 +386,49 @@ def part_list(request):
     kit carries its contents beneath it and they are not repeated at the top
     level — the shape of the shelf, rather than of the table.
 
-    **Except while searching**, where they stay flat and carry a label naming
-    the kit instead. Somebody searching for "condenser" wants the condenser;
-    filing it under a kit whose name does not match the search would hide the
-    only row they asked for.
+    **Except while narrowed** — searched, filtered to a category, or split by
+    kind — where they stay flat and carry a label naming the kit instead.
+    Somebody searching for "condenser" wants the condenser; filing it under a
+    kit whose name does not match the search would hide the only row they asked
+    for, and a category filter has exactly the same problem.
     """
     query = request.GET.get("q", "")
+    category = request.GET.get("category", "").strip()
+    kind = request.GET.get("kind", "")
+    # An unrecognized `kind` is everything rather than nothing. A URL somebody
+    # edited or a bookmark from a renamed value should show the catalog, not an
+    # empty screen that looks like a shop with no parts in it.
+    consumable = KINDS.get(kind)
+    if consumable is None:
+        kind = ""
+
+    # Everything the search box and the category picker allow, *before* the
+    # parts/consumables split — so the split can say how many rows each side
+    # holds under the filters already applied. "Consumables (0)" is the answer
+    # to a question, where an unlabeled tab that turns out to be empty is a
+    # dead end somebody has to walk into to discover.
+    narrowed = matching(query, category=category)
+    # `.order_by()` first, and it is load-bearing: the default ordering is
+    # `["name"]`, and Django adds ordering columns to the GROUP BY — so without
+    # this the tally is one row per part rather than one row per kind.
+    tally = {
+        row["is_consumable"]: row["n"]
+        for row in narrowed.order_by()
+        .values("is_consumable")
+        .annotate(n=Count("pk", distinct=True))
+    }
+    counts = {
+        "part": tally.get(False, 0),
+        "consumable": tally.get(True, 0),
+        "all": tally.get(False, 0) + tally.get(True, 0),
+    }
+
     # Both halves of this used to stop silently. Browsing took the first two
     # hundred rows of the table and said nothing about the rest; searching took
     # `find`'s default twenty-five, so a search matching forty parts reported
     # thirty-nine and a half of them as not existing. A cap with no page
     # numbers under it is not a limit, it is a lie about the catalog.
-    matched = find(query, limit=None) if query else Part.objects.all()
+    matched = matching(query, category=category, consumable=consumable)
     page = Paginator(matched, PAGE_SIZE).get_page(request.GET.get("page"))
     found = list(page.object_list)
 
@@ -342,6 +438,7 @@ def part_list(request):
     # history on top of that would have been a page of five hundred queries.
     parts = list(
         Part.objects.filter(pk__in=[part.pk for part in found]).prefetch_related(
+            "categories",
             Prefetch(
                 "fitments", queryset=PartFitment.objects.select_related("asset")
             ),
@@ -364,14 +461,18 @@ def part_list(request):
         within.setdefault(item.part_id, []).append(item.kit)
 
     shown = {part.pk for part in parts}
+    asked_for = bool(query or category or kind)
     rows = []
     for part in parts:
         part.kit_contents = inside.get(part.pk, [])
         part.boxed_in = within.get(part.pk, [])
         _summarize(part)
         # Nested under its kit rather than listed twice — but only when that kit
-        # is actually on this page to nest under.
-        if part.boxed_in and not query:
+        # is actually on this page to nest under, and only while nothing has
+        # been asked for. Under a filter the rows that match are the answer,
+        # and folding one of them under a kit that matched for its own reasons
+        # hides it behind a heading nobody was looking at.
+        if part.boxed_in and not asked_for:
             if any(kit.pk in shown for kit in part.boxed_in):
                 continue
         rows.append(part)
@@ -382,6 +483,11 @@ def part_list(request):
         {
             "parts": rows,
             "q": query,
+            "category": category,
+            "categories": categories(),
+            "kind": kind,
+            "counts": counts,
+            "filtered": asked_for,
             "low": restock_list(),
             "page": page,
             "cores_owed": PartUsage.objects.filter(
@@ -394,6 +500,7 @@ def part_list(request):
 #: How many parts a page of the catalog holds. Large enough that a small
 #: shop never sees a second page, and bounded so a large one still renders.
 PAGE_SIZE = 100
+
 
 #: How many vehicles a row names before it stops naming them. Three fits the
 #: line; the rest become a count, which is still an answer.

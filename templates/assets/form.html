@@ -64,14 +64,14 @@ select afterwards.
   {% comment %}
   How this vehicle's card reads on the board. Rendered by hand rather than
   through `form.sections()` because neither control is a box you type in: the
-  colour is a row of swatches, and the pins are a checklist whose entries are
+  color is a row of swatches, and the pins are a checklist whose entries are
   gated by kind one at a time — the same `data-kind` attribute the script at
   the bottom of this page already watches, so switching between vehicle and
   equipment updates it with no round trip.
 
   It is on this screen and not one of its own because the moment somebody knows
-  what a vehicle should be recognisable by is while they are typing in what it
-  is. What it writes is not a column on the vehicle, though: order, colour and
+  what a vehicle should be recognizable by is while they are typing in what it
+  is. What it writes is not a column on the vehicle, though: order, color and
   pins are **per person** (`AssetCardPreference`), so this changes your board
   and nobody else's — which is what the note under the heading says out loud,
   because a control on a shared record that quietly is not shared is worse than

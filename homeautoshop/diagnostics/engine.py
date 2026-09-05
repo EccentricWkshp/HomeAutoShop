@@ -261,7 +261,7 @@ def _line_tolerance(page: list[dict]) -> tuple[float, bool]:
 
 
 def _row_of(word: dict) -> float:
-    """A word's vertical middle, which is what shares a line with its neighbour.
+    """A word's vertical middle, which is what shares a line with its neighbor.
 
     Not its top. `HEALTH:` and `79%` are printed on one line by a tester whose
     two glyph heights differ, and on a photograph of that line the tops differ
@@ -704,7 +704,7 @@ def _extract_live_data(rule: dict, text: str) -> list[dict]:
     because a data stream *is* a table — the difference is only which column
     makes a row worth keeping.
 
-    Worth having because the shape is already modelled and already shown. The
+    Worth having because the shape is already modeled and already shown. The
     D8's built-in parser has always filled `DiagnosticSession.live_data`, and
     the session screen has always had a Reading / Value / Min / Max table for
     it; a declarative profile simply had no way to. So a THINKCAR data-stream

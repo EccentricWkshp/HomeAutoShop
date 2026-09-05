@@ -93,7 +93,7 @@ def _decimal(text: str) -> Decimal | None:
 def parse_results(text: str) -> list[ParsedLine]:
     """Read a pasted panel. Never raises; every line comes back with a verdict.
 
-    An unrecognised *name* is still kept as a result under its own slug — the
+    An unrecognized *name* is still kept as a result under its own slug — the
     number is the operator's data and a registry that has not heard of an
     element is this application's shortcoming, not theirs. What comes back as
     a problem is a line with no number in it at all, which is the only case

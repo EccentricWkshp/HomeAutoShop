@@ -282,6 +282,34 @@ image — so an edited `.po` that nobody recompiled means the running instance
 disagrees with the repository. `homeautoshop/core/tests_locales.py` fails when
 they drift, and also checks that no translation drops or invents a `%(name)s`.
 
+## Spelling
+
+```bash
+venv/Scripts/python manage.py check_spelling
+```
+
+**US English is the source language.** `locale/README.md` is the authority:
+every `msgid` is en-US, and `locale/en_CA` exists to render the ten strings
+Canadian English spells differently. The line above in this document — that the
+source is "already correct Canadian English" — is true only because most words
+are spelled the same, and it is easy to read backwards. A release note went out
+saying `colour`; the sweep that followed found 152 more in comments, docstrings
+and documentation.
+
+The gate checks **prose, never tokens**, and that distinction is the whole
+design. Comments, docstrings, Markdown, template text and `msgid`s are prose.
+Everything else is not: `PurchaseStatus.CANCELLED = "cancelled"` is a value in
+the database, `{% if rollup.labour_hours %}` is an attribute lookup, and
+`("al", "aluminium")` is a parse alias for labs that spell it that way. A pass
+that cannot tell the difference renames a template variable and not the
+property behind it — Django resolves the miss to an empty string, so the page
+renders a blank number and the suite still passes.
+
+Never read at all: `locale/` (whose catalog exists to *produce* those
+spellings), applied migrations, and captured third-party pages. Deliberate
+exceptions live in `ALLOWED` in the command, each with its reason, so an
+exception is a decision somebody wrote down rather than a hole in the net.
+
 ## Right-to-left
 
 ```bash

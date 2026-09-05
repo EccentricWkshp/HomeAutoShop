@@ -9,7 +9,7 @@
     python manage.py capture_scan_samples --audit
 
 The redaction is `scantools/capture.py` and it is a rule rather than a list —
-VINs by check digit *and* by label, tool serials, workshop codes, licence
+VINs by check digit *and* by label, tool serials, workshop codes, license
 plates, e-mail addresses. It is not, and cannot be, complete: it does not know
 that a technician signed page four. So this ends by **auditing what it wrote**
 and printing everything that still looks like somebody's details, and
@@ -53,13 +53,13 @@ SUSPICIOUS = (
             r"(?:St|Street|Rd|Road|Ave|Avenue|Blvd|Dr|Drive|Lane|Ln|Way)\b"
         ),
     ),
-    ("a labelled plate", re.compile(r"(?i)licen[cs]e[ \t]*plate[ \t]*[:#][ \t]*[A-Z0-9]{2,}")),
+    ("a labeled plate", re.compile(r"(?i)licen[cs]e[ \t]*plate[ \t]*[:#][ \t]*[A-Z0-9]{2,}")),
     (
         # The trailing lookahead is what stops an *empty* field being reported.
         # Autel prints `Customer name:` and `Technician:` next to each other
         # with nothing between them, and a name-shaped word followed by its own
         # colon is the next label, not somebody called Technician.
-        "a labelled person",
+        "a labeled person",
         re.compile(
             r"(?i)(?:customer|owner|client|technician|operator|user)[ \t]*(?:name)?"
             r"[ \t]*[:：#][ \t]*[A-Za-z]{2,}(?![A-Za-z]*[:：])"

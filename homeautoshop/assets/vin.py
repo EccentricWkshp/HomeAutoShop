@@ -7,7 +7,7 @@ mysterious empty decode, and it is what keeps vehicle creation working with
 the WAN unplugged (P-7).
 
 **Seventeen characters is a rule about 1981, not about VINs.** The
-standardised 17-character VIN arrives with the 1981 model year; before that
+standardized 17-character VIN arrives with the 1981 model year; before that
 every manufacturer numbered vehicles its own way and the results are shorter
 and shaped differently — a 1973–79 Ford truck carries eleven characters
 (`F10GLU12345`: make, series, engine, year, plant, then a five-digit unit

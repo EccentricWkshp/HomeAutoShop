@@ -15,10 +15,26 @@
     <a class="btn primary" href="{% url 'part_create' %}">{% translate "Add part" %}</a>
   </div></div>
 
+{% comment %}
+One form, so the search and the category apply together and a submit does not
+silently drop whichever one was not touched. `kind` rides along as a hidden
+field for the same reason: it is chosen from the links below, and a search
+typed afterwards should narrow what is on the screen rather than reset it.
+{% endcomment %}
 <form method="get" class="row" style="margin-bottom:1rem">
   <label class="visually-hidden" for="part-q">{% translate "Find a part" %}</label>
   <input id="part-q" type="search" name="q" value="{{ q }}" style="flex:1"
          placeholder="{% translate 'Name, brand, part number, interchange, UPC…' %}">
+  {% if categories %}
+    <label class="visually-hidden" for="part-category">{% translate "Category" %}</label>
+    <select id="part-category" name="category">
+      <option value="">{% translate "Any category" %}</option>
+      {% for name in categories %}
+        <option value="{{ name }}" {% if name == category %}selected{% endif %}>{{ name }}</option>
+      {% endfor %}
+    </select>
+  {% endif %}
+  {% if kind %}<input type="hidden" name="kind" value="{{ kind }}">{% endif %}
   <button class="primary" type="submit">{% translate "Find" %}</button>
   <button type="button" class="nowrap"
           data-scan="upc_a,upc_e,ean_13,ean_8,code_128,qr_code"
@@ -26,6 +42,26 @@
     {% translate "Scan a barcode" %}
   </button>
 </form>
+
+{% comment %}
+A part is fitted and stays on the vehicle; a consumable is used up. The
+catalog held both facts and showed neither, so the shelf read as one long list
+in which a case of brake cleaner and a water pump were peers.
+
+Each tab carries its count under the filters already applied, which is the
+part that makes it worth a click: an empty side says so before it is opened,
+rather than after. `{% templatetag openblock %} querystring {% templatetag closeblock %}`
+keeps the search and the category and drops the page number — switching kind
+on page 4 of the catalog has no business landing on page 4 of a shorter list.
+{% endcomment %}
+<nav class="subnav" aria-label="{% translate 'Kind' %}">
+  <a href="{% querystring kind=None page=None %}" {% if not kind %}aria-current="page"{% endif %}>
+    {% translate "All" %} <span class="mono muted">({{ counts.all }})</span></a>
+  <a href="{% querystring kind='part' page=None %}" {% if kind == 'part' %}aria-current="page"{% endif %}>
+    {% translate "Parts" %} <span class="mono muted">({{ counts.part }})</span></a>
+  <a href="{% querystring kind='consumable' page=None %}" {% if kind == 'consumable' %}aria-current="page"{% endif %}>
+    {% translate "Consumables" %} <span class="mono muted">({{ counts.consumable }})</span></a>
+</nav>
 
 {% if low %}
 <section class="card">
@@ -43,9 +79,10 @@ are. Flat, the compressor kit and its three components read as four unrelated
 parts and the three show zero on hand — which is the reading that gets a drier
 ordered while one is already in the box.
 
-While searching they stay at the top level and say which kit they are in
-instead: a search for "condenser" that hides the condenser under a kit named
-nothing like it has answered the wrong question.
+While anything has been asked for — a search, a category, a kind — they stay at
+the top level and say which kit they are in instead: a search for "condenser"
+that hides the condenser under a kit named nothing like it has answered the
+wrong question, and a category filter folds rows away for the same reason.
 {% endcomment %}
 <section class="card">
   <ul class="list">
@@ -56,7 +93,26 @@ nothing like it has answered the wrong question.
           {% if part.kit_contents %}
             <span class="pill">{% blocktranslate count n=part.kit_contents|length %}kit of {{ n }} part{% plural %}kit of {{ n }} parts{% endblocktranslate %}</span>
           {% endif %}
-          <div class="small muted">{{ part.manufacturer }} {{ part.part_number }} · {{ part.get_part_type_display }}</div>
+          {% comment %}
+          Marked where it tells the rows apart and dropped where it cannot:
+          on the Consumables tab every row carries the fact, and a badge that
+          is on everything is a badge nobody reads.
+          {% endcomment %}
+          {% if part.is_consumable and kind != 'consumable' %}
+            <span class="pill">{% translate "Consumable" %}</span>
+          {% endif %}
+          <div class="small muted">{{ part.manufacturer }} {{ part.part_number }} · {{ part.get_part_type_display }}
+            {% comment %}
+            The category was write-only for its whole existence: asked for on
+            the form, stored, indexed, quietly matched by the search box, and
+            printed on no screen. So it filed nothing — nobody could see what
+            a part was filed under, let alone that the last one went in under a
+            different spelling. Shown, and shown as the way to the rest of it.
+            {% endcomment %}
+            {% for name in part.categories.all %}
+              · <a href="{% querystring category=name page=None %}">{{ name }}</a>
+            {% endfor %}
+          </div>
           {% if part.boxed_in %}
             <div class="small muted">
               {% for kit in part.boxed_in %}
@@ -65,7 +121,7 @@ nothing like it has answered the wrong question.
             </div>
           {% endif %}
           {% comment %}
-          What the row used to make somebody open the part to find out. Labelled
+          What the row used to make somebody open the part to find out. Labeled
           rather than run together: a bare "$175.26 · 2004 Suzuki Aerio · Shelf
           A" is four facts in a row that each have to be identified by shape.
           Anything unknown is left out rather than printed as a dash — a row of
@@ -84,7 +140,7 @@ nothing like it has answered the wrong question.
               <div><dt>{% translate "Bought" %}</dt>
                 <dd>
                   <a href="{% url 'purchase_detail' part.last_bought.purchase.pk %}">{{ part.last_bought.purchase.ordered_on|default:_("undated") }}</a>
-                  {% if part.last_bought.unit_price_minor is not None %}
+                  {% if part.last_bought.extended_minor is not None %}
                     <span class="mono">{{ part.last_bought.unit_price }}</span>
                   {% endif %}
                   {% if part.last_bought.purchase.vendor %}
@@ -128,9 +184,9 @@ nothing like it has answered the wrong question.
         </li>
       {% endif %}
     {% empty %}
-      <li class="empty">{% if q %}{% translate "Nothing matched." %}{% else %}{% translate "No parts yet." %}{% endif %}</li>
+      <li class="empty">{% if filtered %}{% translate "Nothing matched." %}{% else %}{% translate "No parts yet." %}{% endif %}</li>
     {% endfor %}
   </ul>
-  {% include "partials/_pager.html" with page=page q=q %}
+  {% include "partials/_pager.html" with page=page %}
 </section>
 {% endblock %}

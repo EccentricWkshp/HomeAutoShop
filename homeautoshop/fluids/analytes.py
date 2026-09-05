@@ -18,7 +18,7 @@ them alike is the mistake that makes a trend chart worse than no trend chart:
   thousand miles.
 
 So each analyte carries `accumulates`, and only the ones that do are ever
-normalised. That single flag is the difference between a report somebody can
+normalized. That single flag is the difference between a report somebody can
 read and a chart that quietly lies about half its rows.
 
 `unit` here is a **default**, not a constraint. A lab that reports viscosity at
@@ -26,7 +26,7 @@ read and a chart that quietly lies about half its rows.
 the report used; this is what to assume when a pasted line does not say.
 
 Anything a lab reports that is not on this list is still recordable — the
-analyte is a string, not a foreign key, and an unrecognised one is kept with
+analyte is a string, not a foreign key, and an unrecognized one is kept with
 whatever unit came with it. A registry that refused unknown rows would lose
 data to protect a chart.
 """

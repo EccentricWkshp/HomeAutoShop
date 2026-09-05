@@ -330,7 +330,7 @@ class AssetComponent(BaseModel):
         return (end - self.installed_on).days
 
     def distance_covered(self, current_usage=None) -> Decimal | None:
-        """How far this component has travelled since it went on."""
+        """How far this component has traveled since it went on."""
         if self.installed_usage is None:
             return None
         end = self.removed_usage if self.removed_usage is not None else current_usage

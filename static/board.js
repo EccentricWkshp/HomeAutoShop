@@ -52,7 +52,7 @@
 
   /* Put on the document element, so the grips are revealed from the stylesheet
      rather than one at a time. An affordance is still never advertised by a
-     browser that cannot honour it, and markup that arrives later — a board
+     browser that cannot honor it, and markup that arrives later — a board
      swapped in by `liveform.js` after a move — is already right without
      anything having to notice it. */
   var READY = "can-drag";
@@ -135,7 +135,7 @@
   /* Which slot the pointer is in.
    *
    * Inside one wins outright, so the answer does not drift while the pointer
-   * sits still inside a card. Otherwise the nearest centre, which covers the
+   * sits still inside a card. Otherwise the nearest center, which covers the
    * gaps between cards, the margins either side of the grid, and the empty
    * space past the last row. One rule serves the two-dimensional Vehicles grid
    * and the single-column Fleet panel alike, because it is asked about boxes
@@ -263,7 +263,7 @@
     item.classList.add(LIFTED);
     drag.frame = window.requestAnimationFrame(autoscroll);
     // Otherwise the page scrolls under the finger instead of the card moving.
-    // `touch-action: none` on the grip says the same to browsers that honour
+    // `touch-action: none` on the grip says the same to browsers that honor
     // it; this covers the rest.
     event.preventDefault();
   });
@@ -306,7 +306,7 @@
   }
 
   document.addEventListener("pointerup", finish);
-  // A cancelled pointer — the browser claimed it for a gesture, the pen left
+  // A canceled pointer — the browser claimed it for a gesture, the pen left
   // range — has still shown the reader an arrangement, so it is committed
   // rather than abandoned in a state the server does not know about.
   document.addEventListener("pointercancel", finish);

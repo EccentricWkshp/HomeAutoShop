@@ -7,7 +7,20 @@
   <div><h1>{{ part.name }}</h1>
     <p class="muted">{{ part.manufacturer }} {{ part.part_number }}
       <span class="pill">{{ part.get_part_type_display }}</span>
-      {% if part.has_core %}<span class="pill warn">{% translate "Has core" %}</span>{% endif %}</p>
+      {% comment %}
+      Both of these were stored and shown nowhere. A category filed the part
+      into a group the part's own page could not name, and `is_consumable`
+      changed how every picker in the application ranks it while being
+      invisible on the one screen about this part — so the way to find out
+      whether a part was marked as a consumable was to open the edit form.
+      The category links to the rest of its group, because that is the
+      question somebody reading it has.
+      {% endcomment %}
+      {% if part.is_consumable %}<span class="pill">{% translate "Consumable" %}</span>{% endif %}
+      {% if part.has_core %}<span class="pill warn">{% translate "Has core" %}</span>{% endif %}
+      {% for name in part.categories.all %}
+        · <a href="{% url 'part_list' %}?category={{ name|urlencode }}">{{ name }}</a>
+      {% endfor %}</p>
     {% if part.known_cost %}
       {% comment %}
       What "leave the price blank and it uses the part's own" resolves to, said
@@ -298,7 +311,7 @@
         {% translate "A kit holds the stock while its box is closed. Recording what is inside means those parts can be found before one gets ordered twice, and lets the box be opened into them." %}
       </p>
       {% comment %}
-      These three were a select and two identical number boxes labelled only to
+      These three were a select and two identical number boxes labeled only to
       a screen reader, so the only way to learn what the second one did was to
       submit it and read the row it produced. Stacked and captioned: the column
       is narrow, and a row of five-rem boxes wraps into this shape anyway —
