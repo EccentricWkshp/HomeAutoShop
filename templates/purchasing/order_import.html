@@ -264,8 +264,21 @@ needed it.
                              class="input count" type="number" step="any" min="0"
                              name="count_{{ forloop.counter0 }}"
                              value="{{ outcome.units|floatformat:'-3' }}">
+                      <label class="visually-hidden" for="unit-{{ forloop.counter0 }}">
+                        {% blocktranslate with what=outcome.line.description %}What {{ what }} is measured in{% endblocktranslate %}
+                      </label>
+                      <select id="unit-{{ forloop.counter0 }}" form="confirm-import"
+                              class="input unit" name="unit_{{ forloop.counter0 }}">
+                        {% for code, label in unit_choices %}
+                          <option value="{{ code }}"{% if code == outcome.unit %} selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                      </select>
+                      {% if outcome.size_read %}
+                        <div class="small muted">{% blocktranslate with size=outcome.size_read %}the page says {{ size }}{% endblocktranslate %}</div>
+                      {% endif %}
                     {% else %}
                       {{ outcome.units|floatformat:"-3" }}
+                      {% if outcome.unit != "each" %}<span class="small muted">{{ outcome.unit_label }}</span>{% endif %}
                     {% endif %}
                   </td>
                   <td class="small">

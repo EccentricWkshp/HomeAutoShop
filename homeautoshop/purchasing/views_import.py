@@ -131,6 +131,35 @@ def _counts(request) -> tuple[dict[int, Decimal], bool]:
     return counts, misread
 
 
+def _unit_choices() -> list[tuple[str, str]]:
+    """Every unit a part may be measured in, for the selector on the review."""
+    from homeautoshop.core.measurements import PART_UNITS, unit_label
+
+    return [(code, unit_label(code)) for group in PART_UNITS.values() for code in group]
+
+
+def _units(request) -> dict[int, str]:
+    """What each line is measured in, as the operator left it.
+
+    The reader proposes a unit from the size printed in the description and
+    this is where that proposal is accepted or overruled. Anything that is not
+    a unit the catalog knows is dropped rather than stored: the alternative is
+    a part filed under a unit the conversion table cannot convert, which turns
+    into a quantity nothing can add up.
+    """
+    from homeautoshop.core.measurements import PART_UNITS
+
+    allowed = {code for group in PART_UNITS.values() for code in group}
+    units: dict[int, str] = {}
+    for key, value in request.POST.items():
+        if not key.startswith("unit_"):
+            continue
+        index = key.removeprefix("unit_")
+        if index.isdigit() and value in allowed:
+            units[int(index)] = value
+    return units
+
+
 @login_required
 def order_import(request):
     """Read a supplier order document into a purchase."""
@@ -139,7 +168,7 @@ def order_import(request):
     # Named rather than chosen. The operator knows which vendor the file
     # came from; being asked to say so before it can be read is a step that
     # exists only because the software could not be bothered to look.
-    context: dict = {"formats": orders.formats()}
+    context: dict = {"formats": orders.formats(), "unit_choices": _unit_choices()}
 
     if request.method != "POST":
         return render(request, "purchasing/order_import.html", context)
@@ -180,6 +209,7 @@ def order_import(request):
         report = service.read_and_run(
             source, dry_run=not commit, user=request.user,
             keep=keep, as_tooling=as_tooling, counts=counts,
+            units=_units(request),
         )
     except orders.UnreadableOrder as exc:
         messages.error(

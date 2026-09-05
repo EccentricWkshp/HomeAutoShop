@@ -1024,6 +1024,52 @@ class DeletingAnOrderReallyDeletesItTests(TestCase):
         self.assertEqual(refs.count(), 1)
         self.assertEqual(refs.first().entity_id, report.purchase.pk)
 
+    def test_a_leftover_provenance_row_never_becomes_an_integrity_error(self):
+        """The failure this upsert exists to make impossible.
+
+        A provenance row is not cascaded to by anything — it has no foreign key
+        — so hard-deleting a purchase from the admin leaves it behind, pointing
+        at nothing. Writing the new one with `create()` guarded by the lookup
+        turned that into `duplicate key value violates unique constraint
+        "unique_external_ref"` on the import screen the moment the two ever
+        disagreed about the same row.
+        """
+        from homeautoshop.core.models import ExternalRef
+        from homeautoshop.purchasing.models import Purchase, PurchaseLine
+
+        purchase = self.run_import().purchase
+        ref = ExternalRef.objects.get(external_type="order")
+        PurchaseLine.all_objects.filter(purchase=purchase).hard_delete()
+        Purchase.all_objects.filter(pk=purchase.pk).hard_delete()
+
+        report = self.run_import()
+
+        self.assertEqual(ExternalRef.objects.filter(external_type="order").count(), 1)
+        ref.refresh_from_db()
+        self.assertEqual(ref.entity_id, report.purchase.pk)
+
+    def test_even_when_the_row_points_at_nothing_that_ever_existed(self):
+        """A ref left by a restore, a hand-edit, or a half-finished cleanup."""
+        import uuid
+
+        from homeautoshop.core.models import ExternalRef
+
+        ExternalRef.objects.create(
+            source_system="amazon",
+            source_instance_url="",
+            external_type="order",
+            external_id="114-2708267-4265045",
+            entity_type="Purchase",
+            entity_id=uuid.uuid4(),
+        )
+
+        report = self.run_import()
+
+        self.assertFalse(report.already_imported)
+        refs = ExternalRef.objects.filter(external_type="order")
+        self.assertEqual(refs.count(), 1)
+        self.assertEqual(refs.first().entity_id, report.purchase.pk)
+
     def test_an_order_that_is_still_here_is_still_recognized(self):
         """The guard the fix must not have removed: re-reading a live order is
         still a re-import, not a second copy of it."""

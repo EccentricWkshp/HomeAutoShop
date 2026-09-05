@@ -46,6 +46,7 @@ from homeautoshop.parts.models import (
 from homeautoshop.purchasing.models import Purchase, PurchaseLine, Vendor
 
 from . import orders as order_shapes
+from . import packs
 from . import rockauto
 
 log = logging.getLogger(__name__)
@@ -88,6 +89,24 @@ class LineOutcome:
     #: document said, and the order still reconciles against its own printed
     #: total afterwards.
     units: Decimal = Decimal(1)
+    #: **What one of them is**, which is not always a thing you can hold.
+    #:
+    #: A pail is a package and gallons are what the shop sprays, so a line for
+    #: `CRC Brakleen ... 5 gal (US)` is five of a part measured in gallons, not
+    #: one of a part measured in pails. Where the description states a size the
+    #: unit comes from it; otherwise `each`, which is what everything bolted on
+    #: has always been.
+    unit: str = "each"
+    #: The size the description stated, verbatim, or `""`. Shown beside the
+    #: count so the proposal can be checked against the document rather than
+    #: taken on trust — the reader proposes and the operator decides.
+    size_read: str = ""
+
+    @property
+    def unit_label(self) -> str:
+        from homeautoshop.core.measurements import unit_label
+
+        return unit_label(self.unit)
 
     @property
     def unit_cost_shown(self) -> str:
@@ -288,6 +307,36 @@ def _find_part(line: rockauto.OrderLine) -> tuple[Part | None, str]:
     return None, ""
 
 
+def _size_of(line) -> tuple[Decimal, str] | None:
+    """The pack size the line's own description states, if it states one."""
+    return packs.read_size(line.description or line.label or "")
+
+
+def _proposed(line, part: Part | None) -> tuple[Decimal, str, str]:
+    """`(count, unit, what was read)` before anybody has corrected it.
+
+    The vendor's count multiplied by what is in one of them: two five-gallon
+    pails is ten gallons, and one is five. A description with no size in it
+    proposes exactly what it always did — the vendor's own count, of `each`.
+
+    A part the shop already has keeps the unit **it** is filed under, because
+    that is somebody's decision about their own catalog and a document is not
+    entitled to overrule it. When the two disagree the count falls back to the
+    vendor's, since multiplying gallons into a part measured in `each` would
+    put five of the wrong thing on the shelf.
+    """
+    vendor = Decimal(str(line.quantity or 1))
+    size = _size_of(line)
+    if size is None:
+        return vendor, (part.unit if part is not None else "each"), ""
+
+    quantity, unit = size
+    read = f"{quantity.normalize():f} {unit}"
+    if part is not None and part.unit != unit:
+        return vendor, part.unit, read
+    return vendor * quantity, unit, read
+
+
 def _overheads_per_line(order) -> list[tuple[int, int, int]]:
     """Tax, shipping and discount split across the lines, exact to the cent.
 
@@ -412,6 +461,7 @@ def run(
     keep: set[int] | None = None,
     as_tooling: set[int] | None = None,
     counts: dict[int, Decimal] | None = None,
+    units: dict[int, str] | None = None,
 ) -> ImportReport:
     """Apply a parsed order. Rolls back entirely when `dry_run`.
 
@@ -464,11 +514,6 @@ def run(
         # marked received.
         purchase = Purchase.objects.filter(pk=existing.entity_id).first()
         report.already_imported = purchase is not None
-        if purchase is None:
-            # The ref outlived what it named. Drop it rather than leave it to
-            # fail the unique constraint when the fresh one is written below.
-            existing.delete()
-            existing = None
 
     if purchase is None:
         purchase = Purchase(vendor=vendor)
@@ -477,6 +522,7 @@ def run(
         purchase.ordered_on = order.ordered_on
     tooling = set(as_tooling or ())
     counted = dict(counts or {})
+    chosen_units = dict(units or {})
     overheads = _overheads_per_line(order)
     on_purchase = [
         index
@@ -503,16 +549,28 @@ def run(
     purchase.save()
     report.purchase = purchase
 
-    if existing is None:
-        ExternalRef.objects.create(
-            source_system=source,
-            source_instance_url="",
-            external_type="order",
-            external_id=order.order_number,
-            entity_type="Purchase",
-            entity_id=purchase.pk,
-            source_hash=ExternalRef.hash_of({"total": order.total_minor}),
-        )
+    # Upserted on its natural key, never inserted-if-the-lookup-missed. The
+    # lookup above decides whether this is a *re-import*; making the write
+    # depend on it as well means any disagreement between the two — a row that
+    # outlived the purchase it named, two imports racing, a ref the filter did
+    # not match for any reason at all — comes out as `duplicate key value
+    # violates unique constraint "unique_external_ref"` on somebody's import
+    # screen. The provenance row is a statement about which purchase this
+    # document is currently represented by, so writing it that way is also
+    # simply what it means: whatever happened above, it now points at what was
+    # just imported.
+    ExternalRef.objects.update_or_create(
+        source_system=source,
+        source_instance_url="",
+        external_type="order",
+        external_id=str(order.order_number),
+        defaults={
+            "entity_type": "Purchase",
+            "entity_id": purchase.pk,
+            "source_hash": ExternalRef.hash_of({"total": order.total_minor}),
+            "last_seen_at": timezone.now(),
+        },
+    )
 
     # Re-importing replaces the lines rather than adding a second copy of each.
     # Safe because a line carries no history of its own until it is received,
@@ -549,7 +607,7 @@ def run(
             report.outcomes.append(
                 LineOutcome(
                     line=line, charged=False, tooling=True,
-                    units=Decimal(str(counted.get(index, line.quantity) or 1)),
+                    units=Decimal(str(counted.get(index) or _proposed(line, None)[0])),
                 )
             )
             continue
@@ -560,11 +618,18 @@ def run(
             report.outcomes.append(
                 LineOutcome(
                     line=line, charged=False, skipped=True,
-                    units=Decimal(str(counted.get(index, line.quantity) or 1)),
+                    units=Decimal(str(counted.get(index) or _proposed(line, None)[0])),
                 )
             )
             continue
         outcome = LineOutcome(line=line, charged=not line.is_kit_component)
+        # Looked up before the count is proposed rather than after, because a
+        # part the shop already has is what decides the unit — and the unit is
+        # what decides whether a stated size may be multiplied into the count.
+        part, how = _find_part(line)
+        proposed, unit, read = _proposed(line, part)
+        outcome.unit = chosen_units.get(index) or unit
+        outcome.size_read = read
         # A kit component keeps the vendor's count: it is not charged, and the
         # number that matters about it is how many are in the box, which the
         # kit's own quantity is already divided out of below.
@@ -575,9 +640,8 @@ def run(
             outcome.units = (
                 Decimal(str(chosen))
                 if chosen is not None and Decimal(str(chosen)) > 0
-                else Decimal(str(line.quantity or 1))
+                else proposed
             )
-        part, how = _find_part(line)
 
         if part is None:
             part = Part.objects.create(
@@ -585,6 +649,12 @@ def run(
                 manufacturer=line.brand,
                 part_number=line.part_number,
                 part_type=PartType.AFTERMARKET,
+                # Gallons of brake cleaner, not one drum of it. A part created
+                # from a document that stated a size is measured in that size's
+                # unit, so the shelf can say how much is left rather than how
+                # many containers were bought.
+                unit=outcome.unit,
+                is_consumable=outcome.unit != "each",
                 has_core=bool(line.core_minor),
                 created_by=user if getattr(user, "pk", None) else None,
             )
@@ -684,7 +754,8 @@ def run(
 
 
 def read_and_run(
-    upload, *, dry_run: bool = True, user=None, keep=None, as_tooling=None, counts=None
+    upload, *, dry_run: bool = True, user=None, keep=None, as_tooling=None,
+    counts=None, units=None,
 ) -> ImportReport:
     """Read whatever this file turns out to be, then apply it.
 
@@ -695,5 +766,6 @@ def read_and_run(
     """
     return run(
         order_shapes.read(upload),
-        dry_run=dry_run, user=user, keep=keep, as_tooling=as_tooling, counts=counts,
+        dry_run=dry_run, user=user, keep=keep, as_tooling=as_tooling,
+        counts=counts, units=units,
     )

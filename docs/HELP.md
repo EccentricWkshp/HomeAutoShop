@@ -672,6 +672,25 @@ than counted, deliberately: product titles are marketing copy, and a count
 taken out of one would sometimes be wrong in a way that quietly doubles what
 your shelf claims to hold and halves what it claims to have cost.
 
+**A stated size is different, and is read.** A pail is a package; gallons are
+what you spray. Where a description states a size with a unit on it — *5 gal
+(US)*, *1 US Gal*, *8 Ounce*, *16 fl oz*, *1 Quart*, *500 ml* — the count and
+the unit beside each line are filled in from it, so NAPA's `Qty: 1` drum of
+brake cleaner arrives as **5 gallons** of a part measured in gallons, at
+$36.478 a gallon. The shelf can then say how much is left and a job can use
+against it, which is the only reason to stock a consumable.
+
+The size is read and a bare count is not, and the difference is the point: a
+number with a unit of measure on it is a regulated statement about what is in
+the container, while *2Pcs* might be the pack, the pin count, or how many
+vehicles it fits. What is read is always shown — *the page says 5 gal* — beside
+a unit selector you can change, and none of it moves any money. The line still
+cost exactly what the document says.
+
+A part you already have keeps the unit you filed it under. The document does
+not overrule your catalog, and where the two disagree the count stays the
+vendor's rather than multiplying gallons into a part you measure in *each*.
+
 A NAPA pickup order records the date you collected it, which is what the return
 window runs from.
 
