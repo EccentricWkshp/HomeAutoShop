@@ -15,7 +15,8 @@ from uuid import UUID
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import Q, Sum
+from django.db.models import DecimalField, F, Q, Sum, Value
+from django.db.models.functions import Coalesce
 from django.utils.translation import gettext_lazy as _
 
 from homeautoshop.core.measurements import Money
@@ -218,15 +219,57 @@ def find(query: str, limit: int | None = 25) -> list[Part]:
 #: how the two of them would come to disagree about what a consumable is.
 KINDS = {"part": False, "consumable": True}
 
+#: What `stock=` means, for the same reason `KINDS` lives here: the parts
+#: screen is not the only thing that will ever ask.
+#:
+#: `out` is `<= 0` rather than `== 0` because the ledger can go negative — a
+#: count that finds fewer than the book says writes an adjustment, and a part
+#: at minus one is emphatically not on the shelf.
+STOCK_STATES = ("in", "out", "low")
 
-def matching(query: str = "", *, category: str = "", consumable: bool | None = None):
+
+def with_shelf():
+    """Every part with what is actually on its shelves annotated on.
+
+    `Part.on_hand` answers this one part at a time and issues a query each
+    time, which is right on a part's own page and ruinous as a filter. The sum
+    is over **alive** lots only: `stock_lots` as a related manager hides the
+    trash and a join does not, so without the condition a filter would count
+    stock that has been thrown away and `on_hand` and this would disagree.
+    """
+    return Part.objects.annotate(
+        shelf=Coalesce(
+            Sum(
+                "stock_lots__qty_on_hand",
+                filter=Q(stock_lots__deleted_at__isnull=True),
+            ),
+            Value(Decimal("0")),
+            output_field=DecimalField(max_digits=14, decimal_places=3),
+        )
+    )
+
+
+def matching(
+    query: str = "",
+    *,
+    category: str = "",
+    consumable: bool | None = None,
+    vehicle=None,
+    stock: str = "",
+):
     """The catalog narrowed by everything the parts screen can narrow it by.
 
     A **queryset**, where `find` returns a list, and that is the whole reason it
     exists: the screen has to count what each filter *would* show before
     applying it, and a list cannot be counted without being fetched. Chaining
-    also means the three narrowings compose — a search inside a category inside
+    also means the narrowings compose — a search inside a category inside
     consumables is one query, not three passes with an intersection at the end.
+
+    The last two are applied as a subquery on the primary key rather than as a
+    join, deliberately. A `Sum` over lots beside a join to categories counts
+    each lot once per category, and a filter that is right until somebody also
+    picks a category is worse than one that is never right — the arithmetic
+    stays in a queryset of its own where nothing can multiply it.
 
     `category` matches case-insensitively. The picker offers what has actually
     been stored so an exact match would normally do, but the CSV importer takes
@@ -250,6 +293,25 @@ def matching(query: str = "", *, category: str = "", consumable: bool | None = N
         parts = parts.filter(categories__name__iexact=category)
     if consumable is not None:
         parts = parts.filter(is_consumable=consumable)
+
+    if vehicle is not None:
+        # Through `fits`, so that "what fits this vehicle" means one thing in
+        # the application. It is the rule FR-PART-4 states — confirmed first, a
+        # tried-and-failed fitment excluded outright — and it knows about
+        # universal parts, which a make-and-model join could not.
+        parts = parts.filter(pk__in=[part.pk for part in fits(vehicle)])
+
+    if stock in STOCK_STATES:
+        shelf = with_shelf()
+        if stock == "in":
+            shelf = shelf.filter(shelf__gt=0)
+        elif stock == "out":
+            shelf = shelf.filter(shelf__lte=0)
+        else:
+            shelf = shelf.filter(
+                min_quantity__isnull=False, shelf__lt=F("min_quantity")
+            )
+        parts = parts.filter(pk__in=shelf.values("pk"))
     return parts
 
 
@@ -510,8 +572,19 @@ def resolve_part(data, field: str = "part"):
 
 
 def restock_list() -> list[Part]:
-    """Parts at or below their minimum (FR-INV-4)."""
-    return [p for p in Part.objects.filter(min_quantity__isnull=False) if p.is_low]
+    """Parts at or below their minimum (FR-INV-4).
+
+    One query. This used to read `is_low` per part, and `is_low` reads
+    `on_hand`, which aggregates that part's lots — so the shopping list cost a
+    query per part with a minimum set, on a page and now in a digest that both
+    ask for it every time. `with_shelf` sums the same alive lots, so the answer
+    is unchanged.
+    """
+    return list(
+        with_shelf()
+        .filter(min_quantity__isnull=False, shelf__lt=F("min_quantity"))
+        .order_by("name")
+    )
 
 
 def expiring_lots(days: int = 60) -> list[StockLot]:

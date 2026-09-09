@@ -670,6 +670,115 @@ class TheReviewScreenSaysWhatItKnowsTests(TestCase):
         self.assertTrue(order.reconciles)
 
 
+class TheReviewTableFitsTheCardTests(TestCase):
+    """Reported as: the information is pushed off the right side.
+
+    It was, and the table was already scrolling — which is the fallback, not
+    the answer. Up to eight columns sit inside one card on the screen where
+    somebody checks an order before it is written, and two of them were asking
+    for more room than they need:
+
+    * The **identifier** column was held on one line by `num`, which exists to
+      stop a *figure* being broken in half. A part number is not a figure. One
+      RockAuto line puts `VARIOUS MFR FO2801182 (FO2801182C) Tail Lamp CAPA
+      Certified` in that column, and on one line that is most of the card.
+    * The **description** column demanded an 18rem floor, which makes the table
+      wider — the opposite of what a column that should absorb the slack does.
+
+    Held down here because both failures are invisible in a test that only
+    checks the page renders, and both come back the moment somebody tidies a
+    class list.
+    """
+
+    def setUp(self):
+        from homeautoshop.accounts.models import Role, User
+
+        self.user = User.objects.create_user(
+            username="andy", password="x" * 16, role=Role.ADMIN
+        )
+        self.client.force_login(self.user)
+
+    def render(self, order):
+        from django.template.loader import render_to_string
+
+        from homeautoshop.purchasing.importers import orders as shapes
+        from homeautoshop.purchasing.importers import service
+
+        return render_to_string(
+            "purchasing/order_import.html",
+            {"report": service.run(order, dry_run=True, user=self.user),
+             "held": "t", "held_name": "x.pdf", "formats": shapes.formats()},
+        )
+
+    @staticmethod
+    def stylesheet() -> str:
+        """Comments stripped: the prose explaining a rule is not the rule."""
+        import re
+        from pathlib import Path
+
+        from django.conf import settings
+
+        css = (Path(settings.BASE_DIR) / "static" / "app.css").read_text(
+            encoding="utf-8"
+        )
+        return re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+
+    def table(self, order) -> str:
+        page = self.render(order)
+        start = page.index('<table class="orderlines"')
+        return page[start:page.index("</table>", start)]
+
+    def test_a_part_number_is_allowed_to_break(self):
+        """`mono` and not `num`: it is one token, not one value."""
+        table = self.table(napa.parse_document("NAPA Auto Parts", NAPA_PAGE))
+
+        self.assertIn('<th class="mono small ident"', table)
+        self.assertNotIn('<th class="mono small num"', table)
+
+    def test_but_the_money_columns_still_are_not(self):
+        """The fix must not undo the one that came before it: the review screen
+        printed `$182` above `.39` until the figures were held together."""
+        table = self.table(napa.parse_document("NAPA Auto Parts", NAPA_PAGE))
+
+        self.assertIn('class="mono small num"', table)
+
+    def test_the_description_absorbs_the_slack_rather_than_demanding_room(self):
+        rule = self.stylesheet().split(".orderlines .what {")[1].split("}")[0]
+
+        self.assertIn("inline-size: 100%", rule)
+        self.assertNotIn("18rem", rule)
+
+    def test_the_columns_are_addressed_by_name_and_not_by_position(self):
+        """Two of the columns are conditional, so a positional rule points at a
+        different column depending on the document being read: with identifiers
+        absent, `td:nth-child(3)` was the price."""
+        css = self.stylesheet()
+
+        self.assertNotIn(".orderlines td:nth-child", css)
+        self.assertIn(".orderlines .what", css)
+
+    def test_the_column_that_can_collapse_has_a_floor_under_it(self):
+        """`mono` breaks anywhere, so its min-content is a single character —
+        and a column that can be squeezed to one character per line will be."""
+        rule = self.stylesheet().split(".orderlines .ident {")[1].split("}")[0]
+
+        self.assertIn("min-inline-size", rule)
+
+    def test_the_status_pill_stays_on_one_line(self):
+        table = self.table(napa.parse_document("NAPA Auto Parts", NAPA_PAGE))
+        rule = self.stylesheet().split(".orderlines .verdict {")[1].split("}")[0]
+
+        self.assertIn('class="small verdict"', table)
+        self.assertIn("nowrap", rule)
+
+    def test_the_table_still_scrolls_when_it_has_to(self):
+        """Narrower is not the same as narrow enough. A phone will never fit
+        eight columns, and the fallback has to stay."""
+        page = self.render(napa.parse_document("NAPA Auto Parts", NAPA_PAGE))
+
+        self.assertIn('class="tablewrap"', page)
+
+
 class OneLineCanBeSeveralThingsTests(TestCase):
     """A two-pack of relays is one line, one charge and **two relays**.
 

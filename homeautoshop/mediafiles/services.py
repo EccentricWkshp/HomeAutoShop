@@ -24,6 +24,7 @@ from django.utils import timezone
 from homeautoshop.core.models import Job
 from homeautoshop.core.runtime import conf
 
+from . import sniff
 from .models import Media, MediaLink
 
 log = logging.getLogger(__name__)
@@ -35,7 +36,14 @@ PREVIEW_SIZE = (1600, 1600)
 #: 1275x1650), and a quarter of the pixels OCR needs at 300.
 PREVIEW_DPI = 150
 
-IMAGE_MIMES = {"image/jpeg", "image/png", "image/webp", "image/gif", "image/heic", "image/heif"}
+#: What counts as a photograph rather than a document. Wider than what a
+#: browser will draw (`BROWSER_IMAGE_MIMES`): a HEIC off a phone is a
+#: photograph that Chrome refuses to render, and it still belongs in the Photos
+#: card with a preview made for it.
+IMAGE_MIMES = {
+    "image/jpeg", "image/png", "image/webp", "image/gif", "image/avif",
+    "image/heic", "image/heif", "image/tiff",
+}
 
 
 def ingest(
@@ -46,6 +54,7 @@ def ingest(
     entity=None,
     role: str = MediaLink.Role.OTHER,
     caption: str = "",
+    ocr: bool | None = None,
 ) -> tuple[Media, bool]:
     """Store an upload, returning (media, created).
 
@@ -62,7 +71,18 @@ def ingest(
             link(existing, entity, role=role, caption=caption)
         return existing, False
 
-    mime = getattr(upload, "content_type", "") or ""
+    # What it *is*, not what the browser said it was. `Content-Type` on a
+    # multipart upload is a claim, and on Windows it is a claim made by looking
+    # the extension up in the registry — `.webp` and `.avif` often have no
+    # entry, so the browser sends `application/octet-stream` for a file whose
+    # first twelve bytes say plainly what it is. Filed on that claim, a
+    # photograph became a document: wrong card, and no thumbnail ever, because
+    # nothing makes previews for something that is not an image.
+    mime = sniff.content_type(
+        data,
+        filename=getattr(upload, "name", "") or "",
+        claimed=getattr(upload, "content_type", "") or "",
+    )
     if kind is None:
         kind = Media.Kind.PHOTO if mime in IMAGE_MIMES else Media.Kind.DOCUMENT
 
@@ -75,8 +95,12 @@ def ingest(
         created_by=user if getattr(user, "pk", None) else None,
     )
     # Documents are OCR'd, and so are photos filed as receipts — in a home shop
-    # a receipt is far more often photographed than scanned (FR-COST-4).
-    if kind == Media.Kind.DOCUMENT or role == MediaLink.Role.RECEIPT:
+    # a receipt is far more often photographed than scanned (FR-COST-4). A
+    # caller that knows better says so: a lab report photographed for a fluid
+    # sample is a page of numbers whatever its role, and `ocr=True` asks for
+    # it to be read without inventing a role to trigger that.
+    wants_text = kind == Media.Kind.DOCUMENT or role == MediaLink.Role.RECEIPT
+    if wants_text if ocr is None else ocr:
         media.ocr_status = Media.OcrStatus.PENDING
 
     media.file.save(getattr(upload, "name", "upload.bin"), ContentFile(data), save=False)
@@ -94,6 +118,28 @@ def ingest(
     if media.ocr_status == Media.OcrStatus.PENDING and conf.OCR_ENABLED:
         Job.objects.create(type="media.ocr", payload={"media_id": str(media.pk)})
     return media, True
+
+
+def request_text(media: Media) -> bool:
+    """Ask for a file to be read that was not read at ingest.
+
+    Whether a file wants OCR was decided once, from its kind and the role it
+    arrived with, and a photograph filed as Other was decided against. Now that
+    a role can be set afterwards, a photo re-filed as a receipt would otherwise
+    keep the answer it was given as a nobody-knows: the receipt search would
+    never find it, for no reason the screen could show. Same rule as ingest —
+    `pending` is recorded whether or not OCR is on, so a later switch-on finds
+    the backlog; the job is queued only when it is.
+
+    Returns whether anything changed, so a caller can say so.
+    """
+    if media.ocr_status != Media.OcrStatus.NOT_APPLICABLE:
+        return False
+    media.ocr_status = Media.OcrStatus.PENDING
+    media.save(update_fields=["ocr_status"])
+    if conf.OCR_ENABLED:
+        Job.objects.create(type="media.ocr", payload={"media_id": str(media.pk)})
+    return True
 
 
 def link(media: Media, entity, *, role: str = MediaLink.Role.OTHER, caption: str = "") -> MediaLink:

@@ -138,6 +138,14 @@ class Asset(RevisionedModel):
         "mediafiles.Media", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
 
+    #: When NHTSA last gave a usable answer about this vehicle. Recorded so
+    #: the page can say how old its answer is, and so a sweep can take the
+    #: oldest one next. Only a real answer stamps it: a refusal, a network
+    #: failure, and the empty-400 that NHTSA also uses for a rate limit all
+    #: leave it alone, because "nobody has looked recently" and "we looked and
+    #: could not tell" must not become the same sentence on a safety screen.
+    recalls_checked_at = models.DateTimeField(null=True, blank=True, editable=False)
+
     # Decode provenance (SPEC FR-VEH-3/4)
     decode_source = models.CharField(max_length=32, blank=True)
     decoded_at = models.DateTimeField(null=True, blank=True)
@@ -336,7 +344,17 @@ class UsageReading(AppendOnlyModel):
             )
             if previous and self.value_canonical < previous.value_canonical:
                 self.is_rollback = True
-        return super().save(*args, **kwargs)
+        saved = super().save(*args, **kwargs)
+        # The meter is an input to every distance-based status on this
+        # vehicle, and those are stored (see `maintenance.services.refresh_fleet`
+        # for why). Here rather than in `record_reading`, because the importer,
+        # the API replay and a soft delete all reach the row without it — and
+        # a removed reading moves the meter back just as a new one moves it
+        # forward.
+        from homeautoshop.maintenance.services import refresh_for_reading
+
+        refresh_for_reading(self)
+        return saved
 
 
 class ServiceInfoProvider(BaseModel):
@@ -385,6 +403,11 @@ class ServiceInfoProvider(BaseModel):
     notes = models.TextField(blank=True)
     is_enabled = models.BooleanField(default=True)
     sort_order = models.PositiveIntegerField(default=100)
+
+    #: A pinned page is a pointer into this library; without the library it is
+    #: a dead link dressed as a shortcut. So the pins go to the trash with it
+    #: and come back with it — see `BaseModel.soft_delete_cascade`.
+    soft_delete_cascade = ("links",)
 
     class Meta:
         ordering = ["sort_order", "name"]

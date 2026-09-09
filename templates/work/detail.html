@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% load i18n l10n %}
+{% extends "base.html" %}{% load i18n l10n quantities %}
 {% block title %}{{ wo.number }} — {{ shop_name }}{% endblock %}
 {% block content %}
 {% url 'work_order_list' as back_url %}
@@ -16,7 +16,7 @@
   <div class="row">
     <div style="text-align:end">
       <div class="small muted">{% translate "Cost so far" %}</div>
-      <div class="mono" style="font-size:1.3rem">{{ rollup.total }}</div>
+      <div class="mono num" style="font-size:1.3rem">{{ rollup.total }}</div>
     </div>
     <a class="btn" href="{% url 'work_order_edit' wo.pk %}">{% translate "Edit" %}</a>
     {% comment %}
@@ -222,7 +222,7 @@
       <h2>{% translate "Photos" %}</h2>
       <div class="thumbs">
         {% for link in photos %}
-          {% include "partials/_thumb.html" with link=link media=link.media alt=link.caption|default:link.get_role_display %}
+          {% include "partials/_thumb.html" with link=link media=link.media alt=link.caption|default:link.role_shown roles=media_roles anchor="photos" %}
         {% empty %}<p class="muted small">{% translate "No photos yet." %}</p>{% endfor %}
       </div>
       <form method="post" action="{% url 'work_order_photo' wo.pk %}" enctype="multipart/form-data" class="row" style="margin-top:.75rem">
@@ -411,7 +411,7 @@
         {% for usage in part_usages %}
           <li class="spread">
             <div><a href="{% url 'part_detail' usage.part.pk %}">{{ usage.part }}</a>
-              <div class="muted">{{ usage.qty }} · {{ usage.get_source_display }}
+              <div class="muted">{{ usage.qty|quantity }} · {{ usage.get_source_display }}
                 {% if usage.owes_core %}· <a class="pill warn" href="{% url 'core_list' %}">{% translate "core owed" %}</a>{% endif %}</div></div>
             <span class="mono">{{ usage.unit_cost|default:"—" }}</span>
           </li>

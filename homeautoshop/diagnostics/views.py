@@ -26,6 +26,7 @@ from homeautoshop.assets import service_info
 from homeautoshop.assets import vin as vinlib
 from homeautoshop.assets.models import Asset
 from homeautoshop.core.described import DescribedFields
+from homeautoshop.diagnostics import gwscan
 from homeautoshop.mediafiles.models import Media
 from homeautoshop.work.models import WorkOrder
 
@@ -1105,6 +1106,14 @@ def elm327(request, pk):
                 # of payload, and over-long writes are rejected rather than
                 # split.
                 "bleChunkBytes": 20,
+                # Absent unless the operator has turned it on, and absence is
+                # what the page checks: with the setting off nothing about this
+                # screen changes, including the script it loads.
+                **(
+                    {"gwscan": {"setup": gwscan.script()}}
+                    if settings.GWSCAN_READER
+                    else {}
+                ),
             },
             "strings": {
                 "ready": _(
@@ -1180,6 +1189,22 @@ def elm327(request, pk):
                 # Not the same as "no codes", and the difference is the whole
                 # diagnosis: the adapter answered, no ECU did.
                 "noEcu": _("The adapter is working, but the car did not answer."),
+                # The second reader. Its messages say which tool answered,
+                # because "it worked" and "it worked over the vendor's own
+                # protocol, which we have inferred" are not the same claim.
+                "tryingGwscan": _(
+                    "No ELM327 answered. Trying this adapter's own protocol…"
+                ),
+                "gwscanTalking": _("It answered. Firmware"),
+                "gwscanRefused": _(
+                    "The car refused that service: it does not support it. "
+                    "That is not the same as having no codes."
+                ),
+                "gwscanLong": _(
+                    "The answer came back in more than one frame, which this "
+                    "reader cannot yet reassemble — so the list may be short. "
+                    "Read it with the maker's app before acting on it."
+                ),
                 "noEcuHelp": _(
                     "This is not the same as finding no codes — nothing was read at all. "
                     "The adapter has power from the socket whether or not the car is awake, "

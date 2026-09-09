@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+from decimal import Decimal
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
@@ -1210,3 +1211,89 @@ class LiveDataExtractorTests(TestCase):
         with self.assertRaises(profilelib.ProfileInvalid) as caught:
             profilelib.from_yaml(document)
         self.assertIn("live_data_extractor", str(caught.exception))
+
+
+@override_settings(STORAGES=FILESYSTEM_STORAGE)
+class TheReportsMileageReachesTheMeterTests(TestCase):
+    """FR-VEH-9 / FR-INT-4 — the one reading that arrives dated and sourced.
+
+    A scan report states the odometer at the moment it was run, and the review
+    screen asks somebody to check that figure. Confirming then filed it on the
+    session and nowhere else, so the vehicle's meter never learned about the
+    best-provenanced reading in the whole record.
+    """
+
+    def setUp(self):
+        profilelib.seed()
+        self.user = User.objects.create_user(username="andy", password="x" * 16)
+        self.client.force_login(self.user)
+        self.asset = Asset.objects.create(nickname="Work truck", vin=VIN, make="Ford", meter_unit="mi")
+
+    def draft(self) -> DiagnosticSession:
+        self.client.post(
+            reverse("session_import", args=[self.asset.pk]),
+            {"report": SimpleUploadedFile(
+                "report.txt", b"Trouble Code\nP0420 Catalyst below threshold\n", content_type="text/csv"
+            )},
+            follow=True,
+        )
+        return DiagnosticSession.objects.get()
+
+    def confirm(self, session, **extra):
+        return self.client.post(
+            reverse("session_confirm", args=[session.pk]),
+            {"performed_on": "2026-08-30T10:15", "tool": "XTOOL", "tool_model": "D8", **extra},
+        )
+
+    def test_confirming_records_the_reading_as_of_the_scan(self):
+        from homeautoshop.assets.models import UsageReading
+
+        self.confirm(self.draft(), odometer="105000", odometer_unit="mi")
+
+        reading = UsageReading.objects.get(asset=self.asset)
+        self.assertEqual(reading.value, Decimal("105000"))
+        self.assertEqual(str(reading.read_on), "2026-08-30")
+        self.assertEqual(reading.source, UsageReading.Source.OBD)
+        self.assertIn("XTOOL D8", reading.note)
+        self.assertEqual(self.asset.current_usage, Decimal("105000"))
+
+    def test_a_report_with_no_mileage_records_nothing(self):
+        from homeautoshop.assets.models import UsageReading
+
+        self.confirm(self.draft())
+
+        self.assertFalse(UsageReading.objects.filter(asset=self.asset).exists())
+
+    def test_confirming_the_same_reading_twice_is_one_visit_to_the_odometer(self):
+        """Re-reading a report and confirming it again is not a second scan."""
+        from homeautoshop.assets.models import UsageReading
+
+        session = self.draft()
+        self.confirm(session, odometer="105000", odometer_unit="mi")
+        services.record_meter(session, user=self.user)
+
+        self.assertEqual(UsageReading.objects.filter(asset=self.asset).count(), 1)
+
+    def test_a_corrected_figure_is_a_new_row_not_an_edit(self):
+        """Append-only: the earlier reading stays and the newer one outranks it."""
+        from homeautoshop.assets.models import UsageReading
+
+        session = self.draft()
+        self.confirm(session, odometer="15000", odometer_unit="mi")
+        session.refresh_from_db()
+        session.odometer = Decimal("105000")
+        session.save(update_fields=["odometer"])
+        services.record_meter(session, user=self.user)
+
+        self.assertEqual(UsageReading.objects.filter(asset=self.asset).count(), 2)
+        self.assertEqual(self.asset.current_usage, Decimal("105000"))
+
+    def test_a_vehicle_with_no_meter_is_left_alone(self):
+        from homeautoshop.assets.models import UsageReading
+
+        self.asset.meter = "none"
+        self.asset.save()
+
+        self.confirm(self.draft(), odometer="105000", odometer_unit="mi")
+
+        self.assertFalse(UsageReading.objects.filter(asset=self.asset).exists())

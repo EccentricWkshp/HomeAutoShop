@@ -14,7 +14,7 @@
       <p class="small muted">
         {% translate "Whichever comes first — distance, time, or hours — makes it due. Every interval here is yours to edit." %}
       </p>
-      <div class="tablewrap"><table>
+      <div class="tablewrap"><table class="schedule">
         <tr>
           <th>{% translate "Item" %}</th><th>{% translate "Every" %}</th>
           <th>{% translate "Next" %}</th><th>{% translate "Status" %}</th><th></th>
@@ -22,9 +22,38 @@
         {% for item, projection in rows %}
         <tr id="item-{{ item.pk }}">
           <td>
-            <strong>{{ item.definition.name }}</strong>
-            {% if item.is_safety %}<span class="pill danger">{% translate "Safety" %}</span>{% endif %}
-            {% if item.snooze_reason %}<div class="small muted">{{ item.snooze_reason }}</div>{% endif %}
+            <div class="itemname">
+              {% comment %}
+              Up and down, the same two buttons the job items list carries and
+              for the same reasons: they exist before any script loads, they
+              work from a keyboard, and they work with a glove on. Disabled at
+              the ends rather than omitted, so a row's controls do not shift
+              about as items move past them.
+              {% endcomment %}
+              <div class="reorder">
+                <form method="post" action="{% url 'service_item_move' asset.pk item.pk %}">
+                  {% csrf_token %}<input type="hidden" name="_anchor" value="schedule">
+                  <input type="hidden" name="direction" value="up">
+                  <button class="iconbtn small" type="submit" {% if forloop.first %}disabled{% endif %}
+                          aria-label="{% blocktranslate with name=item.definition.name %}Move {{ name }} up{% endblocktranslate %}">
+                    <span aria-hidden="true">↑</span>
+                  </button>
+                </form>
+                <form method="post" action="{% url 'service_item_move' asset.pk item.pk %}">
+                  {% csrf_token %}<input type="hidden" name="_anchor" value="schedule">
+                  <input type="hidden" name="direction" value="down">
+                  <button class="iconbtn small" type="submit" {% if forloop.last %}disabled{% endif %}
+                          aria-label="{% blocktranslate with name=item.definition.name %}Move {{ name }} down{% endblocktranslate %}">
+                    <span aria-hidden="true">↓</span>
+                  </button>
+                </form>
+              </div>
+              <div>
+                <strong>{{ item.definition.name }}</strong>
+                {% if item.is_safety %}<span class="pill danger">{% translate "Safety" %}</span>{% endif %}
+                {% if item.snooze_reason %}<div class="small muted">{{ item.snooze_reason }}</div>{% endif %}
+              </div>
+            </div>
           </td>
           <td>
             <form method="post" action="{% url 'service_item_update' asset.pk item.pk %}" class="row">
@@ -48,6 +77,15 @@
                 <label for="hr-{{ item.pk }}">{% translate "hours" %}</label>
               </span>
               <button type="submit" class="small">{% translate "Set" %}</button>
+              {% comment %}
+              The answer, in the row that asked. `liveform.js` swaps this card
+              without moving the page, so the banner at the top is above a fold
+              nobody is looking at — pressing Set on the eleventh item looked
+              exactly like pressing nothing.
+              {% endcomment %}
+              {% if item.saved_interval %}
+                <span class="saved">{{ item.saved_interval }}</span>
+              {% endif %}
             </form>
           </td>
           <td class="small">{{ projection.summary }}</td>
@@ -57,12 +95,30 @@
             </span>
           </td>
           <td>
-            {# Back-fill: record a past service without inventing a work order. #}
+            {% comment %}
+            Back-fill: record a past service without inventing a work order.
+
+            The meter belongs beside the date, because half an answer is worse
+            than none here. With only the date, `complete` filled the reading
+            in from the vehicle's meter *now* — so an oil change back-filled at
+            eight months old was recorded at this morning's odometer, and the
+            next one came due five thousand miles from the wrong place. Left
+            empty it stays empty, which the schedule can at least tell.
+            {% endcomment %}
             <form method="post" action="{% url 'service_item_complete' asset.pk item.pk %}" class="row">
               {% csrf_token %}<input type="hidden" name="_anchor" value="schedule">
-              <input type="date" name="completed_on" style="width:9rem"
+              <input type="date" name="completed_on" style="width:10.5rem"
                      aria-label="{% translate 'Date it was done' %}">
+              {% if asset.has_meter %}
+                <input type="number" step="0.01" min="0" name="usage" style="width:8.5rem"
+                       inputmode="decimal" placeholder="{{ asset.meter_unit }}"
+                       aria-label="{% translate 'Meter when it was done' %}">
+              {% endif %}
               <button type="submit" class="small primary">{% translate "Done" %}</button>
+              {# Same reason as Set, and more so: this box clears itself. #}
+              {% if item.saved_done %}
+                <span class="saved">{{ item.saved_done }}</span>
+              {% endif %}
             </form>
             <div class="row">
               <form method="post" action="{% url 'service_item_snooze' asset.pk item.pk %}" class="row">

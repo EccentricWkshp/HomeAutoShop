@@ -68,7 +68,12 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         created = updated = 0
         for row in PROVIDERS:
-            _obj, was_created = ServiceInfoProvider.objects.update_or_create(
+            # `all_objects`, so a shipped library somebody has put in the trash
+            # is refreshed where it lies rather than re-created beside itself —
+            # `slug` is unique across the table, and the alive-only manager
+            # would not find the trashed row, try to insert, and fail the whole
+            # seed on the one thing the operator did on purpose.
+            _obj, was_created = ServiceInfoProvider.all_objects.update_or_create(
                 slug=row["slug"], defaults=row
             )
             created += was_created

@@ -16,7 +16,7 @@ from django.db import models, transaction
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-from homeautoshop.core.measurements import Money, format_unit_price
+from homeautoshop.core.measurements import Money, format_quantity, format_unit_price
 from homeautoshop.core.models import BaseModel, RevisionedModel
 from homeautoshop.core.money import money, money_columns
 from homeautoshop.core.runtime import conf
@@ -176,14 +176,12 @@ class Purchase(RevisionedModel):
 
         The column holds three decimal places so a rate like 7.375 survives, and
         `floatformat` cannot drop the trailing zeros of one that does not need
-        them — it decides by the argument, not by the number.
+        them — it decides by the argument, not by the number. `format_quantity`
+        is the one place that does; this used to carry its own copy.
         """
         if self.tax_rate is None:
             return ""
-        rate = Decimal(self.tax_rate)
-        # `normalize()` alone turns 10.000 into 1E+1.
-        trimmed = rate.quantize(Decimal(1)) if rate == rate.to_integral_value() else rate.normalize()
-        return f"{trimmed:f}"
+        return format_quantity(self.tax_rate)
 
     @property
     def total(self):

@@ -123,6 +123,19 @@ class AssetServiceItemQuerySet(models.QuerySet):
     def live(self):
         return self.exclude(status__in=[ServiceStatus.DISABLED])
 
+    def arranged(self):
+        """The order the schedule is read in, stated rather than inherited.
+
+        `Meta.ordering` says the same thing and is not enough: Django drops it
+        from any query that aggregates, and the schedule page counts each
+        item's completions in the same query. The page was therefore showing
+        items in the order they were created, while everything else that read
+        the model got soonest-first — and the up/down buttons, working out a
+        row's neighbor from the model's order, swapped a row with one that was
+        not beside it on screen. One place says the order; both read it here.
+        """
+        return self.order_by("sort_order", "next_due_on", "definition__name")
+
     def needing_attention(self):
         return self.filter(status__in=[ServiceStatus.OVERDUE, ServiceStatus.DUE_SOON])
 
@@ -153,6 +166,14 @@ class AssetServiceItem(RevisionedModel):
     snooze_until = models.DateField(null=True, blank=True)
     snooze_reason = models.CharField(max_length=200, blank=True)
     notes = models.TextField(blank=True)
+    #: Where this sits on the vehicle's schedule, in the operator's own order.
+    #: Zero for every row until somebody moves one, so a schedule nobody has
+    #: arranged still reads soonest-first exactly as it always did; the first
+    #: move writes every row's position and the arrangement is theirs from
+    #: then on. Per item rather than per user, because a vehicle's schedule is
+    #: one list the whole shop reads — unlike the board, which is each
+    #: person's own view of the fleet.
+    sort_order = models.PositiveIntegerField(default=0)
 
     # `alive_manager`, not a plain `Manager.from_queryset` — the difference is
     # the whole soft-delete contract, and this model got it wrong. A plain
@@ -163,7 +184,7 @@ class AssetServiceItem(RevisionedModel):
     all_objects = models.Manager.from_queryset(AssetServiceItemQuerySet)()
 
     class Meta:
-        ordering = ["next_due_on", "definition__name"]
+        ordering = ["sort_order", "next_due_on", "definition__name"]
         constraints = [
             models.UniqueConstraint(
                 fields=["asset", "definition"],

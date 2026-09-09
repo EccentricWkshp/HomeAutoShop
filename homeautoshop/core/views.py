@@ -23,7 +23,7 @@ from homeautoshop.accounts.policy import visible_assets, visible_assets_for
 from .runtime import allowlist, conf
 from homeautoshop.accounts.models import can
 from homeautoshop.assets import board
-from homeautoshop.assets.models import Asset
+from homeautoshop.assets.models import Asset, Recall
 from homeautoshop.work.models import WorkOrder, WorkOrderStatus
 
 from homeautoshop.maintenance.services import due_dashboard, project
@@ -251,6 +251,26 @@ def dashboard(request):
             }
         )
 
+    # Same fact as the digest carries, on the screen somebody actually opens.
+    # It costs one query and no network: these are campaigns already recorded
+    # against a vehicle and not yet answered.
+    for recall in (
+        Recall.objects.filter(owner_status=Recall.OwnerStatus.OPEN, asset__in=fleet)
+        .select_related("asset")
+        .order_by("asset__nickname", "campaign_number")[:10]
+    ):
+        alerts.append(
+            {
+                "level": "warn",
+                "text": _("%(name)s has an open recall: %(what)s")
+                % {
+                    "name": recall.asset.nickname,
+                    "what": recall.component or recall.campaign_number,
+                },
+                "url": f"/vehicles/{recall.asset_id}/recalls/",
+            }
+        )
+
     expiring = fleet.filter(
         plate_expires_on__isnull=False, plate_expires_on__lte=horizon
     )
@@ -454,6 +474,14 @@ TRASHABLE = {
     # showed and nothing could restore. The third time this file has had to
     # name that pair.
     "diagnostic_session": ("homeautoshop.diagnostics.models", "DiagnosticSession"),
+    # A meter reading is append-only (§5.4): it cannot be edited, so a typo —
+    # 15,000 for 105,000 — has exactly one honest correction, which is to take
+    # the row out. That is a soft delete like every other, and the same rule
+    # applies: a delete the trash does not list is one nobody can undo.
+    "usage_reading": ("homeautoshop.assets.models", "UsageReading"),
+    # Removable from the Manual libraries page, so the trash has to list it;
+    # its pinned pages travel with it either way (`soft_delete_cascade`).
+    "service_info_provider": ("homeautoshop.assets.models", "ServiceInfoProvider"),
 }
 
 

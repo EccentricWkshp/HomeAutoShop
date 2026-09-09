@@ -3,34 +3,50 @@
 {% block content %}
 {% url 'asset_detail' asset.pk as back_url %}
 {% include "partials/_back.html" with url=back_url label=asset.nickname %}
-<div class="spread">
-  <div><h1>{{ asset.nickname }}</h1>
-    <p class="muted">{% translate "What this vehicle has cost" %}</p></div>
-</div>
+<h1>{{ asset.nickname }}</h1>
+<p class="muted">{% translate "What this vehicle has cost" %}</p>
 
 <div class="cols two">
   <section class="card">
     <h2>{% translate "Breakdown" %}</h2>
-    <div class="tablewrap"><table>
-      {% comment %}
-      A line with a breakdown shows it underneath, indented. `Parts —
-      $1,240.00` is a true number and a useless one: the question anybody has
-      about it is *on what*, and the answer is the jobs it paid for. Biggest
-      first, so the reason the total is what it is sits at the top.
-      {% endcomment %}
+    {% if rollup.lines %}
+    {% comment %}
+    Two columns — what, and how much — where there used to be three.
+
+    The middle one held the detail, and a parts list is long enough to squeeze
+    the figure beside it down to nothing: `$392.65` wrapped to three lines
+    reading `$39`, `2.6`, `5`, which is not a price anybody typed and nothing
+    in the rendering said otherwise. The detail now sits under the label it
+    belongs to, with the width of the card to say itself in, and the money
+    column carries `.num` so a figure is never broken again.
+    {% endcomment %}
+    <div class="tablewrap"><table class="ledger">
       {% for line in rollup.lines %}
-        <tr><th>{{ line.label }}</th>
-            <td class="small muted">{{ line.detail }}</td>
-            <td class="mono">{{ line.money }}</td></tr>
+        <tr>
+          <th>{{ line.label }}
+            {% if line.detail %}<span class="detail small muted">{{ line.detail }}</span>{% endif %}
+          </th>
+          <td class="mono num">{{ line.money }}</td>
+        </tr>
+        {% comment %}
+        What the line is made of, indented under it. `Parts — $1,240.00` is a
+        true number and a useless one: the question anybody has about it is
+        *on what*, and the answer is the jobs it paid for. Biggest first, so
+        the reason the total is what it is sits at the top.
+        {% endcomment %}
         {% for part in line.breakdown %}
-          <tr>
-            <td style="padding-inline-start:1.25rem" class="small">{{ part.label }}</td>
-            <td class="small muted">{{ part.detail }}</td>
-            <td class="mono small muted">{{ part.money }}</td>
+          <tr class="under">
+            <td>{{ part.label }}
+              {% if part.detail %}<span class="detail small muted">{{ part.detail }}</span>{% endif %}
+            </td>
+            <td class="mono num small muted">{{ part.money }}</td>
           </tr>
         {% endfor %}
-      {% empty %}<tr><td class="muted">{% translate "Nothing recorded yet." %}</td></tr>{% endfor %}
-      <tr><th>{% translate "Total" %}</th><td></td><td class="mono"><strong>{{ rollup.total }}</strong></td></tr>
+      {% endfor %}
+      <tr class="sum">
+        <th>{% translate "Total" %}</th>
+        <td class="mono num">{{ rollup.total }}</td>
+      </tr>
     </table></div>
     {% if rollup.labour_minutes %}
       <p class="small muted">
@@ -38,19 +54,37 @@
         {% translate "Valued only if a rate is configured, and always an estimate — never a bill." %}
       </p>
     {% endif %}
+    {% else %}
+      {% comment %}
+      An empty state rather than a table holding one apologetic row and a
+      total of zero. `$0.00` under `Total` reads as a measured figure — the
+      vehicle cost nothing — when what is true is that nothing has been
+      recorded against it yet.
+      {% endcomment %}
+      <p class="muted">{% translate "Nothing recorded against this vehicle yet — no parts, no expenses, no time." %}</p>
+    {% endif %}
   </section>
 
   <aside class="card">
     <h2>{% translate "Cost per distance" %}</h2>
     {% if per_distance.is_computable %}
-      <p class="mono" style="font-size:1.5rem;margin:0">
-        {{ per_distance.per_unit }}
+      <p class="figure mono">
+        <span class="num">{{ per_distance.per_unit }}</span>
         <span class="small muted">{% translate "per" %} {{ per_distance.unit }}</span>
       </p>
+      <p class="small muted">{{ per_distance.basis }}</p>
     {% else %}
-      <p class="muted">{% translate "Not yet." %}</p>
+      {% comment %}
+      One statement, and the way to fix it. "Not yet." above "Not enough
+      odometer history yet." said the same nothing twice and neither time said
+      what would produce a number — two readings, entered on the vehicle's own
+      page, which is now one tap away instead of a thing you have to know.
+      {% endcomment %}
+      <p class="muted">{{ per_distance.basis }}</p>
+      {% if asset.has_meter %}
+        <p class="small"><a href="{{ back_url }}#meter">{% translate "Record a reading" %}</a></p>
+      {% endif %}
     {% endif %}
-    <p class="small muted">{{ per_distance.basis }}</p>
     <p class="small muted">
       {% translate "Fuel is not included — this is repair and ownership cost only." %}
     </p>

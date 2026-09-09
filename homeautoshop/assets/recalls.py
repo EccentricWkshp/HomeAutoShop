@@ -19,12 +19,13 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from urllib.parse import quote
 
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from homeautoshop.core.outbound import OutboundBlocked, OutboundFailed, fetch_json
 from homeautoshop.core.runtime import conf
 
-from .models import Recall
+from .models import Asset, Recall
 
 log = logging.getLogger(__name__)
 
@@ -54,6 +55,51 @@ class RecallCheck:
     #: warning, never as "no recalls" — see `check` for the measurement.
     inconclusive: bool = False
     campaigns: list = field(default_factory=list)
+
+
+def _answered(asset) -> None:
+    """Record that NHTSA gave a usable answer about this vehicle, just now.
+
+    `update()` rather than `save()`: this is provenance, not a change anybody
+    made to the vehicle. `Asset` carries an optimistic-concurrency revision,
+    and bumping it here would make every open edit form on that vehicle stale
+    because a background sweep looked something up.
+    """
+    stamp = timezone.now()
+    Asset.objects.filter(pk=asset.pk).update(recalls_checked_at=stamp)
+    asset.recalls_checked_at = stamp
+
+
+def due_for_check():
+    """The vehicle whose recall answer is oldest, or `None`. Used by the sweep.
+
+    Only vehicles `check` can actually look up. A missing year, make or model,
+    or a region NHTSA does not cover, means `check` returns a sentence and no
+    answer — and nothing stamps `recalls_checked_at`, so a sweep that took such
+    a vehicle would take the same one every hour for ever while the rest of the
+    fleet was never looked up at all.
+    """
+    from datetime import timedelta
+
+    from django.db.models import F, Q
+
+    days = conf.RECALL_CHECK_DAYS
+    if not (conf.RECALLS_ENABLED and days):
+        return None
+    cutoff = timezone.now() - timedelta(days=days)
+    candidates = (
+        Asset.objects.fleet()
+        .vehicles()
+        .filter(year__isnull=False)
+        .exclude(make="")
+        .exclude(model="")
+        .filter(Q(recalls_checked_at__isnull=True) | Q(recalls_checked_at__lt=cutoff))
+        .order_by(F("recalls_checked_at").asc(nulls_first=True), "created_at")
+    )
+    for asset in candidates[:50]:
+        if region_of(asset) in SUPPORTED_REGIONS:
+            return asset
+    return None
 
 
 def region_of(asset) -> str:
@@ -126,6 +172,10 @@ def check(asset, *, user=None) -> RecallCheck:
         # honest answer is to say which of the two it might be. Treating it as
         # a clean bill of health would be the worst failure this module could
         # have: silent, confident, and wrong in the dangerous direction.
+        if not empty_with_400:
+            # A real "no campaigns". The one empty answer that counts as having
+            # been answered.
+            _answered(asset)
         return RecallCheck(
             ok=not empty_with_400,
             inconclusive=empty_with_400,
@@ -165,6 +215,7 @@ def check(asset, *, user=None) -> RecallCheck:
         )
         created += was_created
 
+    _answered(asset)
     total = Recall.objects.filter(asset=asset).count()
     return RecallCheck(
         ok=True,

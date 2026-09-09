@@ -441,11 +441,11 @@
       var inputs = form.querySelectorAll('input[type="file"]');
       var submit = form.querySelector("[data-upload-submit]");
       var readout = form.querySelector("[data-upload-chosen]");
-      if (!inputs.length || !submit) return;
+      if (!inputs.length) return;
 
       var one = form.getAttribute("data-upload-one") || "";
       var many = form.getAttribute("data-upload-many") || "";
-      var idle = submit.textContent;
+      var idle = submit ? submit.textContent : "";
 
       var apply = function () {
         var names = [];
@@ -454,10 +454,17 @@
             names.push(file.name);
           });
         });
-        submit.disabled = names.length === 0;
-        var template = names.length === 1 ? one : many;
-        submit.textContent =
-          names.length && template ? template.replace("%(n)s", names.length) : idle;
+        // A form whose only job is uploading has nothing to do with no file
+        // chosen, and says so by staying inert. A form where the file is one
+        // field among many is a different thing: recording a fluid sample
+        // saves a panel of numbers whether or not the lab's PDF came with it,
+        // and disabling Save there would hide the button somebody came for.
+        if (submit) {
+          submit.disabled = names.length === 0;
+          var template = names.length === 1 ? one : many;
+          submit.textContent =
+            names.length && template ? template.replace("%(n)s", names.length) : idle;
+        }
         // The names, not just the count: seeing the file you meant is what
         // tells you the picker did anything at all.
         if (readout) readout.textContent = names.join(", ");

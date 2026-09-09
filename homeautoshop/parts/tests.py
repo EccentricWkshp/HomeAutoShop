@@ -1406,6 +1406,195 @@ class LotEditTests(TestCase):
         self.assertEqual(response.status_code, 404)
 
 
+class NarrowingTheCatalogTests(TestCase):
+    """Reported as: the top of the parts page needs easy-to-use filters.
+
+    The two questions a catalog is actually asked in a garage are *what fits
+    the car on the lift* and *what have I got*. Both facts were already on
+    every row (FR-INV-12) and neither was answerable without reading all of
+    them — which is how a part gets ordered that was already in the drawer.
+
+    Both filters compose with the search, the category and the kind split,
+    because a filter that silently drops the one beside it is worse than no
+    filter: the screen still looks like an answer.
+    """
+
+    def setUp(self):
+        from homeautoshop.accounts.models import Role, User
+
+        self.user = User.objects.create_user(
+            username="andy", password="x" * 16, role=Role.ADMIN
+        )
+        self.client.force_login(self.user)
+
+        self.aero = Asset.objects.create(
+            nickname="Aero", make="Suzuki", model="Aerio", year=2004
+        )
+        self.van = Asset.objects.create(nickname="Van", make="Ford", model="E-150")
+
+        self.pump = Part.objects.create(name="Fuel pump")
+        lot(self.pump, 2, 8995)
+        PartFitment.objects.create(
+            part=self.pump, asset=self.aero,
+            confidence=PartFitment.Confidence.CONFIRMED,
+        )
+
+        self.pads = Part.objects.create(name="Brake pads")
+        PartFitment.objects.create(
+            part=self.pads, asset=self.van,
+            confidence=PartFitment.Confidence.VENDOR,
+        )
+
+        self.cleaner = Part.objects.create(name="Brake cleaner", is_consumable=True)
+        lot(self.cleaner, 1, 799)
+        PartFitment.objects.create(
+            part=self.cleaner, is_universal=True,
+            confidence=PartFitment.Confidence.GENERAL,
+        )
+
+        self.filter = Part.objects.create(name="Oil filter", min_quantity=4)
+        lot(self.filter, 1, 599)
+
+    def listed(self, **params) -> set:
+        response = self.client.get(reverse("part_list"), params)
+        return {part.name for part in response.context["parts"]}
+
+    def counts(self, **params) -> dict:
+        return self.client.get(reverse("part_list"), params).context["counts"]
+
+    # -- what fits a vehicle --------------------------------------------
+
+    def test_a_vehicle_narrows_the_catalog_to_what_fits_it(self):
+        self.assertEqual(
+            self.listed(vehicle=self.aero.pk), {"Fuel pump", "Brake cleaner"}
+        )
+
+    def test_a_part_that_fits_anything_is_included(self):
+        """Brake cleaner fits every vehicle, and leaving it out of a list of
+        what fits one would be a wrong answer rather than a tidy one."""
+        self.assertIn("Brake cleaner", self.listed(vehicle=self.van.pk))
+
+    def test_a_part_that_fits_only_another_vehicle_is_left_out(self):
+        self.assertNotIn("Brake pads", self.listed(vehicle=self.aero.pk))
+
+    def test_a_part_held_against_the_car_and_rejected_is_excluded(self):
+        """FR-PART-4: excluded, not demoted. Being offered a part you have
+        already tried is how it gets ordered a second time."""
+        PartFitment.objects.create(
+            part=self.pads, asset=self.aero,
+            confidence=PartFitment.Confidence.DOES_NOT_FIT,
+        )
+
+        self.assertNotIn("Brake pads", self.listed(vehicle=self.aero.pk))
+
+    def test_a_vehicle_that_is_not_a_vehicle_narrows_nothing(self):
+        """A bookmark, an edited URL, a stale link. The same posture as an
+        unrecognized `kind`: show the catalog, not an empty screen."""
+        self.assertEqual(len(self.listed(vehicle="not-a-key")), 4)
+
+    def test_and_neither_does_one_this_person_cannot_see(self):
+        from homeautoshop.accounts.models import Role, User
+
+        helper = User.objects.create_user(
+            username="sam", password="x" * 16, role=Role.HELPER
+        )
+        self.client.force_login(helper)
+
+        response = self.client.get(reverse("part_list"), {"vehicle": self.aero.pk})
+
+        self.assertEqual(len(response.context["parts"]), 4)
+        self.assertNotIn(self.aero, response.context["vehicles"])
+
+    # -- what is on the shelf -------------------------------------------
+
+    def test_on_the_shelf_is_what_has_some(self):
+        self.assertEqual(
+            self.listed(stock="in"), {"Fuel pump", "Brake cleaner", "Oil filter"}
+        )
+
+    def test_none_on_hand_is_the_rest(self):
+        self.assertEqual(self.listed(stock="out"), {"Brake pads"})
+
+    def test_below_minimum_is_only_what_has_a_minimum(self):
+        """A part with no minimum has not fallen below anything."""
+        self.assertEqual(self.listed(stock="low"), {"Oil filter"})
+
+    def test_stock_thrown_away_does_not_count_as_stock(self):
+        """`on_hand` reads through the related manager, which hides the trash;
+        a join does not. Without saying so, the two disagree."""
+        self.pump.stock_lots.first().delete()
+
+        self.assertNotIn("Fuel pump", self.listed(stock="in"))
+        self.assertIn("Fuel pump", self.listed(stock="out"))
+
+    def test_an_unrecognized_stock_state_narrows_nothing(self):
+        self.assertEqual(len(self.listed(stock="somewhat")), 4)
+
+    # -- together --------------------------------------------------------
+
+    def test_the_filters_compose(self):
+        self.assertEqual(
+            self.listed(vehicle=self.aero.pk, stock="in"),
+            {"Fuel pump", "Brake cleaner"},
+        )
+
+    def test_and_compose_with_the_search(self):
+        self.assertEqual(self.listed(q="brake", stock="out"), {"Brake pads"})
+
+    def test_the_kind_counts_follow_the_filters(self):
+        """The tabs say how many rows each side holds *under the filters
+        already applied* — an empty side that says so before it is opened."""
+        counts = self.counts(stock="out")
+
+        self.assertEqual(counts["all"], 1)
+        self.assertEqual(counts["part"], 1)
+        self.assertEqual(counts["consumable"], 0)
+
+    # -- the screen ------------------------------------------------------
+
+    def test_both_pickers_are_on_the_page(self):
+        page = self.client.get(reverse("part_list")).content.decode()
+
+        self.assertIn('name="vehicle"', page)
+        self.assertIn('name="stock"', page)
+        self.assertIn("Any vehicle", page)
+
+    def test_a_narrowed_screen_says_so_and_offers_the_way_back(self):
+        """A filter matching nothing and a shop owning nothing look identical,
+        and only one of them has a way out."""
+        page = self.client.get(
+            reverse("part_list"), {"stock": "low"}
+        ).content.decode()
+
+        self.assertIn("Narrowed.", page)
+        self.assertIn("Show the whole catalog", page)
+
+    def test_and_an_unnarrowed_one_does_not(self):
+        page = self.client.get(reverse("part_list")).content.decode()
+
+        self.assertNotIn("Show the whole catalog", page)
+
+    def test_nor_does_the_kind_split_on_its_own(self):
+        """The tabs already say which one is current and carry their counts, so
+        an empty Consumables tab is not a screen anybody has to be rescued
+        from."""
+        page = self.client.get(
+            reverse("part_list"), {"kind": "consumable"}
+        ).content.decode()
+
+        self.assertNotIn("Show the whole catalog", page)
+
+    def test_the_filters_survive_a_change_of_kind(self):
+        """The tabs carry the query string, so switching to Consumables keeps
+        the vehicle and the stock state rather than resetting them."""
+        page = self.client.get(
+            reverse("part_list"), {"stock": "in", "vehicle": str(self.aero.pk)}
+        ).content.decode()
+
+        self.assertIn("stock=in", page)
+        self.assertIn(f"vehicle={self.aero.pk}", page)
+
+
 class PartListFactsTests(TestCase):
     """What a row answers without being opened.
 
@@ -1442,13 +1631,25 @@ class PartListFactsTests(TestCase):
     def page(self) -> str:
         return self.client.get(reverse("part_list")).content.decode()
 
+    def rows(self) -> str:
+        """The list itself, without the filters above it.
+
+        A vehicle picker names every vehicle in the shop, so "is this vehicle
+        on the page" stopped being a question about the rows the moment the
+        filters arrived. It was never quite the right question: the assertion
+        is about what a row says it fits.
+        """
+        page = self.page()
+        start = page.index('<ul class="list">')
+        return page[start:page.index("</ul>", start)]
+
     def test_the_row_names_the_price(self):
         page = self.page()
         self.assertIn("Price", page)
         self.assertIn("$89.95", page)
 
     def test_the_row_names_what_it_fits(self):
-        self.assertIn("Aero", self.page())
+        self.assertIn("Aero", self.rows())
 
     def test_the_row_names_when_it_was_bought_and_for_how_much(self):
         page = self.page()
@@ -1467,7 +1668,7 @@ class PartListFactsTests(TestCase):
             part=self.part, asset=other,
             confidence=PartFitment.Confidence.DOES_NOT_FIT,
         )
-        self.assertNotIn("Van", self.page())
+        self.assertNotIn("Van", self.rows())
 
     def test_a_long_fitment_list_is_counted_rather_than_printed(self):
         for n in range(5):
@@ -1967,7 +2168,9 @@ class TheStockLotsCardReadsAsFiguresTests(TestCase):
         is prose and is the cell that should give up its width."""
         page = self.page()
 
-        self.assertIn('<td class="mono num">1.000</td>', page)
+        # `1`, not `1.000`: the column is a Decimal and now reads as typed;
+        # the class is what this test defends.
+        self.assertIn('<td class="mono num">1</td>', page)
         self.assertEqual(page.count('<td class="mono num">'), 2)
 
     def test_the_acquired_date_stays_on_one_line(self):

@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% load i18n %}
+{% extends "base.html" %}{% load i18n quantities %}
 {% block title %}{% translate "Shelf" %} — {{ shop_name }}{% endblock %}
 {% block content %}
 <div class="spread">
@@ -26,7 +26,7 @@
           {% for lot in location.stock_lots.all %}
             <li class="spread">
               <a href="{% url 'part_detail' lot.part.pk %}">{{ lot.part }}</a>
-              <span>{{ lot.qty_on_hand }} {{ lot.part.unit }}</span>
+              <span>{{ lot.qty_on_hand|quantity }} {{ lot.part.unit }}</span>
             </li>
           {% empty %}<li class="muted">{% translate "Empty." %}</li>{% endfor %}
         </ul>
@@ -40,7 +40,7 @@
       <h2>{% translate "Not filed anywhere" %}</h2>
       <ul class="list small">
         {% for lot in unfiled %}<li class="spread"><a href="{% url 'part_detail' lot.part.pk %}">{{ lot.part }}</a>
-          <span>{{ lot.qty_on_hand }}</span></li>{% endfor %}
+          <span>{{ lot.qty_on_hand|quantity }}</span></li>{% endfor %}
       </ul>
     </section>
     {% endif %}
@@ -65,7 +65,7 @@
     <section class="card">
       <h2>{% translate "Restock" %}</h2>
       <ul class="list small">{% for part in low %}<li><a href="{% url 'part_detail' part.pk %}">{{ part }}</a>
-        <span class="pill warn">{{ part.on_hand }}</span></li>{% endfor %}</ul>
+        <span class="pill warn">{{ part.on_hand|quantity }}</span></li>{% endfor %}</ul>
     </section>
     {% endif %}
 

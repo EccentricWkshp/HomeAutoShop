@@ -74,6 +74,13 @@ urlpatterns = [
     # Before the `<str:group>` pattern, which would otherwise match this and
     # 404 on an unknown group — the banner's button leading nowhere.
     path("settings/apply-restart/", instance_settings.settings_restart, name="settings_restart"),
+    # Ahead of `settings/<str:group>/`, which would otherwise read "manuals" as
+    # the name of a settings group and answer 404.
+    path("settings/manuals/", instance_settings.manual_libraries, name="manual_libraries"),
+    path("settings/manuals/<uuid:pk>/", instance_settings.manual_library_action,
+         name="manual_library_action"),
+    path("settings/email/test/", instance_settings.settings_email_test,
+         name="settings_email_test"),
     path("settings/<str:group>/", instance_settings.settings_view, name="settings"),
     path("backups/", instance_settings.backups, name="backups"),
     path("backups/run/", instance_settings.backup_now, name="backup_now"),
@@ -105,7 +112,8 @@ urlpatterns = [
     # Detaching a file from one record, which is not the same as deleting it:
     # a receipt hangs off both a purchase and a work order.
     path("files/links/<uuid:link_id>/remove/", mediafiles.media_unlink, name="media_unlink"),
-    path("files/links/<uuid:link_id>/rename/", mediafiles.media_rename, name="media_rename"),
+    path("files/ocr/retry/", mediafiles.ocr_retry, name="ocr_retry"),
+    path("files/links/<uuid:link_id>/describe/", mediafiles.media_describe, name="media_describe"),
     path("files/<uuid:pk>/", mediafiles.media_file, name="media_file"),
     path("files/<uuid:pk>/<str:variant>/", mediafiles.media_file, name="media_file_variant"),
     path("trash/", core.trash, name="trash"),
@@ -131,6 +139,8 @@ urlpatterns = [
     path("vehicles/<uuid:pk>/decode/", assets.vin_decode, name="vin_decode"),
     path("vehicles/<uuid:pk>/read-vin/", assets.vin_read, name="vin_read"),
     path("vehicles/<uuid:pk>/readings/", assets.reading_create, name="reading_create"),
+    path("vehicles/<uuid:pk>/readings/<uuid:reading_id>/remove/", assets.reading_delete,
+         name="reading_delete"),
     path("vehicles/<uuid:pk>/photos/", assets.photo_upload, name="asset_photo_upload"),
     path("vehicles/<uuid:pk>/documents/", assets.document_upload, name="asset_document_upload"),
     path("vehicles/<uuid:pk>/links/", assets.link_add, name="asset_link_add"),
@@ -298,6 +308,8 @@ urlpatterns = [
          name="service_item_remove"),
     path("vehicles/<uuid:pk>/schedule/items/<uuid:item_id>/snooze/", maintenance.service_item_snooze,
          name="service_item_snooze"),
+    path("vehicles/<uuid:pk>/schedule/items/<uuid:item_id>/move/", maintenance.service_item_move,
+         name="service_item_move"),
     path("vehicles/<uuid:pk>/components/", maintenance.component_add, name="component_add"),
     path("vehicles/<uuid:pk>/components/<uuid:component_id>/remove/", maintenance.component_remove,
          name="component_remove"),

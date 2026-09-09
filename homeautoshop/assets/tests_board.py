@@ -591,3 +591,39 @@ class BoardScriptTests(TestCase):
         finish = self.body(self.source, "function finish(")
         self.assertIn("here.target === here.index", finish)
         self.assertLess(finish.index("here.target === here.index"), finish.index("commit("))
+
+
+class TheCardFollowsTheLookAheadTests(TestCase):
+    """The Due pin reads the stored status, so a changed look-ahead has to
+    rewrite that column — or the card keeps the old window until somebody
+    happens to open the vehicle's schedule."""
+
+    def setUp(self):
+        from homeautoshop.core import runtime
+        from homeautoshop.maintenance.models import AssetServiceItem, ServiceDefinition
+        from homeautoshop.maintenance.services import recalculate
+
+        self.addCleanup(runtime.invalidate)
+        self.user = User.objects.create_user(username="andy", password="x" * 16)
+        self.truck = Asset.objects.create(nickname="Truck", meter_unit="mi")
+        AssetCardPreference.objects.create(user=self.user, asset=self.truck, pins=["schedule"])
+        # Due in 20 days.
+        self.item = AssetServiceItem.objects.create(
+            asset=self.truck,
+            definition=ServiceDefinition.objects.create(name="Oil change"),
+            interval_months=1, last_done_on=timezone.localdate() - timedelta(days=10),
+        )
+        recalculate(self.item)
+
+    def card(self):
+        return board.cards_for(self.user, [self.truck])[0]
+
+    def test_the_card_shows_what_the_new_window_says(self):
+        from homeautoshop.core import runtime
+
+        runtime.save({"DUE_SOON_DAYS": 10})
+        self.assertEqual(self.card().lines, [])
+
+        runtime.save({"DUE_SOON_DAYS": 30})
+
+        self.assertEqual([b.text for b in self.card().lines[0].badges], ["Oil change"])

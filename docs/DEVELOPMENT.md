@@ -369,6 +369,22 @@ python manage.py import_lubelogger --commit           # write, once the dry run 
 python manage.py import_lubelogger --commit --create-missing
 ```
 
+### Repairing an older import
+
+Two things the importer used to record wrongly, corrected in place:
+
+```bash
+python manage.py repair_imported_history          # report
+python manage.py repair_imported_history --yes    # write
+```
+
+Imported jobs were stamped as completed at the moment of the import rather than
+on the date of the record, which the printed vehicle report both orders and
+dates by. Imported readings were filed under the odometer whatever meter the
+asset actually had. Both writers are fixed; this is for rows they already
+wrote. It leaves alone a job somebody genuinely finished later, and a reading
+whose unit no longer matches its asset.
+
 ### The one thing that will bite you
 
 LubeLogger returns **locale-formatted numbers** unless the `culture-invariant`
@@ -428,3 +444,95 @@ Three behaviors are deliberate and tested:
 
 Web push is **not** here: it needs a service worker, which lands with the PWA in
 Phase 4 (SPEC §15).
+
+
+## Reading a Bluetooth capture
+
+An adapter that connects and then answers nothing is the hard case: connecting
+proves the transport and nothing else. The GEARWRENCH GWSCAN advertises the
+Nordic UART profile this application already speaks, accepts writes, and says
+nothing to any ELM327 command — because the profile is a pipe and what goes
+through it is the vendor's own protocol.
+
+The fastest way through that is a capture of the vendor's app. Turn on
+**Developer options → Enable Bluetooth HCI snoop log** on an Android phone,
+use the app, and pull the file off.
+
+```bash
+python manage.py decode_btsnoop path/to/btsnoop_hci.cfa
+python manage.py decode_btsnoop path/to/btsnoop_hci.cfa --frames --session 3
+```
+
+It reports each Nordic UART session with **whether there was any pairing or
+encryption**, then how much of each direction decoded. Those counts are the
+test of a framing guess: a rule that is nearly right decodes most frames, and
+"most" is how a protocol reader ships a bug that only shows up on some
+payloads.
+
+Two things to know before reading the output:
+
+- **Android's snoop log is a ring buffer**, so a file usually contains earlier
+  sessions as well as the one just recorded. The dates in the summary are what
+  tells them apart.
+- **A capture is evidence and carries the vehicle's VIN and the adapter's
+  serial in clear text.** `Artifacts/samples/**/*.cfa` is gitignored and must
+  stay that way; the command writes no files for the same reason.
+
+The reasoning behind the decoder — and the GWSCAN protocol it was written for,
+byte stuffing and all — is in `homeautoshop/diagnostics/btsnoop.py` and
+`Artifacts/samples/code-reader/GEARWRENCH GWSCAN/notes.md`.
+
+
+## The GWSCAN reader
+
+`GWSCAN_READER=1` turns on a second code reader that speaks the GEARWRENCH
+GWSCAN's own protocol instead of ELM327. Off by default, and the default is the
+point: it was written from two captures of one adapter on two healthy cars, so
+the case it has never met is a vehicle with stored codes answering across more
+than one CAN frame.
+
+It lives in two places on purpose. `homeautoshop/diagnostics/gwscan.py` is the
+codec, the setup script and the vocabulary — the part that can be tested, and
+is, against bytes lifted out of the captures. `static/gwscan.js` is the same
+codec where the transport has to be, because Web Bluetooth is the browser's.
+`tests_gwscan_js.py` runs the JavaScript through `node` on the same vectors and
+asserts the two agree; it **skips** when `node` is absent, which is what CI
+inside the application image does.
+
+Three things are deliberate and tested:
+
+- **Silence is the trigger**, not the adapter's advertised name. The reader is
+  reached only after an ELM327 handshake gets nothing back three times, so a
+  real ELM327 never takes that path and no device is fingerprinted.
+- **A multi-frame reply is declined**, not read short. A list of codes quietly
+  missing some is worse than no list.
+- **What answered is recorded.** The session's tool says `GWSCAN`, because a
+  reading taken over an inferred protocol is not the same claim as one from a
+  tool that has been proven.
+
+The setup frames are served to the page from `gwscan.py` rather than written
+into the script, so the frame that turns out to be unnecessary — or wrong on
+some other vehicle — is one edit in the module that has tests.
+
+
+## Attachments filed by what the browser claimed
+
+Uploads before this change recorded the `Content-Type` the browser sent and
+decided from it whether a file was a photograph or a document. On Windows that
+header comes from a registry lookup on the extension, and `.webp` and `.avif`
+often have no entry — so those arrived as `application/octet-stream`, were
+filed as documents, landed in the wrong card, and never got a thumbnail,
+because previews are only made for images.
+
+New uploads read the first bytes (`homeautoshop/mediafiles/sniff.py`). For the
+files already stored:
+
+```bash
+python manage.py refile_media          # report what disagrees with its bytes
+python manage.py refile_media --yes    # correct it, and queue the thumbnails
+```
+
+It only touches rows whose own first bytes disagree with what was recorded, and
+only photographs and documents — `scan_export` and `audio_note` say what a file
+is *for*, which reading the bytes cannot improve on. A file it cannot identify
+is left exactly as it is.

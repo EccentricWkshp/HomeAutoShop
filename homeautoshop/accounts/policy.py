@@ -58,8 +58,8 @@ VEHICLE = frozenset({
     # names only vehicles they were already shown, so it grants nothing.
     "asset_move", "asset_reorder",
     "asset_specs", "asset_diagnostics", "asset_recalls", "asset_photo_upload",
-    "reading_create", "component_add", "component_remove", "media_unlink",
-    "media_rename", "recall_status",
+    "reading_create", "reading_delete", "component_add", "component_remove", "media_unlink",
+    "media_describe", "recall_status",
     # Attaching a manual and keeping the forum thread that solved the fault
     # are part of working on the vehicle, not privileges over the shop. Each
     # is object-checked as `asset.edit`, so a read-only grant still cannot.
@@ -79,6 +79,7 @@ VEHICLE = frozenset({
     # Maintenance
     "due_list", "service_item_add", "service_item_update",
     "service_item_complete", "service_item_snooze", "service_item_remove",
+    "service_item_move",
     "apply_schedule_template",
     # Inspections
     "inspection_list", "inspection_start", "inspection_detail",

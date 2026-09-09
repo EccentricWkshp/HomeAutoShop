@@ -81,5 +81,12 @@
 
 {{ strings|json_script:"elm-strings" }}
 {{ config|json_script:"elm-config" }}
+{% comment %}
+Only where the operator has asked for it. The GWSCAN reader is built from
+captures of one adapter on two healthy cars, and the case it has never met is
+the one that matters — so it is off by default and the page does not even
+carry it. `elm327.js` checks for the config key, not for the script.
+{% endcomment %}
+{% if config.gwscan %}<script src="{% static 'gwscan.js' %}" defer></script>{% endif %}
 <script src="{% static 'elm327.js' %}" defer></script>
 {% endblock %}

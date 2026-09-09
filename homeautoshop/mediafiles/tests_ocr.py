@@ -283,3 +283,40 @@ class HealthReportingTests(TestCase):
         ):
             page = self.client.get("/health/")
         self.assertContains(page, "Tesseract is not installed")
+
+
+def a_photo(name: str = "shot.jpg") -> SimpleUploadedFile:
+    return SimpleUploadedFile(name, b"not really a jpeg", content_type="image/jpeg")
+
+
+class AskingForTextTests(LocalStorage):
+    """Whether a file wants reading was decided once, at ingest, from its kind
+    and the role it arrived with. Two cases were decided wrong: a lab report
+    photographed for a fluid sample, and a photograph re-filed as a receipt
+    after the fact."""
+
+    @override_settings(OCR_ENABLED=True)
+    def test_a_caller_can_ask_for_a_photo_to_be_read(self):
+        media, _ = services.ingest(a_photo(), kind=Media.Kind.PHOTO, ocr=True)
+
+        self.assertEqual(media.ocr_status, Media.OcrStatus.PENDING)
+        self.assertTrue(Job.objects.filter(type="media.ocr").exists())
+
+    def test_a_plain_photo_is_still_left_alone(self):
+        media, _ = services.ingest(a_photo(), kind=Media.Kind.PHOTO)
+        self.assertEqual(media.ocr_status, Media.OcrStatus.NOT_APPLICABLE)
+
+    @override_settings(OCR_ENABLED=True)
+    def test_a_caller_can_also_decline_for_a_document(self):
+        media, _ = services.ingest(a_document(), kind=Media.Kind.DOCUMENT, ocr=False)
+        self.assertEqual(media.ocr_status, Media.OcrStatus.NOT_APPLICABLE)
+
+    @override_settings(OCR_ENABLED=True)
+    def test_a_file_already_read_is_not_asked_twice(self):
+        media, _ = services.ingest(a_document(), kind=Media.Kind.DOCUMENT)
+        media.ocr_status = Media.OcrStatus.DONE
+        media.save(update_fields=["ocr_status"])
+        Job.objects.all().delete()
+
+        self.assertFalse(services.request_text(media))
+        self.assertFalse(Job.objects.filter(type="media.ocr").exists())

@@ -90,6 +90,38 @@ def _reminders(payload: dict) -> None:
     run()
 
 
+@handler("maintenance.refresh")
+def _maintenance_refresh(payload: dict) -> None:
+    """Rewrite every stored due status for today — see `refresh_fleet`."""
+    from homeautoshop.maintenance.services import refresh_fleet
+
+    refresh_fleet()
+
+
+@handler("recalls.sweep")
+def _recalls_sweep(payload: dict) -> None:
+    """Look up one vehicle. Not two, and never the fleet.
+
+    NHTSA rate-limits, and it answers a rate-limited request with exactly the
+    body it uses for "this vehicle has no campaigns" — same status, same
+    payload (measured; see `assets.recalls`). A sweep that asked about twelve
+    vehicles in a burst would therefore turn one rate limit into eleven clean
+    bills of health, which is the single worst failure this feature could
+    have. One an hour, oldest answer first, so a fleet is covered over a day
+    and each request stands alone.
+
+    Re-checked here rather than trusted from the schedule: the interval can be
+    switched off between a job being queued and being run.
+    """
+    from homeautoshop.assets.recalls import check, due_for_check
+
+    asset = due_for_check()
+    if asset is None:
+        return
+    result = check(asset)
+    log.info("recall sweep: %s — %s", asset.nickname, result.message)
+
+
 @handler("backup.run")
 def _backup_run(payload: dict) -> None:
     from .backup import run_backup

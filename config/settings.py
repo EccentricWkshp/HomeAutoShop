@@ -303,6 +303,9 @@ LABOR_RATE_MINOR = env_int("LABOR_RATE_MINOR", 0)
 # never inherited from another product's per-user setting (WL-Q10).
 DUE_SOON_DAYS = env_int("DUE_SOON_DAYS", 30)
 DUE_SOON_DISTANCE = env_int("DUE_SOON_DISTANCE", 500)
+# How long "not now" lasts. Snoozing an item takes it off the Due list and
+# brings it back after this many days; it was a literal 30 in the view.
+SNOOZE_DAYS = env_int("SNOOZE_DAYS", 30)
 # Fallback when an asset has too little history to observe a usage rate.
 DEFAULT_DISTANCE_PER_DAY = env_int("DEFAULT_DISTANCE_PER_DAY", 30)
 
@@ -407,6 +410,13 @@ WHITENOISE_MIMETYPES = {".webmanifest": "application/manifest+json"}
 OFFLINE_MODE = env_bool("OFFLINE_MODE", False)
 VIN_DECODE_ENABLED = env_bool("VIN_DECODE_ENABLED", True)
 RECALLS_ENABLED = env_bool("RECALLS_ENABLED", True)
+#: Zero, and zero is the point. Nothing in this application reaches the
+#: internet on a timer nobody switched on, and a safety feature is the last
+#: place to make an exception: a shop that has chosen to stay offline must not
+#: find its fleet being announced to NHTSA an hour later because the default
+#: said so. Set a number of days and the sweep starts; leave it and the only
+#: thing that ever asks is the button on the vehicle's own page.
+RECALL_CHECK_DAYS = env_int("RECALL_CHECK_DAYS", 0)
 VIN_DECODE_TIMEOUT = env_int("VIN_DECODE_TIMEOUT", 5)
 VPIC_BASE_URL = env("VPIC_BASE_URL", "https://vpic.nhtsa.dot.gov/api/vehicles")
 SERVICE_INFO_ENABLED = env_bool("SERVICE_INFO_ENABLED", True)
@@ -484,6 +494,14 @@ ELM327_BLE_PROFILES = [
         "write": "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
     },
 ]
+
+# The GEARWRENCH GWSCAN speaks its maker's protocol rather than ELM327, and
+# `homeautoshop/diagnostics/gwscan.py` implements it. Off by default and
+# deliberately: the reader is built from two captures of one adapter on two
+# healthy cars, so what it has never met is a vehicle with stored codes — the
+# case that matters — and a reader nobody has proved should not be reached by
+# somebody who only wanted to plug a tool in. Turn it on to try it.
+GWSCAN_READER = env_bool("GWSCAN_READER", False)
 
 # LubeLogger (SPEC §8.6) — optional and additive, never a dependency. An
 # instance with none configured is not a degraded instance.

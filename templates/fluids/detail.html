@@ -129,6 +129,20 @@
     {% endcomment %}
     <section class="card" id="report" data-live="report">
       <h2>{% translate "The lab's report" %}</h2>
+      {% comment %}
+      A photographed report is shown, not listed. It is the ordinary way a
+      home shop keeps one, and as a row of text it read `IMG_4032.jpg` — a
+      line you had to open to find out whether it was the page you wanted.
+      Clicking it enlarges in place, so the numbers stay behind it.
+      {% endcomment %}
+      {% if photos %}
+        {% translate "The lab's report" as report_label %}
+        <div class="thumbs">
+          {% for link in photos %}
+            {% include "partials/_thumb.html" with link=link media=link.media alt=link.caption|default:report_label %}
+          {% endfor %}
+        </div>
+      {% endif %}
       <ul class="list small">
         {% for link in documents %}
           <li class="spread">
@@ -143,7 +157,9 @@
             </form>
           </li>
         {% empty %}
-          <li class="muted">{% translate "Not attached. The numbers above cannot be checked against anything without it." %}</li>
+          {% if not photos %}
+            <li class="muted">{% translate "Not attached. The numbers above cannot be checked against anything without it." %}</li>
+          {% endif %}
         {% endfor %}
       </ul>
       <form method="post" action="{% url 'fluid_sample_report' sample.pk %}"

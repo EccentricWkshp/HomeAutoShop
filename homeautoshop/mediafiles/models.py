@@ -64,8 +64,17 @@ class Media(AppendOnlyModel):
     )
 
     # The file itself is immutable; these are regenerable derivatives.
+    #: `mime` and `kind` are here for a reason worth stating: they are
+    #: **read off the file**, not supplied by whoever uploaded it. They were
+    #: taken from the browser's `Content-Type` header once, which is a claim —
+    #: and on Windows a claim made by looking the extension up in the registry,
+    #: so a `.webp` with no entry arrived as `application/octet-stream` and was
+    #: filed as a document. The bytes never change; only our reading of them
+    #: gets better, which is exactly the derived class SPEC §5.4 describes.
     server_writable_fields = frozenset(
         {
+            "kind",
+            "mime",
             "thumb",
             "preview",
             "width",
@@ -219,6 +228,33 @@ class MediaLink(BaseModel):
 
     def __str__(self) -> str:
         return f"{self.media} -> {self.entity_type}:{self.entity_id}"
+
+    @classmethod
+    def selectable_roles(cls):
+        """What an attachment can be filed as, where the choice is offered.
+
+        `PRIMARY_PHOTO` is not among them. A vehicle's cover shot is the
+        `Asset.primary_photo` column and nothing has ever read a role by that
+        name, so offering it would be a control that appears to do something
+        and does not.
+        """
+        return [c for c in cls.Role.choices if c[0] != cls.Role.PRIMARY_PHOTO]
+
+    @property
+    def is_filed(self) -> bool:
+        """Whether anybody actually said what this attachment is.
+
+        `OTHER` is the column default, which makes it the *absence* of an
+        answer rather than an answer. Printed as one, it filled the vehicle's
+        story with a column of the word "Other" — every photograph labeled
+        with the fact that nothing was known about it.
+        """
+        return self.role != self.Role.OTHER
+
+    @property
+    def role_shown(self) -> str:
+        """The role where there is one to show, and nothing where there is not."""
+        return self.get_role_display() if self.is_filed else ""
 
     @classmethod
     def for_entity(cls, entity, *, role: str | None = None):

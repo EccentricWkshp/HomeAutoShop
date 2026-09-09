@@ -38,7 +38,26 @@
 
   var transport = null;
   var incoming = "";
+  /* The same notifications, kept as bytes.
+   *
+   * An ELM327 speaks text and everything below reads `incoming`. A tool with
+   * its own binary protocol cannot: decoding bytes as UTF-8 mangles anything
+   * above 0x7F and loses the rest, so a second reader needs what actually
+   * arrived. Both are filled from one notification, because the page does not
+   * know which kind of adapter it has until it has asked. */
+  var incomingBytes = new Uint8Array(0);
   var found = [];
+  /* What answered, for the record that gets saved. "It worked" and "it worked
+   * over the vendor's own protocol, which we inferred" are not one claim. */
+  var adapterName = "ELM327";
+
+  function gatherBytes(view) {
+    var chunk = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
+    var joined = new Uint8Array(incomingBytes.length + chunk.length);
+    joined.set(incomingBytes, 0);
+    joined.set(chunk, incomingBytes.length);
+    incomingBytes = joined;
+  }
 
   function say(message, kind) {
     var line = document.createElement("div");
@@ -177,11 +196,16 @@
         await notifyChar.startNotifications();
         notifyChar.addEventListener("characteristicvaluechanged", function (event) {
           incoming += decoder.decode(event.target.value);
+          gatherBytes(event.target.value);
         });
         say(strings.usingProfile + " " + profile.service);
 
         return {
           write: function (text) { return writeChunks(writeChar, text); },
+          /* Bytes, not text. Only BLE offers this: the serial transport runs
+           * through a TextEncoderStream, and a binary adapter on a cable is a
+           * device nobody has. */
+          writeBytes: function (bytes) { return writeRaw(writeChar, bytes); },
           close: async function () {
             try { await notifyChar.stopNotifications(); } catch (err) { /* gone */ }
             try { device.gatt.disconnect(); } catch (err) { /* gone */ }
@@ -205,7 +229,10 @@
    * kind of bug that only shows up on somebody else's phone.
    */
   async function writeChunks(characteristic, text) {
-    var bytes = new TextEncoder().encode(text);
+    return writeRaw(characteristic, new TextEncoder().encode(text));
+  }
+
+  async function writeRaw(characteristic, bytes) {
     var size = config.bleChunkBytes || 20;
     for (var i = 0; i < bytes.length; i += size) {
       var slice = bytes.slice(i, i + size);
@@ -221,6 +248,8 @@
 
   async function connect() {
     incoming = "";
+    incomingBytes = new Uint8Array(0);
+    adapterName = "ELM327";
     transport = chosenTransport() === "bluetooth"
       ? await openBluetooth()
       : await openSerial();
@@ -440,8 +469,13 @@
       }
       render();
 
-      // Connected, written to, and never answered: not an ELM327.
+      // Connected, written to, and never answered: not an ELM327. Which is
+      // exactly the symptom of a tool speaking its maker's protocol, so it is
+      // also the moment to try the other reader — if the operator has turned
+      // it on. Silence is the trigger rather than the device's name: a guess
+      // from an advertised name is a guess, and this is a measurement.
       if (silent === modes.length) {
+        if (await readTheOtherWay(modes)) { return; }
         setStatus(strings.noReply);
         say(strings.noReplyHelp, "warn");
         return;
@@ -461,12 +495,88 @@
     }
   }
 
+  /*
+   * The GWSCAN reader, reached only after an ELM327 handshake met silence.
+   *
+   * Everything protocol-shaped is in `gwscan.js` and the frames it replays
+   * come from the server, so what is left here is the join: hand it the
+   * transport, put what comes back through the decoder that already exists,
+   * and say plainly which tool answered.
+   *
+   * Returns true when it read the car, false when it did not — including when
+   * it is switched off, which is the ordinary case.
+   */
+  async function readTheOtherWay(modes) {
+    var reader = window.homeautoshop && window.homeautoshop.gwscan;
+    if (!config.gwscan || !reader) { return false; }
+    if (!transport || !transport.writeBytes) { return false; }
+
+    say(strings.tryingGwscan);
+    var io = {
+      write: function (bytes) { return transport.writeBytes(bytes); },
+      read: function () {
+        var chunk = incomingBytes;
+        incomingBytes = new Uint8Array(0);
+        return chunk;
+      }
+    };
+
+    var answer;
+    try {
+      answer = await reader.readCodes(io, { setup: config.gwscan.setup || [] });
+    } catch (err) {
+      say(String(err), "warn");
+      return false;
+    }
+    // Nothing answered this way either, so the honest report is the one the
+    // caller was about to make.
+    if (!answer) { return false; }
+
+    adapterName = "GWSCAN";
+    say(strings.gwscanTalking + " " + reader.asElmText(answer.firmware));
+
+    var spoke = 0;
+    for (var i = 0; i < answer.results.length && i < modes.length; i++) {
+      var result = answer.results[i];
+      var mode = modes[i];
+      if (result.silent) {
+        say(mode[2] + ": " + strings.nothingBack, "warn");
+        continue;
+      }
+      spoke += 1;
+      if (result.refused) {
+        say(mode[2] + ": " + strings.gwscanRefused, "warn");
+        continue;
+      }
+      if (!result.text) {
+        // A multi-frame reply, which this reader declines rather than reads
+        // short. Saying so is the whole point: a list quietly missing codes
+        // is worse than no list.
+        say(mode[2] + ": " + strings.gwscanLong, "warn");
+        continue;
+      }
+      say(mode[2] + ": " + result.text, "muted");
+      decodeResponse(result.text, mode[1]).forEach(function (code) {
+        record(code, mode[2]);
+      });
+    }
+    render();
+
+    if (!spoke) {
+      setStatus(strings.noEcu);
+      say(strings.noEcuHelp, "warn");
+      return true;
+    }
+    setStatus(found.length ? strings.done : strings.noCodes);
+    return true;
+  }
+
   async function save() {
     saveButton.disabled = true;
     var response = await fetch(config.captureUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRFToken": config.csrf },
-      body: JSON.stringify({ adapter: "ELM327", codes: found })
+      body: JSON.stringify({ adapter: adapterName, codes: found })
     });
     if (!response.ok) {
       setStatus(strings.saveFailed);

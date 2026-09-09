@@ -10,7 +10,7 @@
         <a class="btn small" href="{% url 'export_csv' 'spend' %}">{% translate "CSV" %}</a></div>
       <div class="tablewrap"><table>
         <tr><th>{% translate "Month" %}</th><th>{% translate "Parts and expenses" %}</th></tr>
-        {% for row in spend %}<tr><td>{{ row.month }}</td><td class="mono">{{ row.money }}</td></tr>
+        {% for row in spend %}<tr><td>{{ row.month }}</td><td class="mono num">{{ row.money }}</td></tr>
         {% empty %}<tr><td colspan="2" class="muted">{% translate "Nothing recorded yet." %}</td></tr>{% endfor %}
       </table></div>
     </section>
@@ -23,7 +23,7 @@
     <section class="card">
       <div class="spread"><h2>{% translate "Next 12 months" %}</h2>
         <a class="btn small" href="{% url 'export_csv' 'forecast' %}">{% translate "CSV" %}</a></div>
-      <p class="mono" style="font-size:1.75rem;margin:.25rem 0">{{ forecast.total }}</p>
+      <p class="figure mono num">{{ forecast.total }}</p>
       {% comment %}
       The basis line is not decoration. This figure rests on an observed usage
       rate and on past work orders, and where a service has never been done
@@ -40,7 +40,7 @@
             <td>{% blocktranslate count n=month.entries|length %}{{ n }} service{% plural %}{{ n }} services{% endblocktranslate %}
               {% if month.unpriced %}<div class="small muted">{% blocktranslate count n=month.unpriced %}{{ n }} not priced{% plural %}{{ n }} not priced{% endblocktranslate %}</div>{% endif %}
             </td>
-            <td class="mono">{{ month.money }}</td>
+            <td class="mono num">{{ month.money }}</td>
           </tr>
         {% empty %}
           <tr><td colspan="3" class="muted">{% translate "Nothing scheduled falls in the next year." %}</td></tr>
@@ -63,7 +63,7 @@
   <aside class="stack">
     <section class="card">
       <h2>{% translate "Inventory value" %}</h2>
-      <p class="mono" style="font-size:1.75rem;margin:0">{{ inventory_value }}</p>
+      <p class="figure mono num">{{ inventory_value }}</p>
       <p class="small muted">{% translate "At what each lot actually cost." %}</p>
     </section>
 

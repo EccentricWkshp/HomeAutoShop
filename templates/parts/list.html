@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% load i18n %}
+{% extends "base.html" %}{% load i18n quantities %}
 {% block title %}{% translate "Parts" %} — {{ shop_name }}{% endblock %}
 {% block content %}
 <div class="spread"><h1>{% translate "Parts" %}</h1>
@@ -34,6 +34,34 @@ typed afterwards should narrow what is on the screen rather than reset it.
       {% endfor %}
     </select>
   {% endif %}
+  {% comment %}
+  The two questions a catalog is actually asked in a garage: what fits the car
+  on the lift, and what is on the shelf. Both facts are already printed on
+  every row — and reading fifty rows to answer either one is how a part gets
+  ordered that was already in the drawer.
+
+  Selects rather than another row of tabs. The kind split is three states and
+  belongs on screen at all times; these two are lists that grow with the shop,
+  and a vehicle picker as tabs would be a wall of them by the sixth car.
+  {% endcomment %}
+  {% if vehicles %}
+    <label class="visually-hidden" for="part-vehicle">{% translate "Fits which vehicle" %}</label>
+    <select id="part-vehicle" name="vehicle"
+            title="{% translate 'Show only what fits this vehicle — including the parts that fit anything.' %}">
+      <option value="">{% translate "Any vehicle" %}</option>
+      {% for asset in vehicles %}
+        <option value="{{ asset.pk }}" {% if vehicle == asset.pk|stringformat:"s" %}selected{% endif %}>{{ asset.nickname }}</option>
+      {% endfor %}
+    </select>
+  {% endif %}
+  <label class="visually-hidden" for="part-stock">{% translate "How much is on hand" %}</label>
+  <select id="part-stock" name="stock"
+          title="{% translate 'Narrow to what is on the shelf, what has run out, or what is under its minimum.' %}">
+    <option value="">{% translate "Any stock" %}</option>
+    <option value="in" {% if stock == 'in' %}selected{% endif %}>{% translate "On the shelf" %}</option>
+    <option value="out" {% if stock == 'out' %}selected{% endif %}>{% translate "None on hand" %}</option>
+    <option value="low" {% if stock == 'low' %}selected{% endif %}>{% translate "Below minimum" %}</option>
+  </select>
   {% if kind %}<input type="hidden" name="kind" value="{{ kind }}">{% endif %}
   <button class="primary" type="submit">{% translate "Find" %}</button>
   <button type="button" class="nowrap"
@@ -54,6 +82,19 @@ rather than after. `{% templatetag openblock %} querystring {% templatetag close
 keeps the search and the category and drops the page number — switching kind
 on page 4 of the catalog has no business landing on page 4 of a shorter list.
 {% endcomment %}
+{% if narrowed %}
+  {% comment %}
+  What is being hidden, and the way back. Without this a filter that matches
+  nothing is indistinguishable from a shop with no parts in it — and the
+  reader who reaches for the browser's back button has already stopped
+  trusting the screen.
+  {% endcomment %}
+  <p class="small muted" style="margin:-.5rem 0 1rem">
+    {% translate "Narrowed." %}
+    <a class="linkish" href="{% url 'part_list' %}">{% translate "Show the whole catalog" %}</a>
+  </p>
+{% endif %}
+
 <nav class="subnav" aria-label="{% translate 'Kind' %}">
   <a href="{% querystring kind=None page=None %}" {% if not kind %}aria-current="page"{% endif %}>
     {% translate "All" %} <span class="mono muted">({{ counts.all }})</span></a>
@@ -68,7 +109,7 @@ on page 4 of the catalog has no business landing on page 4 of a shorter list.
   <h2>{% translate "Below minimum" %}</h2>
   <ul class="list small">
     {% for part in low %}<li><a href="{% url 'part_detail' part.pk %}">{{ part }}</a>
-      <span class="pill warn">{{ part.on_hand }} / {{ part.min_quantity }}</span></li>{% endfor %}
+      <span class="pill warn">{{ part.on_hand|quantity }} / {{ part.min_quantity|quantity }}</span></li>{% endfor %}
   </ul>
 </section>
 {% endif %}
@@ -129,7 +170,7 @@ wrong question, and a category filter folds rows away for the same reason.
           {% endcomment %}
           <dl class="factline small">
             {% if part.known_cost %}
-              <div><dt>{% translate "Price" %}</dt><dd class="mono">{{ part.known_cost }}</dd></div>
+              <div><dt>{% translate "Price" %}</dt><dd class="mono num">{{ part.known_cost }}</dd></div>
             {% endif %}
             {% if part.fits_named %}
               <div><dt>{% translate "Fits" %}</dt>
@@ -141,7 +182,7 @@ wrong question, and a category filter folds rows away for the same reason.
                 <dd>
                   <a href="{% url 'purchase_detail' part.last_bought.purchase.pk %}">{{ part.last_bought.purchase.ordered_on|default:_("undated") }}</a>
                   {% if part.last_bought.extended_minor is not None %}
-                    <span class="mono">{{ part.last_bought.unit_price }}</span>
+                    <span class="mono num">{{ part.last_bought.unit_price }}</span>
                   {% endif %}
                   {% if part.last_bought.purchase.vendor %}
                     <span class="muted">{{ part.last_bought.purchase.vendor.name }}</span>
@@ -177,7 +218,7 @@ wrong question, and a category filter folds rows away for the same reason.
                 is the normal case and reads correctly as zero here, because
                 the row above it already says how many boxes there are.
                 {% endcomment %}
-                <span class="pill">{{ item.part.on_hand }} {{ item.part.unit }}</span>
+                <span class="pill">{{ item.part.on_hand|quantity }} {{ item.part.unit }}</span>
               </li>
             {% endfor %}
           </ul>

@@ -45,11 +45,21 @@ def recurring() -> list[tuple[str, timedelta]]:
     """
     plan: list[tuple[str, timedelta]] = [
         ("backup.run", timedelta(hours=conf.BACKUP_INTERVAL_HOURS)),
+        # A day passing is the one input to a stored due status that no write
+        # announces. Unconditional: the board reads that column whether or not
+        # reminders are on.
+        ("maintenance.refresh", timedelta(hours=24)),
     ]
     if conf.OCR_ENABLED:
         plan.append(("media.ocr_sweep", timedelta(hours=1)))
     if conf.REMINDERS_ENABLED:
         plan.append(("reminders.evaluate", timedelta(hours=12)))
+    # Only when the operator has set an interval. Nothing in this application
+    # reaches the internet on a timer nobody switched on, and hourly is the
+    # rate, not the fleet: each pass looks up exactly one vehicle. See the
+    # handler for why one.
+    if conf.RECALLS_ENABLED and conf.RECALL_CHECK_DAYS:
+        plan.append(("recalls.sweep", timedelta(hours=1)))
     if conf.LUBELOGGER_URL and conf.LUBELOGGER_MODE in ("pull", "pull_push_odometer"):
         plan.append(("lubelogger.sync", timedelta(hours=conf.LUBELOGGER_SYNC_HOURS)))
     if conf.WRENCHLEDGER_API_KEY:

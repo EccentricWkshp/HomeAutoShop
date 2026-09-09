@@ -393,6 +393,34 @@ class PartsBreakdownTests(TestCase):
         self.assertEqual(len(labels), 9)
         self.assertEqual(labels[-1], "4 more jobs")
 
+    def test_a_figure_on_the_costs_screen_is_never_broken_across_lines(self):
+        """Reported as `$392.65` rendering as `$39`, `2.6`, `5` stacked.
+
+        The detail column sized itself to a parts list and left the money
+        column narrower than the money. `.num` is the rule that says a figure
+        is one value — it exists, and this table was not asking for it, so
+        every cell in the column read as a number nobody typed.
+        """
+        self.job("Brake overhaul", parts=[("Pads", 4000)])
+
+        page = self.client.get(reverse("asset_costs", args=[self.asset.pk]))
+        markup = page.content.decode()
+
+        self.assertNotIn('class="mono"', markup)
+        self.assertIn('class="mono num"', markup)
+
+    def test_a_part_quantity_reads_as_the_number_somebody_entered(self):
+        """`1.000× Caliper` is three decimal places about a thing there is one
+        of. The column is a `Decimal`, and `:g` trims a float."""
+        self.job("Brake overhaul", parts=[("Pads", 4000)])
+
+        markup = self.client.get(
+            reverse("asset_costs", args=[self.asset.pk])
+        ).content.decode()
+
+        self.assertIn("1× Pads", markup)
+        self.assertNotIn("1.000×", markup)
+
     def test_the_costs_screen_shows_it(self):
         self.job("Brake overhaul", parts=[("Pads", 4000)])
 

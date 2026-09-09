@@ -28,7 +28,7 @@ from homeautoshop.accounts.policy import (
 
 from homeautoshop.accounts.models import require
 from homeautoshop.core.described import DescribedFields
-from homeautoshop.core.measurements import distance_unit_for
+from homeautoshop.core.measurements import distance_unit_for, format_quantity
 from homeautoshop.mediafiles.models import Media, MediaLink
 from homeautoshop.mediafiles.services import ingest
 from homeautoshop.work.models import WorkOrder
@@ -549,7 +549,16 @@ def asset_detail(request, pk):
     links = {link.provider_id: link for link in asset.service_info_links.all()}
     # Hidden providers are listed separately rather than dropped: a provider
     # that vanished with no way back would be a setting nobody can undo.
-    shown = [(p, links.get(p.pk)) for p in providers if not getattr(links.get(p.pk), "is_hidden", False)]
+    # The browse link is worked out here and handed over, not called from the
+    # template. `browse_url` takes the vehicle, and a template calls a method
+    # bare: Django catches the TypeError that follows and renders an empty
+    # string, so every library's "Browse" link had been silently missing since
+    # the card was written — the one thing the card offers before a pin.
+    shown = [
+        (p, links.get(p.pk), p.browse_url(asset))
+        for p in providers
+        if not getattr(links.get(p.pk), "is_hidden", False)
+    ]
     hidden = [p for p in providers if getattr(links.get(p.pk), "is_hidden", False)]
 
     story = _group_media(_timeline(asset))
@@ -576,6 +585,10 @@ def asset_detail(request, pk):
             "readings": readings,
             "work_orders": work_orders,
             "photos": photos,
+            # What an attachment may be filed as. Passed in rather than read
+            # off the model in the template, so the tile stays a plain
+            # thumbnail on the screens that only look at pictures.
+            "media_roles": MediaLink.selectable_roles(),
             "documents": documents,
             "asset_links": asset.links.all(),
             "reading_form": ReadingForm(),
@@ -676,10 +689,21 @@ def _group_media(events: list[dict]) -> list[dict]:
     return sorted(merged, key=lambda event: event["when"], reverse=True)
 
 
-def _timeline(asset: Asset) -> list[dict]:
-    """One story in date order (FR-VEH-10)."""
+def _timeline(asset: Asset, *, everything: bool = False) -> list[dict]:
+    """One story in date order (FR-VEH-10).
+
+    Capped by default, because the vehicle's own page wants a summary and the
+    caps keep that page from reading a twenty-year history to show eight
+    lines of it. `everything` is for the page that *is* the history: it used
+    to inherit the same caps and quietly drop everything older than the
+    sixtieth event, while its own copy said nothing here was grouped or cut.
+    """
+
+    def cap(rows, n):
+        return rows if everything else rows[:n]
+
     events: list[dict] = []
-    for wo in asset.work_orders.all()[:50]:
+    for wo in cap(asset.work_orders.all(), 50):
         events.append(
             {
                 "when": wo.opened_at,
@@ -690,7 +714,7 @@ def _timeline(asset: Asset) -> list[dict]:
                 "number": wo.number,
             }
         )
-    for reading in asset.usage_readings.all()[:50]:
+    for reading in cap(asset.usage_readings.all(), 50):
         events.append(
             {
                 "when": timezone.make_aware(
@@ -714,9 +738,10 @@ def _timeline(asset: Asset) -> list[dict]:
     # visible nowhere the vehicle is read.
     from homeautoshop.parts.models import PartUsage
 
-    for usage in (
+    for usage in cap(
         PartUsage.objects.filter(asset=asset, work_order__isnull=True)
-        .select_related("part")[:50]
+        .select_related("part"),
+        50,
     ):
         events.append(
             {
@@ -727,15 +752,59 @@ def _timeline(asset: Asset) -> list[dict]:
                 ),
                 "kind": "part",
                 "title": _("Part fitted"),
-                "detail": f"{usage.qty:g} × {usage.part}",
+                "detail": f"{format_quantity(usage.qty)} × {usage.part}",
                 "url": f"/parts/{usage.part.pk}/",
+            }
+        )
+    # A service recorded straight onto the schedule (FR-MAINT-6). Pressing
+    # Done on the schedule row is how most of a home garage's history gets
+    # written — the oil change you did on a Saturday and never opened a job
+    # for — and none of it reached this page: the vehicle's story showed the
+    # work that had paperwork and silently omitted the work that did not.
+    #
+    # Only the ones with no job behind them. A completion that came from a
+    # work order is already on this list as that work order, and printing it
+    # twice would make one oil change look like two.
+    from homeautoshop.maintenance.models import ServiceCompletion
+
+    for completion in cap(
+        ServiceCompletion.objects.filter(
+            service_item__asset=asset, work_order__isnull=True
+        ).select_related("service_item", "service_item__definition"),
+        50,
+    ):
+        events.append(
+            {
+                "when": timezone.make_aware(
+                    timezone.datetime.combine(
+                        completion.completed_on, timezone.datetime.min.time()
+                    )
+                ),
+                "kind": "service",
+                # The service is the headline; what kind of event it is goes
+                # underneath. A bare "Engine oil and filter" among work orders
+                # gives no clue which of the two it is, and the meter it was
+                # done at is the thing somebody scanning the list is after.
+                "title": completion.service_item.definition.name,
+                "detail": " · ".join(
+                    part
+                    for part in (
+                        str(_("Service recorded")),
+                        f"{completion.usage:,.0f} {asset.meter_unit}"
+                        if completion.usage is not None
+                        else "",
+                        completion.note,
+                    )
+                    if part
+                ),
+                "url": reverse("asset_schedule", args=[asset.pk]),
             }
         )
     # A lab sample is a dated observation about this vehicle, and the timeline
     # is where the vehicle's story is read. Left off it, a sample was a thing
     # you had to already know to go and look for — the same defect as the
     # orphan part usage above.
-    for sample in asset.fluid_samples.all()[:30]:
+    for sample in cap(asset.fluid_samples.all(), 30):
         events.append(
             {
                 "when": timezone.make_aware(
@@ -750,7 +819,7 @@ def _timeline(asset: Asset) -> list[dict]:
                 "url": f"/fluids/{sample.pk}/",
             }
         )
-    for link in MediaLink.for_entity(asset).select_related("media")[:30]:
+    for link in cap(MediaLink.for_entity(asset).select_related("media"), 30):
         events.append(
             {
                 "when": link.media.captured_at or link.created_at,
@@ -760,11 +829,12 @@ def _timeline(asset: Asset) -> list[dict]:
                 # four photographs on a page whose Photos card was empty.
                 "title": _media_title(link),
                 "media_kind": link.media.kind,
-                "detail": link.get_role_display(),
+                "detail": link.role_shown,
                 "url": link.media.url_for(),
             }
         )
-    return sorted(events, key=lambda e: e["when"], reverse=True)[:60]
+    story = sorted(events, key=lambda e: e["when"], reverse=True)
+    return story if everything else story[:60]
 
 
 # Where a create-form decode waits for the save that follows it.
@@ -1020,6 +1090,12 @@ def vin_read(request, pk):
 @login_required
 def reading_create(request, pk):
     asset = get_object_or_404(Asset, pk=pk)
+    # §12.2a — the URL gate lets a helper reach this route because recording
+    # the meter is part of working on a vehicle they were given. It cannot say
+    # *which* vehicle, and this view never asked: a helper granted read on one
+    # could record readings on any vehicle in the shop — and a reading drives
+    # every distance-based due status. The one write route the sweep missed.
+    require(request.user, "asset.edit", asset)
     form = ReadingForm(request.POST)
     if form.is_valid():
         try:
@@ -1042,6 +1118,47 @@ def reading_create(request, pk):
                 messages.success(request, _("Reading recorded."))
     else:
         messages.error(request, _("Check the reading and try again."))
+    return redirect("asset_detail", pk=asset.pk)
+
+
+@require_POST
+@login_required
+def reading_delete(request, pk, reading_id):
+    """Take back a meter reading that was mistyped (FR-VEH-9, §5.4).
+
+    A reading is append-only, and that is the right rule: a capture made in the
+    garage must never be lost to an edit war with a sync. But the rule left a
+    typo with no way out. `15000` entered for `105000` became the vehicle's
+    current mileage, every interval measured from it went wrong at once, and
+    the only remedy was to record the right figure over it — which the meter
+    then flagged as a rollback, on a vehicle whose meter had never gone
+    backwards, and kept the wrong row in the history for ever.
+
+    So the correction is the one append-only permits: the row goes to the
+    trash, where it can be restored for thirty days, and the meter falls back
+    to the reading before it. Nothing is rewritten. The audit row is written
+    because this is precisely the act that log exists to explain — who changed
+    the odometer, and to what.
+    """
+    from homeautoshop.core.models import AuditLog
+
+    asset = get_object_or_404(Asset, pk=pk)
+    require(request.user, "asset.edit", asset)
+    reading = get_object_or_404(UsageReading, pk=reading_id, asset=asset)
+
+    summary = str(reading)
+    reading.delete()
+    AuditLog.objects.create(
+        entity_type="UsageReading",
+        entity_id=reading.pk,
+        action=AuditLog.Action.DELETE,
+        user=request.user,
+        summary=f"{asset.nickname}: {summary}"[:255],
+    )
+    messages.success(
+        request,
+        _("Reading removed. It is in the trash for 30 days if that was a mistake."),
+    )
     return redirect("asset_detail", pk=asset.pk)
 
 
@@ -1300,7 +1417,7 @@ def asset_timeline(request, pk):
     return render(
         request,
         "assets/timeline.html",
-        {"asset": asset, "timeline": _timeline(asset)},
+        {"asset": asset, "timeline": _timeline(asset, everything=True)},
     )
 
 
@@ -1710,6 +1827,8 @@ def spec_copy(request, pk):
 def asset_recalls(request, pk):
     asset = get_object_or_404(Asset, pk=pk)
     require(request.user, "asset.read", asset)
+    from homeautoshop.core.runtime import conf
+
     from . import recalls as recall_service
 
     return render(
@@ -1721,6 +1840,10 @@ def asset_recalls(request, pk):
             "statuses": Recall.OwnerStatus.choices,
             "vin_lookup_url": recall_service.vin_lookup_url(asset),
             "region_supported": recall_service.region_of(asset) in recall_service.SUPPORTED_REGIONS,
+            # Zero means nothing here is asked of NHTSA on its own, which the
+            # page says out loud rather than leaving somebody to assume either
+            # way about a safety feature.
+            "auto_check_days": conf.RECALL_CHECK_DAYS if conf.RECALLS_ENABLED else 0,
         },
     )
 

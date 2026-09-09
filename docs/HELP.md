@@ -60,7 +60,7 @@ and direct ELM327 access depend on browser secure-context features. See
 5. Create a work order and list the job items and parts it will need.
 6. Add another account only after deciding whether that person should be an
    administrator, a full member, or a helper limited to named vehicles.
-7. Go to **Backup**, run the first backup, download it, and copy it off the
+7. Go to **Backups**, run the first backup, download it, and copy it off the
    server's disk.
 
 ## Finding your way around
@@ -193,19 +193,37 @@ Use **Add reading** whenever the meter changes outside a work order. Readings
 are append-only. A lower reading is retained and marked as a rollback rather
 than rewriting the earlier record.
 
+A reading cannot be edited, so a mistyped one — `15000` for `105000` — is
+taken back with **Remove** beside it in the Meter card. It goes to the trash
+for 30 days, the meter falls back to the reading before it, and the audit log
+records who removed it. Each reading says where it came from: entered by hand,
+from a work order, or from a scan tool — a confirmed scan report that states
+the odometer records that reading as of the day the scan was run.
+
 Photos open in an in-page viewer. Documents such as titles, insurance cards,
 manuals, and PDFs stay in a separate document list and open in a browser tab.
-**Rename** on a document row gives it a name of your own — a manual that
-arrives as `31P8770110E1.pdf` can be called what you would actually look for —
-and the file name stays underneath it. The name belongs to that attachment, so
-a receipt filed against both a purchase and a work order can be called
-something different in each.
+**Describe** on a document row, or under a photo, gives it a name of your
+own — a manual that arrives as `31P8770110E1.pdf` can be called what you would
+actually look for — and says what kind of thing it is: a title, the
+registration, an insurance card, a manual, a receipt, or a before or after
+shot on a job. The file name stays underneath. Both belong to that attachment,
+so a receipt filed against both a purchase and a work order can be called
+something different in each. An attachment nobody has described shows no kind
+at all rather than a placeholder.
 
 Adding files is two steps in order: choose the files, then **Upload**. The
 upload button stays inactive until something is chosen and then names how many.
 
 Ordinary links store only their label, address, and note; HomeAutoShop does not
 fetch the linked page.
+
+**Service manuals** lists the manual libraries this shop uses, with a browse
+link for the vehicle's make and year where the library is regular enough to
+allow one, and a box to pin the exact page once you have found it. Three
+libraries ship; an administrator adds others under **Settings → Manual
+libraries** — a name and an address are enough. A library can be switched off
+for every vehicle or hidden on one, and removing one sends it and its pinned
+pages to the trash. Nothing is ever fetched from a library; it is a link.
 
 ### Specifications
 
@@ -238,6 +256,33 @@ Coverage is for US-market NHTSA data. An empty result is not proof that a
 vehicle is clear, especially for vehicles registered outside the United
 States. The screen links to NHTSA's VIN-specific checker for a separate check.
 
+The screen says when NHTSA last gave an answer about this vehicle, or that it
+has never been asked. A list that is empty because nobody has looked and one
+that is empty because NHTSA listed nothing are shown as different sentences.
+
+**Nothing is asked on a schedule unless you ask for it.** Out of the box the
+only thing that contacts NHTSA is the Check button on this screen. To have it
+checked in the background, set **Re-check each vehicle after this many days**
+under **Settings, Outbound requests**. With that set, one vehicle an hour is looked up,
+starting with whichever has the oldest answer; it is one at a time because
+NHTSA replies to a rate-limited request exactly as it replies to a vehicle with
+no campaigns, so asking about a whole fleet at once could turn one rate limit
+into a page of clean bills of health. Offline Mode stops it, as it stops
+everything else.
+
+A campaign you have not yet marked as dealt with appears on the dashboard and
+in reminder digests. That needs no connection at all, and it keeps working with
+recall checking switched off.
+
+### When a file could not be read
+
+Documents and photographed receipts are read for their text so they turn up in
+search. A file that failed is counted on the Health screen as **unreadable**.
+Most of these fail for a reason outside the file, such as a language pack that
+was never installed, so once that is put right press **Try again** beside the
+count. Every unreadable file goes back in the queue. Nothing is uploaded again,
+and each file keeps its name, its role, and its place in the vehicle's story.
+
 ### Deleting versus disposing
 
 Use **Sold**, **Parted out**, or **Totaled** for a vehicle whose history should
@@ -266,17 +311,33 @@ does not receive a made-up usage rate.
 - Applying a template again does not overwrite intervals already changed.
 - **Replace what is here** removes untouched items absent from the new template.
   Items with completion history stay because that history must not be erased.
-- **Add an item** creates a custom schedule entry.
+- **Add an item** creates a schedule entry. Pick a service from the shared
+  list, or name a new one — it joins the list, so the next vehicle picks it
+  from the dropdown. Say when it was **last done** and what the meter read,
+  if you know: the interval runs from there. Left blank, the schedule can only
+  start the clock today, which on a vehicle new to the shop is usually wrong.
+  A last-done date is recorded as the completion it describes.
 - **Ignore** keeps an item and its history but stops tracking it. **Track**
   turns it back on.
-- **Snooze** temporarily takes an item out of the due list. Completing it clears
-  the snooze.
+- **Snooze** means "not now": the item leaves the Due list and comes back
+  after **Settings → Maintenance → Snooze an item for this many days**, with
+  its interval unchanged. Completing it clears the snooze.
 - **Remove** is available only when the item has no completion history. Ignore
   an item that already has history.
+- The **↑ ↓** buttons arrange the list in your own order. Until you move
+  something it reads soonest-first.
 
-Use **Done** to backfill service completed without a HomeAutoShop work order.
-An older backfilled completion is retained but does not move a schedule
-backward past a newer completion.
+Use **Done** to backfill service completed without a HomeAutoShop work order,
+giving the date and the meter reading at the time. Leave the meter blank if you
+do not know it; the schedule then projects from the meter now and says so,
+rather than recording today's mileage against work done months ago. An older
+backfilled completion is retained but does not move a schedule backward past a
+newer completion. Services recorded this way appear in the vehicle's history.
+
+Setting an interval or recording a service confirms beside the row it was done
+on. The **Due** page carries the same **Done**, **Snooze** and **Ignore** on
+each row, and a row leaves the list when it no longer needs attention; the
+interval itself is edited on the vehicle's schedule.
 
 A work-order job item can be linked to a scheduled service. Marking the job
 item done rolls that service interval forward once; toggling the item does not
@@ -343,6 +404,10 @@ up while the fluid is in service, so 24 ppm of iron on 3,000 miles of oil and
 24 ppm on 9,000 miles are not the same result. A sample recorded without it is
 kept and shown, but it is left out of the trend and the screen says so rather
 than quietly averaging it in.
+
+Attach the lab's report — the PDF, or photographs of a printout — on the
+same form, while it is open in front of you; more can be added on the sample's
+page later. A photographed report shows as a picture rather than a file name.
 
 **Paste the panel rather than typing it.** Put one analyte per line in the
 Results box — `Iron 24`, `Fe: 24 ppm`, `Viscosity @ 100C 10.9` all work, and so
@@ -484,7 +549,10 @@ and Amazon has no addressable notion of *this part* — so a generated link woul
 be a guess that fails at the moment somebody needs it.
 
 **Photos** go on a part the same way they go on a vehicle: take one at the
-bench or attach one saved off a listing. A part number identifies an item to a
+bench or attach one saved off a listing. Whether an attachment is filed as a
+photograph or a document is decided by reading the file itself, not by what the
+browser called it — which is why a `.webp` saved off a web page lands in Photos
+like anything else. A part number identifies an item to a
 supplier and describes it to nobody, and two sway bar links with adjacent
 numbers differ by which way the stud faces. The same photo uploaded twice is
 stored once.
@@ -507,9 +575,24 @@ Two of the answers are about the part rather than about a vehicle:
 
 ### Narrow the catalog
 
+Above the list are four controls, and they all apply together:
+
+- **Search** by name, brand, manufacturer number, interchange number, vendor
+  SKU or UPC.
+- **Category**, as the parts have been filed.
+- **Fits which vehicle** — everything recorded as fitting the vehicle you
+  pick, including the parts that fit anything, and excluding anything you have
+  held against that vehicle and marked as not fitting. This is the question a
+  job starts with: *what do I already have for the truck?*
+- **How much is on hand** — on the shelf, none on hand, or below minimum.
+
+A narrowed screen says so and offers a link back to the whole catalog, because
+a filter that matches nothing looks exactly like a shop that owns nothing.
+
 The parts list splits three ways — **All**, **Parts**, **Consumables** — and
 each tab carries the number of rows behind it, so an empty side says so before
-it is opened. A part is something that gets installed and stays on the vehicle;
+it is opened. The counts are of what is left after the filters above, and
+switching tabs keeps them. A part is something that gets installed and stays on the vehicle;
 a consumable is something that gets used up, like oil, brake cleaner or rags.
 The split comes from the **Consumable** box on the part itself.
 
@@ -774,6 +857,11 @@ and match confidence, extracted fields, trouble codes and descriptions, live
 data when present, and the original report. Nothing enters the vehicle history
 until **Add to the history** is pressed. Correct the date, tool, model, meter,
 or notes first, or discard the draft.
+
+Confirming a report that states the odometer also records that reading on the
+vehicle's meter, dated to the scan, with the tool named as its source. Correct
+the figure on the review screen first if the tool misread it; re-reading and
+confirming the same report does not record it twice.
 
 ### Bench tester results
 
@@ -1057,6 +1145,13 @@ Administrators configure reminder channels under **Reminders**. Delivery is a
 digest, not one message per item, and nothing is sent when there is nothing to
 say. The page previews what would be sent now.
 
+A digest carries what is overdue or coming due, a registration about to
+expire, a return window closing, a recall you have not yet marked as dealt
+with, a stock lot at or past its expiry date, and a single line for every part
+below its minimum. The shopping list is one line rather than one per part, and
+it is keyed on which parts are low, so a part that runs down tomorrow is not
+silenced by today's cooldown.
+
 Supported channels are email, webhook, and browser push. Email requires SMTP;
 a webhook receives JSON at the configured address. Browser push is subscribed
 from the device itself. Push crosses the browser vendor's push service, so the
@@ -1067,6 +1162,11 @@ Each channel can be tested, enabled, disabled, or removed. A channel may
 include all routine items or only safety and overdue items. The cooldown keeps
 the same condition from being repeated every day. Offline Mode suppresses all
 delivery.
+
+The mail server itself is configured under **Settings → Outgoing email**, and
+**Test settings** there sends one message, with the settings as saved, to your
+account's email address. When it fails, the message repeats what the server
+said — that is the whole point of the button.
 
 ## Integrations and outbound privacy
 
@@ -1144,9 +1244,10 @@ has its own local queue; one device cannot inspect another device's queue.
 
 ### Backup versus portable export
 
-Under **Backup** an administrator can run a recoverable instance backup, build
-a portable ZIP containing plain JSON and every application-managed file,
-download or delete held artifacts, and review or change automatic retention.
+Under **Backups** an administrator can run a recoverable instance backup, build
+a portable ZIP containing plain JSON and every application-managed file, and
+download or delete held artifacts. How often backups run, how many are kept,
+and when to warn you are under **Settings → Backup schedule**.
 
 A backup is for restoring this HomeAutoShop instance. A portable export is for
 reading the data without HomeAutoShop. Neither is safe merely because it sits
@@ -1158,7 +1259,7 @@ into that store and labels the backup as not containing photos. Back up the
 object store separately.
 
 Restore is deliberately a command-line operation because replacing a live
-database from a web request risks a half-restored instance. The Backup page
+database from a web request risks a half-restored instance. The Backups page
 prints the exact restore command for the current configuration. Integration
 secrets must be re-entered afterward.
 
@@ -1172,7 +1273,7 @@ and **Back up now** stays disabled, so the instance quietly stops backing
 itself up.
 
 The worker notices and puts such a job back on the queue within the hour, so
-this normally clears itself. When it does, the Backup page says so plainly
+this normally clears itself. When it does, the Backups page says so plainly
 rather than showing a *running* pill, and offers **Give up on it** if you would
 rather not wait — that frees both the scheduled backup and the button.
 

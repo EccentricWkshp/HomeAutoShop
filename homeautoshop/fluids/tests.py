@@ -577,3 +577,43 @@ class TheReportItselfTests(Fixture):
 
         self.client.force_login(helper)
         self.assertEqual(self._upload(sample).status_code, 403)
+
+
+class TheReportIsReadTests(Fixture):
+    """A photographed printout is the ordinary way a home shop keeps a lab
+    report, and a photo filed as Other was never OCR'd — so its numbers were in
+    no search and the transcription could not be checked against them."""
+
+    def test_a_photographed_report_is_queued_for_reading(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        from homeautoshop.mediafiles.models import MediaLink
+
+        sample = self.sample(on=date(2026, 1, 5), fluid_usage=3000, iron=24)
+        self.client.post(
+            reverse("fluid_sample_report", args=[sample.pk]),
+            {"files": SimpleUploadedFile("report.jpg", b"not really a jpeg", content_type="image/jpeg")},
+        )
+
+        media = MediaLink.for_entity(sample).get().media
+        self.assertEqual(media.ocr_status, media.OcrStatus.PENDING)
+
+    def test_and_so_is_one_attached_while_recording_the_sample(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        from homeautoshop.mediafiles.models import MediaLink
+        from .models import FluidSample
+
+        self.client.post(
+            reverse("fluid_sample_create", args=[self.asset.pk]),
+            {
+                "compartment": Compartment.ENGINE_OIL,
+                "sampled_on": "2026-01-05",
+                "results_text": "Iron 24",
+                "files": SimpleUploadedFile("report.jpg", b"not really a jpeg", content_type="image/jpeg"),
+            },
+        )
+
+        sample = FluidSample.objects.get()
+        media = MediaLink.for_entity(sample).get().media
+        self.assertEqual(media.ocr_status, media.OcrStatus.PENDING)

@@ -895,3 +895,59 @@ class UploadedBackupTests(TestCase):
         self.client.login(username="mechanic", password="pw")
         response = self.client.post(reverse("backup_upload"), {})
         self.assertIn(response.status_code, (302, 403))
+
+
+class TestingTheEmailSettingsTests(RuntimeBase):
+    """R-9 — proof on the page where the settings are typed.
+
+    SMTP is never right the first time. The reminders page could send a test
+    digest per channel, but by then the question has become "is it the server
+    or the address"; this answers the first half where the server is typed in,
+    with the saved settings, and repeats the server's own words when it fails.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.admin = User.objects.create_user(
+            username="boss", password="x" * 16, role=Role.ADMIN, email="boss@example.com"
+        )
+        self.client.force_login(self.admin)
+
+    def test_the_button_is_on_the_email_page_and_no_other(self):
+        target = reverse("settings_email_test")
+        self.assertContains(self.client.get(reverse("settings", args=["email"])), target)
+        self.assertNotContains(self.client.get(reverse("settings", args=["shop"])), target)
+
+    @override_settings(EMAIL_HOST="smtp.example.test")
+    def test_it_sends_one_message_to_the_person_pressing_it(self):
+        from django.core import mail
+
+        response = self.client.post(reverse("settings_email_test"), follow=True)
+
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["boss@example.com"])
+        self.assertContains(response, "Sent to boss@example.com")
+
+    @override_settings(EMAIL_HOST="")
+    def test_with_no_server_it_says_so_rather_than_pretending(self):
+        from django.core import mail
+
+        response = self.client.post(reverse("settings_email_test"), follow=True)
+
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertContains(response, "no SMTP server is configured")
+
+    @override_settings(EMAIL_HOST="smtp.example.test", DEFAULT_FROM_EMAIL="")
+    def test_an_account_with_no_address_is_told_what_to_do(self):
+        self.admin.email = ""
+        self.admin.save()
+
+        response = self.client.post(reverse("settings_email_test"), follow=True)
+
+        self.assertContains(response, "Nobody to send it to")
+
+    def test_a_member_cannot_press_it(self):
+        member = User.objects.create_user(username="pat", password="x" * 16)
+        self.client.force_login(member)
+
+        self.assertEqual(self.client.post(reverse("settings_email_test")).status_code, 403)

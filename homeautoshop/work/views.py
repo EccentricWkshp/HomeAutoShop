@@ -255,6 +255,7 @@ def work_order_detail(request, pk):
             "job_items": wo.job_items.all(),
             "notes": wo.notes.select_related("author")[:100],
             "photos": MediaLink.for_entity(wo).select_related("media"),
+            "media_roles": MediaLink.selectable_roles(),
             "job_item_form": JobItemForm(),
             "progress": {"done": done, "total": total},
             "next_statuses": [

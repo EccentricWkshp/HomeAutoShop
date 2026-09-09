@@ -13,6 +13,9 @@ Two ideas do the work:
 
 from __future__ import annotations
 
+import contextvars
+from contextlib import contextmanager
+
 from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
@@ -334,7 +337,13 @@ def complete(
 ) -> ServiceCompletion:
     """Record the work and roll the interval forward (FR-MAINT-5/6)."""
     on = on or timezone.localdate()
-    if usage is None:
+    if usage is None and on >= timezone.localdate():
+        # Only when the work is being recorded as it happens. The meter reads
+        # what it reads *today*, and stamping that onto a service done eight
+        # months ago invents a reading nobody took — one that then anchors the
+        # next due mileage five thousand miles from the wrong place. Left
+        # unknown, `recalculate` says so by falling back to the meter now,
+        # which is the same projection without the false record behind it.
         usage = item.asset.current_usage
 
     completion = ServiceCompletion.objects.create(
@@ -359,17 +368,114 @@ def complete(
     return completion
 
 
+def refresh(item: AssetServiceItem, *, today: date | None = None) -> bool:
+    """Bring one item's derived columns up to date, writing only if they moved.
+
+    `recalculate(save=True)` always writes, and a `RevisionedModel` write bumps
+    the revision — so a page that recalculated forty items on every view was
+    forty writes and forty revisions for nothing most of the time. This is the
+    read-time form: the same arithmetic, saved only when the answer changed.
+    Returns whether it did.
+    """
+    before = (item.next_due_on, item.next_due_usage, item.status)
+    recalculate(item, today=today, save=False)
+    changed = (item.next_due_on, item.next_due_usage, item.status) != before
+    if changed:
+        item.save()
+    return changed
+
+
 def refresh_asset(asset, *, today: date | None = None) -> int:
     for item in asset.service_items.all():
-        recalculate(item, today=today)
+        refresh(item, today=today)
     return asset.service_items.count()
+
+
+#: Vehicles whose readings changed inside a `refresh_later()` block, or
+#: `None` when no block is open and every reading refreshes as it lands.
+_DEFERRED: contextvars.ContextVar[set | None] = contextvars.ContextVar(
+    "maintenance_refresh_deferred", default=None
+)
+
+
+@contextmanager
+def refresh_later():
+    """Hold every per-reading refresh until the block ends, then do each vehicle once.
+
+    `UsageReading.save` refreshes its vehicle's due statuses, which is right
+    for a reading typed in the garage and wrong by a factor of the import size
+    for the LubeLogger importer, which lands readings one row at a time: five
+    hundred readings were five hundred passes over the same ten items. Inside
+    this block a reading only notes which vehicle it touched, and the block
+    refreshes each touched vehicle once on the way out — after the last
+    reading, so the statuses are right about the meter as finally imported.
+    """
+    touched: set = set()
+    token = _DEFERRED.set(touched)
+    try:
+        yield touched
+    finally:
+        _DEFERRED.reset(token)
+    from homeautoshop.assets.models import Asset
+
+    for asset in Asset.objects.filter(pk__in=touched):
+        refresh_asset(asset)
+
+
+def refresh_for_reading(reading) -> None:
+    """What a saved reading calls: refresh its vehicle now, or note it for later."""
+    deferred = _DEFERRED.get()
+    if deferred is not None:
+        deferred.add(reading.asset_id)
+    else:
+        refresh_asset(reading.asset)
+
+
+def refresh_fleet(*, today: date | None = None) -> int:
+    """Bring every live item in the fleet up to date. Returns how many moved.
+
+    `status` and `next_due_*` are stored, and stored is what the board, the Due
+    list, the digest and the vehicle report read — deliberately, because a
+    card drawn for every vehicle cannot afford the odometer arithmetic per
+    item. Stored means it has to be rewritten when its inputs change, and the
+    inputs are three: the look-ahead thresholds (`runtime.save` calls this
+    when they change), the meter (`UsageReading.save` refreshes its vehicle),
+    and the calendar (the `maintenance.refresh` job runs this daily). Left to
+    the reads, a changed look-ahead showed up on the Due list only after each
+    vehicle's schedule had been opened once — which looked like caching and
+    was a column nobody had rewritten.
+    """
+    from homeautoshop.assets.models import Asset
+
+    today = today or timezone.localdate()
+    moved = 0
+    for item in (
+        AssetServiceItem.objects.filter(asset__in=Asset.objects.fleet())
+        .live()
+        .select_related("asset", "definition")
+    ):
+        moved += refresh(item, today=today)
+    return moved
 
 
 def due_dashboard(*, limit: int | None = None, user=None) -> list[AssetServiceItem]:
     """Everything needing attention, most urgent first (FR-MAINT-7).
 
-    Overdue safety items lead, because that is the ordering that matters when
-    someone is deciding what to do with a Saturday.
+    Read off the stored `status`, which is kept current where its inputs
+    change rather than here — see `refresh_fleet` for the three inputs and who
+    rewrites it for each. A read that recomputed forty rows would be the cost
+    the board's card deliberately refuses to pay.
+
+    **Overdue first, safety leading within it — then soonest.** The old key put
+    every Safety item ahead of every routine one whatever the dates, so a
+    registration due in 213 days sat under three safety items due in 365, and
+    the list read as random. Overdue safety is still what a Saturday is for;
+    among things merely coming up, the one coming up first is first, and
+    safety breaks the tie. Sorted on the *projected* date, because an item due
+    by distance has no `next_due_on` and was sorting last however soon it was.
+
+    Each row carries its `projection`, so a page that shows one does not work
+    it out twice.
 
     `user` narrows the fleet to what that person may see (SPEC §12.2a). It is
     optional because the reminder digest and the forecast run with nobody
@@ -378,17 +484,25 @@ def due_dashboard(*, limit: int | None = None, user=None) -> list[AssetServiceIt
     from homeautoshop.accounts.policy import visible_assets_for
     from homeautoshop.assets.models import Asset
 
-    rows = AssetServiceItem.objects.filter(
-        asset__in=Asset.objects.fleet()
-    ).needing_attention().select_related("asset", "definition")
+    today = timezone.localdate()
+    rows = (
+        AssetServiceItem.objects.filter(asset__in=Asset.objects.fleet())
+        .needing_attention()
+        .select_related("asset", "definition")
+    )
     if user is not None:
         rows = visible_assets_for(user, rows)
-    rows = list(rows)
-    rows.sort(
+
+    due = list(rows)
+    for item in due:
+        item.projection = project(item, today=today)
+
+    due.sort(
         key=lambda i: (
             i.status != ServiceStatus.OVERDUE,
+            i.status == ServiceStatus.OVERDUE and not i.is_safety,
+            i.projection.projected_date or date.max,
             not i.is_safety,
-            i.next_due_on or date.max,
         )
     )
-    return rows[:limit] if limit else rows
+    return due[:limit] if limit else due

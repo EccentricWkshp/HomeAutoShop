@@ -189,6 +189,28 @@ def format_unit_price(total_minor, quantity, currency: str = "USD") -> str:
     return f"{exact.quantize(Decimal('0.0001'), rounding=ROUND_HALF_UP):f}"
 
 
+def format_quantity(value) -> str:
+    """`1` and `1.5`, never `1.000` and `1.500`.
+
+    A quantity is stored to three or four decimal places so that half a liter
+    of coolant survives the round trip, and every screen that printed one
+    reached for `:g` to trim it. `:g` trims a **float**; on a `Decimal` it
+    keeps the coefficient it was handed, so `Decimal("1.000")` renders as
+    `1.000` and the parts list under a vehicle's costs read `1.000× Caliper` —
+    three decimal places of precision nobody typed, about a thing there is one
+    of. Every one of those columns is a Decimal, so none of them were trimming.
+
+    `normalize()` alone is not the fix either: it turns `10.000` into `1E+1`.
+    """
+    number = Decimal(str(value or 0))
+    trimmed = (
+        number.quantize(Decimal(1))
+        if number == number.to_integral_value()
+        else number.normalize()
+    )
+    return f"{trimmed:f}"
+
+
 def format_measurement(value, unit: str, locale: str | None = None) -> str:
     from django.utils.translation import get_language
 

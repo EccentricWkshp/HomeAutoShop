@@ -21,7 +21,7 @@ from django.db.models.functions import Lower
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-from homeautoshop.core.measurements import PART_UNITS, UNIT_LABELS
+from homeautoshop.core.measurements import PART_UNITS, UNIT_LABELS, format_quantity
 from homeautoshop.core.models import (
     AppendOnlyModel, BaseModel, RevisionedModel, uuid7,
 )
@@ -372,7 +372,7 @@ class PartKitItem(BaseModel):
         ]
 
     def __str__(self) -> str:
-        return f"{self.quantity:g} × {self.part}"
+        return f"{format_quantity(self.quantity)} × {self.part}"
 
     @property
     def unit_value_minor(self) -> int | None:

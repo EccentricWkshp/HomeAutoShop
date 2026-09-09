@@ -70,7 +70,11 @@ GROUPS: tuple[Group, ...] = (
         _("Outgoing email"),
         _("Only used to deliver reminders. Leave the server blank and no email is sent."),
     ),
-    Group("backup", _("Backup"), _("How often, how many are kept, and when to warn you.")),
+    Group(
+        "backup",
+        _("Backup schedule"),
+        _("How often, how many are kept, and when to warn you. The backups themselves are under Backups."),
+    ),
 )
 
 
@@ -252,6 +256,16 @@ REGISTRY: tuple[Entry, ...] = (
         minimum=1, maximum=100_000, unit=_("miles or kilometers, matching your units"),
     ),
     Entry(
+        "SNOOZE_DAYS", "maintenance", "int",
+        _("Snooze an item for this many days"),
+        _(
+            "Snoozing means “not now”: the item leaves the Due list and comes back "
+            "after this long, with its interval unchanged. Ignore is the other "
+            "answer — off the list for good, until you track it again."
+        ),
+        minimum=1, maximum=365, unit=_("days"),
+    ),
+    Entry(
         "DEFAULT_DISTANCE_PER_DAY", "maintenance", "int",
         _("Assume this much driving per day"),
         _("Only used for a vehicle with too little history to work out its own rate."),
@@ -334,6 +348,18 @@ REGISTRY: tuple[Entry, ...] = (
         "RECALLS_ENABLED", "outbound", "bool",
         _("Check for recalls"),
         _("Asks NHTSA whether a vehicle has open safety campaigns."),
+    ),
+    Entry(
+        "RECALL_CHECK_DAYS", "outbound", "int",
+        _("Re-check each vehicle after this many days"),
+        _(
+            "Zero means never, which is the default: nothing is asked of NHTSA unless you "
+            "press Check on a vehicle. With a number set, one vehicle an hour is looked up "
+            "in the background, oldest answer first — one at a time because NHTSA answers a "
+            "rate-limited request exactly the way it answers “no campaigns”."
+        ),
+        minimum=0, maximum=3650, unit=_("days"),
+        depends_on="RECALLS_ENABLED",
     ),
     Entry(
         "SERVICE_INFO_ENABLED", "outbound", "bool",

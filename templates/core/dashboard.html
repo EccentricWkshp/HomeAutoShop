@@ -5,7 +5,10 @@
   <a class="btn primary" href="{% url 'work_order_create' %}">{% translate "New work order" %}</a></div>
 
 {% for alert in alerts %}
-  <p class="msg warning">⚠ {{ alert.text }}</p>
+  <p class="msg warning">⚠
+    {% if alert.url %}<a href="{{ alert.url }}">{{ alert.text }}</a>
+    {% else %}{{ alert.text }}{% endif %}
+  </p>
 {% endfor %}
 
 {% if due %}

@@ -21,6 +21,8 @@ from django.db import transaction
 from django.utils import timezone
 from django.utils.translation import gettext as _
 
+from homeautoshop.core.measurements import format_quantity
+
 from .models import (
     SEVERITY_ORDER,
     Inspection,
@@ -328,7 +330,7 @@ class Wear:
         }
         if self.projected_date:
             text += " · " + str(_("reaches %(target)s around %(date)s")) % {
-                "target": f"{self.target:g}", "date": self.projected_date.isoformat(),
+                "target": format_quantity(self.target), "date": self.projected_date.isoformat(),
             }
         return text
 

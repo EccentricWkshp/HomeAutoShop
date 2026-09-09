@@ -188,3 +188,167 @@ class MaskingTests(TestCase):
         self.assertNotIn("SECRETTOKEN", hook.masked_target)
         self.assertNotIn("webhook", hook.masked_target)
         self.assertIn("hass.example.test", hook.masked_target)
+
+
+class TheShelfReachesTheDigestTests(TestCase):
+    """Brake fluid with a date on it and a part below its minimum were visible
+    only to somebody who opened the parts pages and looked. Both are dated
+    facts, which is what everything else in this digest already is."""
+
+    def setUp(self):
+        from homeautoshop.parts.models import Part, StockLot
+
+        self.Part = Part
+        self.StockLot = StockLot
+        Setting.put("last_backup_at", timezone.now().isoformat())
+
+    def _lot(self, name: str, *, expires, qty=2):
+        part = self.Part.objects.create(name=name)
+        return self.StockLot.objects.create(part=part, qty_on_hand=qty, expires_on=expires)
+
+    def test_an_expired_lot_is_urgent(self):
+        self._lot("DOT 4 brake fluid", expires=timezone.localdate() - timedelta(days=3))
+
+        alert = next(a for a in collect().alerts if a.dedupe_key.startswith("lot:"))
+
+        self.assertEqual(alert.severity, "overdue")
+        self.assertIn("DOT 4 brake fluid", alert.title)
+        self.assertFalse(alert.is_routine)
+
+    def test_one_approaching_its_date_is_routine(self):
+        self._lot("Threadlocker", expires=timezone.localdate() + timedelta(days=20))
+
+        alert = next(a for a in collect().alerts if a.dedupe_key.startswith("lot:"))
+
+        self.assertEqual(alert.severity, "warning")
+        self.assertTrue(alert.is_routine)
+
+    def test_a_date_far_out_is_not_raised_yet(self):
+        self._lot("Epoxy", expires=timezone.localdate() + timedelta(days=400))
+
+        keys = [a.dedupe_key for a in collect().alerts]
+
+        self.assertFalse(any(k.startswith("lot:") for k in keys))
+
+    def test_a_lot_with_no_date_is_never_raised(self):
+        self._lot("Wheel nut", expires=None)
+
+        keys = [a.dedupe_key for a in collect().alerts]
+
+        self.assertFalse(any(k.startswith("lot:") for k in keys))
+
+    def test_the_quantity_reads_as_somebody_typed_it(self):
+        """The lot column is a Decimal stored to three places."""
+        self._lot("Wiper blade", expires=timezone.localdate(), qty=1)
+
+        alert = next(a for a in collect().alerts if a.dedupe_key.startswith("lot:"))
+
+        self.assertIn("1 on hand", alert.detail)
+        self.assertNotIn("1.000", alert.detail)
+
+    def test_low_stock_is_one_alert_and_not_one_per_part(self):
+        for name in ("Oil filter", "Air filter", "Cabin filter"):
+            self.Part.objects.create(name=name, min_quantity=2)
+
+        restock = [a for a in collect().alerts if a.dedupe_key.startswith("restock:")]
+
+        self.assertEqual(len(restock), 1)
+        self.assertIn("3", restock[0].title)
+        self.assertIn("Oil filter", restock[0].detail)
+
+    def test_a_shopping_list_is_routine(self):
+        self.Part.objects.create(name="Oil filter", min_quantity=2)
+
+        alert = next(a for a in collect().alerts if a.dedupe_key.startswith("restock:"))
+
+        self.assertEqual(alert.severity, "info")
+        self.assertTrue(alert.is_routine)
+
+    def test_a_stocked_part_is_not_on_it(self):
+        part = self.Part.objects.create(name="Oil filter", min_quantity=2)
+        self.StockLot.objects.create(part=part, qty_on_hand=4)
+
+        keys = [a.dedupe_key for a in collect().alerts]
+
+        self.assertFalse(any(k.startswith("restock:") for k in keys))
+
+    def test_a_part_going_low_tomorrow_is_not_silenced_by_todays_cooldown(self):
+        """Keyed on which parts are low, not on the fact that any are — a fixed
+        key would let one cooldown swallow every later shortage."""
+        self.Part.objects.create(name="Oil filter", min_quantity=2)
+        first = next(a for a in collect().alerts if a.dedupe_key.startswith("restock:"))
+
+        self.Part.objects.create(name="Air filter", min_quantity=2)
+        second = next(a for a in collect().alerts if a.dedupe_key.startswith("restock:"))
+
+        self.assertNotEqual(first.dedupe_key, second.dedupe_key)
+
+    def test_the_same_shelf_keeps_the_same_key(self):
+        self.Part.objects.create(name="Oil filter", min_quantity=2)
+
+        first = next(a for a in collect().alerts if a.dedupe_key.startswith("restock:"))
+        second = next(a for a in collect().alerts if a.dedupe_key.startswith("restock:"))
+
+        self.assertEqual(first.dedupe_key, second.dedupe_key)
+
+
+class AnOpenRecallIsSaidOutLoudTests(TestCase):
+    """A campaign already recorded against a vehicle and not yet answered. No
+    lookup, no network, no interval — until now the only way to find out was to
+    open one vehicle's recall page and read it."""
+
+    def setUp(self):
+        from homeautoshop.assets.models import Recall
+
+        self.Recall = Recall
+        self.asset = Asset.objects.create(nickname="Explorer")
+        Setting.put("last_backup_at", timezone.now().isoformat())
+
+    def _recall(self, **kwargs):
+        fields = {
+            "asset": self.asset,
+            "campaign_number": "24V001",
+            "component": "Fuel pump",
+        }
+        fields.update(kwargs)
+        return self.Recall.objects.create(**fields)
+
+    def test_it_reaches_the_digest(self):
+        self._recall()
+
+        alert = next(a for a in collect().alerts if a.dedupe_key.startswith("recall:"))
+
+        self.assertEqual(alert.severity, "safety")
+        self.assertIn("Explorer", alert.title)
+        self.assertIn("Fuel pump", alert.detail)
+        self.assertFalse(alert.is_routine)
+
+    def test_one_already_dealt_with_is_not_raised(self):
+        self._recall(owner_status=self.Recall.OwnerStatus.COMPLETED)
+
+        keys = [a.dedupe_key for a in collect().alerts]
+
+        self.assertFalse(any(k.startswith("recall:") for k in keys))
+
+    def test_nor_one_that_does_not_apply_to_this_vin(self):
+        self._recall(owner_status=self.Recall.OwnerStatus.NOT_APPLICABLE)
+
+        keys = [a.dedupe_key for a in collect().alerts]
+
+        self.assertFalse(any(k.startswith("recall:") for k in keys))
+
+    def test_a_vehicle_that_is_no_longer_yours_is_not_raised(self):
+        from homeautoshop.assets.models import AssetStatus
+
+        self.asset.status = AssetStatus.SOLD
+        self.asset.save()
+        self._recall()
+
+        keys = [a.dedupe_key for a in collect().alerts]
+
+        self.assertFalse(any(k.startswith("recall:") for k in keys))
+
+    def test_it_drives_the_subject_line(self):
+        self._recall()
+
+        self.assertIn("need attention", collect().subject())

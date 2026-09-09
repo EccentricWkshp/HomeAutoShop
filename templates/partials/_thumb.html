@@ -58,4 +58,37 @@ offering nothing.
             aria-label="{% blocktranslate %}Remove {{ label }}{% endblocktranslate %}">{% translate "Remove" %}</button>
   </form>
 {% endif %}
+{% comment %}
+Saying what a photograph is — a name of your own, and which of Before, After,
+Receipt, Title it counts as. Takes `roles`, the list to offer, and appears only
+when the caller hands one over: the same tile is drawn four abreast on a work
+order and on a purchase, where a disclosure under every thumbnail is clutter
+rather than a control.
+
+It exists because nothing else wrote that column. Every upload route files its
+link as `OTHER`, no screen could change it afterwards, and the vehicle's story
+printed the consequence honestly — a stack of photographs each labeled "Other".
+
+One form for both fields rather than two: "what to call it" and "what it is"
+are the same question asked twice, and two buttons under one thumbnail would
+each save half the answer.
+{% endcomment %}
+{% if link and roles %}
+  <details class="describe">
+    <summary class="small muted">{% translate "Describe" %}</summary>
+    <form method="post" action="{% url 'media_describe' link.pk %}">
+      {% csrf_token %}
+      {% if anchor %}<input type="hidden" name="_anchor" value="{{ anchor }}">{% endif %}
+      <input name="caption" value="{{ link.caption }}" maxlength="255"
+             aria-label="{% translate 'What to call this' %}"
+             placeholder="{% translate 'what to call it' %}">
+      <select name="role" aria-label="{% translate 'What this is' %}">
+        {% for value, name in roles %}
+          <option value="{{ value }}"{% if value == link.role %} selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="small">{% translate "Save" %}</button>
+    </form>
+  </details>
+{% endif %}
 </div>

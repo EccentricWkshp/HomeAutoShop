@@ -21,7 +21,14 @@
     <a href="{% url 'settings' item.key %}"
        {% if item.key == group.key %}aria-current="page"{% endif %}>{{ item.label }}</a>
   {% endfor %}
-  <a href="{% url 'backups' %}">{% translate "Backup" %}</a>
+  {% comment %}
+  Two pages that are not settings groups but belong with them. "Backups" is
+  the backups themselves — take one, download, restore — as distinct from the
+  "Backup schedule" group beside it; both read "Backup" for a while and were
+  told apart by clicking.
+  {% endcomment %}
+  <a href="{% url 'backups' %}">{% translate "Backups" %}</a>
+  <a href="{% url 'manual_libraries' %}">{% translate "Manual libraries" %}</a>
 </nav>
 
 <form method="post" class="card">{% csrf_token %}
@@ -126,6 +133,22 @@
   {% url 'settings' group.key as cancel_to %}
   {% include "partials/_formactions.html" with cancel_url=cancel_to cancel_label=_("Discard changes") %}
 </form>
+
+{% if group.key == "email" %}
+  {% comment %}
+  Proof, on the page where the settings are typed. SMTP is never right the
+  first time, and the reminders page already has a test send per channel — but
+  by the time somebody is there the question has become "is it the server or
+  the address". This sends one message with what is *saved*, to the account
+  pressing the button, and shows the server's own words when it fails.
+  {% endcomment %}
+  <form method="post" action="{% url 'settings_email_test' %}" class="card row">{% csrf_token %}
+    <button type="submit">{% translate "Test settings" %}</button>
+    <span class="small muted">
+      {% translate "Sends one message with the settings as saved above — save first. It goes to your account’s email address." %}
+    </span>
+  </form>
+{% endif %}
 
 <p class="small muted">
   {% blocktranslate %}Anything not here stays in the environment on purpose: values read before the database exists, and values a wrong answer would lock you out of this screen with.{% endblocktranslate %}

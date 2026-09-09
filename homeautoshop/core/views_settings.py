@@ -501,3 +501,186 @@ def backup_delete(request, name: str):
     else:
         messages.success(request, _("Deleted %(name)s.") % {"name": name})
     return redirect("backups")
+
+
+# ---------------------------------------------------------------------------
+# Manual libraries (SPEC §8.5)
+# ---------------------------------------------------------------------------
+
+
+def _unique_slug(name: str) -> str:
+    """A slug nothing else holds — trashed rows included, since the column is
+    unique in the table and not merely in the list somebody can see."""
+    from django.utils.text import slugify
+
+    from homeautoshop.assets.models import ServiceInfoProvider
+
+    base = slugify(name)[:36] or "library"
+    candidate, n = base, 2
+    while ServiceInfoProvider.all_objects.filter(slug=candidate).exists():
+        candidate = f"{base}-{n}"
+        n += 1
+    return candidate
+
+
+@login_required
+def manual_libraries(request):
+    """The service-manual libraries this shop links out to (SPEC §8.5).
+
+    Three ship — LEMON, CHARM, ALLDATA — because those were the three the
+    author knew, and there are many more: a marque club's archive, a paid
+    service the shop already pays for, a folder of PDFs on the garage NAS.
+    Until this page, adding one meant the Django admin, which is not a screen
+    anybody is pointed at, so the shipped three quietly defined what a "manual
+    library" could be.
+
+    A library is a name and an address. The vehicle page does the rest: it
+    offers a browse link and takes a pinned URL, and it never fetches anything
+    from the library itself — that is the rule that keeps this a list of links
+    rather than a crawler (§8.5, NG-7), and nothing added here changes it.
+    """
+    from django.core.validators import URLValidator
+
+    from homeautoshop.assets.models import ServiceInfoProvider
+
+    require(request.user, "settings.manage")
+    field = ServiceInfoProvider._meta.get_field
+
+    if request.method == "POST":
+        name = (request.POST.get("name") or "").strip()[:80]
+        address = (request.POST.get("address") or "").strip()
+        if not name or not address:
+            messages.error(request, _("A library needs a name and an address."))
+            return redirect("manual_libraries")
+        try:
+            URLValidator(schemes=["http", "https"])(address)
+        except ValidationError:
+            messages.error(request, _("That address is not a web address."))
+            return redirect("manual_libraries")
+        if ServiceInfoProvider.all_objects.filter(name__iexact=name).exists():
+            messages.error(
+                request,
+                _("There is already a library called %(name)s — it may be in the trash.")
+                % {"name": name},
+            )
+            return redirect("manual_libraries")
+
+        depth = request.POST.get("deep_link_depth") or "root"
+        if depth not in dict(field("deep_link_depth").choices):
+            depth = "root"
+        access = request.POST.get("access") or "free"
+        if access not in dict(field("access").choices):
+            access = "free"
+
+        ServiceInfoProvider.objects.create(
+            name=name,
+            slug=_unique_slug(name),
+            base_urls=[address.rstrip("/")],
+            # `browse_url` deep-links only where a template says the pattern
+            # is reliable, and reads the depth to build it. The template is
+            # implied by the depth rather than asked for: nobody adding a
+            # library should need to know what `{make}` means.
+            url_template={"make": "{make}/", "make_year": "{make}/{year}/"}.get(depth, ""),
+            deep_link_depth=depth,
+            access=access,
+            notes=(request.POST.get("notes") or "").strip(),
+            # After the shipped ones, in the order they were added.
+            sort_order=100 + ServiceInfoProvider.all_objects.count(),
+        )
+        messages.success(request, _("Added. Every vehicle offers it now."))
+        return redirect("manual_libraries")
+
+    return render(
+        request,
+        "core/manuals.html",
+        {
+            "libraries": ServiceInfoProvider.objects.all(),
+            "depth_choices": field("deep_link_depth").choices,
+            "access_choices": field("access").choices,
+        },
+    )
+
+
+@require_POST
+@login_required
+def manual_library_action(request, pk):
+    """Switch a library off for every vehicle, or remove it.
+
+    Off is reversible from here and keeps every pinned page; removal is the
+    ordinary soft delete, and the pages pinned to it on each vehicle go to the
+    trash with it — a pin to a library that no longer exists is a dead link
+    dressed as a shortcut — and come back with it if it is restored.
+    """
+    from django.shortcuts import get_object_or_404
+
+    from homeautoshop.assets.models import ServiceInfoProvider
+
+    require(request.user, "settings.manage")
+    library = get_object_or_404(ServiceInfoProvider, pk=pk)
+    action = request.POST.get("action")
+
+    if action == "delete":
+        summary = str(library)
+        library.delete()
+        AuditLog.objects.create(
+            entity_type="ServiceInfoProvider",
+            entity_id=library.pk,
+            action=AuditLog.Action.DELETE,
+            user=request.user,
+            summary=summary[:255],
+        )
+        messages.success(
+            request, _("Removed. It is in the trash for 30 days, pinned pages and all.")
+        )
+    elif action == "toggle":
+        library.is_enabled = not library.is_enabled
+        library.save(update_fields=["is_enabled", "updated_at"])
+        messages.success(
+            request,
+            _("Every vehicle offers it again.")
+            if library.is_enabled
+            else _("Hidden from every vehicle. Pinned pages are kept."),
+        )
+    return redirect("manual_libraries")
+
+
+@require_POST
+@login_required
+def settings_email_test(request):
+    """Send one message with the outgoing-email settings as saved (R-9).
+
+    Saved, not typed: the form on this page posts to `settings_view`, and this
+    button reads what that saved — the page says so beside it. A test that
+    read the unsaved boxes would pass, and then the saved settings would fail
+    at two in the morning, which is the failure this exists to prevent.
+
+    The reminders page already has a test send per channel. It is the wrong
+    place to learn the server is misconfigured: by then the question has
+    become "is it the server or the address", and this answers the first half
+    where the server is typed in. The recipient is the person pressing the
+    button, because that is the inbox they can check right now.
+    """
+    from .notifications import send_test_email
+
+    require(request.user, "settings.manage")
+    to = (request.user.email or conf.DEFAULT_FROM_EMAIL or "").strip()
+    if not to:
+        messages.error(
+            request,
+            _("Nobody to send it to: put an email address on your account, or set Send from."),
+        )
+        return redirect("settings", group="email")
+    try:
+        send_test_email(to)
+    except Exception as exc:  # noqa: BLE001 — the server's own words are the point
+        messages.error(
+            request,
+            _("Could not send: %(why)s") % {"why": str(exc) or exc.__class__.__name__},
+        )
+    else:
+        messages.success(
+            request,
+            _("Sent to %(to)s. If it does not arrive, check the spam folder and the Send from address.")
+            % {"to": to},
+        )
+    return redirect("settings", group="email")

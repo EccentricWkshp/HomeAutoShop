@@ -547,7 +547,13 @@ pre.scroll { white-space: pre-wrap; word-break: break-word; }
    moment somebody types, so the only way to find out what the box wanted was
    to empty it. */
 .unitbox { display: inline-flex; align-items: center; gap: .3rem; }
-.unitbox input { inline-size: 5rem; }
+/* Wide enough for the number it is actually asked to hold. At 5rem a service
+   interval of `10000` displayed as `1000(` — the box was sized as though the
+   whole width were text, and a `type=number` spends 1.5rem of it on padding
+   and another rem on the spinner it draws inside the field. A control that
+   silently clips the value in it is worse than one that looks roomy: the
+   figure is right, the record is right, and the screen says otherwise. */
+.unitbox input { inline-size: 7.5rem; }
 .unitbox label { margin: 0; white-space: nowrap; font-size: .8rem; }
 
 /* Settings (R-9). A section list rather than one very long form: the groups
@@ -847,10 +853,27 @@ input.doubtful { border-color: var(--warn, #b58900); }
 }
 .pin input { inline-size: 1.1rem; block-size: 1.1rem; flex: 0 0 auto; }
 
-/* The parsed lines of a supplier order. The figures are held together by
-   `.num` above; the description is the only column that should ever wrap, so
-   it takes what is left. */
-.orderlines td:nth-child(3) { min-inline-size: 18rem; }
+/* The parsed lines of a supplier order — up to eight columns of it, inside a
+   card, on the screen where somebody checks an order before it is written.
+   Three rules share the room out, and each one is about a different way the
+   table had been demanding more than the card has.
+
+   The description **absorbs** what is left rather than demanding a floor: a
+   `min-inline-size` here made the table wider, which is the opposite of what
+   the column is for. `inline-size: 100%` in an auto-layout table means "give
+   me the slack", and the floor under it is now small enough to give some back.
+
+   Addressed by class rather than by position. `td:nth-child(3)` is the
+   description only while both optional columns are on screen; on a document
+   stating no identifiers it was setting a floor under the price instead.
+
+   The identifier column gets a floor for the opposite reason: `.mono` breaks
+   anywhere, so its min-content is one character, and a column that *can*
+   collapse to one character per line will. */
+.orderlines .what { inline-size: 100%; min-inline-size: 12rem; }
+.orderlines .ident { min-inline-size: 8rem; }
+/* A pill split across two lines reads as two pills. */
+.orderlines .verdict { white-space: nowrap; }
 .orderlines select { inline-size: auto; }
 /* A label on the far left and its figure on the far right of a 1100px card is
    two columns nobody can associate by eye. */
@@ -859,7 +882,7 @@ input.doubtful { border-color: var(--warn, #b58900); }
 /* The count box on the order review screen. Narrow, because it holds a small
    whole number and a full-width input in a table column that wide reads as the
    most important thing on the row. */
-.orderlines input.count { inline-size: 4.5rem; }
+.orderlines input.count { inline-size: 6rem; }
 /* The count and its unit on one line, and the unit boxed to a width rather
    than sized to its longest option. `fluid ounces` set on `inline-size: auto`
    widened the Qty column by most of an inch, and the column that lost the room
@@ -880,5 +903,65 @@ input.doubtful { border-color: var(--warn, #b58900); }
    column at any width the card is given, so the layout is the same every time
    rather than depending on how long the location above it happened to be. */
 .lotcount { display: grid; gap: .35rem; }
-.lotcount input.count { inline-size: 5rem; }
+.lotcount input.count { inline-size: 6rem; }
 .lotcount input.reason { flex: 1 1 6rem; min-inline-size: 0; }
+
+/* ---------- a ledger: a label on the left, a figure on the right ---------- */
+
+/* Two columns, and the second one is money. Three is what this was — label,
+   detail, figure — and the detail column sized itself to a parts list, which
+   left the figure column narrower than the figure: `$392.65` rendered as
+   `$39`, `2.6`, `5` stacked, a price nobody typed. The detail is a block
+   under its label now, which is also the order it is read in: the thing, then
+   what it is made of, then what it cost. See `core/asset_costs.html`. */
+.ledger th, .ledger td { vertical-align: baseline; }
+.ledger .detail { display: block; margin-block-start: .15rem; font-weight: 400; }
+
+/* `width: 1%` is how an auto-layout table is told "no wider than your
+   content". Without it the money column takes half the table and the label
+   wraps beside an ocean of nothing. */
+.ledger td:last-child { text-align: end; width: 1%; }
+
+/* What a line is made of, subordinate to the line rather than another row of
+   the same rank: indented, unbolded, and hairlined so a job and the parts
+   under it read as one block. */
+.ledger .under > * { padding-block: .3rem; border-bottom-style: dotted; }
+.ledger .under > :first-child { padding-inline-start: 1.5rem; font-weight: 400; }
+
+/* The total is the answer the page exists to give, so it is ruled off from
+   the working above it rather than being the last row among equals. */
+.ledger .sum > * { border-bottom: 0; border-block-start: 2px solid var(--line); }
+
+/* One number, large, with its unit beside it — the meter reading and the cost
+   per distance. Both were inline styles that had drifted a quarter of a rem
+   apart, on two cards that sit one page click from each other. */
+.figure { font-size: 1.75rem; margin: 0; }
+
+/* Saying what a photograph is, under the photograph. The tile is as wide as
+   the thumbnail — 104px — and a caption box and a dropdown do not fit in it,
+   so an open disclosure claims the width it needs and `.thumbs` wraps around
+   it exactly as it already wraps around everything else. */
+.tile > .describe { align-self: stretch; }
+.tile > .describe[open] { min-inline-size: 14rem; }
+.tile .describe form { display: grid; gap: .35rem; margin-block-start: .35rem; }
+.tile .describe input, .tile .describe select { inline-size: 100%; min-inline-size: 0; }
+
+/* The answer beside the control that asked, for a card that updates in place.
+   `liveform.js` swaps a region without moving the page, so the banner it
+   writes at the top is above a fold nobody is looking at: pressing Set on the
+   eleventh scheduled item looked exactly like pressing nothing at all. Quiet
+   and small — it confirms something the operator already intended, and it is
+   read once. */
+.saved { font-size: .8rem; color: var(--ok); white-space: nowrap; }
+.saved::before { content: "✓ "; }
+
+/* ---------- the schedule table ---------- */
+
+/* The item's name beside its two arrange buttons. The row is three inputs
+   tall, so the name column was squeezed until "Registration renewal" wrapped
+   in two lines against buttons pressed flush to the cell's top edge. A floor
+   on the column keeps most names to one line, and the pair sits centered on
+   the name with room around it instead of touching the border above. */
+.schedule td:first-child { min-inline-size: 13rem; }
+.schedule .itemname { display: flex; align-items: center; gap: .75rem; padding-block: .35rem; }
+.schedule .itemname .reorder { flex: none; }

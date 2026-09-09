@@ -14,7 +14,7 @@ from django.views.decorators.http import require_POST
 from homeautoshop.accounts.models import require
 from homeautoshop.assets.models import Asset
 from homeautoshop.core.described import DescribedFields
-from homeautoshop.mediafiles.models import MediaLink
+from homeautoshop.mediafiles.models import Media, MediaLink
 from homeautoshop.mediafiles.services import ingest
 
 from .models import Compartment, FluidSample
@@ -155,6 +155,8 @@ def fluid_sample_detail(request, pk):
 
     from . import analytes
 
+    attachments = list(MediaLink.for_entity(sample).select_related("media"))
+
     return render(
         request,
         "fluids/detail.html",
@@ -165,7 +167,14 @@ def fluid_sample_detail(request, pk):
             # transcription with no route back to the page it came from cannot
             # be checked — which is the whole reason the lists in this
             # application cite their sources (§8.3c).
-            "documents": MediaLink.for_entity(sample).select_related("media"),
+            #
+            # Split by what the file *is*, the same test every other screen
+            # splits on (FR-DOC-10). A photographed printout is the common way
+            # a home shop keeps one, and listed as a text link it was a line
+            # reading `IMG_4032.jpg` that had to be opened to find out whether
+            # it was the right page.
+            "documents": [a for a in attachments if a.media.kind != Media.Kind.PHOTO],
+            "photos": [a for a in attachments if a.media.kind == Media.Kind.PHOTO],
             "sections": [
                 (analytes.KIND_LABELS[kind], grouped[kind])
                 for kind in analytes.KIND_ORDER
@@ -185,6 +194,7 @@ def fluid_sample_create(request, pk):
         sample = form.save(commit=False)
         sample.asset = asset
         sample.save()
+        _attach(request, sample, request.FILES.getlist("files"))
         lines = parse_results(form.cleaned_data.get("results_text", ""))
         saved = save_results(sample, lines)
         unreadable = [line for line in lines if not line.ok]
@@ -206,6 +216,7 @@ def fluid_sample_edit(request, pk):
 
     if request.method == "POST" and form.is_valid():
         form.save()
+        _attach(request, sample, request.FILES.getlist("files"))
         pasted = form.cleaned_data.get("results_text", "").strip()
         # An empty box means "I am only editing the header", never "delete the
         # panel". Clearing results is a deliberate act, not an oversight.
@@ -234,9 +245,8 @@ def fluid_sample_report(request, pk):
     March sample; filed against the sample it is one tap from the numbers
     somebody is doubting.
 
-    The same `ingest` every other attachment uses, so a photographed printout
-    lands as a photo and a PDF lands as a document without this view deciding
-    anything (FR-DOC-10).
+    This route is for the report that turned up later. The form that records
+    the sample takes files too — see `_attach`, which both go through.
     """
     sample = _sample(request, pk, "fluid.edit")
     files = request.FILES.getlist("files")
@@ -244,20 +254,41 @@ def fluid_sample_report(request, pk):
         messages.warning(request, _("Choose a file first, then Upload."))
         return redirect("fluid_sample_detail", pk=sample.pk)
 
+    _attach(request, sample, files)
+    return redirect("fluid_sample_detail", pk=sample.pk)
+
+
+def _attach(request, sample, files) -> int:
+    """File whatever came with the sample, against the sample.
+
+    The same `ingest` every other attachment uses, so a photographed printout
+    lands as a photo and a PDF lands as a document without any view here
+    deciding which (FR-DOC-10).
+
+    Silent when nothing was chosen, because on the record form that is the
+    ordinary case: the numbers are the record, and the report is welcome
+    rather than required.
+    """
     created = 0
     for upload in files:
+        # `ocr=True`: a photographed printout is the ordinary way a home shop
+        # keeps a lab report, and a photo filed as Other was never read — so
+        # its numbers were in no search and the transcription could not be
+        # checked against them. The report is a page of text whatever the
+        # bytes are.
         _media, was_new = ingest(
-            upload, user=request.user, entity=sample, role=MediaLink.Role.OTHER
+            upload, user=request.user, entity=sample, role=MediaLink.Role.OTHER, ocr=True
         )
         created += was_new
-    messages.success(
-        request,
-        ngettext("%(n)s file attached.", "%(n)s files attached.", created)
-        % {"n": created}
-        if created
-        else _("That file is already on this sample."),
-    )
-    return redirect("fluid_sample_detail", pk=sample.pk)
+    if created:
+        messages.success(
+            request,
+            ngettext("%(n)s file attached.", "%(n)s files attached.", created)
+            % {"n": created},
+        )
+    elif files:
+        messages.info(request, _("That file is already on this sample."))
+    return created
 
 
 @login_required

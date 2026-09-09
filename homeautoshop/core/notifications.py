@@ -17,6 +17,7 @@ Every channel is opt-in, off by default, and disabled entirely by Offline Mode.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -26,6 +27,7 @@ from django.utils import timezone
 from django.utils.translation import gettext as _
 from django.utils.translation import ngettext
 
+from .measurements import format_quantity
 from .models import NotificationChannel, NotificationSent
 from .runtime import conf
 
@@ -104,9 +106,10 @@ def collect() -> Digest:
     """Everything worth mentioning right now, from data already computed."""
     from datetime import date
 
-    from homeautoshop.assets.models import Asset
+    from homeautoshop.assets.models import Asset, Recall
     from homeautoshop.maintenance.models import ServiceStatus
     from homeautoshop.maintenance.services import due_dashboard, project
+    from homeautoshop.parts.services import expiring_lots, restock_list
     from homeautoshop.purchasing.models import Purchase
 
     from .backup import last_backup_age_days
@@ -124,6 +127,29 @@ def collect() -> Digest:
                 detail=project(item).summary,
                 url=f"/vehicles/{item.asset_id}/schedule/",
                 is_routine=not (overdue or item.is_safety),
+            )
+        )
+
+    # An open campaign is a safety fact this shop already holds. Nothing is
+    # asked of anybody to say it — no lookup, no network, no interval — and
+    # until now the only way to find out was to open one vehicle's recall page
+    # and read it, which is not how anybody learns about a recall.
+    for recall in Recall.objects.filter(
+        owner_status=Recall.OwnerStatus.OPEN, asset__in=Asset.objects.fleet()
+    ).select_related("asset"):
+        digest.alerts.append(
+            Alert(
+                dedupe_key=f"recall:{recall.pk}",
+                severity="safety",
+                title=_("%(name)s: open recall") % {"name": recall.asset.nickname},
+                detail=" · ".join(
+                    part
+                    for part in (recall.campaign_number, recall.component)
+                    if part
+                )
+                or str(_("Not yet recorded as dealt with")),
+                url=f"/vehicles/{recall.asset_id}/recalls/",
+                is_routine=False,
             )
         )
 
@@ -156,6 +182,48 @@ def collect() -> Digest:
                     url=f"/purchases/{purchase.pk}/",
                 )
             )
+
+    # Brake fluid, sealants and epoxy have a date on them, and that date was
+    # visible only to somebody who opened the shelf page and looked. It is the
+    # same kind of fact as a registration expiring, which this digest has
+    # always carried.
+    for lot in expiring_lots():
+        expired = lot.expires_on < today
+        digest.alerts.append(
+            Alert(
+                dedupe_key=f"lot:{lot.pk}:{lot.expires_on}",
+                severity="overdue" if expired else "warning",
+                title=_("%(part)s has expired") % {"part": lot.part.name}
+                if expired
+                else _("%(part)s is close to its date") % {"part": lot.part.name},
+                detail=_("%(qty)s on hand, dated %(d)s")
+                % {"qty": format_quantity(lot.qty_on_hand), "d": lot.expires_on},
+                url=f"/parts/{lot.part_id}/",
+                is_routine=not expired,
+            )
+        )
+
+    # One alert, not one per part. A shopping list is a list; twelve separate
+    # reminders that each say one word is the shape of digest people filter to
+    # trash. Keyed on which parts are low rather than on the fact that any are,
+    # so a part going low tomorrow is not silenced by today's cooldown.
+    low = restock_list()
+    if low:
+        named = ", ".join(part.name for part in low[:6])
+        if len(low) > 6:
+            named += str(_(", and %(n)d more")) % {"n": len(low) - 6}
+        fingerprint = hashlib.sha256(
+            ",".join(sorted(str(part.pk) for part in low)).encode()
+        ).hexdigest()[:16]
+        digest.alerts.append(
+            Alert(
+                dedupe_key=f"restock:{fingerprint}",
+                severity="info",
+                title=_("%(n)d part(s) below minimum") % {"n": len(low)},
+                detail=named,
+                url="/parts/?stock=low",
+            )
+        )
 
     age = last_backup_age_days()
     if age is None or age > conf.BACKUP_WARN_AFTER_DAYS:
@@ -230,23 +298,38 @@ def _send_email(channel: NotificationChannel, subject: str, digest: Digest) -> N
     connection at send time costs nothing and makes the setting mean what the
     screen says it means.
     """
-    from django.core.mail import EmailMessage, get_connection
+    from django.core.mail import EmailMessage
+
+    EmailMessage(
+        subject=subject,
+        body=f"{digest.as_text()}\n",
+        from_email=conf.DEFAULT_FROM_EMAIL,
+        to=[channel.target],
+        connection=_smtp_connection(),
+    ).send(fail_silently=False)
+
+
+def _smtp_connection():
+    """A mail connection built from the settings as they are *now*.
+
+    Django's configured backend is honored — that is what keeps the console
+    backend working in development and the in-memory one working in tests.
+    The one case that has to be overridden is `dummy`, which is what
+    `settings.py` chooses when `EMAIL_HOST` was empty *in the environment*:
+    with the server now configured in the database, keeping it would drop
+    every reminder on the floor and report success.
+    """
+    from django.core.mail import get_connection
 
     host = conf.EMAIL_HOST
     if not host:
         raise RuntimeError("no SMTP server is configured")
 
-    # Django's configured backend is honored — that is what keeps the console
-    # backend working in development and the in-memory one working in tests.
-    # The one case that has to be overridden is `dummy`, which is what
-    # `settings.py` chooses when `EMAIL_HOST` was empty *in the environment*:
-    # with the server now configured in the database, keeping it would drop
-    # every reminder on the floor and report success.
     backend = settings.EMAIL_BACKEND
     if backend.endswith("dummy.EmailBackend"):
         backend = "django.core.mail.backends.smtp.EmailBackend"
 
-    connection = get_connection(
+    return get_connection(
         backend=backend,
         host=host,
         port=conf.EMAIL_PORT,
@@ -256,12 +339,24 @@ def _send_email(channel: NotificationChannel, subject: str, digest: Digest) -> N
         timeout=settings.EMAIL_TIMEOUT,
         fail_silently=False,
     )
+
+
+def send_test_email(to: str) -> None:
+    """One message, to prove the outgoing-email settings work (R-9).
+
+    Raises whatever the mail server raised, so the screen can show it. The
+    error text is the whole value of the button: "authentication failed" and
+    "connection refused" are different afternoons, and a button that said only
+    "failed" would leave the operator exactly where they started.
+    """
+    from django.core.mail import EmailMessage
+
     EmailMessage(
-        subject=subject,
-        body=f"{digest.as_text()}\n",
+        subject=str(_("Test message from %(shop)s") % {"shop": conf.SHOP_NAME}),
+        body=str(_("If you can read this, outgoing email is set up. Nothing else was sent.")) + "\n",
         from_email=conf.DEFAULT_FROM_EMAIL,
-        to=[channel.target],
-        connection=connection,
+        to=[to],
+        connection=_smtp_connection(),
     ).send(fail_silently=False)
 
 

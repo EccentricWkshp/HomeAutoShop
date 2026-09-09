@@ -4,7 +4,27 @@
 {% url 'asset_detail' asset.pk as back_url %}
 {% include "partials/_back.html" with url=back_url label=asset.nickname %}
 <div class="spread">
-  <div><h1>{{ asset.nickname }}</h1><p class="muted">{% translate "Recall campaigns" %}</p></div>
+  <div>
+    <h1>{{ asset.nickname }}</h1>
+    <p class="muted">{% translate "Recall campaigns" %}</p>
+    {% comment %}
+    How old the answer is, and whether anything will refresh it. Both matter
+    more here than on any other screen: an empty list on a safety page reads
+    as "this vehicle is clear" unless the page says when it last looked.
+    {% endcomment %}
+    <p class="small muted">
+      {% if asset.recalls_checked_at %}
+        {% blocktranslate with when=asset.recalls_checked_at|date:"j M Y" %}NHTSA last answered on {{ when }}.{% endblocktranslate %}
+      {% else %}
+        {% translate "NHTSA has never been asked about this vehicle." %}
+      {% endif %}
+      {% if auto_check_days %}
+        {% blocktranslate count n=auto_check_days %}Asked again after {{ n }} day.{% plural %}Asked again after {{ n }} days.{% endblocktranslate %}
+      {% else %}
+        {% translate "Nothing is asked unless you press Check." %}
+      {% endif %}
+    </p>
+  </div>
   <div class="row">
     {% if region_supported %}
       <form method="post" action="{% url 'recall_check' asset.pk %}">{% csrf_token %}
@@ -72,7 +92,18 @@
         </form>
       </li>
     {% empty %}
-      <li class="empty">{% translate "Nothing checked yet." %}</li>
+      {% comment %}
+      Two different states, and they used to print the same sentence. "Nobody
+      has looked" and "we looked and NHTSA listed nothing" are not the same
+      claim about a vehicle, and on this page the difference is the point.
+      {% endcomment %}
+      {% if asset.recalls_checked_at %}
+        <li class="empty">
+          {% translate "NHTSA listed no campaigns for this year, make and model. That is not proof this vehicle is clear." %}
+        </li>
+      {% else %}
+        <li class="empty">{% translate "Nothing has been asked yet." %}</li>
+      {% endif %}
     {% endfor %}
   </ul>
 </section>

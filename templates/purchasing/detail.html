@@ -28,7 +28,7 @@ a different route.
   <div class="row">
     <div>
       <div class="small muted">{% translate "Total" %}</div>
-      <div class="mono" style="font-size:1.4rem">{{ purchase.total }}</div>
+      <div class="mono num" style="font-size:1.4rem">{{ purchase.total }}</div>
     </div>
     <a class="btn" href="{% url 'purchase_edit' purchase.pk %}">{% translate "Edit" %}</a>
     {% comment %}
@@ -171,10 +171,10 @@ a different route.
         their receipt — what the tax was charged on — appeared nowhere. Now the
         taxable line is printed, and the tax says what rate produced it.
         {% endcomment %}
-        <tr><th>{% translate "Lines" %}</th><td class="mono">{{ purchase.subtotal }}</td></tr>
+        <tr><th>{% translate "Lines" %}</th><td class="mono num">{{ purchase.subtotal }}</td></tr>
         {% if purchase.discount_minor %}
-          <tr><th>{% translate "Discount" %}</th><td class="mono">−{{ purchase.discount }}</td></tr>
-          <tr><th>{% translate "Taxable" %}</th><td class="mono">{{ purchase.taxable }}</td></tr>
+          <tr><th>{% translate "Discount" %}</th><td class="mono num">−{{ purchase.discount }}</td></tr>
+          <tr><th>{% translate "Taxable" %}</th><td class="mono num">{{ purchase.taxable }}</td></tr>
         {% endif %}
         <tr>
           <th>{% if purchase.tax_rate %}{% blocktranslate with rate=purchase.tax_rate_shown %}Tax at {{ rate }}%{% endblocktranslate %}{% else %}{% translate "Tax" %}{% endif %}</th>

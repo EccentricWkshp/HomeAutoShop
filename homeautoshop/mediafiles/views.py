@@ -49,6 +49,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import FileResponse, Http404, HttpResponseRedirect
 from django.utils.translation import gettext as _
+from django.utils.translation import ngettext
 from django.views.decorators.http import require_GET, require_POST
 
 from .models import Media
@@ -190,19 +191,87 @@ def _require_write(user, link) -> None:
 
 @require_POST
 @login_required
-def media_rename(request, link_id):
-    """Give an attachment a name of somebody's own (FR-DOC-1).
+def ocr_retry(request):
+    """Ask again for every file that could not be read.
+
+    A failed OCR was a dead end. The health screen counted the unreadable ones
+    and the only way to try one again was to delete the file and upload it a
+    second time — which loses the caption, the role, and the place in the
+    vehicle's story that the file already had.
+
+    Most of these failures are not about the file. Tesseract missing from the
+    image, a language pack that was never installed, a worker killed
+    mid-page: all fixed elsewhere, all leaving rows that will now succeed and
+    nothing to say so. So this is a retry of the queue, not a repair of a
+    document.
+
+    Same rule as ingest: `pending` is recorded whether or not OCR is on, so
+    turning it on later catches them up through the hourly sweep, and a job is
+    queued now only when it is on.
+    """
+    from homeautoshop.accounts.models import require
+    from homeautoshop.core.models import Job
+    from homeautoshop.core.runtime import conf
+
+    require(request.user, "settings.manage")
+
+    failed = list(
+        Media.objects.filter(ocr_status=Media.OcrStatus.FAILED).values_list("pk", flat=True)
+    )
+    if not failed:
+        messages.info(request, _("Nothing is waiting to be read again."))
+        return HttpResponseRedirect("/health/")
+
+    Media.objects.filter(pk__in=failed).update(ocr_status=Media.OcrStatus.PENDING)
+    if conf.OCR_ENABLED:
+        Job.objects.bulk_create(
+            [Job(type="media.ocr", payload={"media_id": str(pk)}) for pk in failed]
+        )
+        messages.success(
+            request,
+            ngettext(
+                "%(n)d file queued to be read again.",
+                "%(n)d files queued to be read again.",
+                len(failed),
+            )
+            % {"n": len(failed)},
+        )
+    else:
+        messages.success(
+            request,
+            ngettext(
+                "%(n)d file will be read when text recognition is switched on.",
+                "%(n)d files will be read when text recognition is switched on.",
+                len(failed),
+            )
+            % {"n": len(failed)},
+        )
+    return HttpResponseRedirect("/health/")
+
+
+@require_POST
+@login_required
+def media_describe(request, link_id):
+    """Say what an attachment is: what to call it, and what kind of thing (FR-DOC-1).
 
     A file arrives called `31P8770110E1.pdf`, which is what a manufacturer's
     part system called it and tells the person reading the record nothing.
     Links on the same page have always carried a label; documents did not, so
     a row of PDFs was four indistinguishable serial numbers.
 
-    The name lives on the **link**, not on the file. One document legitimately
-    hangs off several records — a receipt belongs to both the purchase and the
-    work order — and what it should be called there is a property of that
-    attachment, not of the bytes.
+    **The role is set here too, because nowhere else set it.** Every upload
+    route files its link as `OTHER` and there was no screen that could change
+    that afterwards, so the whole vocabulary — Receipt, Manual, Title,
+    Registration, Before, After — was a column nothing could ever write. A
+    vehicle's story printed the result faithfully: a stack of photographs each
+    labeled "Other", which is the record admitting it does not know.
+
+    Both live on the **link**, not on the file. One document legitimately hangs
+    off several records — a receipt belongs to both the purchase and the work
+    order — and what it should be called there, and what it counts as there,
+    are properties of that attachment rather than of the bytes.
     """
+    from django.db import IntegrityError
     from django.shortcuts import get_object_or_404, redirect
     from django.urls import reverse
 
@@ -211,14 +280,39 @@ def media_rename(request, link_id):
     link = get_object_or_404(MediaLink, pk=link_id)
     _require_write(request.user, link)
 
+    fields = ["caption"]
     link.caption = (request.POST.get("caption") or "").strip()[:255]
-    link.save(update_fields=["caption"])
-    messages.success(
-        request,
-        _("Renamed to “%(name)s”.") % {"name": link.caption}
-        if link.caption
-        else _("Name cleared — the file name is shown instead."),
-    )
+
+    # Absent means "not part of this form", not "clear it". The photo tiles and
+    # the documents list post the same action, and a form that omitted the
+    # select would otherwise silently refile everything it touched as Other.
+    role = request.POST.get("role")
+    if role in MediaLink.Role.values:
+        link.role = role
+        fields.append("role")
+
+    try:
+        link.save(update_fields=fields)
+    except IntegrityError:
+        # `unique_media_link` is (media, entity, role): the same file attached
+        # twice to one record cannot have both copies filed the same way. Worth
+        # saying, rather than a 500 on a dropdown.
+        messages.error(
+            request, _("This file is already on this record under that heading.")
+        )
+    else:
+        # The one role ingest would have read a photograph for. Filed as a
+        # receipt after the fact, it is read after the fact.
+        if link.role == MediaLink.Role.RECEIPT:
+            from .services import request_text
+
+            request_text(link.media)
+        messages.success(
+            request,
+            _("Renamed to “%(name)s”.") % {"name": link.caption}
+            if link.caption
+            else _("Name cleared — the file name is shown instead."),
+        )
 
     route = UNLINK_RETURNS.get(link.entity_type)
     if route:

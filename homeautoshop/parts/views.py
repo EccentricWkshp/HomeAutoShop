@@ -35,10 +35,10 @@ from .models import (
     PartUsage, StockLot, StockTransaction,
 )
 from .services import (
-    KINDS, candidates, categories, categories_for, close_kit, consume,
-    core_value_owed, cycle_count, expiring_lots, find, kit_weights, matching,
-    kept_cores, open_kit, outstanding_cores, restock_list, resolve_part,
-    returned_cores,
+    KINDS, STOCK_STATES, candidates, categories, categories_for, close_kit,
+    consume, core_value_owed, cycle_count, expiring_lots, find, kit_weights,
+    matching, kept_cores, open_kit, outstanding_cores, restock_list,
+    resolve_part, returned_cores,
     split_kit_cost,
 )
 
@@ -512,6 +512,23 @@ def lot_close_kit(request, pk, lot_id):
     return redirect("part_detail", pk=part.pk)
 
 
+def _chosen_vehicle(vehicles, raw: str):
+    """The vehicle a filter names, or nothing at all.
+
+    A primary key arrives from a query string, which means it arrives from a
+    bookmark, an edited URL and a stale link as often as from the picker. A
+    value that is not a key at all raises rather than missing, so it is caught
+    here: the filter that cannot be applied is dropped, and the catalog is
+    shown, which is what every other unrecognized parameter on this screen does.
+    """
+    if not raw:
+        return None
+    try:
+        return vehicles.filter(pk=raw).first()
+    except (ValidationError, ValueError):
+        return None
+
+
 @login_required
 def part_list(request):
     """The catalog, with kit contents shown as contents.
@@ -537,12 +554,29 @@ def part_list(request):
     if consumable is None:
         kind = ""
 
+    # The two questions a catalog is actually asked in a garage: *what fits the
+    # car on the lift*, and *what have I got*. Both were answerable only by
+    # reading every row — the fitment and the quantity are printed on each one
+    # (FR-INV-12), which turns "do I have brake pads for the truck" into a
+    # scroll of fifty rows and a decision made from memory.
+    #
+    # Same posture as `kind` for anything unrecognized: a stock state nobody
+    # offers, or a vehicle this person cannot see, narrows nothing rather than
+    # emptying the screen.
+    stock = request.GET.get("stock", "")
+    if stock not in STOCK_STATES:
+        stock = ""
+    # Scoped, not merely offered: a helper sees the vehicles they are let at,
+    # and filtering by one they are not would answer a question about it.
+    vehicles = visible_assets(request.user, Asset.objects.all()).order_by("nickname")
+    vehicle = _chosen_vehicle(vehicles, request.GET.get("vehicle", ""))
+
     # Everything the search box and the category picker allow, *before* the
     # parts/consumables split — so the split can say how many rows each side
     # holds under the filters already applied. "Consumables (0)" is the answer
     # to a question, where an unlabeled tab that turns out to be empty is a
     # dead end somebody has to walk into to discover.
-    narrowed = matching(query, category=category)
+    narrowed = matching(query, category=category, vehicle=vehicle, stock=stock)
     # `.order_by()` first, and it is load-bearing: the default ordering is
     # `["name"]`, and Django adds ordering columns to the GROUP BY — so without
     # this the tally is one row per part rather than one row per kind.
@@ -563,7 +597,9 @@ def part_list(request):
     # `find`'s default twenty-five, so a search matching forty parts reported
     # thirty-nine and a half of them as not existing. A cap with no page
     # numbers under it is not a limit, it is a lie about the catalog.
-    matched = matching(query, category=category, consumable=consumable)
+    matched = matching(
+        query, category=category, consumable=consumable, vehicle=vehicle, stock=stock
+    )
     page = Paginator(matched, PAGE_SIZE).get_page(request.GET.get("page"))
     found = list(page.object_list)
 
@@ -596,7 +632,7 @@ def part_list(request):
         within.setdefault(item.part_id, []).append(item.kit)
 
     shown = {part.pk for part in parts}
-    asked_for = bool(query or category or kind)
+    asked_for = bool(query or category or kind or vehicle or stock)
     rows = []
     for part in parts:
         part.kit_contents = inside.get(part.pk, [])
@@ -621,8 +657,16 @@ def part_list(request):
             "category": category,
             "categories": categories(),
             "kind": kind,
+            "vehicles": vehicles,
+            "vehicle": str(vehicle.pk) if vehicle else "",
+            "stock": stock,
             "counts": counts,
             "filtered": asked_for,
+            # Not `asked_for`, which also counts the kind split — and the kind
+            # tabs already say which one is current and print their own counts,
+            # so an empty Consumables tab explains itself. This is for the
+            # filters that can leave the screen looking like an empty shop.
+            "narrowed": bool(query or category or vehicle or stock),
             "low": restock_list(),
             "page": page,
             # Owed, not merely un-returned: a core the shop decided to keep is

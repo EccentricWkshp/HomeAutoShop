@@ -61,9 +61,27 @@
               {% translate "Rebuild after changing TESSERACT_LANGS." %}
             </div>{% endif %}
           {% endif %}
-          {% if ocr_pending or ocr_failed %}<div class="small muted">
-            {% blocktranslate count n=ocr_pending %}{{ n }} file waiting{% plural %}{{ n }} files waiting{% endblocktranslate %} ·
-            {% blocktranslate count n=ocr_failed %}{{ n }} unreadable{% plural %}{{ n }} unreadable{% endblocktranslate %}
+          {% if ocr_pending or ocr_failed %}<div class="small muted row">
+            <span>
+              {% blocktranslate count n=ocr_pending %}{{ n }} file waiting{% plural %}{{ n }} files waiting{% endblocktranslate %} ·
+              {% blocktranslate count n=ocr_failed %}{{ n }} unreadable{% plural %}{{ n }} unreadable{% endblocktranslate %}
+            </span>
+            {% comment %}
+            A failed read used to be a dead end: the only way to try again was
+            to delete the file and upload it a second time, which loses its
+            caption, its role and its place in the vehicle's story. Most of
+            these fail for reasons outside the file — Tesseract missing from
+            the image, a language pack never installed — and those are fixed
+            here, on this screen, with nothing to act on afterwards.
+            {% endcomment %}
+            {% if ocr_failed %}
+              <form method="post" action="{% url 'ocr_retry' %}">{% csrf_token %}
+                <button type="submit" class="linkish small"
+                        title="{% translate 'Put every unreadable file back in the queue. Nothing is uploaded again.' %}">
+                  {% translate "Try again" %}
+                </button>
+              </form>
+            {% endif %}
           </div>{% endif %}
         </td></tr>
     <tr><th>{% translate "Offline mode" %}</th><td>{{ offline_mode|yesno }}</td></tr>
@@ -72,7 +90,7 @@
 </div>
 <p class="row">
   <a class="btn" href="{% url 'settings' %}">{% translate "Settings" %}</a>
-  <a class="btn" href="{% url 'backups' %}">{% translate "Backup" %}</a>
+  <a class="btn" href="{% url 'backups' %}">{% translate "Backups" %}</a>
 </p>
 
 <div class="card">

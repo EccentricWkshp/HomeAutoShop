@@ -28,7 +28,7 @@ This is the only category where the hardware talks to this application.
 | Adapter | Connects by | Result | Tested |
 | --- | --- | --- | --- |
 | **OBDLink MX+** | Bluetooth Classic (SPP) | ✅ **Works** — codes read end to end, from a phone and a desktop | 2026-09-03, engine running |
-| **GEARWRENCH GWSCAN** | Bluetooth LE | ❌ **Cannot be read** — its own protocol, and its app exports nothing | 2026-09-03, ignition on |
+| **GEARWRENCH GWSCAN** | Bluetooth LE | ⚠️ **Built, not proven** — its own protocol, implemented from captures and **off by default** (`GWSCAN_READER`) | 2026-09-05, ignition on |
 | Generic ELM327, wired | USB | ⚪ Expected | untested |
 | Generic ELM327, Bluetooth Classic | Bluetooth Classic (SPP) | ⚪ Expected | untested |
 | Generic ELM327, BLE | Bluetooth LE | ⚪ Expected | untested |
@@ -46,7 +46,7 @@ supports Bluetooth serial at all offers it, with nothing to configure.
 **Be wary of a code reader sold around its own app** — the giveaway is an
 activation code printed on the case. Those speak their maker's protocol and
 cannot be read here. They remain usable *if* their app exports a report, which
-puts them in the scan-tool category below; the GWSCAN is listed as unusable
+puts them in the scan-tool category below; the GWSCAN is listed as unproven
 precisely because its app does not.
 
 ### The detail
@@ -69,12 +69,31 @@ UART and connects perfectly happily, then answers nothing, because it speaks its
 maker's framing rather than ELM327. No way to export a report was found in its
 app either, which is what leaves it with no route in at all.
 
-A capture of its own app has since been decoded far enough to show the protocol
-is an ordinary CAN pass-through, so support would be practical if wanted.
+Two captures of its own app have since been decoded, and **the protocol is now
+implemented** — `homeautoshop/diagnostics/gwscan.py` and `static/gwscan.js`.
+It is **off by default**. Set `GWSCAN_READER=1` in `.env` to try it.
+
+Off is the honest default rather than a cautious one. The reader was written
+from two sessions with one adapter on two *healthy* cars, and the case it has
+never met is the one that matters: a vehicle with enough stored codes to answer
+across more than one CAN frame. It declines a multi-frame reply and says so
+rather than reading it short — but "declines correctly" is itself untested,
+because nothing has ever sent it one.
+
+What is known to work, because it was watched: connect, read the firmware,
+configure the bus, ask modes 03, 07 and 0A, and read a single-frame answer —
+including a refusal (`7F 0A 11`, *service not supported*), which is not the
+same as no codes and is not shown as one.
+
+Turned on, it is reached **only after** an ELM327 handshake meets silence, so a
+real ELM327 never takes that path. What answered is recorded on the session, so
+a reading taken over an inferred protocol is not filed as though a known-good
+tool produced it.
+
 `Artifacts/samples/code-reader/GEARWRENCH GWSCAN/notes.md` has the framing, the
-commands, and the two questions still open — one of which is whether an adapter
-that has *not* been activated behaves the same way, since the capture recorded
-an already-activated one.
+commands, and what is still open — including whether an adapter that has *not*
+been activated behaves the same way, since both captures recorded an
+already-activated one.
 
 ---
 

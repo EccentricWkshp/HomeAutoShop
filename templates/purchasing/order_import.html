@@ -103,13 +103,13 @@ needed it.
           {% endif %}
           {% if report.tooling_recorded %}
             <tr><th>{% translate "Recorded as tooling" %}</th>
-                <td class="mono">{{ report.tooling }}</td></tr>
+                <td class="mono num">{{ report.tooling }}</td></tr>
           {% endif %}
-          <tr><th>{% translate "Parts subtotal" %}</th><td class="mono">{{ report.order.subtotal }}</td></tr>
-          <tr><th>{% translate "Shipping" %}</th><td class="mono">{{ report.order.shipping }}</td></tr>
-          <tr><th>{% translate "Tax" %}</th><td class="mono">{{ report.order.tax }}</td></tr>
+          <tr><th>{% translate "Parts subtotal" %}</th><td class="mono num">{{ report.order.subtotal }}</td></tr>
+          <tr><th>{% translate "Shipping" %}</th><td class="mono num">{{ report.order.shipping }}</td></tr>
+          <tr><th>{% translate "Tax" %}</th><td class="mono num">{{ report.order.tax }}</td></tr>
           {% for label, amount in report.order.adjustments %}
-            <tr><th>{{ label }}</th><td class="mono">−{{ report.order.discount }}</td></tr>
+            <tr><th>{{ label }}</th><td class="mono num">−{{ report.order.discount }}</td></tr>
           {% endfor %}
           <tr><th>{% translate "Order total" %}</th>
               <td class="mono"><strong>{{ report.order.total }}</strong></td></tr>
@@ -191,13 +191,30 @@ needed it.
                   rather than printing a row of blanks.
                   {% endcomment %}
                   {% if report.shows_identifiers %}
-                    <th class="mono small num">
+                    {% comment %}
+                    `mono` and not `num`. A figure is one value and must not be
+                    broken; a part number is one *token*, which is a different
+                    thing — `BECK/ARNLEY 0832688 (083-2688)` held on one line
+                    demands most of the card, and a vendor that prints its
+                    grade in this field (`VARIOUS MFR FO2801182 (FO2801182C)
+                    Tail Lamp CAPA Certified`) demands more than the card has.
+                    Breaking a part number costs nothing: nobody reads it as a
+                    quantity, and `mono` breaks anywhere for exactly this.
+                    {% endcomment %}
+                    <th class="mono small ident">
                       {% if outcome.line.brand or outcome.line.part_number %}
                         {{ outcome.line.brand }} {{ outcome.line.part_number }}
                       {% else %}<span class="muted">—</span>{% endif %}
                     </th>
                   {% endif %}
-                  <td class="small">{{ outcome.line.description }}
+                  {% comment %}
+                  The column that absorbs whatever is left. It used to be
+                  addressed as `td:nth-child(3)`, which is only the description
+                  while both of the optional columns before it are on screen —
+                  on a document that states no identifiers, that rule was
+                  setting a floor under the *price* column instead.
+                  {% endcomment %}
+                  <td class="small what">{{ outcome.line.description }}
                     {% if outcome.line.sold_by %}
                       <div class="muted">{% blocktranslate with who=outcome.line.sold_by %}sold by {{ who }}{% endblocktranslate %}</div>
                     {% endif %}
@@ -290,7 +307,7 @@ needed it.
                       {% if outcome.unit != "each" %}<span class="small muted">{{ outcome.unit_label }}</span>{% endif %}
                     {% endif %}
                   </td>
-                  <td class="small">
+                  <td class="small verdict">
                     {% if outcome.created_part %}
                       <span class="pill ok">{% translate "new part" %}</span>
                     {% else %}

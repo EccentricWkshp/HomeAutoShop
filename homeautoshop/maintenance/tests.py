@@ -662,3 +662,665 @@ class TheComponentFormSaysWhatItsBoxesAreForTests(TestCase):
     def test_the_dot_box_says_what_a_dot_code_is(self):
         page = self.client.get(reverse("asset_schedule", args=[self.asset.pk])).content.decode()
         self.assertIn("week and year", page)
+
+
+class SayingWhenItWasLastDoneTests(TestCase):
+    """FR-MAINT-5 — an interval runs from the last service, not from today.
+
+    The schedule already stored `last_done_on` and `last_done_usage`, and
+    `recalculate` already preferred them over the meter's current reading. The
+    gap was that nothing could ever put them there: the add form offered the
+    interval and nothing else, so every item created by hand started its clock
+    the day it was typed. A truck bought at 96,000 miles with an oil change
+    5,000 miles overdue was filed as due in 5,000 more.
+    """
+
+    def setUp(self):
+        from homeautoshop.accounts.models import User
+
+        self.user = User.objects.create_user("andy", password="correct-horse-battery")
+        self.client.force_login(self.user)
+        self.asset = Asset.objects.create(nickname="Truck", meter_unit="mi")
+        record_reading(self.asset, 100_000)
+        self.definition = oil_change()
+
+    def add(self, **extra):
+        return self.client.post(
+            reverse("service_item_add", args=[self.asset.pk]),
+            {
+                "definition": str(self.definition.pk),
+                "interval_distance": "5000",
+                "interval_unit": "mi",
+                "interval_months": "6",
+                **extra,
+            },
+        )
+
+    def test_the_form_asks_for_it(self):
+        page = self.client.get(reverse("asset_schedule", args=[self.asset.pk])).content.decode()
+        self.assertIn('name="last_done_on"', page)
+        self.assertIn('name="last_done_usage"', page)
+
+    def test_the_next_service_is_measured_from_it(self):
+        self.add(last_done_on="2026-01-01", last_done_usage="96000")
+
+        item = AssetServiceItem.objects.get(asset=self.asset)
+        self.assertEqual(item.last_done_usage, Decimal(96_000))
+        self.assertEqual(item.next_due_usage, Decimal(101_000))
+
+    def test_without_it_the_clock_still_starts_today(self):
+        """The old behavior, kept: it is the least alarming honest assumption
+        for a vehicle whose history nobody has."""
+        self.add()
+
+        item = AssetServiceItem.objects.get(asset=self.asset)
+        self.assertIsNone(item.last_done_usage)
+        self.assertEqual(item.next_due_usage, Decimal(105_000))
+
+    def test_a_date_that_has_not_happened_is_refused(self):
+        """The one field here where a mistyped year is silent — it pushes the
+        next service out by however far the year was wrong and reports the
+        item as fine the whole time."""
+        ahead = timezone.localdate() + timedelta(days=30)
+        self.add(last_done_on=ahead.isoformat())
+
+        self.assertFalse(AssetServiceItem.objects.filter(asset=self.asset).exists())
+
+
+class BackfillingAServiceDoesNotInventAMeterReadingTests(TestCase):
+    """FR-MAINT-6 — recording a past service must not claim today's odometer.
+
+    The row's Done button sent a date and nothing else, and `complete` filled
+    the reading in from the vehicle's meter *now*. An oil change back-filled at
+    eight months old was therefore recorded at this morning's mileage, and the
+    next one came due five thousand miles from the wrong place — the same
+    "assume it happened now" the add form had.
+    """
+
+    def setUp(self):
+        from homeautoshop.accounts.models import User
+
+        self.user = User.objects.create_user("andy", password="correct-horse-battery")
+        self.client.force_login(self.user)
+        self.asset = Asset.objects.create(nickname="Truck", meter_unit="mi")
+        record_reading(self.asset, 100_000)
+        self.item = AssetServiceItem.objects.create(
+            asset=self.asset, definition=oil_change(),
+            interval_distance=5000, interval_unit="mi",
+        )
+
+    def done(self, **data):
+        return self.client.post(
+            reverse("service_item_complete", args=[self.asset.pk, self.item.pk]), data
+        )
+
+    def test_the_row_offers_the_meter_beside_the_date(self):
+        page = self.client.get(reverse("asset_schedule", args=[self.asset.pk])).content.decode()
+        self.assertIn('name="usage"', page)
+
+    def test_a_past_service_recorded_with_its_meter_anchors_the_next_one(self):
+        self.done(completed_on="2026-01-01", usage="94000")
+
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.last_done_usage, Decimal(94_000))
+        self.assertEqual(self.item.next_due_usage, Decimal(99_000))
+
+    def test_a_past_service_with_no_meter_leaves_it_unknown(self):
+        self.done(completed_on="2026-01-01")
+
+        self.item.refresh_from_db()
+        self.assertIsNone(self.item.last_done_usage)
+        self.assertEqual(ServiceCompletion.objects.get().usage, None)
+
+    def test_work_done_today_still_takes_the_meter_as_it_reads(self):
+        """The reading describes this moment, so for this moment it is right —
+        and asking somebody to retype what the vehicle page already knows
+        would be the kind of friction that stops a record being kept."""
+        self.done()
+
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.last_done_usage, Decimal(100_000))
+
+    def test_a_meter_reading_that_is_not_a_number_is_said_rather_than_crashed(self):
+        response = self.done(completed_on="2026-01-01", usage="about 94k")
+
+        self.assertEqual(response.status_code, 302)
+        self.item.refresh_from_db()
+        self.assertIsNone(self.item.last_done_usage)
+
+
+class NamingAServiceTheListDoesNotHaveTests(TestCase):
+    """FR-MAINT-2 — the shop decides what it tracks, not the shipped list.
+
+    "Add an item" offered a picker over `ServiceDefinition` and nothing else,
+    so a job nobody had seeded — greasing a fifth wheel, the boat lift's
+    cables — could only be added through the Django admin or by authoring a
+    whole schedule template for one line. The picker quietly defined what this
+    shop was allowed to track.
+    """
+
+    def setUp(self):
+        from homeautoshop.accounts.models import User
+
+        self.user = User.objects.create_user("andy", password="correct-horse-battery")
+        self.client.force_login(self.user)
+        self.asset = Asset.objects.create(nickname="Truck", meter_unit="mi")
+        self.definition = oil_change()
+
+    def add(self, **data):
+        return self.client.post(
+            reverse("service_item_add", args=[self.asset.pk]),
+            {"interval_months": "6", **data},
+        )
+
+    def test_a_new_name_becomes_a_scheduled_item(self):
+        self.add(new_definition="Grease the fifth wheel")
+
+        item = AssetServiceItem.objects.get(asset=self.asset)
+        self.assertEqual(item.definition.name, "Grease the fifth wheel")
+        self.assertEqual(item.interval_months, 6)
+
+    def test_it_joins_the_shared_list_rather_than_this_vehicle_alone(self):
+        """The next vehicle that needs it picks it from the list above."""
+        self.add(new_definition="Grease the fifth wheel")
+
+        page = self.client.get(
+            reverse("asset_schedule", args=[Asset.objects.create(nickname="Van").pk])
+        ).content.decode()
+        self.assertIn("Grease the fifth wheel", page)
+
+    def test_the_same_name_twice_is_one_definition(self):
+        """Two rows differing only in capitalization would be two entries in
+        every picker and one job's history split in half."""
+        self.add(new_definition="Cabin filter")
+        self.add(new_definition="cabin filter")
+
+        self.assertEqual(ServiceDefinition.objects.filter(name__iexact="cabin filter").count(), 1)
+
+    def test_naming_one_and_picking_one_is_refused(self):
+        self.add(definition=str(self.definition.pk), new_definition="Cabin filter")
+
+        self.assertFalse(AssetServiceItem.objects.exists())
+        self.assertFalse(ServiceDefinition.objects.filter(name="Cabin filter").exists())
+
+    def test_a_new_name_with_no_interval_creates_nothing_at_all(self):
+        """Not even the definition. The item is rejected for having no
+        interval, and a rejected form must not leave the shared list one entry
+        longer than it found it."""
+        response = self.add(new_definition="Cabin filter", interval_months="")
+
+        self.assertFalse(AssetServiceItem.objects.exists())
+        self.assertFalse(ServiceDefinition.objects.filter(name="Cabin filter").exists())
+        self.assertContains(
+            self.client.get(response["Location"]), "at least one interval"
+        )
+
+    def test_the_box_is_on_the_page_with_a_label(self):
+        page = self.client.get(reverse("asset_schedule", args=[self.asset.pk])).content.decode()
+        self.assertIn('name="new_definition"', page)
+        self.assertIn('<label for="id_new_definition"', page)
+
+
+class TheAnswerAppearsAtTheRowThatAskedTests(TestCase):
+    """The schedule card updates in place, so a banner at the top is unseen.
+
+    `liveform.js` swaps the region without moving the page. Setting an interval
+    on the eleventh item wrote a success message above a fold nobody was
+    looking at, and pressing Done additionally cleared the date box — so the
+    only two visible effects of a successful write were nothing, and a field
+    emptying itself.
+    """
+
+    def setUp(self):
+        from homeautoshop.accounts.models import User
+
+        self.user = User.objects.create_user("andy", password="correct-horse-battery")
+        self.client.force_login(self.user)
+        self.asset = Asset.objects.create(nickname="Truck", meter_unit="mi")
+        record_reading(self.asset, 100_000)
+        self.item = AssetServiceItem.objects.create(
+            asset=self.asset, definition=oil_change(), interval_distance=5000,
+        )
+        self.other = AssetServiceItem.objects.create(
+            asset=self.asset,
+            definition=ServiceDefinition.objects.create(name="Brake fluid"),
+            interval_months=24,
+        )
+
+    def test_setting_an_interval_confirms_at_that_item(self):
+        response = self.client.post(
+            reverse("service_item_update", args=[self.asset.pk, self.item.pk]),
+            {"interval_distance": "7500"},
+        )
+
+        page = self.client.get(response["Location"]).content.decode()
+        self.assertIn("Interval saved.", page)
+
+    def test_recording_a_service_confirms_at_that_item(self):
+        response = self.client.post(
+            reverse("service_item_complete", args=[self.asset.pk, self.item.pk]), {}
+        )
+
+        page = self.client.get(response["Location"]).content.decode()
+        self.assertIn("Recorded.", page)
+
+    def test_it_lands_on_one_row_and_not_the_others(self):
+        response = self.client.post(
+            reverse("service_item_update", args=[self.asset.pk, self.item.pk]),
+            {"interval_distance": "7500"},
+        )
+
+        page = self.client.get(response["Location"]).content.decode()
+        self.assertEqual(page.count('<span class="saved">'), 1)
+
+    def test_the_words_come_from_here_and_never_off_the_url(self):
+        """A message read out of a querystring is one anybody with a link can
+        write onto somebody else's screen."""
+        page = self.client.get(
+            reverse("asset_schedule", args=[self.asset.pk]),
+            {"saved": str(self.item.pk), "said": "Your account has been suspended"},
+        ).content.decode()
+
+        self.assertNotIn("suspended", page)
+        self.assertNotIn('<span class="saved">', page)
+
+    def test_the_plain_schedule_confirms_nothing(self):
+        page = self.client.get(reverse("asset_schedule", args=[self.asset.pk])).content.decode()
+        self.assertNotIn('<span class="saved">', page)
+
+
+class ArrangingTheScheduleTests(TestCase):
+    """The vehicle's schedule in the operator's order, not only the sort's.
+
+    Soonest-first is the right default and stays the default — but it is a
+    sort, and a sort cannot hold "these three are the ones I actually do
+    myself, keep them together at the top". Two buttons, the same two the job
+    items list carries, and the first press writes every row's position so
+    the arrangement somebody was looking at is the one their swap lands in.
+    """
+
+    def setUp(self):
+        from homeautoshop.accounts.models import User
+
+        self.user = User.objects.create_user("andy", password="correct-horse-battery")
+        self.client.force_login(self.user)
+        self.asset = Asset.objects.create(nickname="Truck", meter_unit="mi")
+        record_reading(self.asset, 100_000)
+        self.a = self._item("Engine oil and filter", 1)
+        self.b = self._item("Brake fluid", 2)
+        self.c = self._item("Coolant", 3)
+        self.ignored = self._item("Cabin filter", 4, status=ServiceStatus.DISABLED)
+
+    def _item(self, name, months, **kwargs):
+        return AssetServiceItem.objects.create(
+            asset=self.asset,
+            definition=ServiceDefinition.objects.create(name=name),
+            interval_months=months,
+            **kwargs,
+        )
+
+    def move(self, item, direction):
+        return self.client.post(
+            reverse("service_item_move", args=[self.asset.pk, item.pk]),
+            {"direction": direction},
+        )
+
+    def names(self):
+        page = self.client.get(reverse("asset_schedule", args=[self.asset.pk]))
+        return [item.definition.name for item, _projection in page.context["rows"]]
+
+    def test_untouched_it_still_reads_soonest_first(self):
+        self.assertEqual(self.names(), ["Engine oil and filter", "Brake fluid", "Coolant"])
+
+    def test_moving_one_down_swaps_it_with_its_neighbor(self):
+        # Looking at the list first, as a person does: the neighbor is worked
+        # out against the order the page last showed, and the page is what
+        # computes the due dates that order rests on.
+        self.names()
+        self.move(self.a, "down")
+
+        self.assertEqual(self.names(), ["Brake fluid", "Engine oil and filter", "Coolant"])
+
+    def test_the_arrangement_outlives_a_recalculation(self):
+        """Every request recalculates every item; the order is a column, not a
+        sort, so it has to survive that."""
+        self.names()
+        self.move(self.c, "up")
+        self.move(self.c, "up")
+
+        self.assertEqual(self.names(), ["Coolant", "Engine oil and filter", "Brake fluid"])
+        self.assertEqual(self.names(), ["Coolant", "Engine oil and filter", "Brake fluid"])
+
+    def test_the_top_item_cannot_go_higher(self):
+        self.move(self.a, "up")
+
+        self.assertEqual(self.names(), ["Engine oil and filter", "Brake fluid", "Coolant"])
+
+    def test_ignored_items_are_in_nobodys_count(self):
+        """The neighbor is worked out against the list as shown. An ignored
+        item folded away below must not be the row something swaps with."""
+        self.move(self.c, "down")
+
+        self.assertEqual(self.names(), ["Engine oil and filter", "Brake fluid", "Coolant"])
+        self.ignored.refresh_from_db()
+        self.assertEqual(self.ignored.status, ServiceStatus.DISABLED)
+
+    def test_the_page_offers_both_buttons_and_disables_the_ends(self):
+        page = self.client.get(reverse("asset_schedule", args=[self.asset.pk])).content.decode()
+
+        self.assertIn(reverse("service_item_move", args=[self.asset.pk, self.a.pk]), page)
+        self.assertIn("Move Engine oil and filter up", page)
+        self.assertIn("Move Coolant down", page)
+        self.assertEqual(page.count('type="submit" disabled'), 2)
+
+    def test_a_helper_cannot_arrange_a_vehicle_they_were_not_given(self):
+        from homeautoshop.accounts.models import Role, User
+
+        helper = User.objects.create_user("sam", password="x" * 16, role=Role.HELPER)
+        self.client.force_login(helper)
+
+        self.assertEqual(self.move(self.a, "down").status_code, 403)
+
+
+class ActingFromTheDueListTests(TestCase):
+    """FR-MAINT-7 — the list you open to decide what to do, able to do it.
+
+    Every row on Due led to the vehicle's schedule, and acting there left you
+    on that vehicle with the rest of the list somewhere else. Done, Snooze and
+    Ignore now post from the row and come back here; the row leaving is the
+    confirmation, because each of the three means "no longer needs attention".
+    """
+
+    def setUp(self):
+        from homeautoshop.accounts.models import User
+
+        self.user = User.objects.create_user("andy", password="correct-horse-battery")
+        self.client.force_login(self.user)
+        self.asset = Asset.objects.create(nickname="Truck", meter_unit="mi")
+        record_reading(self.asset, 100_000)
+        # Six months, not one: with a 30-day lead an item due monthly is
+        # *always* due soon, so completing it could never take it off the list.
+        self.item = AssetServiceItem.objects.create(
+            asset=self.asset, definition=oil_change(),
+            interval_months=6, last_done_on=date(2025, 1, 1),
+        )
+        recalculate(self.item)
+
+    def due(self):
+        return self.client.get(reverse("due_list"))
+
+    def test_the_row_carries_the_three_answers(self):
+        page = self.due().content.decode()
+
+        self.assertIn(reverse("service_item_complete", args=[self.asset.pk, self.item.pk]), page)
+        self.assertIn(reverse("service_item_snooze", args=[self.asset.pk, self.item.pk]), page)
+        self.assertIn('value="disable"', page)
+        self.assertIn('name="usage"', page)
+
+    def test_done_comes_back_here_and_the_row_is_gone(self):
+        response = self.client.post(
+            reverse("service_item_complete", args=[self.asset.pk, self.item.pk]),
+            {"from": "due", "usage": "100000"},
+        )
+
+        self.assertEqual(response["Location"], reverse("due_list"))
+        self.assertEqual(list(self.due().context["items"]), [])
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.status, ServiceStatus.OK)
+
+    @override_settings(SNOOZE_DAYS=7)
+    def test_snooze_lasts_as_long_as_the_shop_says(self):
+        page = self.due().content.decode()
+        self.assertIn("Snooze 7 days", page)
+
+        response = self.client.post(
+            reverse("service_item_snooze", args=[self.asset.pk, self.item.pk]),
+            {"from": "due", "action": "snooze"},
+        )
+
+        self.assertEqual(response["Location"], reverse("due_list"))
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.snooze_until, timezone.localdate() + timedelta(days=7))
+        self.assertEqual(self.item.status, ServiceStatus.SNOOZED)
+        self.assertEqual(list(self.due().context["items"]), [])
+
+    def test_ignore_comes_back_here_too(self):
+        response = self.client.post(
+            reverse("service_item_snooze", args=[self.asset.pk, self.item.pk]),
+            {"from": "due", "action": "disable"},
+        )
+
+        self.assertEqual(response["Location"], reverse("due_list"))
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.status, ServiceStatus.DISABLED)
+
+    def test_from_the_schedule_the_same_actions_still_return_to_the_schedule(self):
+        response = self.client.post(
+            reverse("service_item_snooze", args=[self.asset.pk, self.item.pk]),
+            {"action": "snooze"},
+        )
+
+        self.assertEqual(response["Location"], reverse("asset_schedule", args=[self.asset.pk]))
+
+    def test_the_setting_is_offered_where_the_other_thresholds_are(self):
+        from homeautoshop.core.settings_registry import BY_KEY
+
+        self.assertEqual(BY_KEY["SNOOZE_DAYS"].group, "maintenance")
+
+
+class TheStoredStatusFollowsItsInputsTests(TestCase):
+    """FR-MAINT-7 — reported as caching: several refreshes after changing the
+    look-ahead before the Due list caught up.
+
+    `status` is stored, and stored is what the board, the Due list and the
+    report read — on purpose, so a card per vehicle costs no arithmetic. So it
+    is rewritten where its inputs change: the look-ahead settings, the meter,
+    and the calendar. Nothing recomputes at read time.
+    """
+
+    def setUp(self):
+        from homeautoshop.core import runtime
+
+        self.addCleanup(runtime.invalidate)
+        self.asset = Asset.objects.create(nickname="Truck", meter_unit="mi")
+        record_reading(self.asset, 100_000)
+        # Due in 20 days.
+        self.item = AssetServiceItem.objects.create(
+            asset=self.asset, definition=oil_change(),
+            interval_months=1, last_done_on=timezone.localdate() - timedelta(days=10),
+        )
+        recalculate(self.item)
+
+    def test_saving_a_wider_look_ahead_rewrites_every_status(self):
+        from homeautoshop.core import runtime
+
+        runtime.save({"DUE_SOON_DAYS": 10})
+        self.assertNotIn(self.item, due_dashboard())
+
+        runtime.save({"DUE_SOON_DAYS": 30})
+
+        self.assertIn(self.item, due_dashboard())
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.status, ServiceStatus.DUE_SOON)
+
+    def test_and_a_narrower_one_takes_it_off_again(self):
+        from homeautoshop.core import runtime
+
+        runtime.save({"DUE_SOON_DAYS": 30})
+        self.assertIn(self.item, due_dashboard())
+
+        runtime.save({"DUE_SOON_DAYS": 10})
+
+        self.assertNotIn(self.item, due_dashboard())
+
+    def test_a_new_reading_rewrites_that_vehicles_statuses(self):
+        tires = AssetServiceItem.objects.create(
+            asset=self.asset,
+            definition=ServiceDefinition.objects.create(name="Tire rotation"),
+            interval_distance=5000, interval_unit="mi", last_done_usage=96_000,
+        )
+        recalculate(tires)
+        self.assertEqual(tires.status, ServiceStatus.OK)  # 1,000 mi to go
+
+        record_reading(self.asset, 100_800)
+
+        tires.refresh_from_db()
+        self.assertEqual(tires.status, ServiceStatus.DUE_SOON)
+
+    def test_removing_a_reading_rewrites_them_too(self):
+        tires = AssetServiceItem.objects.create(
+            asset=self.asset,
+            definition=ServiceDefinition.objects.create(name="Tire rotation"),
+            interval_distance=5000, interval_unit="mi", last_done_usage=96_000,
+        )
+        typo = record_reading(self.asset, 100_800)
+        tires.refresh_from_db()
+        self.assertEqual(tires.status, ServiceStatus.DUE_SOON)
+
+        typo.delete()
+
+        tires.refresh_from_db()
+        self.assertEqual(tires.status, ServiceStatus.OK)
+
+    def test_a_day_passing_is_covered_by_the_daily_job(self):
+        from homeautoshop.core import jobs, schedule
+        from homeautoshop.core.models import Job
+
+        self.assertIn("maintenance.refresh", dict(schedule.recurring()))
+        # Stale on purpose: the row says OK about an item that is due soon.
+        AssetServiceItem.objects.filter(pk=self.item.pk).update(status=ServiceStatus.OK)
+
+        self.assertTrue(jobs.run_one(Job.objects.create(type="maintenance.refresh")))
+
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.status, ServiceStatus.DUE_SOON)
+
+    def test_a_refresh_does_not_rewrite_rows_that_did_not_move(self):
+        """A `RevisionedModel` write bumps the revision; forty items refreshed
+        every day must not be forty revisions for nothing."""
+        from .services import refresh_fleet
+
+        self.item.refresh_from_db()
+        revision = self.item.revision
+
+        refresh_fleet()
+        refresh_fleet()
+
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.revision, revision)
+
+    def test_the_row_arrives_with_its_projection(self):
+        rows = due_dashboard()
+        self.assertTrue(hasattr(rows[0], "projection"))
+        self.assertEqual(rows[0].projection.item, rows[0])
+
+
+class TheDueListReadsSoonestFirstTests(TestCase):
+    """FR-MAINT-7 — reported as random order.
+
+    Every Safety item was sorted ahead of every routine one whatever the dates,
+    so a registration due in 213 days sat under three safety items due in 365.
+    Overdue safety still leads; among things merely coming up, soonest is
+    first and safety breaks the tie.
+    """
+
+    def setUp(self):
+        self.asset = Asset.objects.create(nickname="Truck", meter_unit="mi")
+        record_reading(self.asset, 100_000)
+
+    def item(self, name, *, days, safety=False, **kwargs):
+        definition = ServiceDefinition.objects.create(
+            name=name, severity=Severity.SAFETY if safety else Severity.ROUTINE
+        )
+        row = AssetServiceItem.objects.create(
+            asset=self.asset, definition=definition,
+            interval_months=12, last_done_on=timezone.localdate() - timedelta(days=365 - days),
+            **kwargs,
+        )
+        recalculate(row)
+        return row
+
+    def names(self):
+        return [row.definition.name for row in due_dashboard()]
+
+    @override_settings(DUE_SOON_DAYS=400)
+    def test_soonest_first_among_things_coming_up(self):
+        self.item("Wiper blades", days=365, safety=True)
+        self.item("Registration renewal", days=213)
+        self.item("Brake inspection", days=365, safety=True)
+
+        self.assertEqual(
+            self.names(), ["Registration renewal", "Brake inspection", "Wiper blades"]
+        )
+
+    @override_settings(DUE_SOON_DAYS=400)
+    def test_overdue_safety_still_leads_everything(self):
+        self.item("Registration renewal", days=10)
+        self.item("Brake inspection", days=-5, safety=True)
+        self.item("Engine oil and filter", days=-20)
+
+        self.assertEqual(
+            self.names(),
+            ["Brake inspection", "Engine oil and filter", "Registration renewal"],
+        )
+
+    @override_settings(DUE_SOON_DAYS=400, DUE_SOON_DISTANCE=2000)
+    def test_an_item_due_by_distance_sorts_on_when_that_is_expected(self):
+        """It has no `next_due_on`, and used to sort last however soon it was."""
+        self.item("Registration renewal", days=200)
+        # 1,000 mi to go at the fallback rate of 30 mi a day: about 33 days.
+        tires = AssetServiceItem.objects.create(
+            asset=self.asset,
+            definition=ServiceDefinition.objects.create(name="Tire rotation"),
+            interval_distance=5000, interval_unit="mi", last_done_usage=96_000,
+        )
+        recalculate(tires)
+
+        self.assertEqual(self.names(), ["Tire rotation", "Registration renewal"])
+
+
+class RefreshingOncePerImportTests(TestCase):
+    """Every saved reading refreshes its vehicle's due statuses, which is right
+    for one typed in the garage and wrong by the size of the import for a
+    LubeLogger pull. Inside `refresh_later()` a reading only notes its vehicle,
+    and each touched vehicle is refreshed once when the block ends."""
+
+    def setUp(self):
+        self.asset = Asset.objects.create(nickname="Truck", meter_unit="mi")
+        record_reading(self.asset, 100_000)
+        self.tires = AssetServiceItem.objects.create(
+            asset=self.asset,
+            definition=ServiceDefinition.objects.create(name="Tire rotation"),
+            interval_distance=5000, interval_unit="mi", last_done_usage=96_000,
+        )
+        recalculate(self.tires)
+        self.assertEqual(self.tires.status, ServiceStatus.OK)  # 1,000 mi to go
+
+    def test_readings_inside_the_block_wait_and_the_vehicle_is_refreshed_on_exit(self):
+        from .services import refresh_later
+
+        with refresh_later() as touched:
+            record_reading(self.asset, 100_600)
+            record_reading(self.asset, 100_800)
+            self.tires.refresh_from_db()
+            self.assertEqual(self.tires.status, ServiceStatus.OK, "refreshed too early")
+            self.assertEqual(touched, {self.asset.pk})
+
+        self.tires.refresh_from_db()
+        self.assertEqual(self.tires.status, ServiceStatus.DUE_SOON)
+
+    def test_outside_a_block_a_reading_still_refreshes_at_once(self):
+        record_reading(self.asset, 100_800)
+
+        self.tires.refresh_from_db()
+        self.assertEqual(self.tires.status, ServiceStatus.DUE_SOON)
+
+    def test_a_block_that_touched_nothing_refreshes_nothing(self):
+        from .services import refresh_later
+
+        self.tires.refresh_from_db()
+        revision = self.tires.revision
+        with refresh_later():
+            pass
+        self.tires.refresh_from_db()
+        self.assertEqual(self.tires.revision, revision)

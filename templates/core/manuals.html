@@ -1,0 +1,94 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% translate "Manual libraries" %} — {{ shop_name }}{% endblock %}
+{% block content %}
+<h1>{% translate "Manual libraries" %}</h1>
+<p class="muted small">
+  {% translate "Where service manuals are read. Every vehicle offers each of these, with a browse link and a place to pin the exact page once it is found. Nothing is ever fetched from them — a library here is a link, and only a link." %}
+</p>
+
+{% comment %}
+Three shipped — LEMON, CHARM, ALLDATA — because those were the three the author
+knew, and there are many more: a marque club's archive, a paid service the shop
+already pays for, a folder of PDFs on the garage NAS. Until this page, adding
+one meant the Django admin, which nobody is pointed at, so the shipped three
+quietly defined what a "manual library" could be.
+
+The list is a live region so a toggle or a removal lands without the page
+moving. The add form is its own card: it never sits inside the loop, so it
+needs no anchor and is not swept as a row action.
+{% endcomment %}
+<div class="cols two">
+  <div class="stack">
+    <section class="card" id="libraries" data-live="libraries">
+      <h2>{% translate "Libraries" %}</h2>
+      <ul class="list">
+        {% for library in libraries %}
+          <li class="spread">
+            <div>
+              <strong>{{ library.name }}</strong>
+              {% if library.access == 'paid' %}<span class="pill warn">{% translate "Paid" %}</span>
+              {% elif library.access == 'account' %}<span class="pill">{% translate "Account needed" %}</span>{% endif %}
+              {% if library.is_enabled %}<span class="pill ok">{% translate "on" %}</span>
+              {% else %}<span class="pill">{% translate "off" %}</span>{% endif %}
+              <div class="small muted mono">{{ library.base_urls.0 }}</div>
+              {% if library.notes %}<div class="small muted">{{ library.notes }}</div>{% endif %}
+            </div>
+            <form method="post" action="{% url 'manual_library_action' library.pk %}" class="row">
+              {% csrf_token %}<input type="hidden" name="_anchor" value="libraries">
+              <button name="action" value="toggle" type="submit" class="small">
+                {% if library.is_enabled %}{% translate "Disable" %}{% else %}{% translate "Enable" %}{% endif %}
+              </button>
+              <button name="action" value="delete" type="submit" class="linkish small danger"
+                      data-confirm="{% blocktranslate with name=library.name %}Remove {{ name }}? The pages pinned to it on each vehicle go with it, to the trash for 30 days.{% endblocktranslate %}">
+                {% translate "Remove" %}
+              </button>
+            </form>
+          </li>
+        {% empty %}
+          <li class="empty">{% translate "No libraries. Vehicles offer no manuals until one is added." %}</li>
+        {% endfor %}
+      </ul>
+    </section>
+  </div>
+
+  <aside class="stack">
+    <section class="card">
+      <h2>{% translate "Add a library" %}</h2>
+      <form method="post" action="{% url 'manual_libraries' %}" class="stack">{% csrf_token %}
+        <div class="field">
+          <label for="id_name">{% translate "Name" %}</label>
+          <input name="name" id="id_name" class="input" required maxlength="80"
+                 title="{% translate 'What to call it. The site’s own name is usually right.' %}"
+                 placeholder="{% translate 'e.g. Workshop Manuals Online' %}">
+        </div>
+        <div class="field">
+          <label for="id_address">{% translate "Address" %}</label>
+          <input type="url" name="address" id="id_address" class="input" required
+                 title="{% translate 'The site’s front page, or the page your vehicles are listed under. The exact manual is pinned per vehicle, later, on the vehicle’s own page.' %}"
+                 placeholder="https://…">
+        </div>
+        <div class="field">
+          <label for="id_depth">{% translate "Browse link" %}</label>
+          <select name="deep_link_depth" id="id_depth" class="select"
+                  title="{% translate 'How much of the address can be worked out from the vehicle. Only as deep as the site is regular about it — a guessed page is a dead link.' %}">
+            {% for value, label in depth_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="id_access">{% translate "Access" %}</label>
+          <select name="access" id="id_access" class="select"
+                  title="{% translate 'Whether reading it costs money or an account. Shown as a badge so nobody clicks into a paywall unwarned.' %}">
+            {% for value, label in access_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="id_notes">{% translate "Notes" %}</label>
+          <textarea name="notes" id="id_notes" rows="2" class="input"
+                    title="{% translate 'What it covers and what it does not — the years, the makes, the one section that is always wrong.' %}"></textarea>
+        </div>
+        <button class="primary" type="submit">{% translate "Add" %}</button>
+      </form>
+    </section>
+  </aside>
+</div>
+{% endblock %}

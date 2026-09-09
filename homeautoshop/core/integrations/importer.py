@@ -150,6 +150,44 @@ class Importer:
     def _ref(self, external_type: str, external_id) -> ExternalRef | None:
         return ExternalRef.lookup(SOURCE, self.instance, external_type, external_id)
 
+    def _at(self, when: date | None):
+        """Midnight on the day the record says it happened, in local time.
+
+        One place, because the two ends of an imported job used to disagree:
+        `opened_at` was the record's own date and `completed_at` was
+        `timezone.now()`. Nothing in the app writes history that way — the CSV
+        importer beside this one stamps both with the record's date — and the
+        vehicle report orders and dates its service history by `completed_at`.
+        So an eleven-year LubeLogger history printed as eleven years of work
+        completed this afternoon, in no particular order, on the one document
+        you hand to a buyer.
+        """
+        return timezone.make_aware(
+            timezone.datetime.combine(
+                when or timezone.localdate(), timezone.datetime.min.time()
+            )
+        )
+
+    def _reading(self, asset, *, value, when, note: str = "") -> UsageReading:
+        """A meter reading filed under the meter this asset actually has.
+
+        `meter` was the literal string "odometer" at all three call sites,
+        while everything else that writes a reading uses `asset.meter`. On an
+        hour-metered machine that made two series under two names on one
+        asset — and because `Asset.latest_reading` does not filter by meter,
+        nothing looked wrong while the rollback check, which does filter, was
+        quietly comparing each series only against itself.
+        """
+        return UsageReading.objects.create(
+            asset=asset,
+            meter=asset.meter,
+            value=value,
+            unit=asset.meter_unit,
+            read_on=when or timezone.localdate(),
+            source=UsageReading.Source.IMPORT,
+            note=note,
+        )
+
     def _link(self, external_type: str, external_id, entity, payload: dict) -> None:
         if self.dry_run:
             return
@@ -258,6 +296,16 @@ class Importer:
     # -- records ---------------------------------------------------------
 
     def run(self) -> Report:
+        # Readings land one row at a time, and each would otherwise refresh
+        # its vehicle's due statuses as it saved — five hundred readings, five
+        # hundred passes over the same ten items. Held until the import is
+        # done, then once per vehicle, against the meter as finally imported.
+        from homeautoshop.maintenance.services import refresh_later
+
+        with refresh_later():
+            return self._run()
+
+    def _run(self) -> Report:
         for match in self.match_vehicles():
             if match.asset is None and not self.dry_run:
                 continue
@@ -309,17 +357,19 @@ class Importer:
     def _odometer(self, row, match, external_id) -> None:
         value = parse_number(pick(row, "odometer", "mileage", default=0), field_name="odometer")
         when = parse_date(pick(row, "date"))
+        if match.asset is not None and not match.asset.has_meter:
+            # Counted as skipped and said so, rather than filed against a
+            # meter this asset does not have.
+            self.report.note(self.report.skipped, "odometer")
+            return
         self.report.note(self.report.created, "odometer")
         self.report.sample(f"odometer: {value} on {when}")
         if self.dry_run or match.asset is None:
             return
-        reading = UsageReading.objects.create(
-            asset=match.asset,
-            meter="odometer",
+        reading = self._reading(
+            match.asset,
             value=value,
-            unit=match.asset.meter_unit,
-            read_on=when or timezone.localdate(),
-            source=UsageReading.Source.IMPORT,
+            when=when,
             note=str(pick(row, "notes", default="") or "")[:500],
         )
         self._link("odometer", external_id, reading, row)
@@ -339,15 +389,8 @@ class Importer:
         if self.dry_run or match.asset is None:
             return
 
-        if value:
-            reading = UsageReading.objects.create(
-                asset=match.asset,
-                meter="odometer",
-                value=value,
-                unit=match.asset.meter_unit,
-                read_on=when or timezone.localdate(),
-                source=UsageReading.Source.IMPORT,
-            )
+        if value and match.asset.has_meter:
+            reading = self._reading(match.asset, value=value, when=when)
             self._link("fuel_odometer", external_id, reading, row)
         if cost:
             expense = Expense.objects.create(
@@ -371,16 +414,16 @@ class Importer:
         if self.dry_run or match.asset is None:
             return
 
+        # Both ends the day it happened. See `_at`.
+        at = self._at(when)
         work_order = WorkOrder(
             asset=match.asset,
             title=str(title),
             type=WORK_ORDER_KINDS[kind],
             status=WorkOrderStatus.COMPLETE,
             correction=description,
-            opened_at=timezone.make_aware(
-                timezone.datetime.combine(when or timezone.localdate(), timezone.datetime.min.time())
-            ),
-            completed_at=timezone.now(),
+            opened_at=at,
+            completed_at=at,
             odometer_out=odometer or None,
         )
         work_order.save()
@@ -398,14 +441,7 @@ class Importer:
                 description=str(_("Imported total")),
             )
         if odometer and match.asset.has_meter:
-            UsageReading.objects.create(
-                asset=match.asset,
-                meter="odometer",
-                value=odometer,
-                unit=match.asset.meter_unit,
-                read_on=when or timezone.localdate(),
-                source=UsageReading.Source.IMPORT,
-            )
+            self._reading(match.asset, value=odometer, when=when)
         self._link(kind, external_id, work_order, row)
 
     def _tax(self, row, match, external_id) -> None:

@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% load i18n %}
+{% extends "base.html" %}{% load i18n quantities %}
 {% block title %}{{ part.name }} — {{ shop_name }}{% endblock %}
 {% block content %}
 {% url 'part_list' as back_url %}
@@ -50,7 +50,7 @@
       </p>
     {% endif %}</div>
   <div class="row">
-    <span class="pill {% if part.is_low %}warn{% endif %}">{{ part.on_hand }} {{ part.unit }}</span>
+    <span class="pill {% if part.is_low %}warn{% endif %}">{{ part.on_hand|quantity }} {{ part.unit }}</span>
     <a class="btn" href="{% url 'part_edit' part.pk %}">{% translate "Edit" %}</a>
     {% comment %}
     Only while the drawer is empty. A part with a quantity is a thing in the
@@ -130,7 +130,7 @@
           <td class="nowrap"><a href="{% url 'lot_edit' part.pk lot.pk %}">{{ lot.acquired_on }}</a>
             {% if lot.expires_on %}<div class="small muted">{% translate "expires" %} {{ lot.expires_on }}</div>{% endif %}</td>
           <td>{{ lot.location.path|default:"—" }}</td>
-          <td class="mono num">{{ lot.qty_on_hand }}</td>
+          <td class="mono num">{{ lot.qty_on_hand|quantity }}</td>
           {% comment %}
           A lot with no cost is not a cosmetic gap: everything drawn from it
           costs nothing, so the job is cheaper than it was and the shelf is
@@ -237,7 +237,7 @@
                 {% endif %}
               </div>
             </div>
-            <div>{{ usage.qty }}
+            <div>{{ usage.qty|quantity }}
               {% if usage.owes_core %}<a class="pill warn" href="{% url 'core_list' %}">{% translate "core owed" %}</a>{% endif %}
               {% if usage.under_warranty %}<span class="pill ok">{% translate "under warranty" %}</span>{% endif %}
             </div>

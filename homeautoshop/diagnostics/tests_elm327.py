@@ -31,7 +31,7 @@ import re
 from pathlib import Path
 
 from django.conf import settings as django_settings
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from homeautoshop.accounts.models import User
@@ -97,6 +97,87 @@ class AdapterScriptTests(TestCase):
         """Android negotiates 23 bytes by default and rejects a longer write
         outright rather than fragmenting it."""
         self.assertIn("bleChunkBytes", self.source)
+
+
+class TheSecondReaderIsOffTests(TestCase):
+    """The GWSCAN reader ships switched off, and off has to mean absent.
+
+    It is built from two captures of one adapter on two *healthy* cars, so the
+    case it has never met is the one that matters — a vehicle with stored codes
+    answering across more than one frame. Until somebody has proved it against
+    one, it should not be reached by a person who only wanted to plug a tool
+    in and press Read.
+
+    Off therefore means the page does not carry the script, does not carry the
+    setup frames, and behaves exactly as it did before any of this existed.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="andy", password="x" * 16)
+        self.client.force_login(self.user)
+        self.asset = Asset.objects.create(nickname="Work truck", make="Ford")
+
+    def page(self) -> str:
+        return self.client.get(
+            reverse("elm327", args=[self.asset.pk])
+        ).content.decode()
+
+    def config(self) -> dict:
+        block = re.search(
+            r'<script id="elm-config" type="application/json">(.*?)</script>',
+            self.page(),
+            re.S,
+        )
+        self.assertIsNotNone(block)
+        return json.loads(block.group(1))
+
+    def test_by_default_the_page_says_nothing_about_it(self):
+        self.assertNotIn("gwscan", self.config())
+
+    def test_and_does_not_load_the_script(self):
+        self.assertNotIn("gwscan.js", self.page())
+
+    @override_settings(GWSCAN_READER=True)
+    def test_turned_on_it_carries_the_setup_the_server_holds(self):
+        """The frames are data from `gwscan.py`, not constants in the script —
+        so the one that turns out to be unnecessary is an edit in the module
+        that has tests."""
+        from homeautoshop.diagnostics import gwscan
+
+        setup = self.config()["gwscan"]["setup"]
+
+        self.assertEqual(len(setup), len(gwscan.SETUP))
+        self.assertEqual(
+            bytes.fromhex(setup[0]["payload"]), gwscan.SETUP[0].payload
+        )
+
+    @override_settings(GWSCAN_READER=True)
+    def test_and_then_loads_the_script(self):
+        self.assertIn("gwscan.js", self.page())
+
+    def test_the_script_only_runs_when_the_config_says_so(self):
+        """Read as source, the same bargain the rest of this file makes: the
+        guard is what keeps an operator who has not opted in from meeting an
+        inferred protocol."""
+        source = SCRIPT.read_text(encoding="utf-8")
+
+        self.assertIn("if (!config.gwscan || !reader) { return false; }", source)
+
+    def test_silence_is_the_trigger_rather_than_the_adapter_name(self):
+        """An advertised name is a guess; three unanswered commands are a
+        measurement. It also means a real ELM327 never reaches this path."""
+        source = SCRIPT.read_text(encoding="utf-8")
+        after = source[source.index("if (silent === modes.length)"):]
+
+        self.assertIn("readTheOtherWay", after[:400])
+
+    def test_what_answered_is_recorded_rather_than_assumed(self):
+        """A code read over an inferred protocol and one read over ELM327 are
+        not the same claim, and the session says which."""
+        source = SCRIPT.read_text(encoding="utf-8")
+
+        self.assertIn('adapter: adapterName', source)
+        self.assertIn('adapterName = "GWSCAN"', source)
 
 
 class AdapterPageTests(TestCase):

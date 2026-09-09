@@ -20,7 +20,7 @@
   </div>
 {% endif %}
 
-<form method="post" class="card">{% csrf_token %}
+<form method="post" class="card" enctype="multipart/form-data" data-upload>{% csrf_token %}
   {{ form.non_field_errors }}
   <div class="formgrid">
     {% for field in form %}
@@ -31,6 +31,34 @@
         {{ field.errors }}
       </div>
     {% endfor %}
+    {% comment %}
+    The report itself, attached while the numbers are being typed rather than
+    after. It used to be a second trip — save the panel, land on the sample,
+    find the upload box — and the whole time the PDF is open on the screen
+    beside the form, because it is what the numbers are being read off.
+
+    Two inputs, as everywhere else (FR-DOC-2): `capture` alone means *only* the
+    camera, which would make it impossible to attach a PDF the lab emailed. A
+    photographed printout and a PDF both work, and which kind a file becomes is
+    read off the bytes rather than declared here (FR-DOC-10).
+
+    Optional, and it stays optional: a sample with no report is a real record —
+    the numbers are the point — so nothing here may block saving one.
+    {% endcomment %}
+    <div class="field full">
+      <label class="filepick">
+        <input type="file" name="files" multiple>
+        <span>{% translate "Attach the lab's report…" %}</span>
+      </label>
+      <label class="filepick">
+        <input type="file" name="files" accept="image/*" capture="environment">
+        <span>{% translate "Photograph it" %}</span>
+      </label>
+      <span class="small muted" data-upload-chosen></span>
+      <p class="helptext">
+        {% translate "The PDF, or photographs of a printout. Optional, and more can be added later." %}
+      </p>
+    </div>
   </div>
   {% if sample %}{% url 'fluid_sample_detail' sample.pk as cancel_to %}{% else %}{% url 'fluid_list' asset.pk as cancel_to %}{% endif %}
   {% include "partials/_formactions.html" with cancel_url=cancel_to %}

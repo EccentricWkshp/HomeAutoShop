@@ -449,11 +449,67 @@ def confirm(session: DiagnosticSession, *, user=None) -> tuple[int, DiagnosticSe
     """
     displaced = session.supersedes
     session.confirm(user=user)
+    record_meter(session, user=user)
     if displaced is not None and not displaced.is_deleted:
         displaced.delete()
     else:
         displaced = None
     return recurrence_check(session), displaced
+
+
+def record_meter(session: DiagnosticSession, *, user=None):
+    """The report's mileage, onto the vehicle's meter (FR-VEH-9, FR-INT-4).
+
+    A scan report states the odometer at the moment it was run, and the review
+    screen already asks somebody to look at that figure and correct it.
+    Confirming then filed it on the session and nowhere else — so the one
+    reading in the whole record that arrived with both a date and a source was
+    the one the meter never learned about. Recorded on confirmation for the
+    same reason completing a job resets the schedule: there is no second place
+    to remember to update.
+
+    Skipped when this exact reading is already there, because re-reading the
+    same report and confirming it again is not a second visit to the odometer.
+    Anything else — a corrected figure included — is a new row, which is what
+    append-only means (§5.4): the earlier reading stays, and the newer one
+    outranks it by date.
+    """
+    if session.odometer is None or not session.asset_id:
+        return None
+    asset = session.asset
+    if not asset.has_meter:
+        return None
+
+    from homeautoshop.assets.models import UsageReading
+    from homeautoshop.assets.services import record_reading
+
+    read_on = timezone.localtime(session.performed_on).date()
+    unit = session.odometer_unit or asset.meter_unit
+    if UsageReading.objects.filter(
+        asset=asset,
+        meter=asset.meter,
+        read_on=read_on,
+        value=session.odometer,
+        unit=unit,
+        source=UsageReading.Source.OBD,
+    ).exists():
+        return None
+
+    tool = " ".join(part for part in (session.tool, session.tool_model) if part).strip()
+    note = (
+        _("From the %(tool)s scan report") % {"tool": tool}
+        if tool
+        else _("From a scan report")
+    )
+    return record_reading(
+        asset,
+        session.odometer,
+        unit=unit,
+        read_on=read_on,
+        source=UsageReading.Source.OBD,
+        note=str(note),
+        user=user,
+    )
 
 
 def already_in_history(asset, media) -> DiagnosticSession | None:

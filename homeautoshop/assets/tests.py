@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date, timedelta
+from decimal import Decimal
 from unittest.mock import patch
 
 from django.test import TestCase, override_settings
@@ -475,7 +477,7 @@ class ServiceManualVisibilityTests(TestCase):
 
         self.client.post(self._url(), {"hide": "1"})
         page = self.client.get(reverse("asset_detail", args=[self.asset.pk]))
-        self.assertEqual([p for p, _link in page.context["providers"]], [])
+        self.assertEqual([p for p, _link, _browse in page.context["providers"]], [])
         self.assertEqual(page.context["hidden_providers"], [self.provider])
 
     def test_it_is_hidden_on_this_vehicle_only(self):
@@ -487,7 +489,7 @@ class ServiceManualVisibilityTests(TestCase):
         other = Asset.objects.create(nickname="Truck", year=2007, make="FORD")
         self.client.post(self._url(), {"hide": "1"})
         page = self.client.get(reverse("asset_detail", args=[other.pk]))
-        self.assertIn(self.provider, [p for p, _link in page.context["providers"]])
+        self.assertIn(self.provider, [p for p, _link, _browse in page.context["providers"]])
 
     def test_hiding_can_be_undone(self):
         from django.urls import reverse
@@ -495,7 +497,7 @@ class ServiceManualVisibilityTests(TestCase):
         self.client.post(self._url(), {"hide": "1"})
         self.client.post(self._url(), {})
         page = self.client.get(reverse("asset_detail", args=[self.asset.pk]))
-        self.assertIn(self.provider, [p for p, _link in page.context["providers"]])
+        self.assertIn(self.provider, [p for p, _link, _browse in page.context["providers"]])
 
     def test_restoring_leaves_no_empty_row_behind(self):
         from homeautoshop.assets.models import AssetServiceInfoLink
@@ -603,3 +605,487 @@ class DtcManualLinkTests(TestCase):
         page = self.client.get(reverse("asset_diagnostics", args=[self.asset.pk]))
         self.assertContains(page, "LEMON Manuals")
         self.assertContains(page, "Nothing checks it first")
+
+
+class ScheduledWorkReachesTheStoryTests(TestCase):
+    """FR-VEH-10 / FR-MAINT-6 — the history nobody opened a job for.
+
+    Pressing Done on a schedule row is how most of a home garage's maintenance
+    gets recorded: the oil change you did on a Saturday, filed against the item
+    and never against a work order. None of it reached the vehicle's story, so
+    the page showed the work that had paperwork and silently omitted the work
+    that did not — the same defect the orphan part usage already had.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user("andy", password="correct-horse-battery")
+        self.client.force_login(self.user)
+        self.asset = Asset.objects.create(nickname="Red truck", meter_unit="mi")
+
+    def item(self):
+        from homeautoshop.maintenance.models import AssetServiceItem, ServiceDefinition
+
+        return AssetServiceItem.objects.create(
+            asset=self.asset,
+            definition=ServiceDefinition.objects.create(name="Engine oil and filter"),
+            interval_distance=5000,
+        )
+
+    def story(self) -> list:
+        from .views import _group_media, _timeline
+
+        return _group_media(_timeline(self.asset))
+
+    def test_a_service_recorded_on_the_schedule_appears(self):
+        from homeautoshop.maintenance.services import complete
+
+        complete(self.item(), usage=96_000, backfill=True)
+
+        entry = next(e for e in self.story() if e["kind"] == "service")
+        self.assertEqual(entry["title"], "Engine oil and filter")
+        self.assertIn("96,000 mi", entry["detail"])
+
+    def test_it_leads_to_the_schedule_it_was_recorded_on(self):
+        from homeautoshop.maintenance.services import complete
+
+        complete(self.item(), usage=96_000, backfill=True)
+
+        entry = next(e for e in self.story() if e["kind"] == "service")
+        self.assertEqual(entry["url"], reverse("asset_schedule", args=[self.asset.pk]))
+
+    def test_a_service_done_on_a_job_is_not_listed_twice(self):
+        """The work order is already a row. Printing its completion beside it
+        would make one oil change look like two."""
+        from homeautoshop.maintenance.services import complete
+
+        wo = WorkOrder.objects.create(asset=self.asset, title="Saturday service")
+        complete(self.item(), usage=96_000, work_order=wo)
+
+        kinds = [event["kind"] for event in self.story()]
+        self.assertIn("work_order", kinds)
+        self.assertNotIn("service", kinds)
+
+    def test_the_vehicle_page_shows_it(self):
+        from homeautoshop.maintenance.services import complete
+
+        complete(self.item(), usage=96_000, backfill=True)
+
+        page = self.client.get(reverse("asset_detail", args=[self.asset.pk]))
+        self.assertContains(page, "Engine oil and filter")
+
+
+class TakingBackAMistypedReadingTests(TestCase):
+    """FR-VEH-9 / §5.4 — the one correction append-only allows.
+
+    A reading cannot be edited, and should not be: a capture from the garage
+    must never lose to an edit war with a sync. But `15000` typed for `105000`
+    became the vehicle's current mileage, every interval went wrong at once,
+    and the only remedy was to record the right figure over it — which the
+    meter flagged as a rollback and which left the wrong row in the history
+    for ever. Removing sends the row to the trash; nothing is rewritten.
+    """
+
+    def setUp(self):
+        from homeautoshop.accounts.models import Role
+
+        from .services import record_reading
+
+        # An admin, because the trash is theirs to manage; removing a reading
+        # itself needs only `asset.edit`, which the helper test below checks.
+        self.user = User.objects.create_user(
+            "andy", password="correct-horse-battery", role=Role.ADMIN
+        )
+        self.client.force_login(self.user)
+        self.asset = Asset.objects.create(nickname="Red truck", meter_unit="mi")
+        self.good = record_reading(self.asset, 105_000, read_on=date(2026, 1, 1))
+        self.typo = record_reading(self.asset, 15_000, read_on=date(2026, 2, 1), note="typo")
+
+    def remove(self, reading, **kwargs):
+        return self.client.post(
+            reverse("reading_delete", args=[self.asset.pk, reading.pk]), **kwargs
+        )
+
+    def test_the_meter_falls_back_to_the_reading_before_it(self):
+        self.assertEqual(self.asset.current_usage, Decimal(15_000))
+
+        self.remove(self.typo)
+
+        self.assertEqual(self.asset.current_usage, Decimal(105_000))
+
+    def test_it_is_soft_and_the_trash_lists_it(self):
+        from homeautoshop.assets.models import UsageReading
+
+        self.remove(self.typo)
+
+        self.assertTrue(UsageReading.all_objects.get(pk=self.typo.pk).is_deleted)
+        page = self.client.get(reverse("trash")).content.decode()
+        self.assertIn("Usage Reading", page)
+        self.assertIn("15000", page)
+
+    def test_and_restores_it(self):
+        self.remove(self.typo)
+
+        self.client.post(reverse("trash_restore", args=["usage_reading", self.typo.pk]))
+
+        self.assertEqual(self.asset.current_usage, Decimal(15_000))
+
+    def test_who_changed_the_odometer_is_written_down(self):
+        from homeautoshop.core.models import AuditLog
+
+        self.remove(self.typo)
+
+        entry = AuditLog.objects.get(entity_id=self.typo.pk, action=AuditLog.Action.DELETE)
+        self.assertEqual(entry.user, self.user)
+        self.assertIn("15000", entry.summary)
+
+    def test_the_vehicle_page_offers_it_beside_each_reading(self):
+        page = self.client.get(reverse("asset_detail", args=[self.asset.pk])).content.decode()
+
+        self.assertIn(reverse("reading_delete", args=[self.asset.pk, self.typo.pk]), page)
+        self.assertIn("Entered by hand", page)
+
+    def test_a_readings_route_is_a_post(self):
+        self.assertEqual(
+            self.client.get(reverse("reading_delete", args=[self.asset.pk, self.typo.pk])).status_code,
+            405,
+        )
+
+    def test_a_reading_on_another_vehicle_is_not_reachable_through_this_one(self):
+        other = Asset.objects.create(nickname="Van", meter_unit="mi")
+
+        response = self.client.post(reverse("reading_delete", args=[other.pk, self.typo.pk]))
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(self.asset.current_usage, Decimal(15_000))
+
+    def test_a_helper_without_the_vehicle_is_refused(self):
+        from homeautoshop.accounts.models import Role
+
+        helper = User.objects.create_user("sam", password="x" * 16, role=Role.HELPER)
+        self.client.force_login(helper)
+
+        self.assertEqual(self.remove(self.typo).status_code, 403)
+        self.assertEqual(self.asset.current_usage, Decimal(15_000))
+
+
+class RecordingAReadingChecksWhoseVehicleItIsTests(TestCase):
+    """§12.2a — the one write route the sweep missed.
+
+    The helper gate is an allow-list of URL names, and `reading_create` is on
+    it, as it should be: a helper does record the meter on the vehicle they
+    were given. The view never asked which vehicle, so a helper granted read on
+    one could post a reading onto any vehicle in the shop — and readings drive
+    every distance-based due status.
+    """
+
+    def setUp(self):
+        from homeautoshop.accounts.models import AssetAccess, Role
+
+        self.helper = User.objects.create_user("sam", password="x" * 16, role=Role.HELPER)
+        self.client.force_login(self.helper)
+        self.mine = Asset.objects.create(nickname="Mine", meter_unit="mi")
+        self.theirs = Asset.objects.create(nickname="Theirs", meter_unit="mi")
+        AssetAccess.objects.create(user=self.helper, asset=self.mine, level="write")
+
+    def test_a_helper_cannot_record_on_a_vehicle_they_were_not_given(self):
+        response = self.client.post(
+            reverse("reading_create", args=[self.theirs.pk]), {"value": "12345"}
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(UsageReading.objects.filter(asset=self.theirs).exists())
+
+    def test_but_can_on_their_own(self):
+        self.client.post(reverse("reading_create", args=[self.mine.pk]), {"value": "12345"})
+
+        self.assertEqual(self.mine.current_usage, Decimal(12345))
+
+    def test_read_only_access_is_not_enough(self):
+        from homeautoshop.accounts.models import AssetAccess
+
+        AssetAccess.objects.filter(asset=self.mine).update(level="read")
+
+        response = self.client.post(
+            reverse("reading_create", args=[self.mine.pk]), {"value": "12345"}
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+
+class TheFullHistoryIsFullTests(TestCase):
+    """FR-VEH-10 — the page that is the history used to inherit the summary's
+    caps and quietly drop everything older than the sixtieth event, while its
+    own copy said nothing here was grouped or cut."""
+
+    def setUp(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from .services import record_reading
+
+        self.user = User.objects.create_user("andy", password="correct-horse-battery")
+        self.client.force_login(self.user)
+        self.asset = Asset.objects.create(nickname="Old truck", meter_unit="mi")
+        today = timezone.localdate()
+        for n in range(70):
+            record_reading(self.asset, 100_000 + n * 100, read_on=today - timedelta(days=70 - n))
+
+    def test_the_history_page_shows_every_event(self):
+        page = self.client.get(reverse("asset_timeline", args=[self.asset.pk]))
+        self.assertEqual(len(page.context["timeline"]), 70)
+
+    def test_the_vehicle_page_still_shows_a_summary_and_offers_the_rest(self):
+        page = self.client.get(reverse("asset_detail", args=[self.asset.pk]))
+        self.assertEqual(len(page.context["timeline"]), 8)
+        self.assertTrue(page.context["history_is_longer"])
+
+
+class NobodyIsAskedUnlessYouAskTests(TestCase):
+    """The recall sweep exists and is off. A shop that has chosen to stay
+    offline must not find its fleet being announced to NHTSA because a default
+    said so, and a safety feature is the last place to make that exception."""
+
+    def setUp(self):
+        from homeautoshop.assets.models import Asset
+
+        self.asset = Asset.objects.create(
+            nickname="Explorer", year=2019, make="FORD", model="Explorer"
+        )
+
+    def test_by_default_nothing_is_due_for_a_check(self):
+        from homeautoshop.assets.recalls import due_for_check
+
+        self.assertIsNone(due_for_check())
+
+    def test_and_nothing_is_on_the_timer(self):
+        from homeautoshop.core import schedule
+
+        self.assertNotIn("recalls.sweep", dict(schedule.recurring()))
+
+    @override_settings(RECALL_CHECK_DAYS=30)
+    def test_setting_an_interval_is_what_turns_it_on(self):
+        from homeautoshop.assets.recalls import due_for_check
+        from homeautoshop.core import schedule
+
+        self.assertIn("recalls.sweep", dict(schedule.recurring()))
+        self.assertEqual(due_for_check(), self.asset)
+
+    @override_settings(RECALL_CHECK_DAYS=30, RECALLS_ENABLED=False)
+    def test_the_recall_switch_still_governs_it(self):
+        from homeautoshop.assets.recalls import due_for_check
+        from homeautoshop.core import schedule
+
+        self.assertNotIn("recalls.sweep", dict(schedule.recurring()))
+        self.assertIsNone(due_for_check())
+
+
+class WhenNhtsaLastAnsweredTests(TestCase):
+    """An empty list on a safety page reads as "this vehicle is clear" unless
+    the page can say when it last looked. Only a real answer stamps it."""
+
+    def setUp(self):
+        from homeautoshop.assets.models import Asset
+
+        self.asset = Asset.objects.create(
+            nickname="Explorer", year=2019, make="FORD", model="Explorer"
+        )
+
+    @staticmethod
+    def _empty_400():
+        from homeautoshop.core.outbound import OutboundFailed
+
+        return OutboundFailed(
+            "HTTP 400",
+            status=400,
+            body={"Count": 0, "Message": "Results returned successfully", "results": []},
+        )
+
+    def _check(self, side_effect):
+        from unittest.mock import patch
+
+        from homeautoshop.assets import recalls
+
+        with patch("homeautoshop.assets.recalls.fetch_json", side_effect=side_effect):
+            return recalls.check(self.asset)
+
+    def test_campaigns_found_records_the_answer(self):
+        found = type("R", (), {"data": {"results": [{"NHTSACampaignNumber": "24V001"}]}})()
+
+        self._check([found])
+
+        self.asset.refresh_from_db()
+        self.assertIsNotNone(self.asset.recalls_checked_at)
+
+    def test_a_real_empty_answer_also_counts_as_having_looked(self):
+        empty = type("R", (), {"data": {"results": []}})()
+
+        self._check([empty])
+
+        self.asset.refresh_from_db()
+        self.assertIsNotNone(self.asset.recalls_checked_at)
+
+    def test_an_ambiguous_empty_400_does_not(self):
+        """It might be a rate limit. "Nobody has looked recently" and "we
+        looked and could not tell" must not become the same sentence."""
+        self._check([self._empty_400(), self._empty_400()])
+
+        self.asset.refresh_from_db()
+        self.assertIsNone(self.asset.recalls_checked_at)
+
+    def test_nor_does_an_unreachable_service(self):
+        from homeautoshop.core.outbound import OutboundFailed
+
+        self._check(OutboundFailed("boom"))
+
+        self.asset.refresh_from_db()
+        self.assertIsNone(self.asset.recalls_checked_at)
+
+    def test_looking_something_up_does_not_make_an_open_edit_form_stale(self):
+        """Provenance, not a change anybody made to the vehicle."""
+        before = self.asset.revision
+        found = type("R", (), {"data": {"results": [{"NHTSACampaignNumber": "24V001"}]}})()
+
+        self._check([found])
+
+        self.asset.refresh_from_db()
+        self.assertEqual(self.asset.revision, before)
+
+
+@override_settings(RECALL_CHECK_DAYS=30)
+class WhichVehicleTheSweepTakesTests(TestCase):
+    """One an hour, oldest answer first — NHTSA answers a rate-limited request
+    exactly the way it answers "no campaigns", so a burst would turn one rate
+    limit into a fleet of clean bills of health."""
+
+    def _vehicle(self, nickname, **kwargs):
+        from homeautoshop.assets.models import Asset
+
+        fields = {"year": 2019, "make": "FORD", "model": "Explorer"}
+        fields.update(kwargs)
+        return Asset.objects.create(nickname=nickname, **fields)
+
+    def test_a_vehicle_never_asked_about_comes_first(self):
+        from django.utils import timezone as tz
+
+        from homeautoshop.assets.recalls import due_for_check
+
+        asked = self._vehicle("Asked", recalls_checked_at=tz.now() - timedelta(days=90))
+        never = self._vehicle("Never")
+
+        self.assertEqual(due_for_check(), never)
+        self.assertNotEqual(due_for_check(), asked)
+
+    def test_then_the_oldest_answer(self):
+        from django.utils import timezone as tz
+
+        from homeautoshop.assets.recalls import due_for_check
+
+        self._vehicle("Recent", recalls_checked_at=tz.now() - timedelta(days=40))
+        oldest = self._vehicle("Oldest", recalls_checked_at=tz.now() - timedelta(days=400))
+
+        self.assertEqual(due_for_check(), oldest)
+
+    def test_one_answered_inside_the_interval_is_not_asked_again(self):
+        from django.utils import timezone as tz
+
+        from homeautoshop.assets.recalls import due_for_check
+
+        self._vehicle("Fresh", recalls_checked_at=tz.now() - timedelta(days=2))
+
+        self.assertIsNone(due_for_check())
+
+    def test_a_vehicle_nhtsa_cannot_be_asked_about_never_blocks_the_queue(self):
+        """`check` refuses it and stamps nothing, so a sweep that took it would
+        take the same one every hour for ever."""
+        from homeautoshop.assets.recalls import due_for_check
+
+        self._vehicle("No year", year=None)
+        askable = self._vehicle("Askable")
+
+        self.assertEqual(due_for_check(), askable)
+
+    def test_equipment_is_not_a_vehicle_recall_candidate(self):
+        from homeautoshop.assets.recalls import due_for_check
+
+        self._vehicle("Mower", asset_kind="equipment")
+
+        self.assertIsNone(due_for_check())
+
+    def test_a_sold_vehicle_is_not_asked_about(self):
+        from homeautoshop.assets.models import AssetStatus
+        from homeautoshop.assets.recalls import due_for_check
+
+        self._vehicle("Sold", status=AssetStatus.SOLD)
+
+        self.assertIsNone(due_for_check())
+
+    def test_the_sweep_looks_up_exactly_one_vehicle(self):
+        from unittest.mock import patch
+
+        from homeautoshop.core.jobs import HANDLERS
+
+        for n in range(3):
+            self._vehicle(f"Truck {n}")
+
+        with patch("homeautoshop.assets.recalls.check") as check:
+            check.return_value = type("R", (), {"message": "ok"})()
+            HANDLERS["recalls.sweep"]({})
+
+        self.assertEqual(check.call_count, 1)
+
+    def test_and_nothing_when_the_interval_was_switched_off_meanwhile(self):
+        from unittest.mock import patch
+
+        from django.test import override_settings as override
+
+        from homeautoshop.core.jobs import HANDLERS
+
+        self._vehicle("Truck")
+
+        with patch("homeautoshop.assets.recalls.check") as check, override(RECALL_CHECK_DAYS=0):
+            HANDLERS["recalls.sweep"]({})
+
+        check.assert_not_called()
+
+
+class TheRecallPageSaysWhenItLookedTests(TestCase):
+    def setUp(self):
+        from homeautoshop.assets.models import Asset
+
+        self.user = User.objects.create_user("andy", password="correct-horse-battery")
+        self.client.force_login(self.user)
+        self.asset = Asset.objects.create(
+            nickname="Explorer", year=2019, make="FORD", model="Explorer"
+        )
+
+    def page(self) -> str:
+        return self.client.get(
+            reverse("asset_recalls", args=[self.asset.pk])
+        ).content.decode()
+
+    def test_never_asked_says_so(self):
+        page = self.page()
+
+        self.assertIn("never been asked", page)
+        self.assertIn("Nothing has been asked yet", page)
+
+    def test_asked_and_empty_is_a_different_sentence(self):
+        """"Nobody has looked" and "NHTSA listed nothing" are not the same
+        claim about a vehicle, and both used to print "Nothing checked yet"."""
+        from django.utils import timezone as tz
+
+        self.asset.recalls_checked_at = tz.now()
+        self.asset.save()
+
+        page = self.page()
+
+        self.assertIn("listed no campaigns", page)
+        self.assertIn("not proof this vehicle is clear", page)
+
+    def test_with_no_interval_the_page_says_nothing_will_ask(self):
+        self.assertIn("Nothing is asked unless you press Check", self.page())
+
+    @override_settings(RECALL_CHECK_DAYS=30)
+    def test_with_one_it_says_how_often(self):
+        self.assertIn("Asked again after 30 days", self.page())

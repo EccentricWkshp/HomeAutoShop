@@ -38,6 +38,7 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
+from homeautoshop.core.measurements import format_quantity
 from homeautoshop.core.models import BaseModel, RevisionedModel
 
 from . import analytes
@@ -175,7 +176,7 @@ class FluidResult(BaseModel):
         ]
 
     def __str__(self) -> str:
-        return f"{self.label} {self.value:g} {self.unit}".strip()
+        return f"{self.label} {format_quantity(self.value)} {self.unit}".strip()
 
     @property
     def label(self) -> str:

@@ -17,7 +17,7 @@ from decimal import Decimal
 from django.db.models import Q, Sum
 from django.utils.translation import gettext_lazy as _
 
-from .measurements import Money
+from .measurements import Money, format_quantity
 from .runtime import conf
 
 
@@ -110,7 +110,7 @@ def parts_by_job(usages) -> list[CostLine]:
             label = str(_("Not recorded against a job"))
             detail = ""
         named = ", ".join(
-            f"{usage.qty:g}× {usage.part.name}" for usage in row["parts"][:4]
+            f"{format_quantity(usage.qty)}× {usage.part.name}" for usage in row["parts"][:4]
         )
         if len(row["parts"]) > 4:
             named += str(_(", and %(n)d more")) % {"n": len(row["parts"]) - 4}

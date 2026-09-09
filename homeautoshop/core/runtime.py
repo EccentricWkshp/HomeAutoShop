@@ -375,7 +375,24 @@ def save(values: dict[str, Any], *, user=None, source: str = "web") -> list[str]
         invalidate()
         if any(key in RESTART_KEYS for key in changed):
             bump_generation()
+        _rewrite_what_depends_on(changed)
     return changed
+
+
+#: Settings that are inputs to a stored projection. `AssetServiceItem.status`
+#: is written by `recalculate` and read as-is by the board, the Due list, the
+#: digest and the vehicle report — so a changed threshold has to rewrite it,
+#: or those lists go on answering from the old window until each vehicle's
+#: schedule happens to be opened.
+RECOMPUTES_SCHEDULES = frozenset({"DUE_SOON_DAYS", "DUE_SOON_DISTANCE"})
+
+
+def _rewrite_what_depends_on(changed: list[str]) -> None:
+    """After `invalidate()`, so the recomputation reads the new values."""
+    if RECOMPUTES_SCHEDULES.intersection(changed):
+        from homeautoshop.maintenance.services import refresh_fleet
+
+        refresh_fleet()
 
 
 # ---------------------------------------------------------------------------

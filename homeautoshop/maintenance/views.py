@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from decimal import Decimal, InvalidOperation
+
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
@@ -18,6 +21,7 @@ from homeautoshop.accounts.policy import visible_assets, visible_assets_for
 
 from homeautoshop.assets.models import Asset
 from homeautoshop.core.described import DescribedFields
+from homeautoshop.core.runtime import conf
 
 from .models import (
     AssetComponent,
@@ -33,6 +37,7 @@ from .services import (
     project,
     prune_to_template,
     recalculate,
+    refresh_asset,
 )
 
 
@@ -52,10 +57,26 @@ def _vehicle(request, pk, action="maintenance.edit"):
 
 
 class ServiceItemForm(DescribedFields, forms.ModelForm):
+    #: A job this shop does that the shared list has never heard of — greasing
+    #: a fifth wheel, the boat lift's cables, whatever this particular shed
+    #: needs. Not a model field: it *makes* one.
+    #:
+    #: It exists because there was no route to a new service short of the
+    #: Django admin or authoring a whole schedule template to add a single
+    #: line, and the picker beside it silently defined what this shop was
+    #: allowed to track.
+    new_definition = forms.CharField(
+        required=False, max_length=120, label=gettext_lazy("…or name a new one")
+    )
+
     descriptions = {
         "definition": gettext_lazy(
             "Which job this is — oil change, brake fluid, timing belt. The "
             "list is shared, so the same job means the same thing on every vehicle."
+        ),
+        "new_definition": gettext_lazy(
+            "A job the list does not have yet. It joins the shared list under "
+            "this name, so the next vehicle that needs it picks it from above."
         ),
         "interval_distance": gettext_lazy(
             "How far between services. Leave it empty for a job that is only "
@@ -70,6 +91,17 @@ class ServiceItemForm(DescribedFields, forms.ModelForm):
             "How many running hours between services, for anything counted by "
             "the hour rather than the mile."
         ),
+        "last_done_on": gettext_lazy(
+            "When it was last done, if you know. An interval runs from the "
+            "last service, so with this blank the schedule can only start the "
+            "clock today — and a vehicle new to the shop is then told "
+            "everything is fine for a year."
+        ),
+        "last_done_usage": gettext_lazy(
+            "What the meter read when it was last done. The distance half of "
+            "the same answer: an oil change at 96,000 miles is due again at "
+            "101,000, not five thousand from wherever the truck is now."
+        ),
         "notes": gettext_lazy(
             "Anything this vehicle does differently — the filter it takes, "
             "why the interval is shorter than the book says."
@@ -80,16 +112,82 @@ class ServiceItemForm(DescribedFields, forms.ModelForm):
         model = AssetServiceItem
         fields = [
             "definition", "interval_distance", "interval_unit",
-            "interval_months", "interval_hours", "notes",
+            "interval_months", "interval_hours",
+            "last_done_on", "last_done_usage", "notes",
         ]
-        widgets = {"notes": forms.Textarea(attrs={"rows": 2})}
+        # The column names read as storage; these read as the question being
+        # asked. "Last done usage" is not what anybody calls an odometer.
+        labels = {
+            "last_done_on": gettext_lazy("Last done"),
+            "last_done_usage": gettext_lazy("Meter when last done"),
+        }
+        widgets = {
+            "notes": forms.Textarea(attrs={"rows": 2}),
+            "last_done_on": forms.DateInput(attrs={"type": "date"}),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for name, field in self.fields.items():
-            field.required = name == "definition"
+            field.required = False
             css = "select" if isinstance(field.widget, forms.Select) else "input"
             field.widget.attrs.setdefault("class", css)
+
+    def clean(self):
+        """One service, from the list or newly named, and an interval on it."""
+        cleaned = super().clean()
+        named = (cleaned.get("new_definition") or "").strip()
+        chosen = cleaned.get("definition")
+
+        if named and chosen:
+            raise ValidationError(
+                _("Pick one from the list or name a new one, not both.")
+            )
+        if not named and not chosen:
+            raise ValidationError(_("Pick a service from the list, or name a new one."))
+
+        # The model says this too. It is repeated here for the sake of
+        # ordering: naming a new service writes a shop-wide row, and doing
+        # that for a form about to be rejected for carrying no interval would
+        # leave the picker one entry longer every time somebody got it wrong.
+        if not any(
+            cleaned.get(name)
+            for name in ("interval_distance", "interval_months", "interval_hours")
+        ):
+            raise ValidationError(
+                _("Give this item at least one interval — distance, time, or hours.")
+            )
+
+        if named:
+            cleaned["definition"] = self._definition_named(named)
+        return cleaned
+
+    @staticmethod
+    def _definition_named(name: str) -> ServiceDefinition:
+        """That name's definition, reused before a second one is made.
+
+        The list is shop-wide on purpose — the same job means the same thing on
+        every vehicle — so `Cabin filter` and `cabin filter` as two rows would
+        be two entries in every picker and one job's history split in half.
+
+        `translation_key` stays empty, which is what tells the shipped items
+        apart from this one: that key is how a name we ship gets translated,
+        and these are the operator's own words in their own language.
+        """
+        found = ServiceDefinition.objects.filter(name__iexact=name).first()
+        return found or ServiceDefinition.objects.create(name=name)
+
+    def clean_last_done_on(self):
+        """A service done in the future is a typo, and an expensive one.
+
+        It is the one field here where a mistyped year is silent: the interval
+        runs from it, so `2027` instead of `2026` pushes the next service out a
+        year and the schedule reports the item as fine the whole time.
+        """
+        on = self.cleaned_data.get("last_done_on")
+        if on and on > timezone.localdate():
+            raise ValidationError(_("That date has not happened yet."))
+        return on
 
 
 class ComponentForm(DescribedFields, forms.ModelForm):
@@ -150,24 +248,96 @@ def due_list(request):
         request,
         "maintenance/due.html",
         {
-            "items": [(item, project(item)) for item in rows],
+            # The projection is what the list was sorted on, so it comes with
+            # the row rather than being worked out a second time.
+            "items": [(item, item.projection) for item in rows],
+            # The button says how long, so nobody has to press it to find out.
+            "snooze_days": conf.SNOOZE_DAYS,
             "overdue": sum(1 for i in rows if i.status == ServiceStatus.OVERDUE),
             "due_soon": sum(1 for i in rows if i.status == ServiceStatus.DUE_SOON),
         },
     )
 
 
+#: What a row-level confirmation may say, by key.
+#:
+#: A fixed set, looked up here rather than printed out of the querystring. The
+#: URL carries the key and never the words: a message taken off a URL and
+#: rendered onto the page is a message anybody with a link can write.
+ROW_SAID = {
+    "interval": gettext_lazy("Interval saved."),
+    "done": gettext_lazy("Recorded."),
+}
+
+
+def _after_row_action(request, asset, item, said: str):
+    """Where a row action goes when it is done.
+
+    Back to the Due list when that is where it was pressed. Due is the page
+    somebody opens to decide what to do with a Saturday, and it offered no way
+    to *do* any of it — every row led to the vehicle's schedule, and the action
+    taken there left you on that vehicle with the rest of the list somewhere
+    else. On Due the confirmation is the row leaving: done, snoozed and ignored
+    all mean "no longer needs attention", which is the list's one rule, so
+    nothing needs pinning to a row that is not there any more.
+    """
+    if request.POST.get("from") == "due":
+        return redirect("due_list")
+    return _back_to_row(asset, item, said)
+
+
+def _back_to_row(asset, item, said: str):
+    """Back to the schedule, with the answer pinned to the row that asked.
+
+    A confirmation at the top of the page is one nobody sees. `liveform.js`
+    swaps this card in place, so the page never moves and the banner it writes
+    lands above a fold somebody is not looking at — pressing Set on the
+    eleventh item looked exactly like pressing nothing at all, and Done cleared
+    the date box and left no trace of where it had gone.
+
+    A querystring rather than a fragment because it has to survive that swap:
+    the path is unchanged, so the response is spliced into the region, and
+    anything that was only in the URL bar would not be in it. The banner still
+    fires as well — it is what a screen reader is listening to, and what the
+    no-script path lands on.
+    """
+    from urllib.parse import urlencode
+
+    query = urlencode({"saved": str(item.pk), "said": said})
+    return redirect(f"{reverse('asset_schedule', args=[asset.pk])}?{query}")
+
+
 @login_required
 def asset_schedule(request, pk):
     asset = get_object_or_404(Asset, pk=pk)
     require(request.user, "maintenance.read", asset)
+    # Recalculated *before* the list is fetched for display, because the order
+    # it is displayed in rests on `next_due_on`. Fetching soonest-first and
+    # then recalculating each row left the list in the order of the old dates
+    # — and on a vehicle's first visit every date was null, so the page came
+    # out alphabetical and called itself soonest-first.
+    refresh_asset(asset)
     # `times_done` answers "may this be removed" for the whole list in one
     # query — see `AssetServiceItem.is_removable`.
     items = list(
-        asset.service_items.select_related("definition").annotate(times_done=Count("completions"))
+        asset.service_items.select_related("definition")
+        .annotate(times_done=Count("completions"))
+        .arranged()
     )
+
+    # Carried on the item rather than as a third element of each row, so the
+    # template's `{% for item, projection in rows %}` stays what it is.
+    #
+    # Split by which control was used, because the row has two of them in two
+    # different columns and a tick beside both says less than a tick beside
+    # one — the point is *where* the write landed, not merely that it did.
+    key = request.GET.get("said", "")
+    said = ROW_SAID.get(key)
+    saved = request.GET.get("saved", "")
     for item in items:
-        recalculate(item)
+        hit = said if said and str(item.pk) == saved else ""
+        item.saved_interval = hit if key == "interval" else ""
+        item.saved_done = hit if key == "done" else ""
     # Prefetched: the picker counts each template's items so two similarly
     # named ones can be told apart, and that is a query per option otherwise.
     templates = [
@@ -252,10 +422,30 @@ def service_item_add(request, pk):
                 messages.error(request, message)
         else:
             item.save()
-            recalculate(item)
+            # "Last done on the first of January" is a service that happened,
+            # and the schedule's own Done button records exactly that as a
+            # completion. Entered here it set the interval's anchor and nothing
+            # else, so the same fact reached the vehicle's history by one route
+            # and not the other. A completion needs a date; a meter reading
+            # alone anchors the interval and is left at that, because a
+            # completion dated today for work done at an unknown time would be
+            # a record of something that did not happen then.
+            if item.last_done_on:
+                complete(
+                    item,
+                    on=item.last_done_on,
+                    usage=item.last_done_usage,
+                    backfill=True,
+                )
+            else:
+                recalculate(item)
             messages.success(request, _("Added to the schedule."))
     else:
-        messages.error(request, _("Pick a service item and give it an interval."))
+        problems = list(form.non_field_errors()) or [
+            message for errors in form.errors.values() for message in errors
+        ]
+        for message in problems or [_("Pick a service item and give it an interval.")]:
+            messages.error(request, message)
     return redirect("asset_schedule", pk=asset.pk)
 
 
@@ -270,6 +460,44 @@ def service_item_update(request, pk, item_id):
     item.save()
     recalculate(item)
     messages.success(request, _("Interval updated."))
+    return _back_to_row(asset, item, "interval")
+
+
+@require_POST
+@login_required
+def service_item_move(request, pk, item_id):
+    """Move a scheduled item up or down the vehicle's list.
+
+    Buttons rather than dragging, for the reasons `job_item_move` gives: they
+    exist before any script loads, they work from a keyboard, and they work on
+    a phone held in one oily hand. The neighbor is worked out here, against the
+    list as the page shows it — tracked items only, in their current order — so
+    the row that moves is the row that was pressed beside, ignored items
+    included in nobody's count.
+
+    The first move writes every row's position. Until then `sort_order` is
+    zero across the board and the list reads soonest-first; materializing the
+    order somebody was looking at is what makes their one swap land where they
+    expect rather than somewhere a fresh sort put it.
+    """
+    asset = _vehicle(request, pk)
+    item = get_object_or_404(AssetServiceItem, pk=item_id, asset=asset)
+
+    # Brought up to date first, exactly as the page is before it is drawn, so
+    # the neighbor is found in the order somebody was looking at. Read off
+    # stale dates the list could be alphabetical while the screen was
+    # soonest-first, and the swap landed beside the wrong row.
+    refresh_asset(asset)
+    items = list(asset.service_items.live().arranged())
+    here = next((i for i, row in enumerate(items) if row.pk == item.pk), None)
+    if here is not None:
+        there = here - 1 if request.POST.get("direction") == "up" else here + 1
+        if 0 <= there < len(items):
+            items[here], items[there] = items[there], items[here]
+            for position, row in enumerate(items):
+                if row.sort_order != position:
+                    row.sort_order = position
+                    row.save(update_fields=["sort_order"])
     return redirect("asset_schedule", pk=asset.pk)
 
 
@@ -280,7 +508,15 @@ def service_item_complete(request, pk, item_id):
     asset = _vehicle(request, pk)
     item = get_object_or_404(AssetServiceItem, pk=item_id, asset=asset)
     on = request.POST.get("completed_on") or None
-    usage = request.POST.get("usage") or None
+    # Parsed here rather than handed to the column as text: a stray character
+    # in the box would otherwise surface as a database error on a form whose
+    # whole job is to be quick.
+    raw = (request.POST.get("usage") or "").strip()
+    try:
+        usage = Decimal(raw) if raw else None
+    except InvalidOperation:
+        messages.error(request, _("That meter reading is not a number."))
+        return redirect("asset_schedule", pk=asset.pk)
     complete(
         item,
         on=timezone.datetime.strptime(on, "%Y-%m-%d").date() if on else None,
@@ -289,7 +525,7 @@ def service_item_complete(request, pk, item_id):
         backfill=True,
     )
     messages.success(request, _("Recorded. The interval has rolled forward."))
-    return redirect("asset_schedule", pk=asset.pk)
+    return _after_row_action(request, asset, item, "done")
 
 
 @require_POST
@@ -310,12 +546,17 @@ def service_item_snooze(request, pk, item_id):
         recalculate(item)
         messages.success(request, _("Tracking again."))
     else:
-        days = int(request.POST.get("days") or 30)
+        # "Not now", for as long as the shop says not-now lasts. It was a
+        # literal 30 here, which is a policy hidden in a view; `SNOOZE_DAYS`
+        # is the same number, kept where the other maintenance thresholds are.
+        days = int(request.POST.get("days") or conf.SNOOZE_DAYS)
         item.snooze_until = timezone.localdate() + timezone.timedelta(days=days)
         item.snooze_reason = (request.POST.get("reason") or "").strip()[:200]
         item.save()
         recalculate(item)
         messages.success(request, _("Snoozed for %(n)d days.") % {"n": days})
+    if request.POST.get("from") == "due":
+        return redirect("due_list")
     return redirect("asset_schedule", pk=asset.pk)
 
 

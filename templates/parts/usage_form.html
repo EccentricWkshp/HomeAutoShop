@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% load i18n %}
+{% extends "base.html" %}{% load i18n quantities %}
 {% block title %}{{ part.name }} — {{ shop_name }}{% endblock %}
 {% block content %}
 {% url 'part_detail' part.pk as back_url %}
@@ -6,7 +6,7 @@
 
 <h1>{% translate "Correct a use" %}</h1>
 <p class="muted">
-  {% blocktranslate with qty=usage.qty what=part.name %}{{ qty }} of {{ what }}, taken off the shelf.{% endblocktranslate %}
+  {% blocktranslate with qty=usage.qty|quantity what=part.name %}{{ qty }} of {{ what }}, taken off the shelf.{% endblocktranslate %}
 </p>
 
 <form method="post" class="card">{% csrf_token %}

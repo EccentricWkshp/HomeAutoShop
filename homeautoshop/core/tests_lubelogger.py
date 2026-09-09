@@ -310,3 +310,199 @@ class IdentifierShapeTests(TestCase):
         from homeautoshop.core.integrations.importer import identifiers_from
 
         self.assertEqual(identifiers_from({}), ("", ""))
+
+
+class ImportedHistoryKeepsItsOwnDatesTests(TestCase):
+    """The importer stamped `completed_at` with the moment of the import while
+    `opened_at` got the record's real date. The printed vehicle report orders
+    and dates its service history by `completed_at`, so eleven years of history
+    printed as eleven years of work completed the afternoon it was pulled."""
+
+    def setUp(self):
+        self.asset = Asset.objects.create(nickname="Red truck", vin=VIN, meter_unit="mi")
+
+    def test_a_job_is_completed_on_the_day_it_happened(self):
+        run_import(dry_run=False, client=StubClient(records={
+            "service": [{"id": 30, "date": "2019-03-01", "description": "Oil and filter",
+                         "cost": "89.50", "odometer": "143000"}]
+        }))
+
+        work_order = WorkOrder.objects.get()
+        self.assertEqual(str(work_order.opened_at.date()), "2019-03-01")
+        self.assertEqual(str(work_order.completed_at.date()), "2019-03-01")
+
+    def test_which_is_the_order_the_report_reads_them_in(self):
+        run_import(dry_run=False, client=StubClient(records={
+            "service": [
+                {"id": 1, "date": "2019-03-01", "description": "Oldest", "cost": "0"},
+                {"id": 2, "date": "2024-07-04", "description": "Newest", "cost": "0"},
+                {"id": 3, "date": "2021-11-20", "description": "Middle", "cost": "0"},
+            ]
+        }))
+
+        titles = list(
+            WorkOrder.objects.filter(status="complete")
+            .order_by("-completed_at", "-opened_at")
+            .values_list("title", flat=True)
+        )
+        self.assertEqual(titles, ["Newest", "Middle", "Oldest"])
+
+
+class ImportedReadingsUseTheAssetsMeterTests(TestCase):
+    """Three call sites passed the literal string "odometer" while everything
+    else that writes a reading uses `asset.meter`, so an hour-metered machine
+    ended up with two series under two names."""
+
+    def test_an_hour_metered_asset_gets_hours(self):
+        Asset.objects.create(
+            nickname="Tractor", vin=VIN, meter="engine_hours", meter_unit="hours"
+        )
+        run_import(dry_run=False, client=StubClient(records={
+            "odometer": [{"id": 10, "date": "2026-01-05", "odometer": "1420"}]
+        }))
+
+        reading = UsageReading.objects.get()
+        self.assertEqual(reading.meter, "engine_hours")
+        self.assertEqual(reading.unit, "hours")
+
+    def test_a_reading_that_arrives_with_a_job_is_filed_the_same_way(self):
+        Asset.objects.create(
+            nickname="Tractor", vin=VIN, meter="engine_hours", meter_unit="hours"
+        )
+        run_import(dry_run=False, client=StubClient(records={
+            "service": [{"id": 30, "date": "2026-03-01", "description": "Grease",
+                         "cost": "0", "odometer": "1500"}]
+        }))
+
+        self.assertEqual(UsageReading.objects.get().meter, "engine_hours")
+
+    def test_an_asset_with_no_meter_is_not_given_one(self):
+        """Counted as skipped and said so, rather than filed under a meter that
+        does not exist."""
+        Asset.objects.create(nickname="Trailer", vin=VIN, meter="none")
+        report = run_import(dry_run=False, client=StubClient(records={
+            "odometer": [{"id": 10, "date": "2026-01-05", "odometer": "142000"}]
+        }))
+
+        self.assertEqual(UsageReading.objects.count(), 0)
+        self.assertEqual(report.skipped.get("odometer"), 1)
+
+
+class RepairingWhatWasAlreadyImportedTests(TestCase):
+    """`repair_imported_history` — the same two corrections, applied to rows the
+    old writers already wrote. Narrow at both ends on purpose."""
+
+    def setUp(self):
+        self.asset = Asset.objects.create(nickname="Red truck", vin=VIN, meter_unit="mi")
+
+    def _imported_job(self, *, opened, completed, created=None):
+        from django.utils import timezone as tz
+
+        work_order = WorkOrder.objects.create(
+            asset=self.asset, title="Oil and filter", type="maintenance",
+            status="complete", opened_at=opened, completed_at=completed,
+            created_at=created or tz.now(),
+        )
+        ExternalRef.objects.create(
+            source_system="lubelogger", source_instance_url="https://lubelog.example.test",
+            external_type="service", external_id=str(work_order.pk),
+            entity_type="WorkOrder", entity_id=work_order.pk,
+        )
+        return work_order
+
+    def _run(self, *args):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        out = StringIO()
+        call_command("repair_imported_history", *args, stdout=out)
+        return out.getvalue()
+
+    def test_a_job_stamped_at_import_is_moved_back_to_its_own_date(self):
+        from django.utils import timezone as tz
+
+        work_order = self._imported_job(
+            opened=tz.make_aware(tz.datetime(2019, 3, 1)), completed=tz.now()
+        )
+
+        self._run("--yes")
+
+        work_order.refresh_from_db()
+        self.assertEqual(str(work_order.completed_at.date()), "2019-03-01")
+
+    def test_reporting_is_the_default(self):
+        from django.utils import timezone as tz
+
+        work_order = self._imported_job(
+            opened=tz.make_aware(tz.datetime(2019, 3, 1)), completed=tz.now()
+        )
+
+        output = self._run()
+
+        work_order.refresh_from_db()
+        self.assertNotEqual(str(work_order.completed_at.date()), "2019-03-01")
+        self.assertIn("Nothing was changed", output)
+
+    def test_a_job_somebody_finished_later_is_left_alone(self):
+        """Its completion date means something. Only a stamp within a day of
+        the row being created is read as the importer's."""
+        from datetime import timedelta
+
+        from django.utils import timezone as tz
+
+        finished = tz.now()
+        work_order = self._imported_job(
+            opened=tz.make_aware(tz.datetime(2019, 3, 1)),
+            completed=finished,
+            created=finished - timedelta(days=400),
+        )
+
+        self._run("--yes")
+
+        work_order.refresh_from_db()
+        self.assertEqual(work_order.completed_at, finished)
+
+    def test_a_reading_under_the_wrong_meter_is_relabeled(self):
+        tractor = Asset.objects.create(
+            nickname="Tractor", meter="engine_hours", meter_unit="hours"
+        )
+        reading = UsageReading.objects.create(
+            asset=tractor, meter="odometer", value=1420, unit="hours",
+            source=UsageReading.Source.IMPORT,
+        )
+
+        self._run("--yes")
+
+        reading.refresh_from_db()
+        self.assertEqual(reading.meter, "engine_hours")
+
+    def test_a_reading_in_a_different_unit_is_left_alone(self):
+        """A different unit means the meter was changed after the import, and
+        renaming the series would file miles under an hour meter."""
+        tractor = Asset.objects.create(
+            nickname="Tractor", meter="engine_hours", meter_unit="hours"
+        )
+        reading = UsageReading.objects.create(
+            asset=tractor, meter="odometer", value=142000, unit="mi",
+            source=UsageReading.Source.IMPORT,
+        )
+
+        self._run("--yes")
+
+        reading.refresh_from_db()
+        self.assertEqual(reading.meter, "odometer")
+
+    def test_a_hand_entered_reading_is_never_touched(self):
+        tractor = Asset.objects.create(
+            nickname="Tractor", meter="engine_hours", meter_unit="hours"
+        )
+        reading = UsageReading.objects.create(
+            asset=tractor, meter="odometer", value=1420, unit="hours",
+            source=UsageReading.Source.MANUAL,
+        )
+
+        self._run("--yes")
+
+        reading.refresh_from_db()
+        self.assertEqual(reading.meter, "odometer")

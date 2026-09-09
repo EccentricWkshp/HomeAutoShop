@@ -26,7 +26,7 @@ import tempfile
 from pathlib import Path
 
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from homeautoshop.accounts.models import AssetAccess, Role, User
@@ -121,7 +121,7 @@ class NamingADocumentTests(AttachmentCase):
         link = self.add_document("31P8770110E1.pdf")
 
         self.client.post(
-            reverse("media_rename", args=[link.pk]), {"caption": "Deck belt diagram"}
+            reverse("media_describe", args=[link.pk]), {"caption": "Deck belt diagram"}
         )
 
         link.refresh_from_db()
@@ -134,7 +134,7 @@ class NamingADocumentTests(AttachmentCase):
     def test_clearing_the_name_falls_back_to_the_file_name(self):
         link = self.add_document("31P8770110E1.pdf", caption="Deck belt diagram")
 
-        self.client.post(reverse("media_rename", args=[link.pk]), {"caption": "  "})
+        self.client.post(reverse("media_describe", args=[link.pk]), {"caption": "  "})
 
         link.refresh_from_db()
         self.assertEqual(link.caption, "")
@@ -153,19 +153,23 @@ class NamingADocumentTests(AttachmentCase):
             role=MediaLink.Role.RECEIPT,
         )
 
-        self.client.post(reverse("media_rename", args=[link.pk]), {"caption": "Blade order"})
+        self.client.post(reverse("media_describe", args=[link.pk]), {"caption": "Blade order"})
 
         second.refresh_from_db()
         self.assertEqual(second.caption, "")
 
-    def test_the_card_offers_the_rename(self):
+    def test_the_card_offers_the_form(self):
         self.add_document("31P8770110E1.pdf")
         page = self.client.get(reverse("asset_detail", args=[self.asset.pk])).content.decode()
-        self.assertIn("Rename", page)
+        self.assertIn("Describe", page)
+        # The half that had no control anywhere: every upload files as Other
+        # and nothing could say otherwise.
+        self.assertIn('name="role"', page)
+        self.assertIn('value="title"', page)
 
     def test_a_rename_is_a_post(self):
         link = self.add_document("manual.pdf")
-        self.assertEqual(self.client.get(reverse("media_rename", args=[link.pk])).status_code, 405)
+        self.assertEqual(self.client.get(reverse("media_describe", args=[link.pk])).status_code, 405)
 
 
 class WhoMayTouchAnAttachmentTests(AttachmentCase):
@@ -197,7 +201,7 @@ class WhoMayTouchAnAttachmentTests(AttachmentCase):
         self.client.force_login(self.helper)
 
         response = self.client.post(
-            reverse("media_rename", args=[link.pk]), {"caption": "mine now"}
+            reverse("media_describe", args=[link.pk]), {"caption": "mine now"}
         )
 
         self.assertEqual(response.status_code, 403)
@@ -236,7 +240,7 @@ class WhoMayTouchAnAttachmentTests(AttachmentCase):
         self.client.force_login(self.helper)
 
         response = self.client.post(
-            reverse("media_rename", args=[link.pk]), {"caption": "Deck belt diagram"}
+            reverse("media_describe", args=[link.pk]), {"caption": "Deck belt diagram"}
         )
 
         self.assertEqual(response.status_code, 302)
@@ -268,3 +272,123 @@ class AddingFilesReadsAsOneActionTests(AttachmentCase):
             reverse("asset_photo_upload", args=[self.asset.pk]), {}, follow=True
         )
         self.assertContains(response, "Choose a photo first")
+
+
+class RefilingAPhotoAsAReceiptTests(AttachmentCase):
+    """Whether a file wants reading was decided once, at ingest, from its kind
+    and the role it arrived with. A photograph filed as Other was decided
+    against — and now that the role can be set afterwards, one re-filed as a
+    receipt would keep that answer for ever: never in the receipt search, for
+    no reason the screen could show."""
+
+    @override_settings(OCR_ENABLED=True)
+    def test_it_is_queued_for_reading(self):
+        from homeautoshop.core.models import Job
+
+        link = self.add_photo("receipt.jpg")
+        self.assertEqual(link.media.ocr_status, Media.OcrStatus.NOT_APPLICABLE)
+
+        self.client.post(
+            reverse("media_describe", args=[link.pk]),
+            {"caption": "Parts receipt", "role": MediaLink.Role.RECEIPT},
+        )
+
+        link.media.refresh_from_db()
+        self.assertEqual(link.media.ocr_status, Media.OcrStatus.PENDING)
+        self.assertTrue(Job.objects.filter(type="media.ocr").exists())
+
+    def test_any_other_role_leaves_it_alone(self):
+        link = self.add_photo("before.jpg")
+
+        self.client.post(
+            reverse("media_describe", args=[link.pk]),
+            {"caption": "", "role": MediaLink.Role.BEFORE},
+        )
+
+        link.media.refresh_from_db()
+        self.assertEqual(link.media.ocr_status, Media.OcrStatus.NOT_APPLICABLE)
+
+
+class ReadingAFileAgainTests(AttachmentCase):
+    """A failed read was a dead end. The health screen counted the unreadable
+    files and the only way to try one again was to delete it and upload it a
+    second time, which loses its caption, its role and its place in the
+    vehicle's story. Most of these fail for reasons outside the file, and those
+    are fixed on that same screen."""
+
+    def setUp(self):
+        super().setUp()
+        self.user.role = Role.ADMIN
+        self.user.save()
+
+    def unreadable(self, name: str = "receipt.pdf") -> Media:
+        link = self.add_document(name)
+        media = link.media
+        media.ocr_status = Media.OcrStatus.FAILED
+        media.save(update_fields=["ocr_status"])
+        return media
+
+    @override_settings(OCR_ENABLED=True)
+    def test_an_unreadable_file_goes_back_in_the_queue(self):
+        from homeautoshop.core.models import Job
+
+        media = self.unreadable()
+        Job.objects.all().delete()
+
+        self.client.post(reverse("ocr_retry"))
+
+        media.refresh_from_db()
+        self.assertEqual(media.ocr_status, Media.OcrStatus.PENDING)
+        self.assertEqual(Job.objects.filter(type="media.ocr").count(), 1)
+
+    @override_settings(OCR_ENABLED=False)
+    def test_with_recognition_off_it_waits_rather_than_failing_again(self):
+        """Same rule as ingest: pending is recorded either way, so switching it
+        on later catches them up through the hourly sweep."""
+        from homeautoshop.core.models import Job
+
+        media = self.unreadable()
+        Job.objects.all().delete()
+
+        self.client.post(reverse("ocr_retry"))
+
+        media.refresh_from_db()
+        self.assertEqual(media.ocr_status, Media.OcrStatus.PENDING)
+        self.assertFalse(Job.objects.filter(type="media.ocr").exists())
+
+    @override_settings(OCR_ENABLED=True)
+    def test_a_file_already_read_is_not_read_again(self):
+        from homeautoshop.core.models import Job
+
+        done = self.add_document("invoice.pdf").media
+        done.ocr_status = Media.OcrStatus.DONE
+        done.ocr_text = "PARTS 42.00"
+        done.save(update_fields=["ocr_status", "ocr_text"])
+        self.unreadable()
+        Job.objects.all().delete()
+
+        self.client.post(reverse("ocr_retry"))
+
+        done.refresh_from_db()
+        self.assertEqual(done.ocr_status, Media.OcrStatus.DONE)
+        self.assertEqual(done.ocr_text, "PARTS 42.00")
+        self.assertEqual(Job.objects.filter(type="media.ocr").count(), 1)
+
+    def test_a_helper_may_not_retry_the_whole_library(self):
+        """It reaches every file in the shop, so it is the settings gate that
+        answers, not a vehicle's."""
+        self.user.role = Role.HELPER
+        self.user.save()
+        media = self.unreadable()
+
+        response = self.client.post(reverse("ocr_retry"))
+
+        self.assertEqual(response.status_code, 403)
+        media.refresh_from_db()
+        self.assertEqual(media.ocr_status, Media.OcrStatus.FAILED)
+
+    def test_nothing_unreadable_says_so(self):
+        response = self.client.post(reverse("ocr_retry"), follow=True)
+
+        said = [str(m) for m in response.context["messages"]]
+        self.assertIn("Nothing is waiting to be read again.", said)

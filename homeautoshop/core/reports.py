@@ -20,6 +20,7 @@ import io
 from dataclasses import dataclass, field
 from django.utils import timezone
 from django.utils.translation import gettext as _
+from .measurements import format_quantity
 from .runtime import conf
 
 PAGE_MARGIN = 42
@@ -140,7 +141,7 @@ def report_sections(asset, *, include_costs: bool = True) -> list[Section]:
         if wo.correction:
             summary += f"\n{wo.correction[:300]}"
         parts = ", ".join(
-            f"{u.qty:g}× {u.part.name}" for u in wo.part_usages.all()[:6]
+            f"{format_quantity(u.qty)}× {u.part.name}" for u in wo.part_usages.all()[:6]
         ) or "—"
         history.append([
             str(when),
