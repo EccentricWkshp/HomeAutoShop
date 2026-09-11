@@ -32,6 +32,7 @@ capture came out with a real name in it.
 | `rockauto/` | *RockAuto Order Confirmation* — the emailed one, or the page | `rockauto.py` |
 | `napa/` | *Your Order History Details* — printed from the browser | `napa.py` |
 | `amazon/` | *Final Details for Order #…* — the invoice view | `amazon.py` |
+| `ebay/` | *Order details* — printed from the browser | `ebay.py` |
 
 Two documents in this corpus are **not** read, and both are recorded rather
 than quietly failing:
@@ -50,17 +51,24 @@ the screen names the formats it does read.
 word geometry and no fixture anybody writes by hand would exercise the wrapping
 that makes it difficult.
 
-`napa.py` and `amazon.py` are tested from fixtures **written out in
-`tests_orders.py`**. Their layouts are rows of text, so a fixture is legible in
-the test file, and it means neither of those documents' personal data has to be
-redacted correctly for the suite to run at all — the strongest version of not
-having it in the repository is not extracting it in the first place.
+`napa.py`, `amazon.py` and `ebay.py` are tested from fixtures **written out in
+`tests_orders.py`**. Their layouts are legible in the test file, and it means
+none of those documents' personal data has to be redacted correctly for the
+suite to run at all — the strongest version of not having it in the repository
+is not extracting it in the first place.
+
+The eBay fixture goes one further and carries an **invented** address in the
+column the reader is supposed to drop, so that `the_shipping_address_is_never_read`
+has something to prove. It is not a hypothetical: the boundary between that
+column and the order information was first written as the column's own
+coordinate, and pdfplumber returns `189.99999999999997` for a word set at 190,
+so the address came through.
 
 `capture.py` only knows how to find and remove RockAuto's `Ship To:` block. It
-would have to learn NAPA's `Pickup Person:` block and Amazon's `Shipping
-Address:` and `Billing address` blocks before it could be pointed at those
-folders, and it refuses rather than half-redacting, so running it against them
-today writes nothing.
+would have to learn NAPA's `Pickup Person:` block, Amazon's `Shipping Address:`
+and `Billing address` blocks, and eBay's middle column before it could be
+pointed at those folders, and it refuses rather than half-redacting, so running
+it against them today writes nothing.
 
 ## Adding a vendor
 
@@ -95,3 +103,19 @@ Things worth copying:
   part and seven are tools. Nothing in the document says which, so the reader
   takes no view and the review screen asks. Lines left out are left out of the
   tax and shipping too.
+
+* **Read the column header, do not assume the columns.** eBay prints one table
+  per seller and sets the same four columns in different places in each. Worse,
+  a product name and the carrier that shipped it are printed on the *same
+  baselines* eleven points apart, so reading order glues `USPS Priority Mail`
+  onto the end of a product title and then files it in the catalog that way.
+  The header is the document telling you where its columns are; use it.
+
+* **A refund is not a discount.** One eBay sample was paid at $167.08 and ends
+  on $131.57, with `Total refunded -$35.51` for an item that never arrived.
+  Subtracting it reconciles against the printed total — and then the importer
+  spreads that credit pro-rata across all seven lines, so six parts that *did*
+  arrive each record 23% cheaper than they were. The page does not say which
+  item came back and no reader can work it out, so the order states what was
+  paid and the screen is told to leave a line out. Doing that takes the line's
+  own share of the tax with it and lands on the $131.57 the page ends on.

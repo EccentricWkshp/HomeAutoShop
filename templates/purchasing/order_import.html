@@ -81,7 +81,21 @@ needed it.
           <form method="post" id="confirm-import">{% csrf_token %}
             <input type="hidden" name="held" value="{{ held }}">
             <input type="hidden" name="lines_offered" value="1">
+            {% comment %}
+            Two buttons, and the order of them matters twice over. A name typed
+            into this screen decides whether the line finds a part the shop
+            already has or creates another one, and there was no way to find
+            out but to commit — so looking again is offered, carrying every
+            choice on the screen with it.
+
+            It is **first** because a browser submits a form by its first
+            button when Enter is pressed in a text field, and the text fields
+            here are the names. Enter looks again; it does not write.
+            {% endcomment %}
             <div class="row">
+              <button type="submit" name="action" value="preview">
+                {% translate "Look again" %}
+              </button>
               <button type="submit" name="action" value="commit" class="primary">
                 {% translate "Read this in" %}
               </button>
@@ -108,8 +122,8 @@ needed it.
           <tr><th>{% translate "Parts subtotal" %}</th><td class="mono num">{{ report.order.subtotal }}</td></tr>
           <tr><th>{% translate "Shipping" %}</th><td class="mono num">{{ report.order.shipping }}</td></tr>
           <tr><th>{% translate "Tax" %}</th><td class="mono num">{{ report.order.tax }}</td></tr>
-          {% for label, amount in report.order.adjustments %}
-            <tr><th>{{ label }}</th><td class="mono num">−{{ report.order.discount }}</td></tr>
+          {% for label, amount in report.order.credits %}
+            <tr><th>{{ label }}</th><td class="mono num">−{{ amount }}</td></tr>
           {% endfor %}
           <tr><th>{% translate "Order total" %}</th>
               <td class="mono"><strong>{{ report.order.total }}</strong></td></tr>
@@ -172,11 +186,19 @@ needed it.
                       <label class="visually-hidden" for="treat-{{ forloop.counter0 }}">
                         {% blocktranslate with what=outcome.line.description %}What {{ what }} is{% endblocktranslate %}
                       </label>
+                      {% comment %}
+                      Held across a second look. This used to hard-code the
+                      first option as selected, which cost nothing while the
+                      only button here was the one that writes — now that a
+                      name can be checked by previewing again, resetting the
+                      choice would silently undo every line marked as tooling
+                      on the way to the press that commits.
+                      {% endcomment %}
                       <select id="treat-{{ forloop.counter0 }}" form="confirm-import"
                               name="treat_{{ forloop.counter0 }}" class="select">
-                        <option value="part" selected>{% translate "A part" %}</option>
-                        <option value="tooling">{% translate "Tooling" %}</option>
-                        <option value="out">{% translate "Leave it out" %}</option>
+                        <option value="part"{% if outcome.treatment == "part" %} selected{% endif %}>{% translate "A part" %}</option>
+                        <option value="tooling"{% if outcome.treatment == "tooling" %} selected{% endif %}>{% translate "Tooling" %}</option>
+                        <option value="out"{% if outcome.treatment == "out" %} selected{% endif %}>{% translate "Leave it out" %}</option>
                       </select>
                     </td>
                   {% endif %}
@@ -214,7 +236,43 @@ needed it.
                   on a document that states no identifiers, that rule was
                   setting a floor under the *price* column instead.
                   {% endcomment %}
-                  <td class="small what">{{ outcome.line.description }}
+                  <td class="small what">
+                    {% comment %}
+                    **What to call it**, which is a different question from
+                    what the document called it. A seller's title is written to
+                    be found in a search box — `95526-78F00-000 Suzuki
+                    Switch,triple pressure 9552678F00000, New Genuine OEM Par
+                    (297494871661)` is one line of a real order — and filed
+                    straight in it is the part's name for ever. The ways out
+                    were to create the part by hand first so the order matched
+                    it, or to fix it afterwards on the part's own page: the
+                    same work, done twice, at the wrong moment.
+
+                    Typing here does both jobs at once, because the name is
+                    also what the line is looked up by on a document that
+                    states no part number. A title nothing will ever match
+                    lands a new part every time it is bought; what the shop
+                    actually calls the thing finds the one it already has.
+                    {% endcomment %}
+                    {% if report.dry_run and held and outcome.names_a_new_part %}
+                      <label class="visually-hidden" for="name-{{ forloop.counter0 }}">
+                        {% blocktranslate with what=outcome.line.description %}What to call {{ what }}{% endblocktranslate %}
+                      </label>
+                      <input id="name-{{ forloop.counter0 }}" form="confirm-import"
+                             class="input name" type="text" maxlength="200"
+                             name="name_{{ forloop.counter0 }}" value="{{ outcome.named }}">
+                    {% else %}
+                      {{ outcome.catalog_name|default:outcome.line.description }}
+                    {% endif %}
+                    {% comment %}
+                    The document's own words, shown exactly when they are no
+                    longer what is on screen — so a name somebody typed can be
+                    checked against the order it came from, without a second
+                    copy of the same string on every untouched row.
+                    {% endcomment %}
+                    {% if outcome.catalog_name != outcome.line.description %}
+                      <div class="muted">{% blocktranslate with what=outcome.line.description %}the order says “{{ what }}”{% endblocktranslate %}</div>
+                    {% endif %}
                     {% if outcome.line.sold_by %}
                       <div class="muted">{% blocktranslate with who=outcome.line.sold_by %}sold by {{ who }}{% endblocktranslate %}</div>
                     {% endif %}
@@ -231,7 +289,15 @@ needed it.
                     {% endif %}
                     {% if outcome.inside_kit %}
                       <span class="pill">{% blocktranslate with kit=outcome.inside_kit %}inside {{ kit }}{% endblocktranslate %}</span>
-                    {% elif not outcome.charged %}
+                    {% elif outcome.line.is_kit_component %}
+                      {% comment %}
+                      Asked of the **line**, not of whether it was charged. A
+                      line left out and a line recorded as tooling are both
+                      uncharged for reasons that have nothing to do with kits,
+                      and this read `not outcome.charged` — so every one of
+                      them was labeled as the contents of a box it had never
+                      been in, beside a pill already saying it was left out.
+                      {% endcomment %}
                       <span class="pill">{% translate "inside a kit" %}</span>
                     {% endif %}
                   </td>
@@ -328,6 +394,9 @@ needed it.
           </p>
           <p class="small muted">
             {% blocktranslate %}Say how many of each you actually got, which is not always how the vendor counted them — a two-pack of relays is one line, one charge and two relays. Changing a count moves no money: the line still cost what the order says it cost, and the price each is worked out from it.{% endblocktranslate %}
+          </p>
+          <p class="small muted">
+            {% blocktranslate %}Name each one the way you want to find it again. A name that matches something already in the catalog brings that part in instead of adding a second one — press Look again to see which happened. Nothing here renames a part you already have, and the order's own wording is kept on the purchase either way.{% endblocktranslate %}
           </p>
         {% endif %}
         <p class="small muted">

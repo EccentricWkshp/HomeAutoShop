@@ -883,6 +883,10 @@ input.doubtful { border-color: var(--warn, #b58900); }
    whole number and a full-width input in a table column that wide reads as the
    most important thing on the row. */
 .orderlines input.count { inline-size: 6rem; }
+/* The name box, which is the opposite case: it holds a seller's title running
+   to most of a line and is the one field on the row somebody is expected to
+   rewrite, so it takes the column. */
+.orderlines input.name { inline-size: 100%; }
 /* The count and its unit on one line, and the unit boxed to a width rather
    than sized to its longest option. `fluid ounces` set on `inline-size: auto`
    widened the Qty column by most of an inch, and the column that lost the room

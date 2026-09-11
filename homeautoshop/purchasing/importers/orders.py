@@ -192,6 +192,18 @@ class ParsedOrder:
         return Money(self.discount_minor, "USD")
 
     @property
+    def credits(self) -> list[tuple[str, Money]]:
+        """Each named rebate as money, for the screen that lists them.
+
+        The review screen printed `discount` against every row of this list,
+        which is right only while there is exactly one of them: an Amazon order
+        carrying a promotion *and* a gift card showed each of them as the sum of
+        both, and an eBay refund — which is deliberately not part of the sum at
+        all — would have shown as a credit of nothing.
+        """
+        return [(label, Money(amount, "USD")) for label, amount in self.adjustments]
+
+    @property
     def total(self) -> Money:
         return Money(self.total_minor, "USD")
 
@@ -251,9 +263,9 @@ def readers() -> list:
     library, and this module is imported by the model layer through
     `service.py`.
     """
-    from . import amazon, napa, rockauto
+    from . import amazon, ebay, napa, rockauto
 
-    return [rockauto, napa, amazon]
+    return [rockauto, napa, amazon, ebay]
 
 
 def formats() -> list[str]:

@@ -52,7 +52,7 @@
 - Service-information providers: LEMON (default, with mirror list), Operation CHARM, ALLDATA DIY (seeded and enabled, per-vehicle subscription status).
 - Equipment schedule templates: small engine, generator, mower — hour-based and season-based.
 - Inspection templates ([SCHEMA-INSPECTION-TEMPLATES.md](SCHEMA-INSPECTION-TEMPLATES.md)): **pre-purchase inspection**, annual safety/roadworthiness, seasonal (winter prep / storage), post-repair quality check, and a motorcycle-specific template. Class-scoped per `vehicle_class`.
-- **Parts-order readers.** RockAuto order confirmations, read by word geometry (`purchasing/importers/rockauto.py`) against a corpus of nine real orders captured as redacted text and geometry — the originals are shipping documents carrying a name, a street address, a phone number and an email, and are never committed.
+- **Parts-order readers.** RockAuto order confirmations, NAPA order history, Amazon invoices and eBay order details, read by word geometry (`purchasing/importers/`) and chosen by asking each reader whether it recognizes the file. RockAuto runs against a corpus of nine real orders captured as redacted text and geometry; the rest are tested from fixtures written out in `tests_orders.py`. The originals are shipping documents carrying a name, a street address, a phone number and an email, and are never committed.
 - Parser profiles for any scan-tool report formats with a sample corpus at build time. **Ships empty until the first sample arrives** (§8.3a) — the manual mapping wizard covers the gap.
 - A demo dataset (three vehicles with history) that installs and uninstalls cleanly, for evaluation and for tests.
 

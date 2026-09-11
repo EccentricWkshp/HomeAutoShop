@@ -131,6 +131,36 @@ def _counts(request) -> tuple[dict[int, Decimal], bool]:
     return counts, misread
 
 
+#: What a catalog name may run to, which is what the column holds.
+LONGEST_NAME = 200
+
+
+def _names(request) -> dict[int, str]:
+    """What each line should be called in the catalog, as the operator left it.
+
+    A seller's title is written to be found in a search box rather than to be a
+    name — `95526-78F00-000 Suzuki Switch,triple pressure 9552678F00000, New
+    Genuine OEM Par (297494871661)` is one line of a real eBay order — and
+    until this box existed that was the part's name for ever unless somebody
+    created the part by hand beforehand or corrected it afterwards.
+
+    **Blank means "whatever the document said"**, which is why it is dropped
+    rather than stored as an empty name. Somebody clearing the box has not
+    asked for a nameless part; they have asked for the default back, and the
+    box is redrawn holding it.
+    """
+    names: dict[int, str] = {}
+    for key, value in request.POST.items():
+        if not key.startswith("name_"):
+            continue
+        index = key.removeprefix("name_")
+        if not index.isdigit():
+            continue
+        if cleaned := " ".join((value or "").split())[:LONGEST_NAME]:
+            names[int(index)] = cleaned
+    return names
+
+
 def _unit_choices() -> list[tuple[str, str]]:
     """Every unit a part may be measured in, for the selector on the review."""
     from homeautoshop.core.measurements import PART_UNITS, unit_label
@@ -209,7 +239,7 @@ def order_import(request):
         report = service.read_and_run(
             source, dry_run=not commit, user=request.user,
             keep=keep, as_tooling=as_tooling, counts=counts,
-            units=_units(request),
+            units=_units(request), names=_names(request),
         )
     except orders.UnreadableOrder as exc:
         messages.error(

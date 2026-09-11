@@ -101,6 +101,64 @@ class LineOutcome:
     #: count so the proposal can be checked against the document rather than
     #: taken on trust — the reader proposes and the operator decides.
     size_read: str = ""
+    #: **What this line is to be called in the catalog**, which is not the same
+    #: question as what the document called it.
+    #:
+    #: A seller's title is written to be found in a search box, not to be a
+    #: name: `95526-78F00-000 Suzuki Switch,triple pressure 9552678F00000, New
+    #: Genuine OEM Par (297494871661)` is one line of a real order. Filed
+    #: straight in, that is the part's name for ever, and the only ways out
+    #: were to create the part by hand *before* importing so the order matched
+    #: it, or to fix it afterwards on the part's own page. Both are the same
+    #: work done twice at the wrong moment.
+    #:
+    #: So it is asked for here, defaulting to what the document said. It names
+    #: a part that is created and it is what a part is looked up by where the
+    #: document states no part number — the same keystrokes doing both jobs —
+    #: and it **never renames a part that already exists**, which is somebody
+    #: else's decision about their own catalog.
+    named: str = ""
+
+    @property
+    def names_a_new_part(self) -> bool:
+        """Whether this line's name is still the operator's to choose.
+
+        False once it has matched something: that part has a name, and this
+        screen is not where it gets changed.
+
+        True for a line being left out or recorded as tooling, which creates no
+        part at all. The box is inert there and is still offered, for the
+        reason the count box beside it already is: the two controls are
+        submitted together and somebody is expected to move between them
+        freely, so marking a line as tooling must not throw away the name they
+        had just finished typing.
+        """
+        return self.part is None or self.created_part
+
+    @property
+    def catalog_name(self) -> str:
+        """What this line will be filed under, whoever decided it.
+
+        The part's own name once it has matched one — which is not always what
+        the document called it, and is exactly the thing worth showing.
+        """
+        return self.part.name if self.part is not None else self.named
+
+    @property
+    def treatment(self) -> str:
+        """Which of the three things this line was told to be, for the selector.
+
+        Rendered back rather than reset, which was harmless only while the
+        review screen had no way to submit twice. Previewing again to check an
+        edited name would otherwise have quietly undone every line marked as
+        tooling and every line left out — and the second press is the button
+        that writes.
+        """
+        if self.tooling:
+            return "tooling"
+        if self.skipped:
+            return "out"
+        return "part"
 
     @property
     def unit_label(self) -> str:
@@ -281,10 +339,10 @@ def _record_kit_item(kit: Part, part: Part, line, kit_quantity: Decimal) -> bool
     return True
 
 
-def _find_part(line: rockauto.OrderLine) -> tuple[Part | None, str]:
+def _find_part(line: rockauto.OrderLine, named: str = "") -> tuple[Part | None, str]:
     number = (line.part_number or "").strip()
     if not number:
-        return _by_description(line)
+        return _by_description(line, named)
 
     exact = Part.objects.filter(
         part_number__iexact=number, manufacturer__iexact=line.brand
@@ -307,7 +365,7 @@ def _find_part(line: rockauto.OrderLine) -> tuple[Part | None, str]:
     return None, ""
 
 
-def _by_description(line) -> tuple[Part | None, str]:
+def _by_description(line, named: str = "") -> tuple[Part | None, str]:
     """Match on the title, for a document that states no part number at all.
 
     A parts supplier prints a brand and a number on every line and this is
@@ -328,8 +386,18 @@ def _by_description(line) -> tuple[Part | None, str]:
     byte-identical ones. Nothing is fuzzy here on purpose: a near-match would
     eventually fold two sizes of the same product together, and stock merged
     into the wrong row is not undoable by looking at it.
+
+    **`named` is what the operator typed on the review screen**, and it is
+    searched for in place of the title when they typed one. That is what makes
+    the box worth having rather than merely tidy: a seller's title is
+    `95526-78F00-000 Suzuki Switch,triple pressure 9552678F00000, New Genuine
+    OEM Par (297494871661)` and nothing the shop already has will ever be
+    called that, so an exact match can never fire and every such line lands as
+    a new part however many times it is bought. Typing what the shop actually
+    calls it finds the part instead — which is the same keystrokes that name it
+    when it turns out to be new.
     """
-    name = (line.description or line.label or "").strip()
+    name = (named or line.description or line.label or "").strip()
     if not name:
         return None, ""
     match = Part.objects.filter(name__iexact=name).first()
@@ -339,8 +407,31 @@ def _by_description(line) -> tuple[Part | None, str]:
 
 
 def _size_of(line) -> tuple[Decimal, str] | None:
-    """The pack size the line's own description states, if it states one."""
+    """The pack size the line's own description states, if it states one.
+
+    Read from the **document**, never from whatever the line was renamed to on
+    the review screen. The size is a thing the vendor stated about what it
+    shipped; somebody shortening `CRC Brakleen ... 5 gal (US)` to `Brake
+    cleaner` has said nothing at all about gallons, and taking the absence as a
+    statement would silently put five gallons on the shelf as one of something.
+    """
     return packs.read_size(line.description or line.label or "")
+
+
+def _named(line, chosen: str = "") -> str:
+    """What this line is to be called: the operator's answer, or the document's.
+
+    Capped at what the column holds. It was not capped at all, which nothing
+    had yet noticed only because the two readers that state a part number also
+    print short descriptions — a general retailer's title runs to 400
+    characters against a `name` of 200, and on any database that enforces its
+    own column widths that is an import that dies rather than a name that is
+    merely long.
+    """
+    # Stripped *before* it is chosen between, not after. A box holding nothing
+    # but spaces is somebody asking for the default back, and taken as an
+    # answer it is a part with no name at all.
+    return ((chosen or "").strip() or line.description or line.label or "").strip()[:200]
 
 
 def _proposed(line, part: Part | None) -> tuple[Decimal, str, str]:
@@ -493,6 +584,7 @@ def run(
     as_tooling: set[int] | None = None,
     counts: dict[int, Decimal] | None = None,
     units: dict[int, str] | None = None,
+    names: dict[int, str] | None = None,
 ) -> ImportReport:
     """Apply a parsed order. Rolls back entirely when `dry_run`.
 
@@ -522,6 +614,21 @@ def run(
     no money at all — `extended_minor` is still the document's own figure, and
     the per-unit price is derived from it (FR-PUR-11) — so a corrected count
     changes what the shop has and never what the order cost.
+
+    `names` says **what a line should be called in the catalog**, by index. A
+    seller's title is written to be found in a search box rather than to be a
+    name, and filed straight in it is the part's name for ever; the only ways
+    out were to create the part by hand before importing so the order matched
+    it, or to correct it afterwards on the part's own page. Both are the same
+    work, done twice, at the wrong moment.
+
+    It does exactly two things, and the second is what makes it worth having.
+    It names a part that is **created**, and it is what a part is **looked up
+    by** on a document that states no part number — so typing what the shop
+    calls a thing finds the one it already has instead of adding a second under
+    a title nothing will ever match. It does not touch `description_as_ordered`
+    on the purchase line, which stays the document's own words, and it
+    **never renames a part that already exists**.
     """
     report = ImportReport(order=order, dry_run=dry_run, warnings=list(order.warnings))
 
@@ -554,6 +661,7 @@ def run(
     tooling = set(as_tooling or ())
     counted = dict(counts or {})
     chosen_units = dict(units or {})
+    chosen_names = dict(names or {})
     overheads = _overheads_per_line(order)
     on_purchase = [
         index
@@ -638,6 +746,7 @@ def run(
             report.outcomes.append(
                 LineOutcome(
                     line=line, charged=False, tooling=True,
+                    named=_named(line, chosen_names.get(index, "")),
                     units=Decimal(str(counted.get(index) or _proposed(line, None)[0])),
                 )
             )
@@ -649,15 +758,22 @@ def run(
             report.outcomes.append(
                 LineOutcome(
                     line=line, charged=False, skipped=True,
+                    named=_named(line, chosen_names.get(index, "")),
                     units=Decimal(str(counted.get(index) or _proposed(line, None)[0])),
                 )
             )
             continue
         outcome = LineOutcome(line=line, charged=not line.is_kit_component)
+        outcome.named = _named(line, chosen_names.get(index, ""))
         # Looked up before the count is proposed rather than after, because a
         # part the shop already has is what decides the unit — and the unit is
         # what decides whether a stated size may be multiplied into the count.
-        part, how = _find_part(line)
+        #
+        # Looked up **by the name the operator typed**, where the document
+        # states no part number. That is what lets one box do both jobs: the
+        # name that would have created a second copy of something finds the
+        # first one instead.
+        part, how = _find_part(line, outcome.named)
         proposed, unit, read = _proposed(line, part)
         outcome.unit = chosen_units.get(index) or unit
         outcome.size_read = read
@@ -676,7 +792,9 @@ def run(
 
         if part is None:
             part = Part.objects.create(
-                name=line.description or line.label,
+                # What the operator called it, or what the document did when
+                # they left it alone.
+                name=outcome.named,
                 manufacturer=line.brand,
                 part_number=line.part_number,
                 part_type=PartType.AFTERMARKET,
@@ -786,7 +904,7 @@ def run(
 
 def read_and_run(
     upload, *, dry_run: bool = True, user=None, keep=None, as_tooling=None,
-    counts=None, units=None,
+    counts=None, units=None, names=None,
 ) -> ImportReport:
     """Read whatever this file turns out to be, then apply it.
 
@@ -798,5 +916,5 @@ def read_and_run(
     return run(
         order_shapes.read(upload),
         dry_run=dry_run, user=user, keep=keep, as_tooling=as_tooling,
-        counts=counts, units=units,
+        counts=counts, units=units, names=names,
     )

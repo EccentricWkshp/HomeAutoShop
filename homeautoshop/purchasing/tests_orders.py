@@ -30,7 +30,7 @@ from decimal import Decimal
 
 from django.test import TestCase
 
-from homeautoshop.purchasing.importers import amazon, napa, orders
+from homeautoshop.purchasing.importers import amazon, ebay, napa, orders
 
 
 def rows(*lines, spacing=15.0, start=100.0):
@@ -137,6 +137,19 @@ class NapaTests(TestCase):
     def test_the_discount_named_the_way_the_page_named_it(self):
         self.assertEqual(self.order().adjustments, [("Napa Rewards Discount", 500)])
 
+    def test_each_named_credit_is_shown_as_its_own_money(self):
+        """The review screen printed the order's whole discount against every
+        row of that list. Right only while there is exactly one of them — two
+        promotions on an Amazon invoice each showed as the sum of both — and
+        `adjustments` holds minor units, which is not a number anybody reads."""
+        order = self.order()
+        order.adjustments.append(("Coupon", 250))
+
+        self.assertEqual(
+            [(label, str(amount)) for label, amount in order.credits],
+            [("Napa Rewards Discount", "$5.00"), ("Coupon", "$2.50")],
+        )
+
     def test_it_reconciles_and_that_is_the_evidence_for_the_tax_rule(self):
         """8.4% of $228.05 is $19.16; it is 8.4% of $223.05 that gives $18.74.
 
@@ -242,9 +255,720 @@ class AmazonTests(TestCase):
             amazon.parse_document([(1.0, 1.0, "Order #33065705", False)])
 
 
+#: An eBay *Order details* page, as printed cells — see `ebay._cells`. This is
+#: the three-seller order, transcribed from the real document with the address
+#: replaced by an invented one: the reader is supposed to drop that column
+#: unread, and a test of that needs something in the column to drop.
+#:
+#: It is the awkward one on purpose. Three sellers and three order numbers
+#: under one payment, a table that runs over a page break, a line whose name
+#: wraps around its own quantity, two lines of more than one, and a refund for
+#: an item that never arrived.
+EBAY_ORDER = [
+    (61.4, 15.0, "Order information"),
+    (61.4, 190.0, "Shipping address"),
+    (61.4, 365.0, "Order total"),
+    (89.0, 15.0, "Buyer"),
+    (89.0, 95.5, "at963"),
+    (89.0, 190.0, "Jordan Example"),
+    (89.0, 365.0, "9 items"),
+    (89.0, 479.7, "$154.99"),
+    (107.0, 15.0, "Placed on"),
+    (107.0, 95.5, "Apr 25, 2022"),
+    (107.0, 190.0, "1 Example Way"),
+    (107.0, 365.0, "Shipping"),
+    (107.0, 479.7, "Free"),
+    (118.2, 190.0, "Springfield, Somewhere 00000"),
+    (124.2, 15.0, "Payment method"),
+    (124.2, 95.5, "PayPal"),
+    (124.2, 365.0, "Tax"),
+    (124.2, 479.7, "$12.09"),
+    (130.2, 190.0, "United States"),
+    (142.2, 15.0, "Paid on"),
+    (142.2, 95.5, "Apr 25, 2022"),
+    (161.7, 365.0, "Amount paid"),
+    (161.7, 479.7, "$167.08"),
+    (179.7, 365.0, "Total refunded"),
+    (179.7, 479.7, "-$35.51"),
+    (215.7, 365.0, "Order total"),
+    (215.7, 479.7, "$131.57"),
+    # The sales-tax footnote, which is prose printed in the totals label column
+    # and spills past where the amounts start. It is here because it must not
+    # become a total.
+    (233.0, 365.0, "*We're required by law to collect"),
+    (248.0, 365.0, "sales tax and applicable fees for"),
+    (270.0, 15.0, "Items bought from hartvillehardware"),
+    (291.4, 15.0, "Order number: 12-08554-59260"),
+    (319.2, 489.8, "Item"),
+    (324.5, 20.2, "Quantity"),
+    (324.5, 64.8, "Item name"),
+    (324.5, 408.6, "Shipping service"),
+    (330.5, 489.8, "price"),
+    (353.0, 408.6, "Standard"),
+    (359.0, 20.2, "1"),
+    (359.0, 64.8, "John Deere Original Equipment Home Maintenance Kit #LG253 (272017494892)"),
+    (359.0, 489.8, "$42.77"),
+    (365.0, 408.6, "Shipping"),
+    (385.2, 408.6, "Standard"),
+    (391.2, 20.2, "2"),
+    (391.2, 64.8, "John Deere Original Equipment Lock Nut #GX21694 (281843392173)"),
+    (391.2, 489.8, "$12.98"),
+    (397.2, 408.6, "Shipping"),
+    (418.2, 408.6, "Standard"),
+    (424.2, 20.2, "2"),
+    (424.2, 64.8, "John Deere Original Equipment Washer #M149625 (272031850505)"),
+    (424.2, 489.8, "$13.88"),
+    (430.2, 408.6, "Shipping"),
+    (450.5, 408.6, "Standard"),
+    (456.5, 20.2, "1"),
+    (456.5, 64.8, "John Deere Original Equipment Forward Pedal Pad #GX25949 (272022068218)"),
+    (456.5, 489.8, "$9.94"),
+    (462.5, 408.6, "Shipping"),
+    # The name wraps around its own quantity: the first half is printed above
+    # the row carrying the count and the price, and the rest below it.
+    (483.5, 64.8, "John Deere Original Equipment Grass Mulching Attachment #GY00115"),
+    (483.5, 408.6, "Standard"),
+    (489.5, 20.2, "1"),
+    (489.5, 489.8, "$32.94"),
+    (495.5, 64.8, "(272022068228)"),
+    (495.5, 408.6, "Shipping"),
+    # A second seller, whose table sets its columns in different places.
+    (549.0, 15.0, "Items bought from cjcgogreenparts"),
+    (570.4, 15.0, "Order number: 12-08554-59261"),
+    (598.2, 20.2, "Quantity"),
+    (598.2, 72.6, "Item name"),
+    (598.2, 389.9, "Shipping service"),
+    (598.2, 480.5, "Item price"),
+    (620.0, 20.2, "1"),
+    (620.0, 72.6, "AM130907 John Deere OEM Deck Leveling Gauge (291482095370)"),
+    (620.0, 389.9, "USPS First Class"),
+    (620.0, 480.5, "$13.49"),
+    # A third, whose heading and column header land at the bottom of page one
+    # and whose only item is on page two under a reprinted header.
+    (674.3, 15.0, "Items bought from onthewayassistance"),
+    (695.7, 15.0, "Order number: 12-08554-59262"),
+    (722.7, 412.9, "Shipping"),
+    (722.7, 489.6, "Item"),
+    (728.7, 20.2, "Quantity"),
+    (728.7, 64.8, "Item name"),
+    (734.7, 412.9, "service"),
+    (734.7, 489.6, "price"),
+    (806.7, 412.9, "Shipping"),
+    (806.7, 489.6, "Item"),
+    (812.7, 20.2, "Quantity"),
+    (812.7, 64.8, "Item name"),
+    (818.7, 412.9, "service"),
+    (818.7, 489.6, "price"),
+    (839.0, 64.8, 'Oregon 92-615 G3 Gator Blades for 42" John Deere GX22151, GY20850'),
+    (845.0, 20.2, "1"),
+    (845.0, 412.9, "UPS Ground"),
+    (845.0, 489.6, "$28.99"),
+    (851.0, 64.8, "(353875736055)"),
+]
+
+#: A single-seller order carrying a checkout discount, and a payment label that
+#: wraps onto a second row while its value stays on the first.
+EBAY_DISCOUNTED = [
+    (61.4, 15.0, "Order information"),
+    (61.4, 365.0, "Order total"),
+    (89.0, 15.0, "Buyer"),
+    (89.0, 95.5, "at963"),
+    (89.0, 365.0, "2 items"),
+    (89.0, 479.7, "$37.22"),
+    (107.0, 15.0, "Seller"),
+    (107.0, 95.5, "ryy2i8NZR2K@Deleted"),
+    (107.0, 365.0, "Item discount"),
+    (107.0, 479.7, "-$1.86"),
+    (124.2, 15.0, "Placed on"),
+    (124.2, 95.5, "Oct 6, 2019"),
+    (124.2, 365.0, "Shipping"),
+    (124.2, 479.7, "Free"),
+    (142.2, 15.0, "Payment"),
+    (142.2, 95.5, "PayPal, eBay Bucks"),
+    (142.2, 365.0, "Tax"),
+    (142.2, 479.7, "$3.29"),
+    (154.2, 15.0, "methods"),
+    (172.2, 15.0, "Paid on"),
+    (172.2, 95.5, "Oct 6, 2019"),
+    (179.7, 365.0, "Order total"),
+    (179.7, 479.7, "$38.65"),
+    (234.8, 15.0, "Items bought from ryy2i8NZR2K@Deleted"),
+    (256.2, 15.0, "Order number: 24-03972-35458"),
+    (283.2, 491.6, "Item"),
+    (289.2, 20.2, "Quantity"),
+    (289.2, 64.8, "Item name"),
+    (289.2, 413.9, "Shipping service"),
+    (295.2, 491.6, "price"),
+    (317.0, 64.8, "For 2002-2007 Suzuki Aerio Remote Key Keyless Entry Fob Transmitter Alarm Used"),
+    (317.0, 413.9, "Economy"),
+    (323.0, 20.2, "2"),
+    (323.0, 491.6, "$37.22"),
+    (329.0, 64.8, "(142704007154)"),
+    (329.0, 413.9, "Shipping"),
+]
+
+
+class EbayTests(TestCase):
+    def order(self):
+        return ebay.parse_document("Order details | eBay", EBAY_ORDER)
+
+    def discounted(self):
+        return ebay.parse_document("Order details | eBay", EBAY_DISCOUNTED)
+
+    def test_it_reads_the_page(self):
+        order = self.order()
+
+        self.assertEqual(order.vendor_name, "eBay")
+        self.assertEqual(str(order.ordered_on), "2022-04-25")
+        self.assertEqual(order.payment_method, "PayPal")
+        self.assertEqual(len(order.lines), 7)
+
+    def test_the_price_column_is_the_extended_figure(self):
+        """The one fact about this document nothing but the arithmetic gives
+        you. `2 × Lock Nut $12.98` read as a price each makes the order
+        $181.85; read as what the line came to it makes $154.99, which is what
+        the page says. The Amazon reader got the same question wrong in the
+        other direction and the reconciliation is what caught it."""
+        line = self.order().lines[1]
+
+        self.assertEqual(line.quantity, Decimal(2))
+        self.assertEqual(line.extended_minor, 1298)
+        self.assertEqual(line.charged_minor, 1298)
+        self.assertEqual(line.unit_price_minor, 649)
+        self.assertEqual(self.order().subtotal_minor, 15499)
+
+    def test_it_reconciles_against_the_page(self):
+        order = self.order()
+
+        self.assertEqual(order.stated_subtotal_minor, 15499)
+        self.assertEqual(order.tax_minor, 1209)
+        self.assertEqual(order.shipping_minor, 0)
+        self.assertTrue(order.reconciles)
+
+    def test_free_is_a_shipping_charge_of_nothing(self):
+        self.assertEqual(self.order().shipping_minor, 0)
+
+    def test_one_payment_over_several_sellers_is_one_order(self):
+        """eBay prints an order number per seller. They were paid for together,
+        with one tax charge and one total, and the per-seller figures needed to
+        split them are printed nowhere — so it is one purchase, filed under the
+        first, and the page saying so is not left to be discovered later."""
+        order = self.order()
+
+        self.assertEqual(order.order_number, "12-08554-59260")
+        self.assertEqual(
+            [line.sold_by for line in order.lines],
+            ["hartvillehardware"] * 5 + ["cjcgogreenparts", "onthewayassistance"],
+        )
+        self.assertTrue(
+            any("12-08554-59262" in warning for warning in order.warnings),
+            order.warnings,
+        )
+
+    def test_a_seller_is_never_recorded_as_the_brand(self):
+        """`hartvillehardware` in the manufacturer column is somebody's
+        marketplace account reading as authoritative."""
+        for line in self.order().lines:
+            with self.subTest(seller=line.sold_by):
+                self.assertEqual(line.brand, "")
+                self.assertEqual(line.part_number, "")
+                self.assertTrue(line.sold_by)
+
+    def test_a_table_running_over_a_page_break_keeps_its_seller(self):
+        """The heading and the column header are at the foot of page one and
+        the item itself is on page two under a reprinted header."""
+        line = self.order().lines[-1]
+
+        self.assertEqual(line.sold_by, "onthewayassistance")
+        self.assertIn("Gator Blades", line.description)
+        self.assertEqual(line.extended_minor, 2899)
+
+    def test_a_name_wrapping_around_its_own_quantity_is_one_name(self):
+        """Printed above *and* below the row carrying the count and the price,
+        so neither reading order nor a walk in one direction gets all of it."""
+        self.assertEqual(
+            self.order().lines[4].description,
+            "John Deere Original Equipment Grass Mulching Attachment #GY00115 "
+            "(272022068228)",
+        )
+
+    def test_the_carrier_is_not_part_of_the_product_name(self):
+        """`USPS First Class` shares a baseline with the name it follows and
+        sits eleven points to its right. Only the column tells them apart, and
+        a carrier glued onto a title goes into the catalog under it."""
+        for line in self.order().lines:
+            with self.subTest(description=line.description):
+                for carrier in ("Standard", "UPS Ground", "USPS", "Shipping"):
+                    self.assertNotIn(carrier, line.description)
+
+    def test_the_shipping_address_is_never_read(self):
+        """Dropped by position, before anything looks at it. The parser needs
+        none of it and the strongest form of keeping it out is not extracting
+        it (NFR-S-5) — this failed once, when the column boundary was written
+        as the column's own coordinate and pdfplumber returned 189.99999999997
+        for a word set at 190."""
+        order = self.order()
+        read = [
+            order.order_number,
+            order.payment_method,
+            *(line.description for line in order.lines),
+            *(line.sold_by for line in order.lines),
+            *order.warnings,
+        ]
+
+        for text in read:
+            for private in ("Jordan", "Example", "Springfield", "00000"):
+                self.assertNotIn(private, text)
+
+    def test_the_sales_tax_footnote_is_not_a_total(self):
+        """It is prose printed under the totals label column, and it spills
+        past where the amounts begin. A row there becomes a figure only when
+        what ends it is money."""
+        order = self.order()
+
+        self.assertEqual(order.adjustments, [])
+        self.assertEqual(order.tax_minor, 1209)
+        self.assertEqual(order.total_minor, 16708)
+
+    def test_a_refund_is_named_and_never_subtracted(self):
+        """$35.51 came back for an item that never arrived, and the page does
+        not say which one. Subtracting it reconciles against the printed total
+        and then spreads the credit across all seven lines, so six parts that
+        did arrive each record 23% cheaper than they were. So the order states
+        what was paid, and the screen is told to drop a line."""
+        order = self.order()
+
+        self.assertEqual(order.total_minor, 16708)
+        self.assertEqual(order.discount_minor, 0)
+        self.assertEqual(order.adjustments, [])
+        self.assertTrue(
+            any(
+                "$35.51" in warning and "$131.57" in warning
+                for warning in order.warnings
+            ),
+            order.warnings,
+        )
+
+    def test_the_item_count_catches_a_quantity_read_wrong(self):
+        """The money cannot: every price here is already the extended figure,
+        so a line read as one of something when it was two still adds up to the
+        subtotal the page prints. `9 items` is the only thing that notices."""
+        page = [
+            (top, x0, "1" if (top, x0) == (391.2, 20.2) else text)
+            for top, x0, text in EBAY_ORDER
+        ]
+
+        order = ebay.parse_document("Order details | eBay", page)
+
+        self.assertTrue(order.reconciles)
+        self.assertTrue(
+            any("8 items" in warning and "9" in warning for warning in order.warnings),
+            order.warnings,
+        )
+
+    def test_a_checkout_discount_comes_off_before_the_tax(self):
+        """$37.22 less $1.86 is $35.36, and 9.3% of that is the $3.29 printed —
+        not 9.3% of $37.22. It belongs to the whole order, so unlike a refund
+        it is spread across the lines."""
+        order = self.discounted()
+
+        self.assertEqual(order.discount_minor, 186)
+        self.assertEqual(order.adjustments, [("Item discount", 186)])
+        self.assertEqual(order.total_minor, 3865)
+        self.assertTrue(order.reconciles)
+
+    def test_a_wrapped_payment_label_still_finds_its_value(self):
+        """`Payment methods` breaks over two rows while `PayPal, eBay Bucks`
+        stays on the first, so the row reads `Payment PayPal, eBay Bucks` and a
+        label matched against the row never matches."""
+        self.assertEqual(self.discounted().payment_method, "PayPal, eBay Bucks")
+
+    def test_the_ebay_item_number_stays_on_the_description(self):
+        """It is printed inside the name column and it is the only identity
+        such a line has — eBay states no brand and no part number, and the
+        numbers in a seller's title are marketing copy."""
+        self.assertIn("(291482095370)", self.order().lines[5].description)
+
+    def test_a_document_of_another_shape_is_refused(self):
+        with self.assertRaises(ValueError):
+            ebay.parse_document("", [(1.0, 1.0, "Order #33065705")])
+
+    def test_a_page_with_no_title_is_still_recognized_by_its_shape(self):
+        self.assertEqual(ebay.parse_document("", EBAY_ORDER).order_number, "12-08554-59260")
+
+
+class LeavingOutARefundedLineTests(TestCase):
+    """What the refund warning tells the operator to do, done.
+
+    The reader states the $167.08 that was paid because that is what the lines
+    on the page add up to. Dropping the line that came back takes its own share
+    of the tax with it — the same largest-remainder split every other choice on
+    that screen uses — and what is left is the $131.57 the page ends on.
+
+    That is the whole argument for not treating the refund as a discount, and
+    it is worth a test rather than a paragraph: the arithmetic lands on the
+    document's own final figure without anything here being told what it is.
+    """
+
+    #: The Grass Mulching Attachment, at $32.94.
+    REFUNDED = 4
+
+    def order(self):
+        return ebay.parse_document("Order details | eBay", EBAY_ORDER)
+
+    def run_import(self, keep=None):
+        from homeautoshop.purchasing.importers import service
+
+        return service.run(self.order(), dry_run=False, keep=keep)
+
+    def test_everything_kept_comes_to_what_was_paid(self):
+        report = self.run_import()
+
+        self.assertEqual(report.purchase.total_minor, 16708)
+
+    def test_dropping_the_line_that_came_back_lands_on_the_pages_own_figure(self):
+        kept = {index for index in range(7) if index != self.REFUNDED}
+
+        report = self.run_import(keep=kept)
+
+        self.assertEqual(report.purchase.total_minor, 13157)
+
+    def test_the_line_that_came_back_is_reported_rather_than_dropped(self):
+        kept = {index for index in range(7) if index != self.REFUNDED}
+
+        report = self.run_import(keep=kept)
+
+        left_out = [o for o in report.outcomes if o.skipped]
+        self.assertEqual(len(left_out), 1)
+        self.assertIn("Grass Mulching", left_out[0].line.description)
+
+    def test_the_vendor_is_the_marketplace_and_the_sellers_are_on_the_lines(self):
+        report = self.run_import()
+
+        self.assertEqual(report.purchase.vendor.name, "eBay")
+        self.assertEqual(
+            report.outcomes[-1].line.sold_by, "onthewayassistance"
+        )
+
+
+class TheEbayReviewScreenTests(TestCase):
+    """The whole way in, through the screen the operator actually uses.
+
+    The originals cannot be posted — they are order pages carrying a name and a
+    street address, and they are not in the repository — so the PDF is a
+    stand-in and the reader is handed the fixture, which is the same
+    arrangement `tests_rockauto.ScreenTests` uses.
+    """
+
+    def setUp(self):
+        from homeautoshop.accounts.models import Role, User
+
+        self.user = User.objects.create_user(
+            username="andy", password="x" * 16, role=Role.ADMIN
+        )
+        self.client.force_login(self.user)
+
+    def preview(self, cells):
+        from unittest import mock
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.urls import reverse
+
+        upload = SimpleUploadedFile(
+            "order.pdf", b"%PDF-1.4 stand-in", content_type="application/pdf"
+        )
+        with mock.patch.object(
+            ebay, "_read_pdf", return_value=("Order details | eBay", cells)
+        ):
+            return self.client.post(
+                reverse("order_import"), {"order": upload, "action": "preview"}
+            )
+
+    def test_the_page_says_it_reads_ebay(self):
+        from django.urls import reverse
+
+        self.assertContains(self.client.get(reverse("order_import")), "eBay")
+
+    def test_the_refund_is_put_in_front_of_the_person_deciding(self):
+        """It is the one thing about this order that needs a human: a line has
+        to come out and only they know which."""
+        page = self.preview(EBAY_ORDER).content.decode()
+
+        self.assertIn("$35.51", page)
+        self.assertIn("$131.57", page)
+
+    def test_the_sellers_are_named_against_their_own_lines(self):
+        page = self.preview(EBAY_ORDER).content.decode()
+
+        self.assertIn("hartvillehardware", page)
+        self.assertIn("onthewayassistance", page)
+
+    def test_a_named_credit_shows_its_own_amount(self):
+        """The row printed the order's whole discount rather than the credit's,
+        which is the same number only while there is one of them."""
+        page = self.preview(EBAY_DISCOUNTED).content.decode()
+
+        self.assertIn("Item discount", page)
+        self.assertIn("$1.86", page)
+        self.assertNotIn(">186<", page)
+
+    def test_nothing_is_written_by_looking_at_it(self):
+        from homeautoshop.purchasing.models import Purchase
+
+        response = self.preview(EBAY_ORDER)
+
+        self.assertContains(response, "Nothing has been written yet")
+        self.assertEqual(Purchase.objects.count(), 0)
+
+
+class NamingWhatComesInTests(TestCase):
+    """Cleaning up a part's name while reading the order, rather than around it.
+
+    A seller's title is written to be found in a search box, not to be a name.
+    Filed straight in it is what the part is called for ever, and the two ways
+    out were both the same work at the wrong moment: create the part by hand
+    *before* importing so the order matches it, or correct it afterwards on the
+    part's own page.
+
+    The box does two jobs with one set of keystrokes, and the second is the one
+    that makes it worth having. It names a part that gets created, and it is
+    what the line is **looked up by** on a document that states no part number
+    — so a title nothing will ever match stops landing a second copy of
+    something the shop already has.
+    """
+
+    def order(self):
+        return ebay.parse_document("Order details | eBay", EBAY_DISCOUNTED)
+
+    def run_import(self, names=None, **kwargs):
+        from homeautoshop.purchasing.importers import service
+
+        return service.run(self.order(), dry_run=False, names=names, **kwargs)
+
+    #: What eBay printed, which is the whole difficulty.
+    AS_SOLD = (
+        "For 2002-2007 Suzuki Aerio Remote Key Keyless Entry Fob Transmitter "
+        "Alarm Used (142704007154)"
+    )
+
+    def test_the_document_names_it_when_nobody_says_otherwise(self):
+        report = self.run_import()
+
+        self.assertEqual(report.outcomes[0].part.name, self.AS_SOLD)
+
+    def test_a_name_typed_on_the_review_is_what_the_part_is_called(self):
+        report = self.run_import(names={0: "Aerio key fob"})
+
+        self.assertTrue(report.outcomes[0].created_part)
+        self.assertEqual(report.outcomes[0].part.name, "Aerio key fob")
+
+    def test_the_same_name_finds_the_part_instead_of_making_a_second(self):
+        """The point of the box. `For 2002-2007 Suzuki Aerio Remote Key ...
+        (142704007154)` is a string nothing in a catalog will ever equal, so
+        every purchase of it landed a new part; the name somebody actually uses
+        matches the one they already have."""
+        from homeautoshop.parts.models import Part
+
+        first = self.run_import(names={0: "Aerio key fob"})
+        second = self.run_import(names={0: "Aerio key fob"})
+
+        self.assertTrue(first.outcomes[0].created_part)
+        self.assertFalse(second.outcomes[0].created_part)
+        self.assertEqual(second.outcomes[0].part.pk, first.outcomes[0].part.pk)
+        self.assertEqual(Part.objects.filter(name="Aerio key fob").count(), 1)
+
+    def test_matching_on_a_typed_name_ignores_the_case_it_was_typed_in(self):
+        from homeautoshop.parts.models import Part
+
+        Part.objects.create(name="Aerio Key Fob")
+
+        report = self.run_import(names={0: "aerio key fob"})
+
+        self.assertFalse(report.outcomes[0].created_part)
+        self.assertEqual(report.outcomes[0].part.name, "Aerio Key Fob")
+
+    def test_the_purchase_still_records_the_orders_own_words(self):
+        """Renaming a part says what the shop calls it. It says nothing about
+        what the order said, and the line is the record of the order."""
+        report = self.run_import(names={0: "Aerio key fob"})
+
+        self.assertEqual(
+            report.purchase.lines.get().description_as_ordered, self.AS_SOLD
+        )
+
+    def test_a_blank_name_is_the_document_back_rather_than_a_nameless_part(self):
+        report = self.run_import(names={0: "   "})
+
+        self.assertEqual(report.outcomes[0].part.name, self.AS_SOLD)
+
+    def test_a_part_matched_on_its_number_is_never_renamed(self):
+        """A name somebody already gave their own catalog entry is theirs. The
+        document is not entitled to overrule it and neither is this box."""
+        from homeautoshop.parts.models import Part
+        from homeautoshop.purchasing.importers import service
+
+        mine = Part.objects.create(
+            name="Brake cleaner, the good stuff",
+            manufacturer="CRC", part_number="05091",
+        )
+
+        report = service.run(
+            napa.parse_document("NAPA Auto Parts", NAPA_PAGE),
+            dry_run=False, names={0: "Something else entirely"},
+        )
+
+        mine.refresh_from_db()
+        self.assertEqual(mine.name, "Brake cleaner, the good stuff")
+        self.assertFalse(report.outcomes[0].created_part)
+        self.assertEqual(report.outcomes[0].part.pk, mine.pk)
+
+    def test_a_name_that_is_still_the_operators_to_choose_says_so(self):
+        """What the screen asks before it offers a box."""
+        created = self.run_import().outcomes[0]
+        # The same order again, which now finds what the first run made.
+        matched = self.run_import().outcomes[0]
+
+        self.assertTrue(created.names_a_new_part)
+        self.assertFalse(matched.names_a_new_part)
+        self.assertEqual(matched.catalog_name, self.AS_SOLD)
+
+    def test_a_name_longer_than_the_column_is_cut_to_fit(self):
+        """`Part.name` holds 200 characters and a general retailer's title runs
+        to 400. Nothing had noticed because the two readers that state a part
+        number also print short descriptions — on a database that enforces its
+        own column widths this is an import that dies."""
+        report = self.run_import(names={0: "x" * 400})
+
+        self.assertEqual(len(report.outcomes[0].part.name), 200)
+
+    def test_a_line_left_out_keeps_the_name_that_was_typed_for_it(self):
+        """The controls are submitted together and somebody is expected to move
+        between them, so marking a line as tooling must not throw away the name
+        they had just finished typing."""
+        report = self.run_import(names={0: "Aerio key fob"}, keep=set())
+
+        self.assertTrue(report.outcomes[0].skipped)
+        self.assertEqual(report.outcomes[0].named, "Aerio key fob")
+        self.assertTrue(report.outcomes[0].names_a_new_part)
+
+
+class NamingOnTheReviewScreenTests(TestCase):
+    """The box, and the second look that makes it checkable.
+
+    A typed name decides whether the line finds a part the shop already has or
+    creates another one, and until there was a way to look again the only way
+    to find out was to commit. So the review submits to itself as well as
+    forward, and everything on it has to survive the round trip.
+    """
+
+    def setUp(self):
+        from homeautoshop.accounts.models import Role, User
+
+        self.user = User.objects.create_user(
+            username="andy", password="x" * 16, role=Role.ADMIN
+        )
+        self.client.force_login(self.user)
+
+    def post(self, **fields):
+        """Whatever the review screen would submit, through the held document."""
+        from unittest import mock
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.urls import reverse
+
+        with mock.patch.object(
+            ebay, "_read_pdf", return_value=("Order details | eBay", EBAY_DISCOUNTED)
+        ):
+            first = self.client.post(
+                reverse("order_import"),
+                {
+                    "order": SimpleUploadedFile(
+                        "order.pdf", b"%PDF-1.4 stand-in",
+                        content_type="application/pdf",
+                    ),
+                    "action": "preview",
+                },
+            )
+            if not fields:
+                return first
+            return self.client.post(
+                reverse("order_import"),
+                {
+                    "held": first.context["held"],
+                    "lines_offered": "1",
+                    # The screen renders one of these per line and therefore
+                    # always submits one; without it every line arrives as
+                    # having been left out.
+                    "treat_0": "part",
+                    **fields,
+                },
+            )
+
+    def test_the_box_is_offered_holding_what_the_document_said(self):
+        page = self.post().content.decode()
+
+        self.assertIn('name="name_0"', page)
+        self.assertIn("Keyless Entry Fob", page)
+
+    def test_looking_again_keeps_the_name_that_was_typed(self):
+        page = self.post(action="preview", name_0="Aerio key fob").content.decode()
+
+        self.assertIn('value="Aerio key fob"', page)
+        self.assertIn("the order says", page)
+
+    def test_and_shows_the_part_it_found_instead_of_the_box(self):
+        """Typing a name that matches something already here is the whole
+        point, and the screen has to say that is what happened."""
+        from homeautoshop.parts.models import Part
+
+        Part.objects.create(name="Aerio key fob")
+
+        page = self.post(action="preview", name_0="Aerio key fob").content.decode()
+
+        self.assertIn("matched", page)
+        self.assertNotIn('name="name_0"', page)
+
+    def test_looking_again_does_not_undo_a_line_marked_as_tooling(self):
+        """The select hard-coded its first option as selected, which cost
+        nothing while the only button here was the one that writes."""
+        page = self.post(
+            action="preview", treat_0="tooling", name_0="Aerio key fob"
+        ).content.decode()
+
+        self.assertIn('<option value="tooling" selected>', page)
+        self.assertIn("tooling", page)
+
+    def test_looking_again_writes_nothing(self):
+        from homeautoshop.purchasing.models import Purchase
+
+        response = self.post(action="preview", name_0="Aerio key fob")
+
+        self.assertContains(response, "Nothing has been written yet")
+        self.assertEqual(Purchase.objects.count(), 0)
+
+    def test_committing_uses_the_name_from_the_screen(self):
+        from homeautoshop.parts.models import Part
+
+        self.post(action="commit", name_0="Aerio key fob")
+
+        self.assertTrue(Part.objects.filter(name="Aerio key fob").exists())
+
+    def test_a_line_left_out_is_not_labeled_as_the_contents_of_a_kit(self):
+        """The pill asked whether the line was charged. A kit component is not
+        charged — and neither is a line left out or recorded as tooling, so
+        every one of those was labeled as being inside a box it had never been
+        in, next to a pill already saying it was left out."""
+        page = self.post(action="preview", treat_0="out").content.decode()
+
+        self.assertIn("left out", page)
+        self.assertNotIn("inside a kit", page)
+
+
 class ChoosingAReaderTests(TestCase):
     def test_the_formats_are_named(self):
-        self.assertEqual(orders.formats(), ["RockAuto", "NAPA Auto Parts", "Amazon"])
+        self.assertEqual(
+            orders.formats(), ["RockAuto", "NAPA Auto Parts", "Amazon", "eBay"]
+        )
 
     def test_a_file_nothing_recognizes_says_what_it_tried(self):
         """"This is not a RockAuto order" was a complete answer while RockAuto
@@ -256,6 +980,7 @@ class ChoosingAReaderTests(TestCase):
         self.assertIn("RockAuto", str(refused.exception))
         self.assertIn("NAPA Auto Parts", str(refused.exception))
         self.assertIn("Amazon", str(refused.exception))
+        self.assertIn("eBay", str(refused.exception))
 
     def test_one_reader_falling_over_does_not_hide_the_others(self):
         """A corrupt file makes a PDF library raise something that is not a
